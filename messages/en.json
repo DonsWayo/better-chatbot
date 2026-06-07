@@ -796,6 +796,15 @@
       "completionTokens": "Completion Tokens",
       "costUsd": "Cost (USD)",
       "taskClass": "Task Class"
+    },
+    "MCP": {
+      "adminTitle": "MCP Catalog",
+      "companyScopedServers": "Company MCP Servers",
+      "registerServer": "Register Server",
+      "noServersRegistered": "No company MCP servers registered yet",
+      "scope": "Scope",
+      "scopeOrg": "Org-wide",
+      "scopeTeam": "Team"
     }
   },
   "MCP": {

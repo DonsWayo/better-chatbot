@@ -9,7 +9,7 @@ import {
 import { Tooltip } from "ui/tooltip";
 import { SidebarMenuItem } from "ui/sidebar";
 import { SidebarMenuButton } from "ui/sidebar";
-import { BarChart3, Shield, Users, UsersRound } from "lucide-react";
+import { BarChart3, Plug2, Shield, Users, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -42,6 +42,13 @@ const AppSidebarAdmin = () => {
         url: "/admin/usage",
         icon: BarChart3,
         isActive: pathname.startsWith("/admin/usage"),
+      },
+      {
+        id: "mcp",
+        title: t("MCP.adminTitle"),
+        url: "/admin/mcp",
+        icon: Plug2,
+        isActive: pathname.startsWith("/admin/mcp"),
       },
     ],
     [t, pathname],
