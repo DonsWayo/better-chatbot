@@ -5,6 +5,7 @@ import { UIMessage, UseChatHelpers } from "@ai-sdk/react";
 import { ChatMention, ChatModel } from "app-types/chat";
 import {
   AudioWaveformIcon,
+  BookOpen,
   ChevronDown,
   CornerRightUp,
   FileIcon,
@@ -17,6 +18,13 @@ import {
   XIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "ui/sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "ui/button";
 import { useShallow } from "zustand/shallow";
@@ -81,6 +89,11 @@ const ChatMentionInput = dynamic(() => import("./chat-mention-input"), {
   },
 });
 
+const PromptLibrary = dynamic(
+  () => import("./prompt-library").then((m) => ({ default: m.PromptLibrary })),
+  { ssr: false },
+);
+
 export default function PromptInput({
   placeholder,
   sendMessage,
@@ -100,6 +113,7 @@ export default function PromptInput({
   const { data: session } = authClient.useSession();
   const isBasicUser = session?.user?.role === "user";
   const [isUploadDropdownOpen, setIsUploadDropdownOpen] = useState(false);
+  const [promptSheetOpen, setPromptSheetOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFiles } = useThreadFileUploader(threadId);
   const { data: providers } = useChatModels();
@@ -556,6 +570,32 @@ export default function PromptInput({
                     </DropdownMenuSub>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <Sheet open={promptSheetOpen} onOpenChange={setPromptSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full hover:bg-input! p-2!"
+                      title="Prompt library"
+                    >
+                      <BookOpen className="size-3.5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+                    <SheetHeader>
+                      <SheetTitle>Prompt Library</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 overflow-y-auto h-[calc(100%-4rem)]">
+                      <PromptLibrary
+                        onUse={(content) => {
+                          setInput(content);
+                          setPromptSheetOpen(false);
+                        }}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
 
                 {!toolDisabled &&
                   !isBasicUser &&
