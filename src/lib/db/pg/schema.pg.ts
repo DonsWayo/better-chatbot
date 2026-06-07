@@ -10,6 +10,7 @@ import {
   uuid,
   boolean,
   unique,
+  uniqueIndex,
   varchar,
   index,
   numeric,
@@ -584,3 +585,26 @@ export const asafeDocumentChunkRelations = relations(AsafeDocumentChunkTable, ({
 export type AsafeMcpInvocationLogEntity = typeof AsafeMcpInvocationLogTable.$inferSelect;
 export type AsafeKnowledgeCollectionEntity = typeof AsafeKnowledgeCollectionTable.$inferSelect;
 export type AsafeDocumentChunkEntity = typeof AsafeDocumentChunkTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 9 – Response feedback (ADR-0009 quality loop)
+// ---------------------------------------------------------------------------
+
+export const AsafeMessageFeedbackTable = pgTable("asafe_message_feedback", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  messageId: text("message_id").notNull(),       // ChatMessage id (text, not uuid)
+  threadId: text("thread_id").notNull(),
+  userId: uuid("user_id").notNull().references(() => UserTable.id, { onDelete: "cascade" }),
+  rating: varchar("rating", { enum: ["up", "down"] }).notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (t) => [
+  uniqueIndex("uniq_feedback_user_msg").on(t.userId, t.messageId),
+]);
+
+export const asafeMessageFeedbackRelations = relations(AsafeMessageFeedbackTable, ({ one }) => ({
+  user: one(UserTable, { fields: [AsafeMessageFeedbackTable.userId], references: [UserTable.id] }),
+}));
+
+export type AsafeMessageFeedbackEntity = typeof AsafeMessageFeedbackTable.$inferSelect;

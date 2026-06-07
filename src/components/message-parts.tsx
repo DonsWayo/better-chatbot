@@ -28,6 +28,7 @@ import JsonView from "ui/json-view";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { Markdown } from "./markdown";
 import { MessageEditor } from "./message-editor";
+import { MessageFeedback } from "./message-feedback";
 
 import {
   deleteMessageAction,
@@ -430,6 +431,10 @@ export const AssistMessagePart = memo(function AssistMessagePart({
                 </TooltipContent>
               </Tooltip>
             </>
+          )}
+
+          {threadId && (
+            <MessageFeedback messageId={message.id} threadId={threadId} />
           )}
 
           {metadata && (
