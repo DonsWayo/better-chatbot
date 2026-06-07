@@ -780,6 +780,18 @@
       "addMemberSuccess": "Miembro añadido",
       "addMemberError": "Error al añadir el miembro"
     },
+    "Knowledge": {
+      "title": "Base de conocimiento",
+      "collections": "Colecciones",
+      "noCollections": "No hay colecciones de conocimiento",
+      "createCollection": "Nueva colección",
+      "collectionName": "Nombre de la colección",
+      "visibility": "Visibilidad",
+      "visibilityOrg": "Toda la organización",
+      "visibilityTeam": "Solo el equipo",
+      "ingestDocument": "Ingerir documento",
+      "chunksIngested": "fragmentos ingeridos"
+    },
     "Usage": {
       "title": "Uso",
       "costDashboard": "Panel de costes",

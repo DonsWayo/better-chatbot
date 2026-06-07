@@ -780,6 +780,18 @@
       "addMemberSuccess": "Member added",
       "addMemberError": "Failed to add member"
     },
+    "Knowledge": {
+      "title": "Knowledge Base",
+      "collections": "Collections",
+      "noCollections": "No knowledge collections yet",
+      "createCollection": "New Collection",
+      "collectionName": "Collection Name",
+      "visibility": "Visibility",
+      "visibilityOrg": "Org-wide",
+      "visibilityTeam": "Team only",
+      "ingestDocument": "Ingest Document",
+      "chunksIngested": "chunks ingested"
+    },
     "Usage": {
       "title": "Usage",
       "costDashboard": "Cost Dashboard",
