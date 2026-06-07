@@ -1,7 +1,7 @@
 import { Agent } from "app-types/agent";
 import { UserPreferences } from "app-types/user";
 import { MCPServerConfig, MCPToolInfo } from "app-types/mcp";
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -12,6 +12,8 @@ import {
   unique,
   varchar,
   index,
+  numeric,
+  integer,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -379,3 +381,134 @@ export const ChatExportCommentTable = pgTable("chat_export_comment", {
 export type ArchiveEntity = typeof ArchiveTable.$inferSelect;
 export type ArchiveItemEntity = typeof ArchiveItemTable.$inferSelect;
 export type BookmarkEntity = typeof BookmarkTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 3 – Team / Budget / Usage tables (ADR-0002, ADR-0003)
+// ---------------------------------------------------------------------------
+
+export const AsafeTeamTable = pgTable(
+  "asafe_team",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 100 }).notNull().unique(),
+    description: text("description"),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+);
+
+export const AsafeTeamMemberTable = pgTable(
+  "asafe_team_member",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 20 }).notNull().default("member"),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [unique().on(table.teamId, table.userId)],
+);
+
+export const AsafeUsageEventTable = pgTable(
+  "asafe_usage_event",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    sessionId: text("session_id"),
+    model: varchar("model", { length: 120 }).notNull(),
+    provider: varchar("provider", { length: 60 }).notNull(),
+    taskClass: varchar("task_class", { length: 30 }),
+    tier: varchar("tier", { length: 20 }),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("asafe_usage_event_user_id_idx").on(table.userId),
+    index("asafe_usage_event_team_id_idx").on(table.teamId),
+    index("asafe_usage_event_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const AsafeTeamBudgetTable = pgTable(
+  "asafe_team_budget",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .unique()
+      .references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+    periodStart: timestamp("period_start").notNull(),
+    periodEnd: timestamp("period_end").notNull(),
+    budgetUsd: numeric("budget_usd", { precision: 12, scale: 2 }).notNull(),
+    usedUsd: numeric("used_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+    alertThresholdPct: integer("alert_threshold_pct").notNull().default(80),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+);
+
+// Relations
+
+export const AsafeTeamRelations = relations(AsafeTeamTable, ({ many, one }) => ({
+  members: many(AsafeTeamMemberTable),
+  usageEvents: many(AsafeUsageEventTable),
+  budget: one(AsafeTeamBudgetTable, {
+    fields: [AsafeTeamTable.id],
+    references: [AsafeTeamBudgetTable.teamId],
+  }),
+}));
+
+export const AsafeTeamMemberRelations = relations(
+  AsafeTeamMemberTable,
+  ({ one }) => ({
+    team: one(AsafeTeamTable, {
+      fields: [AsafeTeamMemberTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+    user: one(UserTable, {
+      fields: [AsafeTeamMemberTable.userId],
+      references: [UserTable.id],
+    }),
+  }),
+);
+
+export const AsafeUsageEventRelations = relations(
+  AsafeUsageEventTable,
+  ({ one }) => ({
+    user: one(UserTable, {
+      fields: [AsafeUsageEventTable.userId],
+      references: [UserTable.id],
+    }),
+    team: one(AsafeTeamTable, {
+      fields: [AsafeUsageEventTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+  }),
+);
+
+export const AsafeTeamBudgetRelations = relations(
+  AsafeTeamBudgetTable,
+  ({ one }) => ({
+    team: one(AsafeTeamTable, {
+      fields: [AsafeTeamBudgetTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+  }),
+);
+
+export type AsafeTeamEntity = typeof AsafeTeamTable.$inferSelect;
+export type AsafeTeamMemberEntity = typeof AsafeTeamMemberTable.$inferSelect;
+export type AsafeUsageEventEntity = typeof AsafeUsageEventTable.$inferSelect;
+export type AsafeTeamBudgetEntity = typeof AsafeTeamBudgetTable.$inferSelect;
