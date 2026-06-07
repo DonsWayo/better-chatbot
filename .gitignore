@@ -55,6 +55,7 @@ local-data
 
 .cursorrules
 .cursor
+.serena/
 *.ignore
 .mcp-config.json
 openai-compatible.config.ts
