@@ -34,7 +34,8 @@ import { colorize } from "consola/utils";
 import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
-import { routingDecisionsTotal } from "lib/observability/metrics";
+import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
+import { checkRateLimit } from "lib/rate-limit";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
@@ -69,6 +70,26 @@ export async function POST(request: Request) {
     if (!session?.user.id) {
       return new Response("Unauthorized", { status: 401 });
     }
+
+    // asafe-ai Wave 12: per-user rate limiting (in-memory; swap to Redis in multi-pod prod)
+    const rateCheck = checkRateLimit(session.user.id);
+    if (!rateCheck.allowed) {
+      chatErrorsTotal.inc({ type: "rate_limited" });
+      return Response.json(
+        { message: "Rate limit exceeded. Please wait before sending another message." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)),
+            "X-RateLimit-Remaining": "0",
+          },
+        },
+      );
+    }
+
+    // asafe-ai Wave 12: record request start for latency histogram
+    const requestStart = Date.now();
+
     const {
       id,
       message,
@@ -249,6 +270,7 @@ export async function POST(request: Request) {
     // asafe-ai Wave 3 (ADR-0003): enforce team budget before starting inference
     const budgetCheck = await checkBudget(session.user.id, null); // teamId TODO: from session in W4
     if (!budgetCheck.allowed) {
+      chatErrorsTotal.inc({ type: "budget_exceeded" });
       return Response.json({ message: budgetCheck.reason }, { status: 402 });
     }
 
@@ -520,6 +542,16 @@ export async function POST(request: Request) {
             costUsd,
           }).catch((e) => logger.error("recordUsage failed:", e));
         }
+
+        // asafe-ai Wave 12: record end-to-end request latency
+        chatLatencyMs.observe(
+          {
+            provider: effectiveModel?.provider ?? "unknown",
+            model: effectiveModel?.model ?? "unknown",
+            task_class: routing?.taskClass ?? "unknown",
+          },
+          Date.now() - requestStart,
+        );
       },
       onError: handleError,
       originalMessages: messages,

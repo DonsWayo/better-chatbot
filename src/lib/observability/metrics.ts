@@ -1,5 +1,5 @@
 import "server-only";
-import { Counter, Gauge, Registry, collectDefaultMetrics } from "prom-client";
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 
 const PREFIX = "asafe_ai_";
 
@@ -28,6 +28,28 @@ export const routingDecisionsTotal = new Counter({
   name: `${PREFIX}routing_decisions_total`,
   help: "Total automatic routing decisions made by the model router",
   labelNames: ["task_class", "tier", "model"],
+  registers: [metricsRegistry],
+});
+
+export const chatLatencyMs = new Histogram({
+  name: `${PREFIX}chat_latency_ms`,
+  help: "Chat request latency in milliseconds (time to first token)",
+  labelNames: ["provider", "model", "task_class"],
+  buckets: [100, 250, 500, 1000, 2000, 5000, 10000, 30000],
+  registers: [metricsRegistry],
+});
+
+export const chatErrorsTotal = new Counter({
+  name: `${PREFIX}chat_errors_total`,
+  help: "Total chat request errors by type",
+  labelNames: ["type"], // budget_exceeded | rate_limited | provider_error | auth_error
+  registers: [metricsRegistry],
+});
+
+export const budgetUtilizationGauge = new Gauge({
+  name: `${PREFIX}budget_utilization_ratio`,
+  help: "Team budget utilization (used_usd / budget_usd) for active periods",
+  labelNames: ["team_id"],
   registers: [metricsRegistry],
 });
 
