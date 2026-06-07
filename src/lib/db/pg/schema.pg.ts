@@ -14,6 +14,7 @@ import {
   index,
   numeric,
   integer,
+  customType,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -99,6 +100,8 @@ export const McpServerTable = pgTable("mcp_server", {
   lastConnectionStatus: varchar("last_connection_status", {
     enum: ["connected", "error"],
   }),
+  scope: varchar("scope", { enum: ["personal", "org", "team"] }).notNull().default("personal"),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -512,3 +515,72 @@ export type AsafeTeamEntity = typeof AsafeTeamTable.$inferSelect;
 export type AsafeTeamMemberEntity = typeof AsafeTeamMemberTable.$inferSelect;
 export type AsafeUsageEventEntity = typeof AsafeUsageEventTable.$inferSelect;
 export type AsafeTeamBudgetEntity = typeof AsafeTeamBudgetTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 5 – Company MCP audit log
+// Wave 6 – RAG knowledge collections + embeddings (ADR-0007)
+// ---------------------------------------------------------------------------
+
+const vector = (name: string, dimensions: number) =>
+  customType<{ data: number[]; driverData: string }>({
+    dataType() { return `vector(${dimensions})`; },
+    toDriver(value) { return JSON.stringify(value); },
+    fromDriver(value) {
+      if (typeof value === "string") return JSON.parse(value);
+      return value as number[];
+    },
+  })(name);
+
+export const AsafeMcpInvocationLogTable = pgTable("asafe_mcp_invocation_log", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => UserTable.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "set null" }),
+  mcpServerId: uuid("mcp_server_id").references(() => McpServerTable.id, { onDelete: "set null" }),
+  toolName: varchar("tool_name", { length: 200 }).notNull(),
+  outcome: varchar("outcome", { enum: ["success", "error"] }).notNull(),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const AsafeKnowledgeCollectionTable = pgTable("asafe_knowledge_collection", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+  visibility: varchar("visibility", { enum: ["team", "org"] }).notNull().default("org"),
+  createdBy: uuid("created_by").references(() => UserTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const EMBEDDING_DIMENSION = 1536; // text-embedding-3-small; pinned — see ADR-0007
+
+export const AsafeDocumentChunkTable = pgTable("asafe_document_chunk", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  collectionId: uuid("collection_id").notNull().references(() => AsafeKnowledgeCollectionTable.id, { onDelete: "cascade" }),
+  sourceRef: text("source_ref").notNull(),        // filename, URL, archive item ID, etc.
+  chunkIndex: integer("chunk_index").notNull(),
+  chunkText: text("chunk_text").notNull(),
+  embedding: vector("embedding", EMBEDDING_DIMENSION).notNull(),
+  metadata: json("metadata").default({}).$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const asafeMcpInvocationLogRelations = relations(AsafeMcpInvocationLogTable, ({ one }) => ({
+  user: one(UserTable, { fields: [AsafeMcpInvocationLogTable.userId], references: [UserTable.id] }),
+  team: one(AsafeTeamTable, { fields: [AsafeMcpInvocationLogTable.teamId], references: [AsafeTeamTable.id] }),
+  mcpServer: one(McpServerTable, { fields: [AsafeMcpInvocationLogTable.mcpServerId], references: [McpServerTable.id] }),
+}));
+
+export const asafeKnowledgeCollectionRelations = relations(AsafeKnowledgeCollectionTable, ({ one, many }) => ({
+  team: one(AsafeTeamTable, { fields: [AsafeKnowledgeCollectionTable.teamId], references: [AsafeTeamTable.id] }),
+  chunks: many(AsafeDocumentChunkTable),
+}));
+
+export const asafeDocumentChunkRelations = relations(AsafeDocumentChunkTable, ({ one }) => ({
+  collection: one(AsafeKnowledgeCollectionTable, { fields: [AsafeDocumentChunkTable.collectionId], references: [AsafeKnowledgeCollectionTable.id] }),
+}));
+
+export type AsafeMcpInvocationLogEntity = typeof AsafeMcpInvocationLogTable.$inferSelect;
+export type AsafeKnowledgeCollectionEntity = typeof AsafeKnowledgeCollectionTable.$inferSelect;
+export type AsafeDocumentChunkEntity = typeof AsafeDocumentChunkTable.$inferSelect;

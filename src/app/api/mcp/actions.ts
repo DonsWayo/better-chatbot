@@ -72,6 +72,15 @@ export async function saveMcpClientAction(
   if (!hasPermission) {
     throw new Error("You don't have permission to create MCP connections");
   }
+
+  // Org-scope and team-scope MCP servers are admin-only
+  if (server.scope === "org" || server.scope === "team") {
+    if (currentUser.role !== "admin") {
+      throw new Error(
+        "Only administrators can register org-wide or team-scoped MCP servers",
+      );
+    }
+  }
   // Validate name to ensure it only contains alphanumeric characters and hyphens
   const nameSchema = z.string().regex(/^[a-zA-Z0-9\-]+$/, {
     message:
