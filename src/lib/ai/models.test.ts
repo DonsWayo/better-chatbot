@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
-  OPENAI_FILE_MIME_TYPES,
   ANTHROPIC_FILE_MIME_TYPES,
+  GEMINI_FILE_MIME_TYPES,
+  OPENAI_FILE_MIME_TYPES,
 } from "./file-support";
 
 vi.mock("server-only", () => ({}));
@@ -12,37 +13,78 @@ beforeAll(async () => {
   modelsModule = await import("./models");
 });
 
-describe("customModelProvider file support metadata", () => {
-  it("includes default file support for OpenAI gpt-4.1", () => {
+// asafe-ai (ADR-0001): the registry is OpenRouter-only. Every approved model carries the file
+// support of its underlying model family.
+describe("customModelProvider file support metadata (OpenRouter-only)", () => {
+  it("maps gpt-5.1 to OpenAI file support", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
     const model = customModelProvider.getModel({
-      provider: "openai",
-      model: "gpt-4.1",
+      provider: "openRouter",
+      model: "gpt-5.1",
     });
     expect(getFilePartSupportedMimeTypes(model)).toEqual(
       Array.from(OPENAI_FILE_MIME_TYPES),
     );
 
-    const openaiProvider = customModelProvider.modelsInfo.find(
-      (item) => item.provider === "openai",
+    const openRouterProvider = customModelProvider.modelsInfo.find(
+      (item) => item.provider === "openRouter",
     );
-    const metadata = openaiProvider?.models.find(
-      (item) => item.name === "gpt-4.1",
+    const metadata = openRouterProvider?.models.find(
+      (item) => item.name === "gpt-5.1",
     );
-
     expect(metadata?.supportedFileMimeTypes).toEqual(
       Array.from(OPENAI_FILE_MIME_TYPES),
     );
   });
 
-  it("adds rich support for anthropic sonnet-4.5", () => {
+  it("maps claude-opus-4.8 to Anthropic file support", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
     const model = customModelProvider.getModel({
-      provider: "anthropic",
-      model: "sonnet-4.5",
+      provider: "openRouter",
+      model: "claude-opus-4.8",
     });
     expect(getFilePartSupportedMimeTypes(model)).toEqual(
       Array.from(ANTHROPIC_FILE_MIME_TYPES),
     );
+  });
+
+  it("maps gemini-2.5-flash to Gemini file support", () => {
+    const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
+    const model = customModelProvider.getModel({
+      provider: "openRouter",
+      model: "gemini-2.5-flash",
+    });
+    expect(getFilePartSupportedMimeTypes(model)).toEqual(
+      Array.from(GEMINI_FILE_MIME_TYPES),
+    );
+  });
+});
+
+// ADR-0001: the upstream direct-provider blocks must not be exposed.
+describe("inference posture", () => {
+  it("exposes only the approved OpenRouter short list (no direct providers)", () => {
+    const { customModelProvider } = modelsModule;
+    const providers = customModelProvider.modelsInfo.map((m) => m.provider);
+    expect(providers).toContain("openRouter");
+    for (const direct of [
+      "openai",
+      "anthropic",
+      "google",
+      "xai",
+      "groq",
+      "ollama",
+    ]) {
+      expect(providers).not.toContain(direct);
+    }
+    const openRouter = customModelProvider.modelsInfo.find(
+      (m) => m.provider === "openRouter",
+    );
+    const names = openRouter?.models.map((m) => m.name) ?? [];
+    expect(names).toEqual([
+      "gpt-5.1",
+      "claude-opus-4.8",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+    ]);
   });
 });
