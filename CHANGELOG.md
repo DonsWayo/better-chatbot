@@ -5,6 +5,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Wave 11 (partial) — Context Compression Seam
+
+- **Add**: `wrapWithCompression` stub gated behind `ASAFE_COMPRESSION_ENABLED` env flag; seam is wired into the chat pipeline but compression logic is deferred to Wave 11 full implementation.
+
+### Wave 9 — Feedback & Prompt Library
+
+- **Add**: Thumbs up/down message feedback — schema (`asafe_message_feedback`), `POST /api/feedback`, `DELETE /api/feedback`, and inline feedback UI on assistant messages.
+- **Add**: Prompt template library — schema (`asafe_prompt_template`), `GET/POST /api/prompts`, `GET/PUT/DELETE /api/prompts/[id]`, and prompt browser UI accessible from the chat input bar.
+
+### Wave 8 (partial) — GDPR Data Export
+
+- **Add**: `GET /api/user/export` — GDPR Art. 20 right-to-data-portability endpoint; exports profile, all chat threads + messages, usage events, message feedback, and prompt templates as a downloadable JSON file.
+- **Add**: `/settings` page with "Download my data" button.
+
+### Wave 7 — Guardrails Pass-Through Seam
+
+- **Add**: `wrapWithGuardrails` stub; seam is wired into the chat pipeline so that content-policy enforcement can be dropped in without further plumbing changes. Controlled by `ASAFE_GUARDRAILS_ENABLED` env flag.
+
+### Wave 6 — RAG / Knowledge Base
+
+- **Add**: `asafe_knowledge_collection` and `asafe_document_chunk` schema tables (pgvector 1536-dim embedding column).
+- **Add**: Embedding utility via OpenRouter `/api/embedding` proxy.
+- **Add**: Document chunker (recursive character splitter).
+- **Add**: `POST /api/knowledge/ingest` — admin-only document ingest pipeline (chunk → embed → store).
+- **Add**: Admin knowledge base page (`/admin/knowledge`) — collection management and document upload.
+- **Add**: Retrieval injection: top-K chunks prepended to system prompt when a knowledge collection is selected.
+
+### Wave 5 — Company MCP Catalog
+
+- **Add**: Company-managed MCP server catalog — admin creates org-scope entries; users see them automatically without needing to add servers manually.
+- **Add**: Admin-only org-scope MCP management page (`/admin/mcp`).
+- **Add**: `asafe_mcp_invocation_log` table + logging middleware that records every MCP tool invocation for audit purposes.
+
+### Wave 4 — Entra OIDC Group→Role Mapping
+
+- **Add**: Azure Entra ID OIDC provider configured in Better Auth; `groups` claim from the ID token is mapped to Asafe roles (`admin` / `editor` / `user`) via `ASAFE_ENTRA_GROUP_ADMIN` and `ASAFE_ENTRA_GROUP_EDITOR` env vars.
+
 ### Wave 3 (in progress) — Teams, Budget Enforcement & Usage Dashboard
 
 - **Add**: Team schema tables (`team`, `team_member`, `usage_event`, `team_budget`)
