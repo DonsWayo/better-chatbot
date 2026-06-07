@@ -1,8 +1,8 @@
 -- asafe-ai local dev: enable the AI-native Postgres extension stack on first DB init.
 --
--- NOTE (ADR-0006/0007): RDS/Aurora do NOT support TimescaleDB or pgvectorscale. A timescale-
--- capable PRODUCTION DB therefore means Timescale Cloud (EU) or self-managed Postgres on EKS,
--- not RDS/Aurora. pgvector alone is available on RDS/Aurora. Confirm the prod DB at Wave 6/12.
+-- NOTE (ADR-0006): production uses the SAME engine — a self-managed cloud-native Postgres on EKS
+-- with this AI-native image (via a Postgres operator: CloudNativePG or Zalando). NOT RDS/Aurora
+-- (they lack timescaledb / pgvectorscale). So these extensions exist in both dev and prod.
 
 CREATE EXTENSION IF NOT EXISTS vector;             -- pgvector: RAG embeddings (Wave 6)
 CREATE EXTENSION IF NOT EXISTS timescaledb;        -- time-series: usage metering (Wave 3)

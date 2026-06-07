@@ -21,8 +21,8 @@ services:
   postgres:
     # AI-native Postgres: the TimescaleDB HA image bundles pgvector + pgvectorscale + timescaledb
     # (+ postgis, pgai). Extensions are enabled by docker/initdb/01-extensions.sql on first init.
-    # Prod DB must also provide pgvector (RDS/Aurora ok); timescale needs Timescale Cloud / EKS
-    # (ADR-0006).
+    # Prod uses the SAME engine: a self-managed cloud-native Postgres on EKS with this AI-native
+    # image (not RDS/Aurora, which lack timescale/pgvectorscale) — ADR-0006.
     image: timescale/timescaledb-ha:pg17
     env_file:
       - .env

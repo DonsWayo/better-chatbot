@@ -29,14 +29,17 @@ Plus the standing EU/GDPR constraint (Wave 8): all data stays in an EU region.
   alternative for environments without Helm.
 - **Local dev = docker-compose, always green.** `docker/compose.yml` (app + Postgres [+ Redis])
   stays a first-class, tested path. CI keeps building the image and smoke-running compose.
-- **Database = AWS-managed Postgres in an EU region** — **RDS for PostgreSQL** (or Aurora
-  PostgreSQL) with **pgvector** enabled (both support it) for Wave 6. **Not Neon, not Vercel.**
+- **Database = self-managed cloud-native Postgres on EKS (EU)** using a **custom AI-native image**
+  (`timescaledb-ha`: **pgvector + pgvectorscale + timescaledb**), run via a Postgres operator
+  (CloudNativePG or Zalando postgres-operator — Spilo-based, fits the timescaledb-ha image) or a
+  StatefulSet. **Not RDS/Aurora** (they lack timescaledb/pgvectorscale), **not Neon, not Vercel.**
+  Same engine in dev (docker-compose) and prod.
 - **Cache = Redis via ElastiCache** (EU) in prod; in-cluster Redis acceptable for the pilot.
 - **Object storage = S3** (EU bucket) via the existing `file-storage` **S3 driver**
   (`FILE_STORAGE_TYPE=s3`). **Vercel Blob is not used.**
 - **Secrets** via **AWS Secrets Manager** surfaced with the **External Secrets Operator** (or
   IRSA + `envFrom`); never in images or git. **Images** in **ECR**.
-- **EU residency end-to-end:** EKS nodes, RDS, ElastiCache, and S3 all pinned to one EU region
+- **EU residency end-to-end:** EKS nodes, the in-cluster Postgres, ElastiCache, and S3 all in one EU region
   (e.g. `eu-west-1` Ireland, `eu-central-1` Frankfurt, or `eu-south-2` Spain — IT picks).
 - **Observability** to A Safe's stack: `/health` + `/metrics` (Prometheus) + Sentry DSN — all
   net-new (only `consola` logging exists today).
@@ -49,7 +52,7 @@ Plus the standing EU/GDPR constraint (Wave 8): all data stays in an EU region.
 | Dimension | Assessment |
 |-----------|------------|
 | Control / residency | Strongest — all AWS-EU, in-house |
-| Ops burden | Higher up front (Helm, RDS, secrets, ECR, CI deploy) |
+| Ops burden | Higher up front (Helm, self-managed PG, secrets, ECR, CI deploy) |
 | Fit with A Safe | Native — existing EKS/AWS platform & ops model |
 | Migration later | None — no second move |
 
@@ -69,7 +72,7 @@ The local/dev path (kept) — not a production answer for 800 users. Used *along
 The classic argument for Vercel-first is speed-to-pilot; A Safe explicitly trades that for
 **control, in-house data governance, and avoiding a second migration**. Because the app is plain
 containerized Next.js and the DB is plain Postgres+pgvector, EKS-first adds **deployment** work
-(Helm, RDS, secrets, CI) but **no app-code lock-in** — and it removes the Wave 12 migration
+(Helm, self-managed PG, secrets, CI) but **no app-code lock-in** — and it removes the Wave 12 migration
 entirely. Keeping docker-compose first-class guarantees contributors aren't forced through
 Kubernetes to run the app locally.
 
@@ -78,16 +81,16 @@ Kubernetes to run the app locally.
 - **Easier:** one residency story (all AWS-EU); fits existing ops; Security gets in-house control
   on day one; no later migration; ADR-0001's GA case for **direct-EU inference** (Azure OpenAI EU
   under the same Microsoft tenant) gets stronger and simpler.
-- **Harder:** Wave 1 now includes real Helm/manifests, RDS-EU + pgvector, ElastiCache, ECR, secret
+- **Harder:** Wave 1 now includes real Helm/manifests, a cloud-native Postgres (operator + AI-native image), ElastiCache, ECR, secret
   management, and a CI deploy path — more than the Vercel one-click. We keep **two** run paths
   green (EKS + compose).
-- **Revisit:** Aurora-vs-RDS and ElastiCache-vs-in-cluster sizing at Wave 12 scale; inference
+- **Revisit:** Postgres operator choice (CloudNativePG vs Zalando) and ElastiCache-vs-in-cluster sizing at Wave 12 scale; inference
   posture at Wave 4 (ADR-0001).
 
 ## Open inputs needed (from IT)
 
 - **EKS:** target cluster/namespace; ingress (AWS ALB Ingress Controller?); node-group sizing.
-- **DB:** RDS vs Aurora PostgreSQL; **EU region**; pgvector enablement; backup/retention.
+- **DB:** Postgres operator (CloudNativePG vs Zalando postgres-operator) for the in-cluster cloud-native PG; CNPG/Spilo-compatible AI-native image; storage class/size; backup (Barman/volume snapshots); EU region.
 - **Cache/storage:** ElastiCache vs in-cluster Redis; S3 bucket + IAM (IRSA) for the app.
 - **Secrets/CI:** AWS Secrets Manager + External Secrets vs IRSA; ECR repo; deploy pipeline
   (GitHub Actions → ECR → `helm upgrade`).
@@ -97,7 +100,7 @@ Kubernetes to run the app locally.
 1. [ ] (W1) Confirm Next.js **standalone** output builds an EKS-ready image; push to ECR.
 2. [ ] (W1) Add `deploy/helm/` chart (Deployment, Service, ALB Ingress, HPA, Config/Secret, migration Job) + `deploy/k8s/` manifests.
 3. [ ] (W1) Keep `docker/compose.yml` green (app + Postgres [+ Redis]); document local run.
-4. [ ] (W1) Provision **RDS/Aurora PostgreSQL (EU)**; enable pgvector (for W6); wire `POSTGRES_URL` via secrets.
+4. [ ] (W1/W6) Stand up **cloud-native Postgres on EKS** (operator + custom AI-native image: vector/pgvectorscale/timescaledb); wire `POSTGRES_URL` via secrets.
 5. [ ] (W1) Set `FILE_STORAGE_TYPE=s3` + EU bucket + IAM; ElastiCache (or in-cluster) Redis; document env.
 6. [ ] (W1) `/health` + `/metrics` + Sentry DSN; ship logs/metrics to A Safe's Prometheus/Grafana + Sentry.
 7. [ ] (W1) CI: build image → ECR → `helm upgrade` to a staging namespace; smoke e2e against it.

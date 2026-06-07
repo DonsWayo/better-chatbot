@@ -19,7 +19,8 @@ pnpm docker-compose:up
 
 - EKS cluster (EU region) with the **AWS Load Balancer Controller** (ALB ingress).
 - **External Secrets Operator** + a `ClusterSecretStore` for AWS Secrets Manager.
-- **ECR** repo for the image; **RDS / Aurora PostgreSQL (EU)** with `pgvector` (for Wave 6);
+- **ECR** repo for the image; a **cloud-native Postgres on EKS** (Postgres operator + the custom
+  AI-native image: pgvector + pgvectorscale + timescaledb) — **not RDS/Aurora**;
   **ElastiCache** Redis; an **S3** bucket + IAM role for **IRSA**.
 - `metrics-server` (for the HPA).
 
