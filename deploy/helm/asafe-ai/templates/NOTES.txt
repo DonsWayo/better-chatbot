@@ -1,0 +1,13 @@
+asafe-ai release "{{ .Release.Name }}" deployed to namespace "{{ .Release.Namespace }}".
+
+Image:      {{ include "asafe-ai.image" . }}
+{{- if .Values.ingress.enabled }}
+URL:        https://{{ .Values.ingress.host }}
+{{- end }}
+Secrets:    from Secret "{{ .Values.existingSecret }}" (External Secrets Operator — ADR-0006)
+
+Verify:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl -n {{ .Release.Namespace }} logs job/{{ include "asafe-ai.fullname" . }}-migrate
+
+Endpoints:  /api/health (liveness) · /api/health?ready (readiness) · /api/metrics (Prometheus)

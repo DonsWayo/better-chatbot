@@ -36,6 +36,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy migrations content
 COPY --from=builder /app/src/lib/db/migrations ./src/lib/db/migrations
 
+# Standalone migration entrypoint (used by the EKS Helm pre-upgrade Job — ADR-0006)
+COPY --from=builder /app/scripts/standalone-migrate.mjs ./scripts/standalone-migrate.mjs
+
 USER nextjs
 
 ENV PORT=3000
