@@ -1,9 +1,9 @@
-import { Think } from "ui/think";
-import { getTranslations } from "next-intl/server";
-import { FlipWords } from "ui/flip-words";
-import { BackgroundPaths } from "ui/background-paths";
 import { getSession } from "lib/auth/server";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { BackgroundPaths } from "ui/background-paths";
+import { FlipWords } from "ui/flip-words";
+import { Think } from "ui/think";
 
 export default async function AuthLayout({
   children,
@@ -24,7 +24,7 @@ export default async function AuthLayout({
             <h1 className="text-xl font-semibold flex items-center gap-3 animate-in fade-in duration-1000">
               <Think />
 
-              <span>Chat Bot</span>
+              <span>Asafe AI</span>
             </h1>
             <div className="flex-1" />
             <FlipWords

@@ -1,5 +1,28 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Wave 2 (in progress) — Task-Aware Routing & Entitlements
+
+- **Auto model routing**: task-aware routing contract; rules strategy + policy ADR; "Auto" option wired into model picker UI.
+- **Server-enforced entitlements**: default-deny gate — normal users cannot select model or tools; privileged roles unlock picker and tool controls.
+- **System prompt fix**: assistant answers directly when no tool matches, eliminating spurious tool-call loops.
+- **Routing observability**: per-route metrics and fallback/retry logic (in progress).
+
+### Wave 1 — Foundation
+
+- **Fork & rebrand**: forked [cgoinglove/better-chatbot](https://github.com/cgoinglove/better-chatbot) and rebranded throughout as Asafe AI (MIT attribution preserved in FORK.md).
+- **OpenRouter-only model registry**: trimmed registry to an approved short list of OpenRouter models; removed all other provider entries.
+- **Observability baseline**: `/api/health` and `/api/metrics` endpoints; Sentry error tracking integrated.
+- **EKS deployment**: Helm chart + Kubernetes manifests for production deployment on AWS EKS.
+- **AI-native Postgres**: `docker-compose` stack with `pgvector`, `timescaledb`, and `pgvectorscale` extensions.
+- **Environment config**: `.env.example` updated to reflect Asafe AI deployment variables.
+
+---
+
 ## [1.26.0](https://github.com/cgoinglove/better-chatbot/compare/v1.25.0...v1.26.0) (2025-11-07)
 
 
