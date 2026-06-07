@@ -79,6 +79,7 @@ export async function POST(request: Request) {
       imageTool,
       mentions = [],
       attachments = [],
+      ragCollectionId,
     } = chatApiSchemaRequestBodySchema.parse(json);
 
     let thread = await chatRepository.selectThreadDetails(id);
@@ -322,8 +323,7 @@ export async function POST(request: Request) {
           .orElse({});
 
         // Wave 6 (ADR-0007): retrieve relevant knowledge chunks when a collection is active
-        // collectionId comes from thread metadata or request body (wire up in Wave 6 UI)
-        const ragCollectionId = (thread as any)?.metadata?.ragCollectionId as string | undefined;
+        // ragCollectionId is passed directly in the request body; no thread.metadata column exists yet
         let ragContext: string | null = null;
         if (ragCollectionId) {
           const lastUserMessage = messages.findLast(m => m.role === "user");

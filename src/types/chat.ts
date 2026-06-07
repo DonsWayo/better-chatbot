@@ -112,6 +112,7 @@ export const chatApiSchemaRequestBodySchema = z.object({
   allowedMcpServers: z.record(z.string(), AllowedMCPServerZodSchema).optional(),
   allowedAppDefaultToolkit: z.array(z.string()).optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
+  ragCollectionId: z.string().optional(),
 });
 
 export type ChatApiSchemaRequestBody = z.infer<
