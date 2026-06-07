@@ -1,16 +1,16 @@
 "use client";
-import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
 
-import { AppSidebarMenus } from "./app-sidebar-menus";
 import { AppSidebarAgents } from "./app-sidebar-agents";
+import { AppSidebarMenus } from "./app-sidebar-menus";
 import { AppSidebarThreads } from "./app-sidebar-threads";
 import { SidebarHeaderShared } from "./sidebar-header";
 
-import { isShortcutEvent, Shortcuts } from "lib/keyboard-shortcuts";
-import { AppSidebarUser } from "./app-sidebar-user";
 import { BasicUser } from "app-types/user";
+import { Shortcuts, isShortcutEvent } from "lib/keyboard-shortcuts";
+import { AppSidebarUser } from "./app-sidebar-user";
 
 export function AppSidebar({
   user,
@@ -39,7 +39,7 @@ export function AppSidebar({
       className="border-r border-sidebar-border/80"
     >
       <SidebarHeaderShared
-        title="better-chatbot"
+        title="Asafe AI"
         href="/"
         enableShortcuts={true}
         onLinkClick={() => {

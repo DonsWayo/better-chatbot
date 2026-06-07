@@ -1,10 +1,10 @@
-import { McpServerCustomizationsPrompt, MCPToolInfo } from "app-types/mcp";
+import { MCPToolInfo, McpServerCustomizationsPrompt } from "app-types/mcp";
 
+import { Agent } from "app-types/agent";
 import { UserPreferences } from "app-types/user";
 import { User } from "better-auth";
-import { createMCPToolId } from "./mcp/mcp-tool-id";
 import { format } from "date-fns";
-import { Agent } from "app-types/agent";
+import { createMCPToolId } from "./mcp/mcp-tool-id";
 
 export const CREATE_THREAD_TITLE_PROMPT = `
 You are a chat title generation expert.
@@ -53,8 +53,7 @@ export const buildUserSystemPrompt = (
   userPreferences?: UserPreferences,
   agent?: Agent,
 ) => {
-  const assistantName =
-    agent?.name || userPreferences?.botName || "better-chatbot";
+  const assistantName = agent?.name || userPreferences?.botName || "Asafe AI";
   const currentTime = format(new Date(), "EEEE, MMMM d, yyyy 'at' h:mm:ss a");
 
   let prompt = `You are ${assistantName}`;
