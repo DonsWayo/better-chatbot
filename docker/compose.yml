@@ -19,13 +19,20 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:17
+    # AI-native Postgres: the TimescaleDB HA image bundles pgvector + pgvectorscale + timescaledb
+    # (+ postgis, pgai). Extensions are enabled by docker/initdb/01-extensions.sql on first init.
+    # Prod DB must also provide pgvector (RDS/Aurora ok); timescale needs Timescale Cloud / EKS
+    # (ADR-0006).
+    image: timescale/timescaledb-ha:pg17
     env_file:
       - .env
+    ports:
+      - "5432:5432"
     networks:
       - better-chatbot-networks
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/home/postgres/pgdata/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
 
 volumes:
