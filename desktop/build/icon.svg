@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- A-SAFE brand placeholder icon: safety yellow background, near-black monogram -->
+  <rect width="1024" height="1024" rx="180" fill="#FFC72C"/>
+  <!-- "AS" monogram, geometric, readable at small sizes -->
+  <!-- "A" letterform -->
+  <path d="M 200 800 L 340 224 L 480 224 L 620 800 L 530 800 L 492 656 L 328 656 L 290 800 Z
+           M 350 576 L 470 576 L 410 336 Z"
+        fill="#1A1A1A"/>
+  <!-- "S" letterform -->
+  <path d="M 680 620 Q 680 720 760 760 Q 800 778 848 778 Q 920 778 960 740 Q 990 712 990 672
+           Q 990 628 958 604 Q 936 588 896 576 L 840 558 Q 800 544 784 530 Q 768 514 768 492
+           Q 768 464 792 448 Q 810 436 840 436 Q 878 436 900 458 Q 918 476 918 504 L 992 504
+           Q 992 452 960 416 Q 924 376 848 370 Q 778 364 738 400 Q 700 432 700 480
+           Q 700 524 732 552 Q 756 574 800 588 L 858 608 Q 900 622 918 640 Q 932 654 932 676
+           Q 932 706 906 724 Q 884 740 848 740 Q 804 740 780 714 Q 762 694 762 662 Z"
+        fill="#1A1A1A"/>
+</svg>
