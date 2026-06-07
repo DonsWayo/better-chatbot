@@ -33,6 +33,7 @@ import { colorize } from "consola/utils";
 import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
+import { routingDecisionsTotal } from "lib/observability/metrics";
 import { generateUUID } from "lib/utils";
 import {
   rememberAgentAction,
@@ -205,7 +206,14 @@ export async function POST(request: Request) {
           });
     const effectiveModel = routing ? routing.model : chatModel;
     const model = customModelProvider.getModel(effectiveModel);
-    if (routing) logger.info(`routing: ${routing.reason}`);
+    if (routing) {
+      logger.info(`routing: ${routing.reason}`);
+      routingDecisionsTotal.inc({
+        task_class: routing.taskClass,
+        tier: routing.tier,
+        model: routing.model.model,
+      });
+    }
 
     const supportToolCall = !isToolCallUnsupportedModel(model);
 

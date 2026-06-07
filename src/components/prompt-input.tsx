@@ -1,5 +1,8 @@
 "use client";
 
+import { UploadedFile, appStore } from "@/app/store";
+import { UIMessage, UseChatHelpers } from "@ai-sdk/react";
+import { ChatMention, ChatModel } from "app-types/chat";
 import {
   AudioWaveformIcon,
   ChevronDown,
@@ -13,30 +16,23 @@ import {
   Square,
   XIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "ui/button";
-import { UIMessage, UseChatHelpers } from "@ai-sdk/react";
-import { SelectModel } from "./select-model";
-import { appStore, UploadedFile } from "@/app/store";
 import { useShallow } from "zustand/shallow";
-import { ChatMention, ChatModel } from "app-types/chat";
-import dynamic from "next/dynamic";
+import { SelectModel } from "./select-model";
 import { ToolModeDropdown } from "./tool-mode-dropdown";
 
-import { ToolSelectDropdown } from "./tool-select-dropdown";
-import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
-import { useTranslations } from "next-intl";
+import { useThreadFileUploader } from "@/hooks/use-thread-file-uploader";
+import { cn } from "@/lib/utils";
 import { Editor } from "@tiptap/react";
 import { WorkflowSummary } from "app-types/workflow";
-import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
-import equal from "lib/equal";
-import { MCPIcon } from "ui/mcp-icon";
+import { authClient } from "auth/client";
 import { DefaultToolName } from "lib/ai/tools";
-import { DefaultToolIcon } from "./default-tool-icon";
-import { OpenAIIcon } from "ui/openai-icon";
-import { GrokIcon } from "ui/grok-icon";
+import equal from "lib/equal";
+import { useTranslations } from "next-intl";
+import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import { ClaudeIcon } from "ui/claude-icon";
-import { GeminiIcon } from "ui/gemini-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,15 +43,20 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { useThreadFileUploader } from "@/hooks/use-thread-file-uploader";
+import { GeminiIcon } from "ui/gemini-icon";
+import { GrokIcon } from "ui/grok-icon";
+import { MCPIcon } from "ui/mcp-icon";
+import { OpenAIIcon } from "ui/openai-icon";
+import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
+import { DefaultToolIcon } from "./default-tool-icon";
+import { ToolSelectDropdown } from "./tool-select-dropdown";
 
-import { EMOJI_DATA } from "lib/const";
-import { AgentSummary } from "app-types/agent";
-import { FileUIPart, TextUIPart } from "ai";
-import { toast } from "sonner";
-import { isFilePartSupported, isIngestSupported } from "@/lib/ai/file-support";
 import { useChatModels } from "@/hooks/queries/use-chat-models";
+import { isFilePartSupported, isIngestSupported } from "@/lib/ai/file-support";
+import { FileUIPart, TextUIPart } from "ai";
+import { AgentSummary } from "app-types/agent";
+import { EMOJI_DATA } from "lib/const";
+import { toast } from "sonner";
 
 interface PromptInputProps {
   placeholder?: string;
@@ -66,7 +67,7 @@ interface PromptInputProps {
   toolDisabled?: boolean;
   isLoading?: boolean;
   model?: ChatModel;
-  setModel?: (model: ChatModel) => void;
+  setModel?: (model: ChatModel | undefined) => void;
   voiceDisabled?: boolean;
   threadId?: string;
   disabledMention?: boolean;
@@ -96,6 +97,8 @@ export default function PromptInput({
   disabledMention,
 }: PromptInputProps) {
   const t = useTranslations("Chat");
+  const { data: session } = authClient.useSession();
+  const isBasicUser = session?.user?.role === "user";
   const [isUploadDropdownOpen, setIsUploadDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadFiles } = useThreadFileUploader(threadId);
@@ -153,7 +156,7 @@ export default function PromptInput({
   const editorRef = useRef<Editor | null>(null);
 
   const setChatModel = useCallback(
-    (model: ChatModel) => {
+    (model: ChatModel | undefined) => {
       if (setModel) {
         setModel(model);
       } else {
@@ -555,6 +558,7 @@ export default function PromptInput({
                 </DropdownMenu>
 
                 {!toolDisabled &&
+                  !isBasicUser &&
                   (imageToolModel ? (
                     <Button
                       variant={"ghost"}
@@ -583,38 +587,45 @@ export default function PromptInput({
 
                 <div className="flex-1" />
 
-                <SelectModel onSelect={setChatModel} currentModel={chatModel}>
-                  <Button
-                    variant={"ghost"}
-                    size={"sm"}
-                    className="rounded-full group data-[state=open]:bg-input! hover:bg-input! mr-1"
-                    data-testid="model-selector-button"
-                  >
-                    {chatModel?.model ? (
-                      <>
-                        {chatModel.provider === "openai" ? (
-                          <OpenAIIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
-                        ) : chatModel.provider === "xai" ? (
-                          <GrokIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
-                        ) : chatModel.provider === "anthropic" ? (
-                          <ClaudeIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
-                        ) : chatModel.provider === "google" ? (
-                          <GeminiIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
-                        ) : null}
+                {!isBasicUser && (
+                  <SelectModel onSelect={setChatModel} currentModel={chatModel}>
+                    <Button
+                      variant={"ghost"}
+                      size={"sm"}
+                      className="rounded-full group data-[state=open]:bg-input! hover:bg-input! mr-1"
+                      data-testid="model-selector-button"
+                    >
+                      {chatModel?.model ? (
+                        <>
+                          {chatModel.provider === "openai" ? (
+                            <OpenAIIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
+                          ) : chatModel.provider === "xai" ? (
+                            <GrokIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
+                          ) : chatModel.provider === "anthropic" ? (
+                            <ClaudeIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
+                          ) : chatModel.provider === "google" ? (
+                            <GeminiIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
+                          ) : null}
+                          <span
+                            className="text-foreground group-data-[state=open]:text-foreground  "
+                            data-testid="selected-model-name"
+                          >
+                            {chatModel.model}
+                          </span>
+                        </>
+                      ) : (
                         <span
-                          className="text-foreground group-data-[state=open]:text-foreground  "
+                          className="text-muted-foreground"
                           data-testid="selected-model-name"
                         >
-                          {chatModel.model}
+                          Auto
                         </span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">model</span>
-                    )}
+                      )}
 
-                    <ChevronDown className="size-3" />
-                  </Button>
-                </SelectModel>
+                      <ChevronDown className="size-3" />
+                    </Button>
+                  </SelectModel>
+                )}
                 {!isLoading && !input.length && !voiceDisabled ? (
                   <Tooltip>
                     <TooltipTrigger asChild>

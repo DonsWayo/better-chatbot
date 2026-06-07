@@ -24,6 +24,13 @@ export const chatRequestsTotal = new Counter({
   registers: [metricsRegistry],
 });
 
+export const routingDecisionsTotal = new Counter({
+  name: `${PREFIX}routing_decisions_total`,
+  help: "Total automatic routing decisions made by the model router",
+  labelNames: ["task_class", "tier", "model"],
+  registers: [metricsRegistry],
+});
+
 let initialized = false;
 
 /** Idempotently register default process metrics. Safe to call on every scrape. */
