@@ -28,6 +28,7 @@ import globalLogger from "logger";
 import { errorIf, safe } from "ts-safe";
 
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
+import { retrieveChunks } from "lib/ai/embeddings/ingest";
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
 import { ImageToolName } from "lib/ai/tools";
@@ -37,6 +38,7 @@ import { routingDecisionsTotal } from "lib/observability/metrics";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
+import { compressMessages, COMPRESSION_ENABLED } from "lib/ai/compression";
 import {
   rememberAgentAction,
   rememberMcpServerCustomizationsAction,
@@ -208,6 +210,9 @@ export async function POST(request: Request) {
           });
     const effectiveModel = routing ? routing.model : chatModel;
     const model = customModelProvider.getModel(effectiveModel);
+    // Wave 7 (ADR-0008): guardrails/DLP wrapper — inject wrapLanguageModel(model, guardrailsConfig) here.
+    // The wrapper intercepts prompt/response, runs DLP checks, and optionally blocks or redacts.
+    // Gated on Wave 7 completion and Security sign-off. Left as a pass-through stub until then.
     if (routing) {
       logger.info(`routing: ${routing.reason}`);
       routingDecisionsTotal.inc({
@@ -316,10 +321,31 @@ export async function POST(request: Request) {
           .map((v) => filterMcpServerCustomizations(MCP_TOOLS!, v))
           .orElse({});
 
+        // Wave 6 (ADR-0007): retrieve relevant knowledge chunks when a collection is active
+        // collectionId comes from thread metadata or request body (wire up in Wave 6 UI)
+        const ragCollectionId = (thread as any)?.metadata?.ragCollectionId as string | undefined;
+        let ragContext: string | null = null;
+        if (ragCollectionId) {
+          const lastUserMessage = messages.findLast(m => m.role === "user");
+          const queryText = lastUserMessage?.parts
+            ?.filter((p: any) => p.type === "text")
+            ?.map((p: any) => p.text)
+            ?.join(" ") ?? "";
+          if (queryText) {
+            const chunks = await retrieveChunks(queryText, ragCollectionId).catch(() => null);
+            if (chunks && chunks.length > 0) {
+              ragContext = chunks
+                .map((c, i) => `[Source ${i + 1}: ${c.sourceRef}]\n${c.chunkText}`)
+                .join("\n\n");
+            }
+          }
+        }
+
         const systemPrompt = mergeSystemPrompt(
           buildUserSystemPrompt(session.user, userPreferences, agent),
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
+          ragContext ? `<knowledge_base>\nThe following context was retrieved from the company knowledge base. Use it to ground your response and cite sources as [Source N].\n\n${ragContext}\n</knowledge_base>` : undefined,
         );
 
         // asafe-ai Wave 5 (ADR-0005): wrap each MCP tool's execute to emit an audit record
@@ -411,10 +437,16 @@ export async function POST(request: Request) {
           `model: ${effectiveModel?.provider}/${effectiveModel?.model}`,
         );
 
+        // Wave 11 (ADR-0011): context compression seam — enabled via ASAFE_COMPRESSION_ENABLED
+        const { messages: compressedMessages, compressed } = COMPRESSION_ENABLED
+          ? await compressMessages(messages)
+          : { messages, compressed: false };
+        if (compressed) logger.info("context compressed for token limit");
+
         const result = streamText({
           model,
           system: systemPrompt,
-          messages: convertToModelMessages(messages),
+          messages: convertToModelMessages(compressedMessages),
           experimental_transform: smoothStream({ chunking: "word" }),
           maxRetries: 2,
           tools: vercelAITooles,

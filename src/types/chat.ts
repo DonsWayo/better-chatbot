@@ -12,6 +12,8 @@ export type ChatMetadata = {
   agentId?: string;
   /** asafe-ai (ADR-0004): why the router chose this model, when Auto routing was used. */
   routingReason?: string;
+  /** asafe-ai (ADR-0007): knowledge collection ID used for RAG retrieval in this message. */
+  ragCollectionId?: string;
 };
 
 export type ChatModel = {
