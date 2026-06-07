@@ -1,0 +1,42 @@
+name: Claude Code
+
+# Responds to @claude mentions in issues / PR comments / reviews.
+# Requires the Claude GitHub app (https://github.com/apps/claude) installed on the repo and
+# an ANTHROPIC_API_KEY repository secret. Set these up once the repo lives under a-safe-digital.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # asafe-ai's own CLAUDE.md / docs/ guide Claude. Actions default to Sonnet; to use
+          # Opus per our convention, uncomment:
+          # claude_args: "--model claude-opus-4-8 --max-turns 15"
