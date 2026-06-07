@@ -130,9 +130,11 @@ export async function createTeam(
 
 // Get a single team with its members (including user email/name)
 export async function getTeamWithMembers(teamId: string) {
-  const team = await db.query.AsafeTeamTable.findFirst({
-    where: eq(AsafeTeamTable.id, teamId),
-  });
+  const [team] = await db
+    .select()
+    .from(AsafeTeamTable)
+    .where(eq(AsafeTeamTable.id, teamId))
+    .limit(1);
   if (!team) return null;
 
   const members = await db

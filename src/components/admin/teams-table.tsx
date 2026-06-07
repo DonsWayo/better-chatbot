@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from "ui/dialog";
 import { Plus, Users } from "lucide-react";
+import Link from "next/link";
 
 import { AdminTeamListItem } from "lib/admin/teams";
 import { createTeamAction } from "@/app/(chat)/(admin)/admin/teams/(list)/actions";
@@ -156,7 +157,12 @@ export function TeamsTable({ teams }: TeamsTableProps) {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div>
-                        <div className="font-medium">{team.name}</div>
+                        <Link
+                          href={`/admin/teams/${team.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {team.name}
+                        </Link>
                         {team.description && (
                           <div className="text-sm text-muted-foreground line-clamp-1">
                             {team.description}
