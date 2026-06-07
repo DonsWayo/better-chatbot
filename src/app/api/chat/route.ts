@@ -34,6 +34,7 @@ import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
 import { routingDecisionsTotal } from "lib/observability/metrics";
+import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { generateUUID } from "lib/utils";
 import {
   rememberAgentAction,
@@ -238,6 +239,12 @@ export async function POST(request: Request) {
       (toolChoice != "none" || mentions.length > 0) &&
       !useImageTool;
 
+    // asafe-ai Wave 3 (ADR-0003): enforce team budget before starting inference
+    const budgetCheck = await checkBudget(session.user.id, null); // teamId TODO: from session in W4
+    if (!budgetCheck.allowed) {
+      return Response.json({ message: budgetCheck.reason }, { status: 402 });
+    }
+
     const metadata: ChatMetadata = {
       agentId: agent?.id,
       toolChoice: toolChoice,
@@ -416,6 +423,29 @@ export async function POST(request: Request) {
           agentRepository.updateAgent(agent.id, session.user.id, {
             updatedAt: new Date(),
           } as any);
+        }
+
+        // asafe-ai Wave 3 (ADR-0003): record usage event after inference
+        if (metadata.usage) {
+          const inputTokens = metadata.usage.inputTokens ?? 0;
+          const outputTokens = metadata.usage.outputTokens ?? 0;
+          const costUsd = estimateCostUsd(
+            effectiveModel?.model ?? "",
+            inputTokens,
+            outputTokens,
+          );
+          recordUsage({
+            userId: session.user.id,
+            teamId: null, // TODO: from session in W4
+            sessionId: thread?.id ?? null,
+            model: effectiveModel?.model ?? "",
+            provider: effectiveModel?.provider ?? "",
+            taskClass: routing?.taskClass ?? null,
+            tier: routing?.tier ?? null,
+            promptTokens: inputTokens,
+            completionTokens: outputTokens,
+            costUsd,
+          }).catch((e) => logger.error("recordUsage failed:", e));
         }
       },
       onError: handleError,
