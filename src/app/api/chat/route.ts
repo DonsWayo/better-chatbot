@@ -1,54 +1,55 @@
 import {
+  Tool,
+  UIMessage,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
   smoothStream,
   stepCountIs,
   streamText,
-  Tool,
-  UIMessage,
 } from "ai";
 
 import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
+import { routeModel } from "lib/ai/routing/route-model";
 
-import { agentRepository, chatRepository } from "lib/db/repository";
-import globalLogger from "logger";
 import {
-  buildMcpServerCustomizationsSystemPrompt,
-  buildUserSystemPrompt,
-  buildToolCallUnsupportedModelSystemPrompt,
-} from "lib/ai/prompts";
-import {
-  chatApiSchemaRequestBodySchema,
   ChatMention,
   ChatMetadata,
+  chatApiSchemaRequestBodySchema,
 } from "app-types/chat";
+import {
+  buildMcpServerCustomizationsSystemPrompt,
+  buildToolCallUnsupportedModelSystemPrompt,
+  buildUserSystemPrompt,
+} from "lib/ai/prompts";
+import { agentRepository, chatRepository } from "lib/db/repository";
+import globalLogger from "logger";
 
 import { errorIf, safe } from "ts-safe";
 
-import {
-  excludeToolExecution,
-  handleError,
-  manualToolExecuteByLastMessage,
-  mergeSystemPrompt,
-  extractInProgressToolPart,
-  filterMcpServerCustomizations,
-  loadMcpTools,
-  loadWorkFlowTools,
-  loadAppDefaultTools,
-  convertToSavePart,
-} from "./shared.chat";
+import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
+import { getSession } from "auth/server";
+import { colorize } from "consola/utils";
+import { ImageToolName } from "lib/ai/tools";
+import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
+import { serverFileStorage } from "lib/file-storage";
+import { generateUUID } from "lib/utils";
 import {
   rememberAgentAction,
   rememberMcpServerCustomizationsAction,
 } from "./actions";
-import { getSession } from "auth/server";
-import { colorize } from "consola/utils";
-import { generateUUID } from "lib/utils";
-import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
-import { ImageToolName } from "lib/ai/tools";
-import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
-import { serverFileStorage } from "lib/file-storage";
+import {
+  convertToSavePart,
+  excludeToolExecution,
+  extractInProgressToolPart,
+  filterMcpServerCustomizations,
+  handleError,
+  loadAppDefaultTools,
+  loadMcpTools,
+  loadWorkFlowTools,
+  manualToolExecuteByLastMessage,
+  mergeSystemPrompt,
+} from "./shared.chat";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -74,8 +75,6 @@ export async function POST(request: Request) {
       mentions = [],
       attachments = [],
     } = chatApiSchemaRequestBodySchema.parse(json);
-
-    const model = customModelProvider.getModel(chatModel);
 
     let thread = await chatRepository.selectThreadDetails(id);
 
@@ -171,6 +170,43 @@ export async function POST(request: Request) {
 
     messages.push(message);
 
+    // asafe-ai entitlements (ADR-0009, role-based v1): normal users (role "user") cannot pick the
+    // model or use tools — both default OFF and are enforced here SERVER-SIDE, not just hidden in
+    // the UI. Fine-grained per-team/per-user grants come in Wave 4; admin/editor keep control.
+    const canSelectModel = session.user.role !== "user";
+    const canUseTools = session.user.role !== "user";
+
+    // asafe-ai routing (ADR-0004): task-aware Auto unless an entitled user explicitly picked a
+    // model. A non-entitled user's model choice is ignored.
+    const lastUserText = (message.parts ?? [])
+      .filter((p: any) => p?.type === "text")
+      .map((p: any) => p.text as string)
+      .join(" ");
+    const totalChars = messages.reduce(
+      (n, m) =>
+        n +
+        (m.parts ?? [])
+          .filter((p: any) => p?.type === "text")
+          .reduce((s: number, p: any) => s + (p.text?.length ?? 0), 0),
+      0,
+    );
+    const routing =
+      canSelectModel && chatModel
+        ? null
+        : routeModel({
+            text: lastUserText,
+            hasImage: attachments.some((a) =>
+              a.mediaType?.startsWith("image/"),
+            ),
+            hasAttachments: attachments.length > 0,
+            hasTools:
+              canUseTools && (mentions.length > 0 || toolChoice !== "none"),
+            totalChars,
+          });
+    const effectiveModel = routing ? routing.model : chatModel;
+    const model = customModelProvider.getModel(effectiveModel);
+    if (routing) logger.info(`routing: ${routing.reason}`);
+
     const supportToolCall = !isToolCallUnsupportedModel(model);
 
     const agentId = (
@@ -186,9 +222,10 @@ export async function POST(request: Request) {
       mentions.push(...agent.instructions.mentions);
     }
 
-    const useImageTool = Boolean(imageTool?.model);
+    const useImageTool = canUseTools && Boolean(imageTool?.model);
 
     const isToolCallAllowed =
+      canUseTools &&
       supportToolCall &&
       (toolChoice != "none" || mentions.length > 0) &&
       !useImageTool;
@@ -197,7 +234,8 @@ export async function POST(request: Request) {
       agentId: agent?.id,
       toolChoice: toolChoice,
       toolCount: 0,
-      chatModel: chatModel,
+      chatModel: effectiveModel,
+      routingReason: routing?.reason,
     };
 
     const stream = createUIMessageStream({
@@ -313,7 +351,9 @@ export async function POST(request: Request) {
             `binding tool count APP_DEFAULT: ${Object.keys(APP_DEFAULT_TOOLS ?? {}).length}, MCP: ${Object.keys(MCP_TOOLS ?? {}).length}, Workflow: ${Object.keys(WORKFLOW_TOOLS ?? {}).length}`,
           );
         }
-        logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
+        logger.info(
+          `model: ${effectiveModel?.provider}/${effectiveModel?.model}`,
+        );
 
         const result = streamText({
           model,

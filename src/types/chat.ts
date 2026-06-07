@@ -1,8 +1,8 @@
 import type { LanguageModelUsage, UIMessage } from "ai";
+import { tag } from "lib/tag";
 import { z } from "zod";
 import { AllowedMCPServerZodSchema } from "./mcp";
 import { UserPreferences } from "./user";
-import { tag } from "lib/tag";
 
 export type ChatMetadata = {
   usage?: LanguageModelUsage;
@@ -10,6 +10,8 @@ export type ChatMetadata = {
   toolChoice?: "auto" | "none" | "manual";
   toolCount?: number;
   agentId?: string;
+  /** asafe-ai (ADR-0004): why the router chose this model, when Auto routing was used. */
+  routingReason?: string;
 };
 
 export type ChatModel = {
