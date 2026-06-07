@@ -608,3 +608,29 @@ export const asafeMessageFeedbackRelations = relations(AsafeMessageFeedbackTable
 }));
 
 export type AsafeMessageFeedbackEntity = typeof AsafeMessageFeedbackTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 9 – Shared prompt library (ADR-0009)
+// ---------------------------------------------------------------------------
+
+export const AsafePromptTemplateTable = pgTable("asafe_prompt_template", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }),
+  authorId: uuid("author_id").references(() => UserTable.id, { onDelete: "set null" }),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+  visibility: varchar("visibility", { enum: ["private", "team", "org"] }).notNull().default("private"),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  usageCount: integer("usage_count").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const asafePromptTemplateRelations = relations(AsafePromptTemplateTable, ({ one }) => ({
+  author: one(UserTable, { fields: [AsafePromptTemplateTable.authorId], references: [UserTable.id] }),
+  team: one(AsafeTeamTable, { fields: [AsafePromptTemplateTable.teamId], references: [AsafeTeamTable.id] }),
+}));
+
+export type AsafePromptTemplateEntity = typeof AsafePromptTemplateTable.$inferSelect;
