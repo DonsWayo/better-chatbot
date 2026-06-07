@@ -1,0 +1,77 @@
+# electron-builder configuration for @asafe-ai/desktop
+# https://www.electron.build/configuration/configuration
+
+appId: com.asafe.ai
+productName: Asafe AI
+
+# Source files to include in the packaged app
+files:
+  - dist/**/*
+  - package.json
+
+directories:
+  output: release
+  buildResources: build
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  # NOTE: icon must be a 512×512 .icns file (macOS) — placeholder, TBD.
+  icon: build/icon.icns
+  # Code-signing: set CSC_LINK + CSC_KEY_PASSWORD env vars in CI (TBD, see ADR-0010).
+  # hardenedRuntime: true       # required for notarization (enable when certs are ready)
+  # gatekeeperAssess: false     # skip local gatekeeper check during dev
+
+dmg:
+  title: "${productName} ${version}"
+  background: build/dmg-background.png   # placeholder, TBD
+  window:
+    width: 540
+    height: 380
+
+# ---------------------------------------------------------------------------
+# Windows
+# ---------------------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # NOTE: icon must be a 256×256 .ico file — placeholder, TBD.
+  icon: build/icon.ico
+  # Code-signing: set WIN_CSC_LINK + WIN_CSC_KEY_PASSWORD in CI (TBD, see ADR-0010).
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+# ---------------------------------------------------------------------------
+# Linux
+# ---------------------------------------------------------------------------
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  # NOTE: icon must be a 512×512 .png file — placeholder, TBD.
+  icon: build/icon.png
+  category: Office
+
+# ---------------------------------------------------------------------------
+# Auto-update
+# ASAFE_UPDATE_URL must be set for updates to be enabled (see src/main.ts).
+# ---------------------------------------------------------------------------
+publish: null   # Disable default publish; feed is set at runtime via ASAFE_UPDATE_URL.
