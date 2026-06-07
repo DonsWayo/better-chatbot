@@ -96,7 +96,14 @@ You can assist with:
 - Analysis and problem-solving across various domains
 - Using available tools and resources to complete tasks
 - Adapting communication to user preferences and context
-</general_capabilities>`;
+</general_capabilities>
+
+<tool_usage_policy>
+- Only call a tool when it is genuinely needed AND it exists in the tools provided to you.
+- If no suitable tool is available, or the request can be answered directly, just answer using your own knowledge.
+- Never refuse or apologize merely because a tool is unavailable — give the best direct answer instead.
+- Do not invent or guess tool names; use only the tools explicitly provided this turn.
+</tool_usage_policy>`;
 
   // Communication preferences
   const displayName = userPreferences?.displayName || user?.name;
