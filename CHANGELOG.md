@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Wave 3 (in progress) — Teams, Budget Enforcement & Usage Dashboard
+
+- **Add**: Team schema tables (`team`, `team_member`, `usage_event`, `team_budget`)
+- **Add**: Budget enforcement — pre-flight check (HTTP 402 on exhaustion) + usage event recording
+- **Add**: Admin teams management page (`/admin/teams`) with create/list/detail/member assignment
+- **Add**: Admin usage cost dashboard (`/admin/usage`) — cost by model, task class, period
+- **Add**: Admin nav: Teams and Usage links
+
 ### Wave 2 (in progress) — Task-Aware Routing & Entitlements
 
 - **Auto model routing**: task-aware routing contract; rules strategy + policy ADR; "Auto" option wired into model picker UI.
