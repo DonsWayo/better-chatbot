@@ -35,6 +35,7 @@ import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
 import { routingDecisionsTotal } from "lib/observability/metrics";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
 import {
   rememberAgentAction,
@@ -321,6 +322,46 @@ export async function POST(request: Request) {
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
         );
 
+        // asafe-ai Wave 5 (ADR-0005): wrap each MCP tool's execute to emit an audit record
+        const AUDITED_MCP_TOOLS =
+          MCP_TOOLS && Object.keys(MCP_TOOLS).length > 0
+            ? Object.fromEntries(
+                Object.entries(MCP_TOOLS).map(([name, tool]) => {
+                  const originalExecute = (tool as any).execute;
+                  if (typeof originalExecute !== "function") return [name, tool];
+                  return [
+                    name,
+                    {
+                      ...tool,
+                      execute: async (...args: unknown[]) => {
+                        const start = Date.now();
+                        try {
+                          const result = await (originalExecute as any)(...args);
+                          auditMcpInvocation({
+                            userId: session.user.id,
+                            teamId: null, // TODO: wire teamId in Wave 4 follow-up
+                            toolName: name,
+                            outcome: "success",
+                            durationMs: Date.now() - start,
+                          }).catch(() => {}); // fire-and-forget
+                          return result;
+                        } catch (err) {
+                          auditMcpInvocation({
+                            userId: session.user.id,
+                            teamId: null,
+                            toolName: name,
+                            outcome: "error",
+                            durationMs: Date.now() - start,
+                          }).catch(() => {});
+                          throw err;
+                        }
+                      },
+                    },
+                  ];
+                }),
+              )
+            : MCP_TOOLS;
+
         const IMAGE_TOOL: Record<string, Tool> = useImageTool
           ? {
               [ImageToolName]:
@@ -330,7 +371,7 @@ export async function POST(request: Request) {
             }
           : {};
         const vercelAITooles = safe({
-          ...MCP_TOOLS,
+          ...AUDITED_MCP_TOOLS,
           ...WORKFLOW_TOOLS,
         })
           .map((t) => {
