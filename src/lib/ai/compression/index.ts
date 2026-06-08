@@ -1,74 +1,98 @@
-import type { UIMessage } from "ai";
-
-export interface CompressionResult {
-  messages: UIMessage[];
-  compressed: boolean;
-  tokensBefore: number;
-  tokensAfter: number;
-}
-
-export interface CompressionConfig {
-  maxContextTokens: number;
-  targetUtilization: number; // 0.0–1.0; default 0.7 (compress to 70% of max)
-  preserveRecentMessages: number; // always keep last N messages uncompressed; default 6
-}
-
-const DEFAULT_CONFIG: CompressionConfig = {
-  maxContextTokens: 128_000,
-  targetUtilization: 0.7,
-  preserveRecentMessages: 6,
-};
-
-/** Rough token estimate: 1 token ≈ 4 characters. */
-function estimateTokens(messages: UIMessage[]): number {
-  return Math.ceil(
-    messages.reduce((acc, m) => {
-      const parts = m.parts ?? [];
-      return acc + parts.reduce((a, p: any) => a + (p.text?.length ?? 0), 0);
-    }, 0) / 4,
-  );
-}
+"server-only";
 
 /**
- * Wave 11 stub: compress conversation history when approaching context limit.
- * Currently a pass-through — Wave 11 will implement the actual summarization.
+ * W11 — context compression middleware.
  *
- * Real implementation options (ADR-0011, deferred):
- *  - (a) headroom Python sidecar (MCP transport)
- *  - (b) TS reimplementation using a cheap/fast model for rolling summaries
+ * Wraps a LanguageModel with a compression pass. The middleware compresses
+ * tool outputs, old assistant turns, and long history before they reach the
+ * model. The current user message is never compressed.
+ *
+ * Apply OUTSIDE the guardrails wrapper so compression runs first:
+ *   const model = wrapWithCompression(
+ *     wrapWithGuardrails(rawModel, userId, policy),
+ *     { level: "standard", teamId: "team-abc" },
+ *   );
  */
-export async function compressMessages(
-  messages: UIMessage[],
-  config: Partial<CompressionConfig> = {},
-): Promise<CompressionResult> {
-  const cfg = { ...DEFAULT_CONFIG, ...config };
-  const tokensBefore = estimateTokens(messages);
 
-  // Pass-through until Wave 11
-  if (tokensBefore < cfg.maxContextTokens * cfg.targetUtilization) {
-    return {
-      messages,
-      compressed: false,
-      tokensBefore,
-      tokensAfter: tokensBefore,
-    };
-  }
+import type { LanguageModel, LanguageModelMiddleware } from "ai";
+import { wrapLanguageModel } from "ai";
+import type { CompressionLevel } from "./config";
+import { buildCompressionConfig } from "./config";
+import { applyCompression } from "./strategies";
+import { recordCompressionSavings } from "./metrics";
 
-  // TODO Wave 11: summarize older messages here
-  // For now: truncate oldest messages beyond preserveRecentMessages as a safety valve
-  if (messages.length > cfg.preserveRecentMessages) {
-    const recent = messages.slice(-cfg.preserveRecentMessages);
-    const tokensAfter = estimateTokens(recent);
-    return { messages: recent, compressed: true, tokensBefore, tokensAfter };
-  }
+export { buildCompressionConfig, DEFAULT_COMPRESSION_CONFIG } from "./config";
+export type { CompressionConfig, CompressionLevel } from "./config";
+
+export const COMPRESSION_ENABLED =
+  process.env.ASAFE_COMPRESSION_ENABLED !== "false";
+
+function buildCompressionMiddleware(
+  level: CompressionLevel,
+  teamId: string | null | undefined,
+): LanguageModelMiddleware {
+  const config = buildCompressionConfig(level);
 
   return {
-    messages,
-    compressed: false,
-    tokensBefore,
-    tokensAfter: tokensBefore,
+    middlewareVersion: "v2",
+
+    async transformParams({ params }) {
+      const { prompt, charsBefore, charsAfter } = applyCompression(
+        params.prompt,
+        config,
+      );
+
+      recordCompressionSavings({ teamId, level, charsBefore, charsAfter });
+
+      if (charsBefore !== charsAfter) {
+        const pct = Math.round(
+          ((charsBefore - charsAfter) / charsBefore) * 100,
+        );
+        console.info(
+          `[compression] level=${level} team=${teamId ?? "none"} ` +
+            `chars: ${charsBefore} → ${charsAfter} (-${pct}%)`,
+        );
+      }
+
+      return { ...params, prompt };
+    },
   };
 }
 
-export const COMPRESSION_ENABLED =
-  process.env.ASAFE_COMPRESSION_ENABLED === "true";
+/**
+ * Wrap a LanguageModel with W11 context compression.
+ * Returns the model unwrapped when compression is disabled globally or level="off".
+ */
+export function wrapWithCompression(
+  model: LanguageModel,
+  opts: {
+    level?: CompressionLevel;
+    teamId?: string | null;
+  } = {},
+): LanguageModel {
+  const level = opts.level ?? "standard";
+
+  if (!COMPRESSION_ENABLED || level === "off") return model;
+
+  return wrapLanguageModel({
+    model: model as Parameters<typeof wrapLanguageModel>[0]["model"],
+    middleware: buildCompressionMiddleware(level, opts.teamId),
+  }) as LanguageModel;
+}
+
+/**
+ * Map a team's guardrailPolicy to a default compression level.
+ * Strict policies get more aggressive compression.
+ */
+export function compressionLevelFromPolicy(
+  guardrailPolicy?: string | null,
+): CompressionLevel {
+  switch (guardrailPolicy) {
+    case "strict":
+      return "aggressive";
+    case "permissive":
+      return "light";
+    default:
+      return "standard";
+  }
+}

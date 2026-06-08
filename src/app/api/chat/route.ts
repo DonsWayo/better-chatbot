@@ -41,7 +41,7 @@ import { getUserPrimaryTeamId, getTeamPolicy } from "lib/admin/teams";
 import { getUserPreferences } from "lib/user/server";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
-import { compressMessages, COMPRESSION_ENABLED } from "lib/ai/compression";
+// W11: compression wired via wrapWithCompression middleware at model creation (line ~253)
 import {
   rememberAgentAction,
   rememberMcpServerCustomizationsAction,
@@ -250,7 +250,14 @@ export async function POST(request: Request) {
     const effectiveModel = routing ? routing.model : chatModel;
     const rawModel = customModelProvider.getModel(effectiveModel);
     const { wrapWithGuardrails } = await import("lib/ai/guardrails");
-    const model = wrapWithGuardrails(rawModel, session.user.id, teamPolicy?.guardrailPolicy);
+    const { wrapWithCompression, compressionLevelFromPolicy } = await import(
+      "lib/ai/compression"
+    );
+    const guardedModel = wrapWithGuardrails(rawModel, session.user.id, teamPolicy?.guardrailPolicy);
+    const model = wrapWithCompression(guardedModel, {
+      level: compressionLevelFromPolicy(teamPolicy?.guardrailPolicy),
+      teamId: userTeamId,
+    });
 
     // W8: fire-and-forget audit log for this request lifecycle
     const { auditChatRequest, hashContent } = await import("lib/compliance/audit");
@@ -492,16 +499,10 @@ export async function POST(request: Request) {
           `model: ${effectiveModel?.provider}/${effectiveModel?.model}`,
         );
 
-        // Wave 11 (ADR-0011): context compression seam — enabled via ASAFE_COMPRESSION_ENABLED
-        const { messages: compressedMessages, compressed } = COMPRESSION_ENABLED
-          ? await compressMessages(messages)
-          : { messages, compressed: false };
-        if (compressed) logger.info("context compressed for token limit");
-
         const result = streamText({
           model,
           system: systemPrompt,
-          messages: convertToModelMessages(compressedMessages),
+          messages: convertToModelMessages(messages),
           experimental_transform: smoothStream({ chunking: "word" }),
           maxRetries: 2,
           tools: vercelAITooles,
