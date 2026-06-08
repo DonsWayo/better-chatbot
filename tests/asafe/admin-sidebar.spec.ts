@@ -88,6 +88,46 @@ test.describe("Admin sidebar link visibility", () => {
     await ctx.close();
   });
 
+  test("admin at /admin: admin-sidebar-link-feature-flags is present", async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({
+      storageState: TEST_USERS.admin.authFile,
+    });
+    const page = await ctx.newPage();
+
+    await page.goto("/admin", { waitUntil: "networkidle" });
+    await ensureSidebarOpen(page);
+
+    const count = await page
+      .getByTestId("admin-sidebar-link-feature-flags")
+      .count();
+    expect(count).toBeGreaterThan(0);
+
+    await ctx.close();
+  });
+
+  test("admin clicks feature-flags nav and navigates to /admin/feature-flags", async ({
+    browser,
+  }) => {
+    const ctx = await browser.newContext({
+      storageState: TEST_USERS.admin.authFile,
+    });
+    const page = await ctx.newPage();
+
+    await page.goto("/admin", { waitUntil: "networkidle" });
+    await ensureSidebarOpen(page);
+
+    await page.getByTestId("admin-sidebar-link-feature-flags").click();
+    await page.waitForLoadState("networkidle");
+
+    expect(page.url()).toContain("/admin/feature-flags");
+    // Kill switch card should be visible
+    await expect(page.getByTestId("kill-switch-card")).toBeVisible();
+
+    await ctx.close();
+  });
+
   test("regular user at /: admin-sidebar-link-teams count is 0", async ({
     browser,
   }) => {
