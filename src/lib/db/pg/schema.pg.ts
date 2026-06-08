@@ -694,3 +694,13 @@ export const AsafeGuardrailEventTable = pgTable("asafe_guardrail_event", {
 });
 
 export type AsafeGuardrailEventEntity = typeof AsafeGuardrailEventTable.$inferSelect;
+
+// ── W12 Feature Flags (kill switch + future toggles) ─────────────────────────
+
+export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {
+  name: text("name").primaryKey(), // e.g. "kill_switch", "compression_enabled"
+  enabled: boolean("enabled").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeFeatureFlagEntity = typeof AsafeFeatureFlagTable.$inferSelect;

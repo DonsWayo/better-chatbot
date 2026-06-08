@@ -35,6 +35,12 @@ import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
 import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
+import {
+  activeRequests,
+  rateLimitActivations,
+  ttftMs,
+} from "lib/observability/slo";
+import { checkKillSwitch } from "lib/observability/kill-switch";
 import { checkRateLimit } from "lib/rate-limit";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { getUserPrimaryTeamId, getTeamPolicy } from "lib/admin/teams";
@@ -76,6 +82,10 @@ export async function POST(request: Request) {
     const userTeamId = await getUserPrimaryTeamId(session.user.id);
     const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
 
+    // W12: kill switch — operator can block all inference instantly, no deploy required
+    const killSwitchResp = await checkKillSwitch(userTeamId);
+    if (killSwitchResp) return killSwitchResp;
+
     // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe)
     const rateCheck = await checkRateLimit(session.user.id);
     const rateLimitHeaders = {
@@ -85,6 +95,7 @@ export async function POST(request: Request) {
     };
     if (!rateCheck.allowed) {
       chatErrorsTotal.inc({ type: "rate_limited" });
+      rateLimitActivations.inc({ team_id: userTeamId ?? "none" });
       return Response.json(
         { message: "Rate limit exceeded. Please wait before sending another message." },
         {
@@ -97,7 +108,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // asafe-ai Wave 12: record request start for latency histogram
+    // asafe-ai Wave 12: SLO — track overall request latency (auth + setup + inference)
     const requestStart = Date.now();
 
     const {
@@ -318,6 +329,10 @@ export async function POST(request: Request) {
       routingReason: routing?.reason,
     };
 
+    // W12: only inc once we're certain we'll start inference (past all early-return guards)
+    activeRequests.inc();
+    let ttftObserved = false;
+
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
         const MCP_TOOLS = await safe()
@@ -509,6 +524,19 @@ export async function POST(request: Request) {
           stopWhen: stepCountIs(10),
           toolChoice: "auto",
           abortSignal: request.signal,
+          onChunk: ({ chunk }) => {
+            if (!ttftObserved && chunk.type === "text-delta") {
+              ttftMs.observe(
+                {
+                  provider: effectiveModel?.provider ?? "unknown",
+                  model: effectiveModel?.model ?? "unknown",
+                  task_class: routing?.taskClass ?? "unknown",
+                },
+                Date.now() - requestStart,
+              );
+              ttftObserved = true;
+            }
+          },
         });
         result.consumeStream();
         dataStream.merge(
@@ -577,7 +605,8 @@ export async function POST(request: Request) {
           }).catch((e) => logger.error("recordUsage failed:", e));
         }
 
-        // asafe-ai Wave 12: record end-to-end request latency
+        // asafe-ai Wave 12: record end-to-end latency and release active-request slot
+        activeRequests.dec();
         chatLatencyMs.observe(
           {
             provider: effectiveModel?.provider ?? "unknown",
@@ -587,7 +616,10 @@ export async function POST(request: Request) {
           Date.now() - requestStart,
         );
       },
-      onError: handleError,
+      onError: (err) => {
+        activeRequests.dec();
+        return handleError(err);
+      },
       originalMessages: messages,
     });
 
