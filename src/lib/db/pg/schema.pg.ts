@@ -658,3 +658,15 @@ export const AsafeRateLimitBucketTable = pgTable(
     primaryKey({ columns: [t.userId, t.windowStart] }),
   ],
 );
+
+// ── W7 Guardrail Events ──────────────────────────────────────────────────────
+
+export const AsafeGuardrailEventTable = pgTable("asafe_guardrail_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  blocked: boolean("blocked").notNull().default(false),
+  firings: jsonb("firings").notNull().default("[]"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeGuardrailEventEntity = typeof AsafeGuardrailEventTable.$inferSelect;

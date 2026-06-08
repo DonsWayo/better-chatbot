@@ -1,15 +1,121 @@
-import type { LanguageModel } from "ai";
+import type { LanguageModel, LanguageModelMiddleware } from "ai";
+import { wrapLanguageModel } from "ai";
+import { pgDb } from "@/lib/db/pg/db.pg";
+import { AsafeGuardrailEventTable } from "@/lib/db/pg/schema.pg";
+import { scanInput, scanOutput, type GuardrailFiring } from "./scan";
+import { resolvePolicy } from "./policies";
 
-/**
- * Wave 7 stub (ADR-0008): guardrails / DLP wrapper.
- * Currently a pass-through. Wave 7 will implement:
- *  - Input scanning: prompt injection, PII/data-classification rules
- *  - Output scanning: response DLP, content policy
- *  - Block/redact/alert modes
- * Enable by wrapping: wrapWithGuardrails(model, session)
- */
-export function wrapWithGuardrails(model: LanguageModel, _sessionUserId: string): LanguageModel {
-  return model; // pass-through until Wave 7
+export { scanInput, scanOutput } from "./scan";
+export { resolvePolicy } from "./policies";
+export type { GuardrailFiring, ScanResult } from "./scan";
+export type { GuardrailPolicy, GuardrailAction, GuardrailPosture } from "./policies";
+
+export const GUARDRAILS_ENABLED = process.env.ASAFE_GUARDRAILS_ENABLED !== "false";
+
+async function logGuardrailEvent(
+  userId: string,
+  firings: GuardrailFiring[],
+  blocked: boolean,
+): Promise<void> {
+  if (firings.length === 0) return;
+  try {
+    await pgDb.insert(AsafeGuardrailEventTable).values({
+      userId,
+      blocked,
+      firings: JSON.stringify(firings),
+    });
+  } catch {
+    // Fail open — never crash a chat request because of logging
+  }
 }
 
-export const GUARDRAILS_ENABLED = process.env.ASAFE_GUARDRAILS_ENABLED === "true";
+/**
+ * Build a LanguageModelMiddleware that enforces A-Safe guardrails (W7).
+ * Use with AI SDK v5's wrapLanguageModel().
+ */
+function buildGuardrailMiddleware(
+  userId: string,
+  teamPolicy?: string | null,
+): LanguageModelMiddleware {
+  const policy = resolvePolicy(teamPolicy);
+
+  return {
+    middlewareVersion: "v2",
+
+    async transformParams({ params }) {
+      const firings: GuardrailFiring[] = [];
+
+      const processedMessages = params.prompt.map((msg) => {
+        if (msg.role !== "user") return msg;
+
+        const processedContent = msg.content.map((part) => {
+          if (part.type !== "text") return part;
+          const result = scanInput(part.text, policy);
+          firings.push(...result.firings);
+          if (result.blocked) {
+            throw new Error(result.blockReason ?? "Input blocked by guardrails.");
+          }
+          return result.text !== part.text ? { ...part, text: result.text } : part;
+        });
+
+        return { ...msg, content: processedContent };
+      });
+
+      void logGuardrailEvent(userId, firings, false);
+
+      return { ...params, prompt: processedMessages };
+    },
+
+    async wrapGenerate({ doGenerate }) {
+      const result = await doGenerate();
+
+      if (!policy.outputLeakProtection) return result;
+
+      // Scan text parts in the content array
+      const processedContent = result.content.map((part) => {
+        if (part.type !== "text") return part;
+        const { text } = scanOutput(part.text);
+        return { ...part, text };
+      });
+
+      return { ...result, content: processedContent };
+    },
+
+    async wrapStream({ doStream, params }) {
+      const { stream, ...rest } = await doStream();
+
+      if (!policy.outputLeakProtection) return { stream, ...rest };
+
+      // Strip system-prompt leakage patterns from streamed text deltas
+      const filtered = new TransformStream({
+        transform(chunk, controller) {
+          if (chunk.type === "text-delta") {
+            const { text } = scanOutput(chunk.textDelta);
+            controller.enqueue({ ...chunk, textDelta: text });
+          } else {
+            controller.enqueue(chunk);
+          }
+        },
+      });
+
+      return { stream: stream.pipeThrough(filtered), ...rest };
+    },
+  };
+}
+
+/**
+ * Wrap a LanguageModel with A-Safe guardrails (W7).
+ * Returns the model unwrapped if ASAFE_GUARDRAILS_ENABLED=false.
+ */
+export function wrapWithGuardrails(
+  model: LanguageModel,
+  userId: string,
+  teamPolicy?: string | null,
+): LanguageModel {
+  if (!GUARDRAILS_ENABLED) return model;
+
+  return wrapLanguageModel({
+    model: model as Parameters<typeof wrapLanguageModel>[0]["model"],
+    middleware: buildGuardrailMiddleware(userId, teamPolicy),
+  }) as LanguageModel;
+}

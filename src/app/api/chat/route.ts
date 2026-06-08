@@ -239,10 +239,9 @@ export async function POST(request: Request) {
             totalChars,
           });
     const effectiveModel = routing ? routing.model : chatModel;
-    const model = customModelProvider.getModel(effectiveModel);
-    // Wave 7 (ADR-0008): guardrails/DLP wrapper — inject wrapLanguageModel(model, guardrailsConfig) here.
-    // The wrapper intercepts prompt/response, runs DLP checks, and optionally blocks or redacts.
-    // Gated on Wave 7 completion and Security sign-off. Left as a pass-through stub until then.
+    const rawModel = customModelProvider.getModel(effectiveModel);
+    const { wrapWithGuardrails } = await import("lib/ai/guardrails");
+    const model = wrapWithGuardrails(rawModel, session.user.id);
     if (routing) {
       logger.info(`routing: ${routing.reason}`);
       routingDecisionsTotal.inc({
