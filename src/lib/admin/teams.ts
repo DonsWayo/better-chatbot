@@ -287,6 +287,8 @@ export interface TeamPolicy {
   allowImageGen: boolean;
   allowVision: boolean;
   allowSpeech: boolean;
+  /** Empty array = all approved models allowed; non-empty = restricted to listed model IDs */
+  modelAllowList: string[];
 }
 
 const _teamPolicyCache = new Map<string, { policy: TeamPolicy; expiresAt: number }>();
@@ -303,6 +305,7 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
         allowImageGen: AsafeTeamTable.allowImageGen,
         allowVision: AsafeTeamTable.allowVision,
         allowSpeech: AsafeTeamTable.allowSpeech,
+        modelAllowList: AsafeTeamTable.modelAllowList,
       })
       .from(AsafeTeamTable)
       .where(eq(AsafeTeamTable.id, teamId))
@@ -313,11 +316,12 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
       allowImageGen: false,
       allowVision: false,
       allowSpeech: false,
+      modelAllowList: [],
     };
     _teamPolicyCache.set(teamId, { policy, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
     return policy;
   } catch {
-    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false };
+    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [] };
   }
 }
 

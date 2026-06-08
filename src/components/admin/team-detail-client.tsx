@@ -28,12 +28,13 @@ import {
   CardHeader,
   CardTitle,
 } from "ui/card";
-import { ArrowLeft, Trash2, UserPlus, DollarSign } from "lucide-react";
+import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import {
   addTeamMemberAction,
   removeTeamMemberAction,
   setBudgetAction,
+  setModelAllowListAction,
 } from "@/app/(chat)/(admin)/admin/teams/[id]/actions";
 
 type Role = "admin" | "editor" | "member";
@@ -56,6 +57,13 @@ interface Budget {
   periodEnd: Date;
 }
 
+const APPROVED_MODELS = [
+  { id: "gpt-5.1", label: "GPT-5.1", note: "balanced" },
+  { id: "claude-opus-4.8", label: "Claude Opus 4.8", note: "frontier" },
+  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", note: "fast & multilingual" },
+  { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", note: "cheapest" },
+] as const;
+
 interface Team {
   id: string;
   name: string;
@@ -64,6 +72,7 @@ interface Team {
   createdAt: Date;
   members: Member[];
   budget: Budget | null;
+  modelAllowList: string[];
 }
 
 interface TeamDetailClientProps {
@@ -89,6 +98,33 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
   // Remove state
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Model allow-list state
+  const [selectedModels, setSelectedModels] = useState<string[]>(team.modelAllowList ?? []);
+  const [isSavingModels, setIsSavingModels] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [modelsSuccess, setModelsSuccess] = useState(false);
+
+  const handleToggleModel = (modelId: string) => {
+    setSelectedModels((prev) =>
+      prev.includes(modelId) ? prev.filter((id) => id !== modelId) : [...prev, modelId],
+    );
+  };
+
+  const handleSaveModels = async () => {
+    setIsSavingModels(true);
+    setModelsError(null);
+    setModelsSuccess(false);
+    try {
+      await setModelAllowListAction(team.id, selectedModels);
+      setModelsSuccess(true);
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      setModelsError(err instanceof Error ? err.message : "Failed to save model list");
+    } finally {
+      setIsSavingModels(false);
+    }
+  };
 
   // Budget form state
   const today = new Date().toISOString().slice(0, 10);
@@ -315,6 +351,55 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           {addError && (
             <p className="mt-2 text-sm text-destructive">{addError}</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Model allow-list */}
+      <Card data-testid="model-allow-list-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Model Allow-List
+          </CardTitle>
+          <CardDescription>
+            Restrict this team to specific models. Empty selection = all approved models allowed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            {APPROVED_MODELS.map((m) => (
+              <label
+                key={m.id}
+                className="flex items-center gap-3 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/40 transition-colors"
+                data-testid={`model-checkbox-${m.id}`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={selectedModels.includes(m.id)}
+                  onChange={() => handleToggleModel(m.id)}
+                  disabled={isSavingModels}
+                />
+                <span className="flex-1 text-sm font-medium">{m.label}</span>
+                <span className="text-xs text-muted-foreground">{m.note}</span>
+              </label>
+            ))}
+          </div>
+          {selectedModels.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No restrictions — all approved models are available to this team.
+            </p>
+          )}
+          <Button
+            onClick={handleSaveModels}
+            disabled={isSavingModels}
+            className="w-full sm:w-auto"
+            data-testid="save-model-allow-list-btn"
+          >
+            {isSavingModels ? "Saving…" : "Save Model List"}
+          </Button>
+          {modelsError && <p className="text-sm text-destructive">{modelsError}</p>}
+          {modelsSuccess && <p className="text-sm text-green-600">Model list saved.</p>}
         </CardContent>
       </Card>
 

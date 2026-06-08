@@ -2,7 +2,7 @@
 
 import { requireAdminPermission } from "lib/auth/permissions";
 import { revalidatePath } from "next/cache";
-import { addTeamMember, removeTeamMember } from "lib/admin/teams";
+import { addTeamMember, removeTeamMember, updateTeamPolicy } from "lib/admin/teams";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { UserTable, AsafeTeamBudgetTable } from "@/lib/db/pg/schema.pg";
 import { eq } from "drizzle-orm";
@@ -29,6 +29,15 @@ export async function removeTeamMemberAction(
 ) {
   await requireAdminPermission();
   await removeTeamMember(memberId);
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function setModelAllowListAction(
+  teamId: string,
+  modelAllowList: string[],
+) {
+  await requireAdminPermission();
+  await updateTeamPolicy(teamId, { modelAllowList });
   revalidatePath(`/admin/teams/${teamId}`);
 }
 

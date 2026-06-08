@@ -3,11 +3,14 @@ import { getSession } from "lib/auth/server";
 import { updateTeamPolicy } from "lib/admin/teams";
 import { z } from "zod";
 
+const APPROVED_MODEL_IDS = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
+
 const PatchTeamSchema = z.object({
   guardrailPolicy: z.enum(["strict", "standard", "permissive"]).optional(),
   allowImageGen: z.boolean().optional(),
   allowVision: z.boolean().optional(),
   allowSpeech: z.boolean().optional(),
+  modelAllowList: z.array(z.enum(APPROVED_MODEL_IDS)).optional(),
 });
 
 export async function PATCH(

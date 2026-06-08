@@ -260,6 +260,16 @@ export async function POST(request: Request) {
             totalChars,
           });
     const effectiveModel = routing ? routing.model : chatModel;
+
+    // W4: per-team model allow-list enforcement
+    const teamAllowList = teamPolicy?.modelAllowList ?? [];
+    if (teamAllowList.length > 0 && effectiveModel?.model && !teamAllowList.includes(effectiveModel.model)) {
+      return Response.json(
+        { message: `Model "${effectiveModel.model}" is not permitted for your team.` },
+        { status: 403 },
+      );
+    }
+
     const rawModel = customModelProvider.getModel(effectiveModel);
     const { wrapWithGuardrails } = await import("lib/ai/guardrails");
     const { wrapWithCompression, compressionLevelFromPolicy } = await import(

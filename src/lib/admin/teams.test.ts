@@ -23,7 +23,7 @@ vi.mock("lib/db/pg/db.pg", () => ({
 }));
 
 vi.mock("@/lib/db/pg/schema.pg", () => ({
-  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech" },
+  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech", modelAllowList: "modelAllowList" },
   AsafeTeamMemberTable: { id: "id", teamId: "teamId", userId: "userId", role: "role", createdAt: "createdAt" },
   AsafeTeamBudgetTable: { teamId: "teamId", budgetUsd: "budgetUsd", usedUsd: "usedUsd" },
   AsafeUsageEventTable: { model: "model", provider: "provider", promptTokens: "promptTokens", completionTokens: "completionTokens", costUsd: "costUsd", taskClass: "taskClass", createdAt: "createdAt" },
@@ -146,7 +146,7 @@ describe("getTeamPolicy", () => {
   });
 
   it("returns DB values when team row exists", async () => {
-    _selectRows = [{ guardrailPolicy: "strict", allowImageGen: true, allowVision: true, allowSpeech: false }];
+    _selectRows = [{ guardrailPolicy: "strict", allowImageGen: true, allowVision: true, allowSpeech: false, modelAllowList: [] }];
     limitMock.mockResolvedValue(_selectRows);
 
     const { getTeamPolicy } = await import("./teams");
@@ -156,6 +156,17 @@ describe("getTeamPolicy", () => {
     expect(policy.allowImageGen).toBe(true);
     expect(policy.allowVision).toBe(true);
     expect(policy.allowSpeech).toBe(false);
+    expect(policy.modelAllowList).toEqual([]);
+  });
+
+  it("returns modelAllowList from DB when populated", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: ["gpt-5.1", "gemini-2.5-flash"] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-allow");
+
+    expect(policy.modelAllowList).toEqual(["gpt-5.1", "gemini-2.5-flash"]);
   });
 
   it("returns safe defaults when team does not exist", async () => {
@@ -169,6 +180,7 @@ describe("getTeamPolicy", () => {
     expect(policy.allowImageGen).toBe(false);
     expect(policy.allowVision).toBe(false);
     expect(policy.allowSpeech).toBe(false);
+    expect(policy.modelAllowList).toEqual([]);
   });
 
   it("returns safe defaults on DB error (fail-open)", async () => {
@@ -179,6 +191,7 @@ describe("getTeamPolicy", () => {
 
     expect(policy.guardrailPolicy).toBe("standard");
     expect(policy.allowVision).toBe(false);
+    expect(policy.modelAllowList).toEqual([]);
   });
 
   it("caches policy for TTL duration (DB called once)", async () => {
@@ -252,6 +265,24 @@ describe("updateTeamPolicy", () => {
     expect(updateMock).toHaveBeenCalledTimes(1);
     expect(updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({ guardrailPolicy: "strict", allowVision: true }),
+    );
+  });
+
+  it("accepts modelAllowList in the patch", async () => {
+    const { updateTeamPolicy } = await import("./teams");
+    await updateTeamPolicy("team-models", { modelAllowList: ["gpt-5.1", "claude-opus-4.8"] });
+
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ modelAllowList: ["gpt-5.1", "claude-opus-4.8"] }),
+    );
+  });
+
+  it("accepts empty modelAllowList to clear restrictions", async () => {
+    const { updateTeamPolicy } = await import("./teams");
+    await updateTeamPolicy("team-clear", { modelAllowList: [] });
+
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ modelAllowList: [] }),
     );
   });
 

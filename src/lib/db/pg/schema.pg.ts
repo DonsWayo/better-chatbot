@@ -406,6 +406,8 @@ export const AsafeTeamTable = pgTable(
     allowImageGen: boolean("allow_image_gen").notNull().default(false),
     allowVision: boolean("allow_vision").notNull().default(false),
     allowSpeech: boolean("allow_speech").notNull().default(false),
+    // W4: model allow-list — empty array = all approved models allowed
+    modelAllowList: jsonb("model_allow_list").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
