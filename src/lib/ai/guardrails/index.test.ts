@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 // ── DB mock ──────────────────────────────────────────────────────────────────
 vi.mock("@/lib/db/pg/db.pg", () => ({

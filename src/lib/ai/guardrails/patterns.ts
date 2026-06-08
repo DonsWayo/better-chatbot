@@ -120,6 +120,31 @@ export const SECRET_PATTERNS: Pattern[] = [
   },
 ];
 
+// ── EU AI Act: employment-decision guardrail (Art. 26 / high-risk boundary) ──
+// This tool must NOT be used for automated hiring, firing, or performance-grading
+// decisions. These patterns flag such use; action=block under any policy.
+
+export const EMPLOYMENT_DECISION_PATTERNS: Pattern[] = [
+  {
+    id: "hiring_decision",
+    label: "automated hiring decision",
+    regex: /(?:should|must|will|decide|recommend)\s+(?:we\s+)?(?:hire|not\s+hire|reject|shortlist|select)\s+(?:this\s+)?(?:candidate|applicant|person)/gi,
+    mask: "[BLOCKED:EMPLOYMENT_DECISION]",
+  },
+  {
+    id: "performance_grade",
+    label: "automated performance grading",
+    regex: /(?:rate|grade|score|rank|evaluate|assess)\s+(?:this\s+)?(?:employee|worker|staff)\s+(?:and\s+)?(?:decide|determine|give|assign)\s+(?:their\s+)?(?:performance|rating|grade|score|review)/gi,
+    mask: "[BLOCKED:EMPLOYMENT_DECISION]",
+  },
+  {
+    id: "disciplinary_decision",
+    label: "automated disciplinary decision",
+    regex: /(?:should|must|decide|recommend)\s+(?:we\s+)?(?:fire|dismiss|terminate|discipline|warn|sanction)\s+(?:this\s+)?(?:employee|worker|staff|person)/gi,
+    mask: "[BLOCKED:EMPLOYMENT_DECISION]",
+  },
+];
+
 // ── Prompt injection heuristics ──────────────────────────────────────────────
 
 export const INJECTION_PATTERNS: Pattern[] = [

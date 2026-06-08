@@ -242,6 +242,19 @@ export async function POST(request: Request) {
     const rawModel = customModelProvider.getModel(effectiveModel);
     const { wrapWithGuardrails } = await import("lib/ai/guardrails");
     const model = wrapWithGuardrails(rawModel, session.user.id);
+
+    // W8: fire-and-forget audit log for this request lifecycle
+    const { auditChatRequest, hashContent } = await import("lib/compliance/audit");
+    const lastUserMsg = messages.findLast((m: { role: string }) => m.role === "user") as { role: string; content?: unknown } | undefined;
+    const promptText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : JSON.stringify(lastUserMsg?.content ?? "");
+    auditChatRequest({
+      userId: session.user.id,
+      teamId: userTeamId,
+      model: `${effectiveModel?.provider ?? "unknown"}/${effectiveModel?.model ?? "unknown"}`,
+      promptHash: hashContent(promptText),
+      guardrailFired: false, // updated by guardrails middleware via event
+      ragUsed: mentions.some((m: { type: string }) => m.type === "knowledge"),
+    });
     if (routing) {
       logger.info(`routing: ${routing.reason}`);
       routingDecisionsTotal.inc({

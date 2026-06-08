@@ -123,6 +123,8 @@ export const UserTable = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
   role: text("role").notNull().default("user"),
+  // W8: GDPR/EU AI Act — acceptable-use acknowledgment
+  acceptedAupAt: timestamp("accepted_aup_at", { withTimezone: true }),
 });
 
 // Role tables removed - using Better Auth's built-in role system
@@ -658,6 +660,23 @@ export const AsafeRateLimitBucketTable = pgTable(
     primaryKey({ columns: [t.userId, t.windowStart] }),
   ],
 );
+
+// ── W8 Compliance Audit Log ──────────────────────────────────────────────────
+
+export const AsafeAuditLogTable = pgTable("asafe_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // Who
+  userId: text("user_id").notNull(),
+  teamId: uuid("team_id"),
+  // What type of event
+  eventType: text("event_type").notNull(), // "chat_request"|"admin_action"|"rag_retrieval"|"tool_call"|"guardrail"|"user_erasure"
+  // Serialised details — kept minimal (no raw prompt content; content hash only)
+  details: jsonb("details").notNull().default("{}"),
+  // Immutable timestamp — use now() at DB level so app clock skew can't falsify it
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeAuditLogEntity = typeof AsafeAuditLogTable.$inferSelect;
 
 // ── W7 Guardrail Events ──────────────────────────────────────────────────────
 

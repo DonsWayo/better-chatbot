@@ -1,4 +1,4 @@
-import { PII_PATTERNS, SECRET_PATTERNS, INJECTION_PATTERNS, type Pattern } from "./patterns";
+import { PII_PATTERNS, SECRET_PATTERNS, INJECTION_PATTERNS, EMPLOYMENT_DECISION_PATTERNS, type Pattern } from "./patterns";
 import { type GuardrailAction, type GuardrailPolicy } from "./policies";
 
 export type GuardrailCategory = "pii" | "secret" | "injection";
@@ -79,7 +79,19 @@ export function scanInput(text: string, policy: GuardrailPolicy): ScanResult {
     });
   }
 
-  // 2. Prompt injection (check before PII, injection takes priority)
+  // 2. EU AI Act: employment decisions — always block regardless of policy
+  {
+    const r = applyPatterns(current, EMPLOYMENT_DECISION_PATTERNS, "injection", "block", firings);
+    current = r.text;
+    if (r.blocked) return {
+      text: current,
+      blocked: true,
+      blockReason: "This tool cannot be used for automated employment decisions (EU AI Act compliance).",
+      firings,
+    };
+  }
+
+  // 3. Prompt injection (check before PII, injection takes priority)
   {
     const r = applyPatterns(current, INJECTION_PATTERNS, "injection", policy.injection, firings);
     current = r.text;

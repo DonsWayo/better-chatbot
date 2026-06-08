@@ -26,6 +26,7 @@ export type BasicUser = Omit<
   | "banned"
   | "banReason"
   | "banExpires"
+  | "acceptedAupAt"
 > & {
   image?: string | null;
   role?: string | null;
