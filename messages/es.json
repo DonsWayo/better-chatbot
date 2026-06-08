@@ -835,6 +835,9 @@
       "blockedCount": "Bloqueados",
       "warnedCount": "Advertidos",
       "noEvents": "No hay eventos de guardián registrados todavía."
+    },
+    "Quality": {
+      "title": "Calidad"
     }
   },
   "MCP": {

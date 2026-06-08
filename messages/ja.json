@@ -525,6 +525,9 @@
       "blockedCount": "ブロック済み",
       "warnedCount": "警告済み",
       "noEvents": "ガードレールイベントはまだ記録されていません。"
+    },
+    "Quality": {
+      "title": "品質"
     }
   }
 }

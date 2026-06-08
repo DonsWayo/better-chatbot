@@ -525,6 +525,9 @@
       "blockedCount": "Bloqués",
       "warnedCount": "Avertis",
       "noEvents": "Aucun événement de garde-fou enregistré pour l'instant."
+    },
+    "Quality": {
+      "title": "Qualité"
     }
   }
 }

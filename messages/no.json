@@ -776,6 +776,9 @@
       "blockedCount": "Blokkert",
       "warnedCount": "Advart",
       "noEvents": "Ingen sikkerhetsbarrierer-hendelser registrert ennå."
+    },
+    "Quality": {
+      "title": "Kvalitet"
     }
   },
   "MCP": {

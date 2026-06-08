@@ -527,6 +527,9 @@
       "blockedCount": "已阻止",
       "warnedCount": "已警告",
       "noEvents": "尚未记录任何护栏事件。"
+    },
+    "Quality": {
+      "title": "质量"
     }
   }
 }

@@ -835,6 +835,9 @@
       "blockedCount": "Blocked",
       "warnedCount": "Warned",
       "noEvents": "No guardrail events recorded yet."
+    },
+    "Quality": {
+      "title": "Quality"
     }
   },
   "MCP": {

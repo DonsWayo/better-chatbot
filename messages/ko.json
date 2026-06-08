@@ -540,6 +540,9 @@
       "blockedCount": "차단됨",
       "warnedCount": "경고됨",
       "noEvents": "아직 가드레일 이벤트가 없습니다."
+    },
+    "Quality": {
+      "title": "품질"
     }
   }
 }
