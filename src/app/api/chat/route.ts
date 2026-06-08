@@ -37,6 +37,7 @@ import { serverFileStorage } from "lib/file-storage";
 import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
 import {
   activeRequests,
+  providerErrorsTotal,
   rateLimitActivations,
   ttftMs,
 } from "lib/observability/slo";
@@ -616,8 +617,20 @@ export async function POST(request: Request) {
           Date.now() - requestStart,
         );
       },
-      onError: (err) => {
+      onError: (err: unknown) => {
         activeRequests.dec();
+        // W12: track provider-level errors so Grafana can alert on elevated rates
+        const status = (err as any)?.statusCode ?? (err as any)?.status ?? 0;
+        const errorType =
+          status === 429 ? "rate_limited" :
+          status >= 500 ? "provider_error" :
+          status >= 400 ? "client_error" :
+          "unknown";
+        providerErrorsTotal.inc({
+          provider: effectiveModel?.provider ?? "unknown",
+          model: effectiveModel?.model ?? "unknown",
+          error_type: errorType,
+        });
         return handleError(err);
       },
       originalMessages: messages,
