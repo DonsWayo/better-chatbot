@@ -265,7 +265,15 @@ export async function POST(request: Request) {
     const { wrapWithCompression, compressionLevelFromPolicy } = await import(
       "lib/ai/compression"
     );
-    const guardedModel = wrapWithGuardrails(rawModel, session.user.id, teamPolicy?.guardrailPolicy);
+    const { wrapWithFallback, FALLBACK_MODEL_IDS } = await import(
+      "lib/ai/fallback"
+    );
+    // W12.1: approved fallbacks, cheapest first, excluding the selected primary
+    const fallbackModels = FALLBACK_MODEL_IDS
+      .filter((id) => id !== effectiveModel?.model)
+      .map((id) => customModelProvider.getModel({ provider: "openRouter", model: id }));
+    const modelWithFallback = wrapWithFallback(rawModel, fallbackModels);
+    const guardedModel = wrapWithGuardrails(modelWithFallback, session.user.id, teamPolicy?.guardrailPolicy);
     const model = wrapWithCompression(guardedModel, {
       level: compressionLevelFromPolicy(teamPolicy?.guardrailPolicy),
       teamId: userTeamId,
