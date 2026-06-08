@@ -519,6 +519,12 @@
       "activated": "キルスイッチが有効です — すべての推論がブロックされています",
       "deactivated": "キルスイッチが無効です — 推論は正常に動作しています",
       "flagUpdated": "フラグを更新しました"
+    },
+    "Guardrails": {
+      "title": "ガードレール",
+      "blockedCount": "ブロック済み",
+      "warnedCount": "警告済み",
+      "noEvents": "ガードレールイベントはまだ記録されていません。"
     }
   }
 }

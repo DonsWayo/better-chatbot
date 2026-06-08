@@ -770,6 +770,12 @@
       "activated": "Kill switch aktivert — all inferens er blokkert",
       "deactivated": "Kill switch deaktivert — inferens kjører normalt",
       "flagUpdated": "Flagg oppdatert"
+    },
+    "Guardrails": {
+      "title": "Sikkerhetsbarrierer",
+      "blockedCount": "Blokkert",
+      "warnedCount": "Advart",
+      "noEvents": "Ingen sikkerhetsbarrierer-hendelser registrert ennå."
     }
   },
   "MCP": {

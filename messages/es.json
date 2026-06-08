@@ -829,6 +829,12 @@
       "activated": "Kill switch activado — toda la inferencia está bloqueada",
       "deactivated": "Kill switch desactivado — la inferencia funciona con normalidad",
       "flagUpdated": "Indicador actualizado"
+    },
+    "Guardrails": {
+      "title": "Guardianes",
+      "blockedCount": "Bloqueados",
+      "warnedCount": "Advertidos",
+      "noEvents": "No hay eventos de guardián registrados todavía."
     }
   },
   "MCP": {

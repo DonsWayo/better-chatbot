@@ -534,6 +534,12 @@
       "activated": "킬 스위치 활성화 — 모든 추론이 차단됩니다",
       "deactivated": "킬 스위치 비활성화 — 추론이 정상적으로 작동합니다",
       "flagUpdated": "플래그가 업데이트되었습니다"
+    },
+    "Guardrails": {
+      "title": "가드레일",
+      "blockedCount": "차단됨",
+      "warnedCount": "경고됨",
+      "noEvents": "아직 가드레일 이벤트가 없습니다."
     }
   }
 }

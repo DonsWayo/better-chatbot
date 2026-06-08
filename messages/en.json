@@ -829,6 +829,12 @@
       "activated": "Kill switch activated — all inference is blocked",
       "deactivated": "Kill switch deactivated — inference is running normally",
       "flagUpdated": "Flag updated"
+    },
+    "Guardrails": {
+      "title": "Guardrails",
+      "blockedCount": "Blocked",
+      "warnedCount": "Warned",
+      "noEvents": "No guardrail events recorded yet."
     }
   },
   "MCP": {

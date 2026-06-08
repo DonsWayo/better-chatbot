@@ -519,6 +519,12 @@
       "activated": "Kill switch activé — toute inférence est bloquée",
       "deactivated": "Kill switch désactivé — l'inférence fonctionne normalement",
       "flagUpdated": "Indicateur mis à jour"
+    },
+    "Guardrails": {
+      "title": "Gardes-fous",
+      "blockedCount": "Bloqués",
+      "warnedCount": "Avertis",
+      "noEvents": "Aucun événement de garde-fou enregistré pour l'instant."
     }
   }
 }
