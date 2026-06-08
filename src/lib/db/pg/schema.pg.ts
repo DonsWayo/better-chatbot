@@ -401,6 +401,11 @@ export const AsafeTeamTable = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 100 }).notNull().unique(),
     description: text("description"),
+    // W9: per-team guardrail posture and multimodal feature gates
+    guardrailPolicy: varchar("guardrail_policy", { length: 20 }).notNull().default("standard"),
+    allowImageGen: boolean("allow_image_gen").notNull().default(false),
+    allowVision: boolean("allow_vision").notNull().default(false),
+    allowSpeech: boolean("allow_speech").notNull().default(false),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },

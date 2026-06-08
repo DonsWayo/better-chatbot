@@ -281,3 +281,54 @@ export async function getUserPrimaryTeamId(
     return null;
   }
 }
+
+export interface TeamPolicy {
+  guardrailPolicy: string;
+  allowImageGen: boolean;
+  allowVision: boolean;
+  allowSpeech: boolean;
+}
+
+const _teamPolicyCache = new Map<string, { policy: TeamPolicy; expiresAt: number }>();
+
+export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
+  const now = Date.now();
+  const cached = _teamPolicyCache.get(teamId);
+  if (cached && cached.expiresAt > now) return cached.policy;
+
+  try {
+    const [row] = await db
+      .select({
+        guardrailPolicy: AsafeTeamTable.guardrailPolicy,
+        allowImageGen: AsafeTeamTable.allowImageGen,
+        allowVision: AsafeTeamTable.allowVision,
+        allowSpeech: AsafeTeamTable.allowSpeech,
+      })
+      .from(AsafeTeamTable)
+      .where(eq(AsafeTeamTable.id, teamId))
+      .limit(1);
+
+    const policy: TeamPolicy = row ?? {
+      guardrailPolicy: "standard",
+      allowImageGen: false,
+      allowVision: false,
+      allowSpeech: false,
+    };
+    _teamPolicyCache.set(teamId, { policy, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
+    return policy;
+  } catch {
+    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false };
+  }
+}
+
+export async function updateTeamPolicy(
+  teamId: string,
+  patch: Partial<TeamPolicy>,
+): Promise<void> {
+  await db
+    .update(AsafeTeamTable)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(AsafeTeamTable.id, teamId));
+  // Invalidate cache
+  _teamPolicyCache.delete(teamId);
+}

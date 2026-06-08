@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockedFunction } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Chainable SELECT mock for Drizzle:
@@ -12,14 +12,18 @@ const whereMock = vi.fn().mockReturnValue({ limit: limitMock });
 const fromMock = vi.fn().mockReturnValue({ where: whereMock });
 const selectMock = vi.fn().mockReturnValue({ from: fromMock });
 
+const updateSetMock = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
+const updateMock = vi.fn().mockReturnValue({ set: updateSetMock });
+
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: {
     select: selectMock,
+    update: updateMock,
   },
 }));
 
 vi.mock("@/lib/db/pg/schema.pg", () => ({
-  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt" },
+  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech" },
   AsafeTeamMemberTable: { id: "id", teamId: "teamId", userId: "userId", role: "role", createdAt: "createdAt" },
   AsafeTeamBudgetTable: { teamId: "teamId", budgetUsd: "budgetUsd", usedUsd: "usedUsd" },
   AsafeUsageEventTable: { model: "model", provider: "provider", promptTokens: "promptTokens", completionTokens: "completionTokens", costUsd: "costUsd", taskClass: "taskClass", createdAt: "createdAt" },
@@ -30,6 +34,8 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((_a: unknown, _b: unknown) => ({})),
   sql: Object.assign(vi.fn(() => ({})), { raw: vi.fn(() => ({})) }),
   gte: vi.fn((_a: unknown, _b: unknown) => ({})),
+  lte: vi.fn((_a: unknown, _b: unknown) => ({})),
+  and: vi.fn((..._args: unknown[]) => ({})),
   desc: vi.fn((_a: unknown) => ({})),
 }));
 
@@ -116,5 +122,167 @@ describe("getUserPrimaryTeamId", () => {
     // Second call — cache expired, DB hit again
     await getUserPrimaryTeamId("user-ttl");
     expect(selectMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ── getTeamPolicy ─────────────────────────────────────────────────────────────
+
+describe("getTeamPolicy", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _selectRows = [];
+
+    limitMock.mockImplementation(() => Promise.resolve(_selectRows));
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
+
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("returns DB values when team row exists", async () => {
+    _selectRows = [{ guardrailPolicy: "strict", allowImageGen: true, allowVision: true, allowSpeech: false }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-1");
+
+    expect(policy.guardrailPolicy).toBe("strict");
+    expect(policy.allowImageGen).toBe(true);
+    expect(policy.allowVision).toBe(true);
+    expect(policy.allowSpeech).toBe(false);
+  });
+
+  it("returns safe defaults when team does not exist", async () => {
+    _selectRows = [];
+    limitMock.mockResolvedValue([]);
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-missing");
+
+    expect(policy.guardrailPolicy).toBe("standard");
+    expect(policy.allowImageGen).toBe(false);
+    expect(policy.allowVision).toBe(false);
+    expect(policy.allowSpeech).toBe(false);
+  });
+
+  it("returns safe defaults on DB error (fail-open)", async () => {
+    limitMock.mockRejectedValue(new Error("Connection refused"));
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-error");
+
+    expect(policy.guardrailPolicy).toBe("standard");
+    expect(policy.allowVision).toBe(false);
+  });
+
+  it("caches policy for TTL duration (DB called once)", async () => {
+    _selectRows = [{ guardrailPolicy: "permissive", allowImageGen: false, allowVision: false, allowSpeech: false }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    await getTeamPolicy("team-cache");
+    await getTeamPolicy("team-cache"); // second call — should hit cache
+
+    expect(selectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-queries DB after TTL expires", async () => {
+    vi.useFakeTimers();
+    const t0 = new Date("2026-01-01T00:00:00.000Z").getTime();
+    vi.setSystemTime(t0);
+
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    await getTeamPolicy("team-ttl2");
+    expect(selectMock).toHaveBeenCalledTimes(1);
+
+    vi.setSystemTime(t0 + 61_000);
+    await getTeamPolicy("team-ttl2");
+    expect(selectMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("independent teams have independent cache entries", async () => {
+    _selectRows = [{ guardrailPolicy: "strict", allowImageGen: true, allowVision: true, allowSpeech: true }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    const p1 = await getTeamPolicy("team-A");
+    const p2 = await getTeamPolicy("team-B");
+
+    expect(selectMock).toHaveBeenCalledTimes(2);
+    expect(p1.guardrailPolicy).toBe(p2.guardrailPolicy);
+  });
+});
+
+// ── updateTeamPolicy ──────────────────────────────────────────────────────────
+
+describe("updateTeamPolicy", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _selectRows = [];
+
+    limitMock.mockImplementation(() => Promise.resolve(_selectRows));
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
+
+    const updateWhereMock = vi.fn().mockResolvedValue({ rowCount: 1 });
+    updateSetMock.mockReturnValue({ where: updateWhereMock });
+    updateMock.mockReturnValue({ set: updateSetMock });
+
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("calls db.update once with the correct patch", async () => {
+    const { updateTeamPolicy } = await import("./teams");
+    await updateTeamPolicy("team-update", { guardrailPolicy: "strict", allowVision: true });
+
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ guardrailPolicy: "strict", allowVision: true }),
+    );
+  });
+
+  it("includes updatedAt in the SET clause", async () => {
+    const { updateTeamPolicy } = await import("./teams");
+    await updateTeamPolicy("team-ts", { allowSpeech: true });
+
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ updatedAt: expect.any(Date) }),
+    );
+  });
+
+  it("invalidates the policy cache so next getTeamPolicy re-queries", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy, updateTeamPolicy } = await import("./teams");
+
+    await getTeamPolicy("team-inv");
+    expect(selectMock).toHaveBeenCalledTimes(1);
+
+    const updateWhereMock = vi.fn().mockResolvedValue({});
+    updateSetMock.mockReturnValue({ where: updateWhereMock });
+    await updateTeamPolicy("team-inv", { guardrailPolicy: "strict" });
+
+    // Now re-fetch — should hit DB again
+    _selectRows = [{ guardrailPolicy: "strict", allowImageGen: false, allowVision: false, allowSpeech: false }];
+    limitMock.mockResolvedValue(_selectRows);
+    const fresh = await getTeamPolicy("team-inv");
+
+    expect(selectMock).toHaveBeenCalledTimes(2);
+    expect(fresh.guardrailPolicy).toBe("strict");
   });
 });

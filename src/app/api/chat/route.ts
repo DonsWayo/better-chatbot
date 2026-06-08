@@ -37,7 +37,8 @@ import { serverFileStorage } from "lib/file-storage";
 import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
 import { checkRateLimit } from "lib/rate-limit";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
-import { getUserPrimaryTeamId } from "lib/admin/teams";
+import { getUserPrimaryTeamId, getTeamPolicy } from "lib/admin/teams";
+import { getUserPreferences } from "lib/user/server";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
 import { compressMessages, COMPRESSION_ENABLED } from "lib/ai/compression";
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
     }
 
     const userTeamId = await getUserPrimaryTeamId(session.user.id);
+    const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
 
     // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe)
     const rateCheck = await checkRateLimit(session.user.id);
@@ -160,6 +162,13 @@ export async function POST(request: Request) {
       }
     }
 
+    // W9: vision gate — strip image parts if team hasn't enabled vision
+    if (!teamPolicy?.allowVision) {
+      message.parts = (message.parts ?? []).filter(
+        (p: any) => p?.type !== "image" && p?.type !== "image_url",
+      );
+    }
+
     if (attachments.length) {
       const firstTextIndex = message.parts.findIndex(
         (part: any) => part?.type === "text",
@@ -241,7 +250,7 @@ export async function POST(request: Request) {
     const effectiveModel = routing ? routing.model : chatModel;
     const rawModel = customModelProvider.getModel(effectiveModel);
     const { wrapWithGuardrails } = await import("lib/ai/guardrails");
-    const model = wrapWithGuardrails(rawModel, session.user.id);
+    const model = wrapWithGuardrails(rawModel, session.user.id, teamPolicy?.guardrailPolicy);
 
     // W8: fire-and-forget audit log for this request lifecycle
     const { auditChatRequest, hashContent } = await import("lib/compliance/audit");
@@ -353,7 +362,11 @@ export async function POST(request: Request) {
           );
         }
 
-        const userPreferences = thread?.userPreferences || undefined;
+        // W9: fall back to DB preferences for new threads that don't yet have thread-level prefs
+        const userPreferences =
+          thread?.userPreferences ||
+          (await getUserPreferences(session.user.id)) ||
+          undefined;
 
         const mcpServerCustomizations = await safe()
           .map(() => {
