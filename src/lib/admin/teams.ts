@@ -173,3 +173,43 @@ export async function removeTeamMember(memberId: string) {
     .delete(AsafeTeamMemberTable)
     .where(eq(AsafeTeamMemberTable.id, memberId));
 }
+
+// ---------------------------------------------------------------------------
+// getUserPrimaryTeamId — lightweight lookup with a 60-second in-process cache.
+// Used by the chat route to attach a teamId to budget checks and usage events
+// without adding a DB round-trip on every request after the first.
+// ---------------------------------------------------------------------------
+
+interface TeamIdCacheEntry {
+  teamId: string | null;
+  expiresAt: number;
+}
+
+const _teamIdCache = new Map<string, TeamIdCacheEntry>();
+const TEAM_ID_CACHE_TTL_MS = 60_000;
+
+export async function getUserPrimaryTeamId(
+  userId: string,
+): Promise<string | null> {
+  const now = Date.now();
+  const cached = _teamIdCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return cached.teamId;
+  }
+
+  try {
+    const [row] = await db
+      .select({ teamId: AsafeTeamMemberTable.teamId })
+      .from(AsafeTeamMemberTable)
+      .where(eq(AsafeTeamMemberTable.userId, userId))
+      .limit(1);
+
+    const teamId = row?.teamId ?? null;
+    _teamIdCache.set(userId, { teamId, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
+    return teamId;
+  } catch {
+    // Fail open: if the DB is unavailable, fall back to no team rather than
+    // blocking the chat request.
+    return null;
+  }
+}

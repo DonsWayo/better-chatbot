@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   json,
+  jsonb,
   uuid,
   boolean,
   unique,
@@ -16,6 +17,7 @@ import {
   numeric,
   integer,
   customType,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -634,3 +636,25 @@ export const asafePromptTemplateRelations = relations(AsafePromptTemplateTable, 
 }));
 
 export type AsafePromptTemplateEntity = typeof AsafePromptTemplateTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 1 – Postgres-backed KV cache (replaces Redis)
+// ---------------------------------------------------------------------------
+
+export const AsafeKvCacheTable = pgTable("asafe_kv_cache", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+export const AsafeRateLimitBucketTable = pgTable(
+  "asafe_rate_limit_bucket",
+  {
+    userId: text("user_id").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(1),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.windowStart] }),
+  ],
+);

@@ -37,6 +37,7 @@ import { serverFileStorage } from "lib/file-storage";
 import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
 import { checkRateLimit } from "lib/rate-limit";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { getUserPrimaryTeamId } from "lib/admin/teams";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
 import { compressMessages, COMPRESSION_ENABLED } from "lib/ai/compression";
@@ -71,8 +72,10 @@ export async function POST(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // asafe-ai Wave 12: per-user rate limiting (in-memory; swap to Redis in multi-pod prod)
-    const rateCheck = checkRateLimit(session.user.id);
+    const userTeamId = await getUserPrimaryTeamId(session.user.id);
+
+    // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe)
+    const rateCheck = await checkRateLimit(session.user.id);
     if (!rateCheck.allowed) {
       chatErrorsTotal.inc({ type: "rate_limited" });
       return Response.json(
@@ -268,7 +271,7 @@ export async function POST(request: Request) {
       !useImageTool;
 
     // asafe-ai Wave 3 (ADR-0003): enforce team budget before starting inference
-    const budgetCheck = await checkBudget(session.user.id, null); // teamId TODO: from session in W4
+    const budgetCheck = await checkBudget(session.user.id, userTeamId);
     if (!budgetCheck.allowed) {
       chatErrorsTotal.inc({ type: "budget_exceeded" });
       return Response.json({ message: budgetCheck.reason }, { status: 402 });
@@ -531,7 +534,7 @@ export async function POST(request: Request) {
           );
           recordUsage({
             userId: session.user.id,
-            teamId: null, // TODO: from session in W4
+            teamId: userTeamId,
             sessionId: thread?.id ?? null,
             model: effectiveModel?.model ?? "",
             provider: effectiveModel?.provider ?? "",

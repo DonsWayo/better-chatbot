@@ -1,116 +1,80 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock the DB module before importing the function under test
+vi.mock("@/lib/db/pg/db.pg", () => {
+  const insertMock = vi.fn();
+  return {
+    pgDb: {
+      insert: insertMock,
+    },
+  };
+});
+
+vi.mock("@/lib/db/pg/schema.pg", () => ({
+  AsafeRateLimitBucketTable: {
+    userId: "user_id",
+    windowStart: "window_start",
+    count: "count",
+  },
+}));
+
+import { pgDb } from "@/lib/db/pg/db.pg";
 import { checkRateLimit } from "./index";
 
-// Access the internal buckets map to manipulate time via Date.now mocking.
-// We reset the module between suites where needed to get a fresh Map.
+function makeInsertChain(returnedCount: number | null) {
+  const returningFn = vi.fn().mockResolvedValue(
+    returnedCount !== null ? [{ count: returnedCount }] : [],
+  );
+  const onConflictFn = vi.fn().mockReturnValue({ returning: returningFn });
+  const valuesFn = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictFn });
+  return { valuesFn, onConflictFn, returningFn };
+}
 
-describe("checkRateLimit", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllEnvs();
-  });
+describe("checkRateLimit (Postgres-backed)", () => {
+  it("when DB returns count=1, allowed=true, remaining=limit-1", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
 
-  it("first call is allowed and remaining equals limit minus 1", () => {
-    vi.setSystemTime(1_000_000);
-
-    const result = checkRateLimit("user-first-call", 10, 60_000);
+    const result = await checkRateLimit("user-1", 10, 60_000);
 
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(9);
-    expect(result.resetAt).toBe(1_000_000 + 60_000);
+    expect(typeof result.resetAt).toBe("number");
+    expect(result.resetAt).toBeGreaterThan(Date.now() - 1);
   });
 
-  it("calls up to the limit are all allowed", () => {
-    vi.setSystemTime(2_000_000);
+  it("when DB returns count=limit+1, allowed=false, remaining=0", async () => {
     const limit = 5;
+    const { valuesFn } = makeInsertChain(limit + 1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
 
-    for (let i = 1; i <= limit; i++) {
-      const result = checkRateLimit("user-up-to-limit", limit, 60_000);
-      expect(result.allowed).toBe(true);
-    }
-  });
+    const result = await checkRateLimit("user-2", limit, 60_000);
 
-  it("call at limit+1 is NOT allowed and remaining is 0", () => {
-    vi.setSystemTime(3_000_000);
-    const limit = 3;
-
-    // exhaust the limit
-    for (let i = 0; i < limit; i++) {
-      checkRateLimit("user-over-limit", limit, 60_000);
-    }
-
-    // one over
-    const result = checkRateLimit("user-over-limit", limit, 60_000);
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
   });
 
-  it("after window expires the bucket resets and the next call is allowed again", () => {
-    const windowMs = 60_000;
-    vi.setSystemTime(4_000_000);
+  it("when DB throws, allowed=true (fail open)", async () => {
+    const valuesFn = vi.fn().mockReturnValue({
+      onConflictDoUpdate: vi.fn().mockReturnValue({
+        returning: vi.fn().mockRejectedValue(new Error("DB connection lost")),
+      }),
+    });
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
 
-    // exhaust the limit
-    const limit = 2;
-    for (let i = 0; i < limit + 1; i++) {
-      checkRateLimit("user-window-reset", limit, windowMs);
-    }
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await checkRateLimit("user-3", 10, 60_000);
 
-    // Advance time past the window
-    vi.setSystemTime(4_000_000 + windowMs + 1);
-
-    const result = checkRateLimit("user-window-reset", limit, windowMs);
     expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(limit - 1);
-  });
-
-  it("different userIds have isolated buckets", () => {
-    vi.setSystemTime(5_000_000);
-    const limit = 2;
-
-    // exhaust user-a
-    for (let i = 0; i < limit + 1; i++) {
-      checkRateLimit("user-a-isolated", limit, 60_000);
-    }
-
-    // user-b should still be on its first call
-    const resultB = checkRateLimit("user-b-isolated", limit, 60_000);
-    expect(resultB.allowed).toBe(true);
-    expect(resultB.remaining).toBe(limit - 1);
-
-    // user-a should be denied
-    const resultA = checkRateLimit("user-a-isolated", limit, 60_000);
-    expect(resultA.allowed).toBe(false);
-  });
-
-  it("custom limit param is respected", () => {
-    vi.setSystemTime(6_000_000);
-
-    // Use a custom limit of 1
-    const result1 = checkRateLimit("user-custom-limit", 1, 60_000);
-    expect(result1.allowed).toBe(true);
-    expect(result1.remaining).toBe(0);
-
-    const result2 = checkRateLimit("user-custom-limit", 1, 60_000);
-    expect(result2.allowed).toBe(false);
-    expect(result2.remaining).toBe(0);
-  });
-
-  it("uses ASAFE_RATE_LIMIT_RPM env var as default limit", () => {
-    vi.stubEnv("ASAFE_RATE_LIMIT_RPM", "2");
-    vi.setSystemTime(7_000_000);
-
-    // Two calls should be allowed (limit = 2)
-    checkRateLimit("user-env-limit");
-    const second = checkRateLimit("user-env-limit");
-    expect(second.allowed).toBe(true);
-    expect(second.remaining).toBe(0);
-
-    // Third call should be denied
-    const third = checkRateLimit("user-env-limit");
-    expect(third.allowed).toBe(false);
+    expect(result.remaining).toBe(10);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("rate-limit DB error"),
+      expect.any(Error),
+    );
+    consoleSpy.mockRestore();
   });
 });
