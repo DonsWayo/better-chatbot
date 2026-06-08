@@ -42,6 +42,7 @@ describe("checkRateLimit (Postgres-backed)", () => {
     const result = await checkRateLimit("user-1", 10, 60_000);
 
     expect(result.allowed).toBe(true);
+    expect(result.limit).toBe(10);
     expect(result.remaining).toBe(9);
     expect(typeof result.resetAt).toBe("number");
     expect(result.resetAt).toBeGreaterThan(Date.now() - 1);

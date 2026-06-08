@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 export interface RateLimitResult {
   allowed: boolean;
+  limit: number;
   remaining: number;
   resetAt: number; // epoch ms
 }
@@ -31,10 +32,10 @@ export async function checkRateLimit(
     const count = row?.count ?? 1;
     const remaining = Math.max(0, limit - count);
     const allowed = count <= limit;
-    return { allowed, remaining, resetAt };
+    return { allowed, limit, remaining, resetAt };
   } catch (err) {
     // Fail open on DB error — never block inference due to rate limit DB hiccup
     console.error("rate-limit DB error (failing open):", err);
-    return { allowed: true, remaining: limit, resetAt };
+    return { allowed: true, limit, remaining: limit, resetAt };
   }
 }

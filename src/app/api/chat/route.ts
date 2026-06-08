@@ -76,6 +76,11 @@ export async function POST(request: Request) {
 
     // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe)
     const rateCheck = await checkRateLimit(session.user.id);
+    const rateLimitHeaders = {
+      "X-RateLimit-Limit": String(rateCheck.limit),
+      "X-RateLimit-Remaining": String(rateCheck.remaining),
+      "X-RateLimit-Reset": String(Math.ceil(rateCheck.resetAt / 1000)),
+    };
     if (!rateCheck.allowed) {
       chatErrorsTotal.inc({ type: "rate_limited" });
       return Response.json(
@@ -83,8 +88,8 @@ export async function POST(request: Request) {
         {
           status: 429,
           headers: {
+            ...rateLimitHeaders,
             "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)),
-            "X-RateLimit-Remaining": "0",
           },
         },
       );
@@ -560,9 +565,9 @@ export async function POST(request: Request) {
       originalMessages: messages,
     });
 
-    return createUIMessageStreamResponse({
-      stream,
-    });
+    const streamResponse = createUIMessageStreamResponse({ stream });
+    Object.entries(rateLimitHeaders).forEach(([k, v]) => streamResponse.headers.set(k, v));
+    return streamResponse;
   } catch (error: any) {
     logger.error(error);
     return Response.json({ message: error.message }, { status: 500 });
