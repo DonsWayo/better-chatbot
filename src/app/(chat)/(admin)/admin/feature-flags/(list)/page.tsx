@@ -1,5 +1,3 @@
-"use server";
-
 import { requireAdminPermission } from "auth/permissions";
 import { unauthorized } from "next/navigation";
 import { FeatureFlagsPanel } from "@/components/admin/feature-flags-panel";
