@@ -2,9 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "lib/auth/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { UserTable, AsafeTeamTable } from "@/lib/db/pg/schema.pg";
-import { addTeamMember } from "lib/admin/teams";
+import { addTeamMember, getTeamWithMembers } from "lib/admin/teams";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+
+/**
+ * GET /api/admin/teams/[id]/members
+ *
+ * List all members of a team. Admin-only.
+ */
+export async function GET(
+  _request: NextRequest,
+  props: { params: Promise<{ id: string }> },
+) {
+  const params = await props.params;
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "admin") return NextResponse.json({ error: "Admin required" }, { status: 403 });
+
+  const teamData = await getTeamWithMembers(params.id);
+  if (!teamData) return NextResponse.json({ error: "Team not found" }, { status: 404 });
+
+  const members = teamData.members.map((m) => ({
+    id: m.memberId,
+    userId: m.userId,
+    role: m.role,
+    name: m.userName,
+    email: m.userEmail,
+    joinedAt: m.joinedAt,
+  }));
+  return NextResponse.json({ members });
+}
 
 const AddMemberSchema = z.object({
   email: z.string().email().optional(),
