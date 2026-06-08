@@ -161,7 +161,6 @@
     },
     "Thread": {
       "chat": "チャット",
-
       "renameChat": "名前を変更",
       "deleteChat": "チャットを削除",
       "deleteUnarchivedChats": "アーカイブされていないチャットをすべて削除",
@@ -181,7 +180,6 @@
       "createLink": "リンクを作成",
       "linkCopied": "リンクがコピーされました"
     },
-
     "ChatPreferences": {
       "title": "チャット設定",
       "whatShouldWeCallYou": "何とお呼びすればよろしいですか？",
@@ -507,6 +505,20 @@
         "imageSizeMustBeLessThan": "画像サイズは5MB未満である必要があります",
         "select": "選択"
       }
+    }
+  },
+  "Admin": {
+    "FeatureFlags": {
+      "title": "機能フラグ",
+      "flagName": "フラグ",
+      "flagEnabled": "有効",
+      "killSwitch": "キルスイッチ",
+      "killSwitchDescription": "すべてのAI推論を即座にブロックします。インシデントが解決されたらすぐに無効にしてください。",
+      "activate": "有効化",
+      "deactivate": "無効化",
+      "activated": "キルスイッチが有効です — すべての推論がブロックされています",
+      "deactivated": "キルスイッチが無効です — 推論は正常に動作しています",
+      "flagUpdated": "フラグを更新しました"
     }
   }
 }

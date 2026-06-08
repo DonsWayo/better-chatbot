@@ -508,5 +508,19 @@
         "select": "选择"
       }
     }
+  },
+  "Admin": {
+    "FeatureFlags": {
+      "title": "功能标志",
+      "flagName": "标志",
+      "flagEnabled": "已启用",
+      "killSwitch": "终止开关",
+      "killSwitchDescription": "立即阻止所有AI推理。事件解决后立即停用。",
+      "activate": "激活",
+      "deactivate": "停用",
+      "activated": "终止开关已激活 — 所有推理已被阻止",
+      "deactivated": "终止开关已停用 — 推理正常运行",
+      "flagUpdated": "标志已更新"
+    }
   }
 }

@@ -162,7 +162,6 @@
     },
     "Thread": {
       "chat": "채팅",
-
       "renameChat": "채팅 이름 변경",
       "deleteChat": "채팅 삭제",
       "deleteUnarchivedChats": "아카이브되지 않은 채팅 모두 삭제",
@@ -182,7 +181,6 @@
       "createLink": "링크 만들기",
       "linkCopied": "링크가 복사되었습니다"
     },
-
     "ChatPreferences": {
       "title": "채팅 환경설정",
       "whatShouldWeCallYou": "뭐라고 불러드릴까요?",
@@ -522,6 +520,20 @@
         "imageSizeMustBeLessThan": "이미지 크기는 5MB 미만이어야 합니다",
         "select": "선택"
       }
+    }
+  },
+  "Admin": {
+    "FeatureFlags": {
+      "title": "기능 플래그",
+      "flagName": "플래그",
+      "flagEnabled": "활성화됨",
+      "killSwitch": "킬 스위치",
+      "killSwitchDescription": "모든 AI 추론을 즉시 차단합니다. 인시던트가 해결되는 즉시 비활성화하세요.",
+      "activate": "활성화",
+      "deactivate": "비활성화",
+      "activated": "킬 스위치 활성화 — 모든 추론이 차단됩니다",
+      "deactivated": "킬 스위치 비활성화 — 추론이 정상적으로 작동합니다",
+      "flagUpdated": "플래그가 업데이트되었습니다"
     }
   }
 }
