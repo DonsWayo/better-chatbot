@@ -8,7 +8,7 @@ import {
   AsafeUsageEventTable,
   UserTable,
 } from "@/lib/db/pg/schema.pg";
-import { eq, sql, gte, desc } from "drizzle-orm";
+import { eq, sql, gte, lte, desc, and } from "drizzle-orm";
 
 export interface AdminTeamListItem {
   id: string;
@@ -105,6 +105,59 @@ export async function getUsageSummary(options: {
   return { byModel, byTaskClass, totals, days };
 }
 
+// ---------------------------------------------------------------------------
+// Budget alert summary — used by the admin usage dashboard
+// ---------------------------------------------------------------------------
+
+export interface BudgetAlertItem {
+  teamId: string;
+  teamName: string;
+  budgetUsd: string;
+  usedUsd: string;
+  periodStart: Date;
+  periodEnd: Date;
+  utilizationRatio: number;
+  alert: boolean;
+}
+
+const BUDGET_ALERT_THRESHOLD = 0.8;
+
+export async function getBudgetAlerts(): Promise<BudgetAlertItem[]> {
+  const now = new Date();
+  const rows = await db
+    .select({
+      teamId: AsafeTeamBudgetTable.teamId,
+      teamName: AsafeTeamTable.name,
+      budgetUsd: AsafeTeamBudgetTable.budgetUsd,
+      usedUsd: AsafeTeamBudgetTable.usedUsd,
+      periodStart: AsafeTeamBudgetTable.periodStart,
+      periodEnd: AsafeTeamBudgetTable.periodEnd,
+    })
+    .from(AsafeTeamBudgetTable)
+    .innerJoin(AsafeTeamTable, eq(AsafeTeamTable.id, AsafeTeamBudgetTable.teamId))
+    .where(
+      and(
+        lte(AsafeTeamBudgetTable.periodStart, now),
+        gte(AsafeTeamBudgetTable.periodEnd, now),
+      ),
+    );
+
+  return rows.map((r) => {
+    const ratio =
+      parseFloat(r.usedUsd as string) / parseFloat(r.budgetUsd as string);
+    return {
+      teamId: r.teamId,
+      teamName: r.teamName,
+      budgetUsd: r.budgetUsd as string,
+      usedUsd: r.usedUsd as string,
+      periodStart: r.periodStart,
+      periodEnd: r.periodEnd,
+      utilizationRatio: ratio,
+      alert: ratio >= BUDGET_ALERT_THRESHOLD,
+    };
+  });
+}
+
 export async function createTeam(
   name: string,
   description?: string,
@@ -137,20 +190,35 @@ export async function getTeamWithMembers(teamId: string) {
     .limit(1);
   if (!team) return null;
 
-  const members = await db
-    .select({
-      memberId: AsafeTeamMemberTable.id,
-      userId: AsafeTeamMemberTable.userId,
-      role: AsafeTeamMemberTable.role,
-      joinedAt: AsafeTeamMemberTable.createdAt,
-      userName: UserTable.name,
-      userEmail: UserTable.email,
-    })
-    .from(AsafeTeamMemberTable)
-    .innerJoin(UserTable, eq(AsafeTeamMemberTable.userId, UserTable.id))
-    .where(eq(AsafeTeamMemberTable.teamId, teamId));
+  const now = new Date();
 
-  return { ...team, members };
+  const [members, activeBudget] = await Promise.all([
+    db
+      .select({
+        memberId: AsafeTeamMemberTable.id,
+        userId: AsafeTeamMemberTable.userId,
+        role: AsafeTeamMemberTable.role,
+        joinedAt: AsafeTeamMemberTable.createdAt,
+        userName: UserTable.name,
+        userEmail: UserTable.email,
+      })
+      .from(AsafeTeamMemberTable)
+      .innerJoin(UserTable, eq(AsafeTeamMemberTable.userId, UserTable.id))
+      .where(eq(AsafeTeamMemberTable.teamId, teamId)),
+    db
+      .select()
+      .from(AsafeTeamBudgetTable)
+      .where(
+        and(
+          eq(AsafeTeamBudgetTable.teamId, teamId),
+          lte(AsafeTeamBudgetTable.periodStart, now),
+          gte(AsafeTeamBudgetTable.periodEnd, now),
+        ),
+      )
+      .limit(1),
+  ]);
+
+  return { ...team, members, budget: activeBudget[0] ?? null };
 }
 
 export async function addTeamMember(

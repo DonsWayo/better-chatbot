@@ -28,11 +28,12 @@ import {
   CardHeader,
   CardTitle,
 } from "ui/card";
-import { ArrowLeft, Trash2, UserPlus } from "lucide-react";
+import { ArrowLeft, Trash2, UserPlus, DollarSign } from "lucide-react";
 import Link from "next/link";
 import {
   addTeamMemberAction,
   removeTeamMemberAction,
+  setBudgetAction,
 } from "@/app/(chat)/(admin)/admin/teams/[id]/actions";
 
 type Role = "admin" | "editor" | "member";
@@ -46,6 +47,15 @@ interface Member {
   userEmail: string;
 }
 
+interface Budget {
+  id: string;
+  teamId: string;
+  budgetUsd: string;
+  usedUsd: string;
+  periodStart: Date;
+  periodEnd: Date;
+}
+
 interface Team {
   id: string;
   name: string;
@@ -53,6 +63,7 @@ interface Team {
   description: string | null;
   createdAt: Date;
   members: Member[];
+  budget: Budget | null;
 }
 
 interface TeamDetailClientProps {
@@ -78,6 +89,28 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
   // Remove state
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Budget form state
+  const today = new Date().toISOString().slice(0, 10);
+  const thirtyDaysOut = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const [budgetUsd, setBudgetUsd] = useState(
+    team.budget?.budgetUsd ?? "",
+  );
+  const [periodStart, setPeriodStart] = useState(
+    team.budget
+      ? new Date(team.budget.periodStart).toISOString().slice(0, 10)
+      : today,
+  );
+  const [periodEnd, setPeriodEnd] = useState(
+    team.budget
+      ? new Date(team.budget.periodEnd).toISOString().slice(0, 10)
+      : thirtyDaysOut,
+  );
+  const [isSavingBudget, setIsSavingBudget] = useState(false);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [budgetSuccess, setBudgetSuccess] = useState(false);
 
   const handleAdd = async () => {
     if (!email.trim()) return;
@@ -106,6 +139,26 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
       });
     } finally {
       setRemovingId(null);
+    }
+  };
+
+  const handleSaveBudget = async () => {
+    if (!budgetUsd.trim() || !periodStart || !periodEnd) return;
+    setIsSavingBudget(true);
+    setBudgetError(null);
+    setBudgetSuccess(false);
+    try {
+      await setBudgetAction(team.id, budgetUsd.trim(), periodStart, periodEnd);
+      setBudgetSuccess(true);
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (err) {
+      setBudgetError(
+        err instanceof Error ? err.message : "Failed to save budget",
+      );
+    } finally {
+      setIsSavingBudget(false);
     }
   };
 
@@ -261,6 +314,116 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           </div>
           {addError && (
             <p className="mt-2 text-sm text-destructive">{addError}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Budget section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Budget
+          </CardTitle>
+          <CardDescription>
+            Set or update the spending budget for this team.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Current budget summary */}
+          {team.budget ? (
+            <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Current budget</span>
+                <span className="font-medium">
+                  ${parseFloat(team.budget.budgetUsd).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Used</span>
+                <span>
+                  ${parseFloat(team.budget.usedUsd).toFixed(4)}
+                  {" "}
+                  <span className="text-muted-foreground text-xs">
+                    ({Math.min(
+                      100,
+                      Math.round(
+                        (parseFloat(team.budget.usedUsd) /
+                          parseFloat(team.budget.budgetUsd)) *
+                          100,
+                      ),
+                    )}%)
+                  </span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Period</span>
+                <span className="text-xs">
+                  {format(new Date(team.budget.periodStart), "MMM d, yyyy")}
+                  {" — "}
+                  {format(new Date(team.budget.periodEnd), "MMM d, yyyy")}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No active budget set for this team.
+            </p>
+          )}
+
+          {/* Budget form */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Budget (USD)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="100.00"
+                value={budgetUsd}
+                onChange={(e) => setBudgetUsd(e.target.value)}
+                disabled={isSavingBudget}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Period start
+              </label>
+              <Input
+                type="date"
+                value={periodStart}
+                onChange={(e) => setPeriodStart(e.target.value)}
+                disabled={isSavingBudget}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Period end
+              </label>
+              <Input
+                type="date"
+                value={periodEnd}
+                onChange={(e) => setPeriodEnd(e.target.value)}
+                disabled={isSavingBudget}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleSaveBudget}
+            disabled={!budgetUsd.trim() || !periodStart || !periodEnd || isSavingBudget}
+            className="w-full sm:w-auto"
+          >
+            {isSavingBudget ? "Saving…" : "Save Budget"}
+          </Button>
+
+          {budgetError && (
+            <p className="text-sm text-destructive">{budgetError}</p>
+          )}
+          {budgetSuccess && (
+            <p className="text-sm text-green-600">Budget saved successfully.</p>
           )}
         </CardContent>
       </Card>

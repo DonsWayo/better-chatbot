@@ -1,6 +1,6 @@
 import { pgDb as db } from "../db.pg";
-import { McpServerTable, UserTable } from "../schema.pg";
-import { eq, or, desc } from "drizzle-orm";
+import { McpServerTable, UserTable, AsafeTeamMemberTable } from "../schema.pg";
+import { eq, or, and, inArray, desc } from "drizzle-orm";
 import { generateUUID } from "lib/utils";
 import type { MCPRepository } from "app-types/mcp";
 
@@ -44,7 +44,31 @@ export const pgMcpRepository: MCPRepository = {
   },
 
   async selectAllForUser(userId) {
-    // Get user's own MCP servers and featured ones
+    // Resolve team IDs the user belongs to
+    const teamMemberships = await db
+      .select({ teamId: AsafeTeamMemberTable.teamId })
+      .from(AsafeTeamMemberTable)
+      .where(eq(AsafeTeamMemberTable.userId, userId));
+
+    const userTeamIds = teamMemberships.map((m) => m.teamId);
+
+    // Build visibility conditions:
+    //   1. Personal servers owned by the user
+    //   2. Org/featured public servers
+    //   3. Team-scoped servers where the user is a team member (NEW)
+    const visibilityConditions = [
+      eq(McpServerTable.userId, userId),
+      eq(McpServerTable.visibility, "public"),
+      ...(userTeamIds.length > 0
+        ? [
+            and(
+              eq(McpServerTable.scope, "team"),
+              inArray(McpServerTable.teamId, userTeamIds),
+            ),
+          ]
+        : []),
+    ];
+
     const results = await db
       .select({
         id: McpServerTable.id,
@@ -61,12 +85,7 @@ export const pgMcpRepository: MCPRepository = {
       })
       .from(McpServerTable)
       .leftJoin(UserTable, eq(McpServerTable.userId, UserTable.id))
-      .where(
-        or(
-          eq(McpServerTable.userId, userId),
-          eq(McpServerTable.visibility, "public"),
-        ),
-      )
+      .where(or(...visibilityConditions))
       .orderBy(desc(McpServerTable.createdAt));
     return results;
   },

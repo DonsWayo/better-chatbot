@@ -4,7 +4,7 @@ import { requireAdminPermission } from "lib/auth/permissions";
 import { revalidatePath } from "next/cache";
 import { addTeamMember, removeTeamMember } from "lib/admin/teams";
 import { pgDb as db } from "lib/db/pg/db.pg";
-import { UserTable } from "@/lib/db/pg/schema.pg";
+import { UserTable, AsafeTeamBudgetTable } from "@/lib/db/pg/schema.pg";
 import { eq } from "drizzle-orm";
 
 export async function addTeamMemberAction(
@@ -29,5 +29,41 @@ export async function removeTeamMemberAction(
 ) {
   await requireAdminPermission();
   await removeTeamMember(memberId);
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function setBudgetAction(
+  teamId: string,
+  budgetUsd: string,
+  periodStart: string,
+  periodEnd: string,
+) {
+  await requireAdminPermission("manage team budgets");
+
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+
+  if (end <= start) {
+    throw new Error("Period end must be after period start");
+  }
+
+  await db
+    .insert(AsafeTeamBudgetTable)
+    .values({
+      teamId,
+      budgetUsd,
+      periodStart: start,
+      periodEnd: end,
+    })
+    .onConflictDoUpdate({
+      target: AsafeTeamBudgetTable.teamId,
+      set: {
+        budgetUsd,
+        periodStart: start,
+        periodEnd: end,
+        updatedAt: new Date(),
+      },
+    });
+
   revalidatePath(`/admin/teams/${teamId}`);
 }

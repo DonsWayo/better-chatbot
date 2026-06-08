@@ -5,6 +5,47 @@ import { getSession } from "auth/server";
 import { canManageMCPServer } from "lib/auth/permissions";
 import logger from "lib/logger";
 
+export async function GET(
+  _request: NextRequest,
+  props: { params: Promise<{ id: string }> },
+) {
+  const params = await props.params;
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const mcpServer = await pgMcpRepository.selectById(params.id);
+    if (!mcpServer) {
+      return NextResponse.json(
+        { error: "MCP server not found" },
+        { status: 404 },
+      );
+    }
+
+    const isOwner = mcpServer.userId === session.user.id;
+    const isAdmin = session.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.json(mcpServer);
+  } catch (error) {
+    logger.error("Failed to fetch MCP server:", error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch MCP server",
+      },
+      { status: 500 },
+    );
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   props: { params: Promise<{ id: string }> },
