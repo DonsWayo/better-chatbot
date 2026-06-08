@@ -9,6 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "ui/table";
+import { Button } from "ui/button";
+import { Download } from "lucide-react";
 import type { getUsageSummary } from "lib/admin/teams";
 
 interface UsageTableProps {
@@ -30,6 +32,14 @@ export function UsageTable({ data }: UsageTableProps) {
 
   return (
     <div className="space-y-6 w-full">
+      <div className="flex justify-end">
+        <a href={`/api/admin/usage/export?days=${days}`} download>
+          <Button variant="outline" size="sm" data-testid="usage-export-csv-btn">
+            <Download className="size-4 mr-2" />
+            Export CSV ({days}d)
+          </Button>
+        </a>
+      </div>
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
