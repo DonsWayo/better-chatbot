@@ -97,4 +97,40 @@ describe("POST /api/prompts", () => {
     const body = await res.json();
     expect(body.title).toBe("My Prompt");
   });
+
+  it("never calls dbInsert when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ title: "T", content: "C" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("201 response has id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-xyz", title: "T", content: "C" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ title: "T", content: "C" }));
+    const body = await res.json();
+    expect(body.id).toBe("p-xyz");
+  });
+});
+
+describe("GET /api/prompts — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls dbSelect when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectOrderByMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
 });

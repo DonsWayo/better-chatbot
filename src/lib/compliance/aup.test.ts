@@ -99,4 +99,38 @@ describe("recordAupAcceptance", () => {
     await hasAcceptedAup("user-inv"); // should re-query
     expect(selectMock).toHaveBeenCalledTimes(2);
   });
+
+  it("resolves without throwing", async () => {
+    const { recordAupAcceptance } = await import("./aup");
+    await expect(recordAupAcceptance("user-ok")).resolves.toBeUndefined();
+  });
+});
+
+describe("hasAcceptedAup — additional cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    selectLimitMock.mockResolvedValue([]);
+    selectWhereMock.mockReturnValue({ limit: selectLimitMock });
+    selectFromMock.mockReturnValue({ where: selectWhereMock });
+    selectMock.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("different userIds are handled independently (no cross-user contamination)", async () => {
+    selectLimitMock
+      .mockResolvedValueOnce([{ id: "r1" }])  // user-A: has accepted
+      .mockResolvedValueOnce([]);               // user-B: has not accepted
+    const { hasAcceptedAup } = await import("./aup");
+    const resultA = await hasAcceptedAup("user-A");
+    const resultB = await hasAcceptedAup("user-B");
+    expect(resultA).toBe(true);
+    expect(resultB).toBe(false);
+  });
+
+  it("returns boolean (not truthy/falsy arbitrary value)", async () => {
+    selectLimitMock.mockResolvedValue([{ id: "abc" }]);
+    const { hasAcceptedAup } = await import("./aup");
+    const result = await hasAcceptedAup("user-bool");
+    expect(typeof result).toBe("boolean");
+  });
 });

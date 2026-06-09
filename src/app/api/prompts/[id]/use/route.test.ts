@@ -97,4 +97,19 @@ describe("POST /api/prompts/[id]/use", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("calls dbUpdate exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-1" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbUpdateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls dbUpdate when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
 });
