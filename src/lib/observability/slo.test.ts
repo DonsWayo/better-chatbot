@@ -94,3 +94,38 @@ describe("SLO metrics — behaviour", () => {
     expect(() => ttftMs.observe(labels, 2000)).not.toThrow();
   });
 });
+
+describe("SLO metrics — all exports are defined", () => {
+  it("ttftMs is defined", () => {
+    expect(ttftMs).toBeDefined();
+  });
+
+  it("providerErrorsTotal is defined", () => {
+    expect(providerErrorsTotal).toBeDefined();
+  });
+
+  it("providerFallbackTotal is defined", () => {
+    expect(providerFallbackTotal).toBeDefined();
+  });
+
+  it("activeRequests is defined", () => {
+    expect(activeRequests).toBeDefined();
+  });
+
+  it("killSwitchActivations is defined", () => {
+    expect(killSwitchActivations).toBeDefined();
+  });
+
+  it("rateLimitActivations is defined", () => {
+    expect(rateLimitActivations).toBeDefined();
+  });
+
+  it("Counters do NOT have observe() (they are not histograms)", () => {
+    expect((providerErrorsTotal as any).observe).toBeUndefined();
+    expect((killSwitchActivations as any).observe).toBeUndefined();
+  });
+
+  it("Histogram does NOT have inc() directly (it is not a counter)", () => {
+    expect((ttftMs as any).inc).toBeUndefined();
+  });
+});

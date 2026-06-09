@@ -94,4 +94,44 @@ describe("DELETE /api/knowledge/collections/[id]", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
   });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/knowledge/collections/[id] — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("200 response body has collection key", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1", name: "Docs" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("collection");
+  });
+});
+
+describe("DELETE /api/knowledge/collections/[id] — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls delete when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls delete for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
 });

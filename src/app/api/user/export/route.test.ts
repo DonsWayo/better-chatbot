@@ -94,4 +94,34 @@ describe("GET /api/user/export", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("export contains promptTemplates array", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-2", name: "Eve", email: "eve@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const json = await res.json();
+    expect(Array.isArray(json.promptTemplates)).toBe(true);
+  });
+
+  it("exportedAt is an ISO string", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-3", name: "Frank", email: "f@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const json = await res.json();
+    expect(typeof json.exportedAt).toBe("string");
+    expect(json.exportedAt.length).toBeGreaterThan(0);
+  });
+
+  it("content-disposition header includes 'attachment'", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-4", name: "Grace", email: "g@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.headers.get("content-disposition")).toContain("attachment");
+  });
 });
