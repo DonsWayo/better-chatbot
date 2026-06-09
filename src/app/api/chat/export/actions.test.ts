@@ -26,6 +26,13 @@ describe("addExportChatCommentAction", () => {
     ).rejects.toThrow(/User not found/i);
   });
 
+  it("never calls insertComment when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any }).catch(() => {});
+    expect(insertCommentMock).not.toHaveBeenCalled();
+  });
+
   it("inserts a comment for authenticated user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockResolvedValueOnce({ id: "c1", exportId: "e1" });
@@ -38,5 +45,44 @@ describe("addExportChatCommentAction", () => {
     expect(insertCommentMock).toHaveBeenCalledWith(
       expect.objectContaining({ exportId: "e1", authorId: "u1" }),
     );
+  });
+
+  it("includes authorId from session user in call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-author-xyz" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c2" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e-99", content: {} as any });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ authorId: "user-author-xyz" }),
+    );
+  });
+
+  it("passes exportId in the insert call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c2" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "export-unique-123", content: {} as any });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ exportId: "export-unique-123" }),
+    );
+  });
+
+  it("passes parentId when provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c3", parentId: "p1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any, parentId: "p1" });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ parentId: "p1" }),
+    );
+  });
+
+  it("returns the result from insertComment directly", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const EXPECTED = { id: "c9", exportId: "e1", authorId: "u1", createdAt: "2025-01-01" };
+    insertCommentMock.mockResolvedValueOnce(EXPECTED);
+    const { addExportChatCommentAction } = await import("./actions");
+    const result = await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    expect(result).toEqual(EXPECTED);
   });
 });
