@@ -145,3 +145,41 @@ describe("GET /api/user/details/[id]", () => {
     expect(getUserMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/user/details/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls getUser when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("500 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1" } });
+    canManageUserMock.mockRejectedValueOnce(new Error("internal failure"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 response body is an object not an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    canManageUserMock.mockResolvedValueOnce(true);
+    getUserMock.mockResolvedValueOnce({ id: "u-arr", email: "a@b.com" });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-arr" }) });
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(false);
+    expect(typeof body).toBe("object");
+  });
+});

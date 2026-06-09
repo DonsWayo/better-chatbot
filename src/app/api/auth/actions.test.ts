@@ -148,3 +148,28 @@ describe("signUpAction — call args", () => {
     expect(result.user?.email).toBe("match@example.com");
   });
 });
+
+describe("signUpAction — additional edge cases", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("success result user has id field", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "new-id-abc", email: "a@b.com", name: "Alice" } });
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "a@b.com", name: "Alice", password: "Pass123!" });
+    expect(result.success).toBe(true);
+    expect(result.user?.id).toBe("new-id-abc");
+  });
+
+  it("failure result has success:false always", async () => {
+    signUpEmailMock.mockRejectedValueOnce(new Error("conflict"));
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "dup@b.com", name: "X", password: "Pass123!" });
+    expect(result.success).toBe(false);
+  });
+
+  it("signUpEmail not called when password is empty", async () => {
+    const { signUpAction } = await import("./actions");
+    await signUpAction({ email: "a@b.com", name: "Alice", password: "" });
+    expect(signUpEmailMock).not.toHaveBeenCalled();
+  });
+});
