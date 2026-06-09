@@ -202,4 +202,27 @@ describe("DELETE /api/mcp/tool-customizations/[server]/[tool]", () => {
     await DELETE(new Request("http://x"), makeContext("server-1", "tool-1"));
     expect(serverCacheMock.delete).toHaveBeenCalledWith("mcp:server:user-1");
   });
+
+  it("does not call deleteToolCustomization when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new Request("http://x"), makeContext("server-1", "tool-1"));
+    expect(mcpMcpToolCustomizationRepositoryMock.deleteToolCustomization).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/mcp/tool-customizations/[server]/[tool] — extra coverage", () => {
+  it("calls select exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.select.mockResolvedValue(null);
+    await GET(new Request("http://x"), makeContext("server-1", "tool-1"));
+    expect(mcpMcpToolCustomizationRepositoryMock.select).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/mcp/tool-customizations/[server]/[tool] — extra coverage", () => {
+  it("does not call upsertToolCustomization when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ prompt: "test" }), makeContext("server-1", "tool-1"));
+    expect(mcpMcpToolCustomizationRepositoryMock.upsertToolCustomization).not.toHaveBeenCalled();
+  });
 });

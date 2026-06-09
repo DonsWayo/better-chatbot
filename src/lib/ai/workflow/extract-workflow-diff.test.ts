@@ -182,4 +182,26 @@ describe("extractWorkflowDiff — edge case invariants", () => {
     expect(result.deleteNodes.some((n) => n.id === "n1")).toBe(true);
     expect(result.updateNodes.some((n) => n.id === "n2")).toBe(true);
   });
+
+  it("function returns a non-null object", () => {
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes: [], edges: [] });
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe("object");
+  });
+
+  it("deleteNodes items each have an id", () => {
+    const old = { nodes: [createTestNode("x", "X")], edges: [] };
+    const result = extractWorkflowDiff(old, { nodes: [], edges: [] });
+    for (const n of result.deleteNodes) {
+      expect(n).toHaveProperty("id");
+    }
+  });
+
+  it("updateNodes items each have an id", () => {
+    const next = { nodes: [createTestNode("y", "Y")], edges: [] };
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, next);
+    for (const n of result.updateNodes) {
+      expect(n).toHaveProperty("id");
+    }
+  });
 });

@@ -198,5 +198,29 @@ describe("node-validate", () => {
       expect(result).not.toBe(true);
       expect(result).toHaveProperty("errorMessage");
     });
+
+    it("result is either true or an object with errorMessage", () => {
+      const startNode = createInputNodeData("start", "Start Node");
+      const endNode = createOutputNodeData("end", "End Node");
+      const result = allNodeValidate({ nodes: [startNode, endNode], edges: [] });
+      expect(result === true || (typeof result === "object" && result !== null && "errorMessage" in result)).toBe(true);
+    });
+  });
+
+  describe("validateSchema — extra coverage", () => {
+    it("should validate object schema with properties", () => {
+      expect(() => {
+        validateSchema("myObj", { type: "object", properties: { field: { type: "string" } } });
+      }).not.toThrow();
+    });
+  });
+
+  describe("outputNodeValidate — extra coverage", () => {
+    it("should throw when output node has no incoming edge (not connected)", () => {
+      const endNode = createOutputNodeData("end", "End Node", []);
+      expect(() => {
+        outputNodeValidate({ node: endNode.data, nodes: [], edges: [] });
+      }).toThrow();
+    });
   });
 });
