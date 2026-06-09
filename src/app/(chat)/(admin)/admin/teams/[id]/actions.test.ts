@@ -177,3 +177,55 @@ describe("removeTeamMemberAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-9");
   });
 });
+
+describe("addTeamMemberAction — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectLimitMock.mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]);
+  });
+
+  it("requireAdminPermission called before addTeamMember", async () => {
+    const callOrder: string[] = [];
+    requireAdminPermissionMock.mockImplementationOnce(async () => { callOrder.push("admin"); });
+    addTeamMemberMock.mockImplementationOnce(async () => { callOrder.push("add"); });
+    const { addTeamMemberAction } = await import("./actions");
+    await addTeamMemberAction("team-x", "alice@asafe.ai", "member");
+    expect(callOrder[0]).toBe("admin");
+    expect(callOrder[1]).toBe("add");
+  });
+
+  it("revalidates the correct team path", async () => {
+    const { addTeamMemberAction } = await import("./actions");
+    await addTeamMemberAction("team-path-check", "alice@asafe.ai", "admin");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-path-check");
+  });
+
+  it("addTeamMember called exactly once on success", async () => {
+    const { addTeamMemberAction } = await import("./actions");
+    await addTeamMemberAction("team-once", "alice@asafe.ai", "member");
+    expect(addTeamMemberMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("setModelAllowListAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("revalidates correct team path", async () => {
+    const { setModelAllowListAction } = await import("./actions");
+    await setModelAllowListAction("team-revalidate", ["model-a"]);
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-revalidate");
+  });
+
+  it("updateTeamPolicy not called when permission is denied", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    const { setModelAllowListAction } = await import("./actions");
+    await expect(setModelAllowListAction("team-x", [])).rejects.toThrow("Forbidden");
+    expect(updateTeamPolicyMock).not.toHaveBeenCalled();
+  });
+
+  it("updateTeamPolicy called exactly once on success", async () => {
+    const { setModelAllowListAction } = await import("./actions");
+    await setModelAllowListAction("team-count", ["m1", "m2"]);
+    expect(updateTeamPolicyMock).toHaveBeenCalledTimes(1);
+  });
+});

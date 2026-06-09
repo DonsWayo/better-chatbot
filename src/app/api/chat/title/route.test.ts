@@ -178,3 +178,39 @@ describe("POST /api/chat/title — additional", () => {
     expect(getModelMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/chat/title — stream options", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+  });
+
+  it("streamText called with system prompt", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    let capturedSystem = "";
+    streamTextMock.mockImplementationOnce((opts: any) => {
+      capturedSystem = opts.system ?? "";
+      return { toUIMessageStreamResponse: vi.fn(() => new Response("ok")) };
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hello", threadId: "t1" }));
+    expect(typeof capturedSystem).toBe("string");
+    expect(capturedSystem.length).toBeGreaterThan(0);
+  });
+
+  it("response has status 200 on authenticated success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "test", threadId: "t2" }));
+    expect(res.status).toBe(200);
+  });
+
+  it("handleError called when streamText throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const err = new Error("stream fail");
+    streamTextMock.mockImplementationOnce(() => { throw err; });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hello", threadId: "t1" }));
+    expect(handleErrorMock).toHaveBeenCalledWith(err);
+  });
+});
