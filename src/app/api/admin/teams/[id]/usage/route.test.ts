@@ -285,3 +285,44 @@ describe("GET /api/admin/teams/[id]/usage — response shape", () => {
     expect(Array.isArray(body.usageByModel)).toBe(true);
   });
 });
+
+describe("GET /api/admin/teams/[id]/usage — call count invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    limitMock.mockResolvedValue([]);
+    orderByMock.mockReturnValue({ limit: limitMock });
+    groupByMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+    whereMock.mockReturnValue({ groupBy: groupByMock, orderBy: orderByMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    mockGetSession.mockResolvedValue({ user: { id: "admin-1", role: "admin" } });
+    mockSelect.mockReturnValue({ from: fromMock });
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest(), makeParams("team-1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("mockSelect not called when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), makeParams("team-1") as any);
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 Response when session is null", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("response is always a Response instance", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+});

@@ -278,3 +278,32 @@ describe("updateUserDetails — edge cases", () => {
     expect(userRepository.updateUserDetails).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("updateUserDetails — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("updateUserDetails does not call repository when no update fields are given", async () => {
+    const { updateUserDetails } = await import("./server");
+    await updateUserDetails("user-1");
+    expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+  });
+
+  it("updateUserDetails calls repository exactly once with valid name", async () => {
+    const { updateUserDetails } = await import("./server");
+    await updateUserDetails("user-1", "Eve");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateUserDetails passes userId to repository", async () => {
+    const { updateUserDetails } = await import("./server");
+    await updateUserDetails("user-xyz", "Test");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "user-xyz" }),
+    );
+  });
+
+  it("updateUserDetails resolves without throwing for valid input", async () => {
+    const { updateUserDetails } = await import("./server");
+    await expect(updateUserDetails("user-1", "Alice")).resolves.not.toThrow();
+  });
+});

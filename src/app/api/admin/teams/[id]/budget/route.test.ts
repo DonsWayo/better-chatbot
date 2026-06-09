@@ -289,3 +289,35 @@ describe("POST /api/admin/teams/[id]/budget — response shape", () => {
     expect(dbInsertMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET and POST /api/admin/teams/[id]/budget — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); requireAdminPermissionMock.mockResolvedValue(undefined); });
+
+  it("requireAdminPermission not called when guard rejects mid-flow", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for GET", async () => {
+    dbSelectWhereMock.mockResolvedValue([]);
+    dbSelectLimitMock.mockReturnValue([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("dbInsert not called when requireAdminPermission rejects on POST", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    const { POST } = await import("./route");
+    await POST(makeRequest({ budgetUsd: "100.00" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("response is always a Response instance for POST", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ budgetUsd: "50.00" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

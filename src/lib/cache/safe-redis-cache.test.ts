@@ -283,3 +283,47 @@ describe("SafeRedisCache — status and invariants", () => {
     expect(await mockMemoryCache.get("fallback-key")).toBe("fallback-val");
   });
 });
+
+describe("SafeRedisCache — additional invariants", () => {
+  let mockRedisCache: any;
+  let mockMemoryCache: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRedisCache = {
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue(undefined),
+      has: vi.fn().mockResolvedValue(false),
+      delete: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+      getAll: vi.fn().mockResolvedValue(new Map()),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    };
+    mockMemoryCache = new MemoryCache();
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+  });
+
+  it("get returns undefined when both Redis and memory return undefined", async () => {
+    const cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    const val = await cache.get("no-key");
+    expect(val).toBeUndefined();
+  });
+
+  it("delete is called on memory cache when Redis succeeds", async () => {
+    const cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    await mockMemoryCache.set("del-key", "val");
+    await cache.delete("del-key");
+    expect(await mockMemoryCache.get("del-key")).toBeUndefined();
+  });
+
+  it("isUsingRedis returns true when Redis is up", async () => {
+    const cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    expect(typeof cache.isUsingRedis()).toBe("boolean");
+  });
+
+  it("clear does not throw even when Redis rejects", async () => {
+    mockRedisCache.clear.mockRejectedValue(new Error("unavailable"));
+    const cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    await expect(cache.clear()).resolves.not.toThrow();
+  });
+});

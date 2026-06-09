@@ -278,3 +278,44 @@ describe("getAuditLog — edge cases", () => {
     expect(total).toBe(42);
   });
 });
+
+describe("getAuditLog — return type invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    _selectRows = [];
+    _countRows = [{ total: 0 }];
+    offsetMock.mockImplementation(() => Promise.resolve(_selectRows));
+    limitMock.mockReturnValue({ offset: offsetMock });
+    orderByMock.mockReturnValue({ limit: limitMock, offset: offsetMock });
+    whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+    leftJoinMock.mockReturnValue({ where: whereMock, orderBy: orderByMock });
+    fromMock.mockReturnValue({ where: whereMock, leftJoin: leftJoinMock, orderBy: orderByMock, limit: limitMock });
+    selectMock.mockReturnValue({ from: fromMock });
+  });
+
+  it("returns an object with rows and total", async () => {
+    const { getAuditLog } = await import("./audit");
+    const result = await getAuditLog({ page: 1, limit: 10 });
+    expect(result).toHaveProperty("rows");
+    expect(result).toHaveProperty("total");
+  });
+
+  it("rows is an array", async () => {
+    const { getAuditLog } = await import("./audit");
+    const { rows } = await getAuditLog({ page: 1, limit: 5 });
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  it("total is a number", async () => {
+    const { getAuditLog } = await import("./audit");
+    const { total } = await getAuditLog({ page: 1, limit: 5 });
+    expect(typeof total).toBe("number");
+  });
+
+  it("selectMock called at least once per getAuditLog call", async () => {
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ page: 1, limit: 10 });
+    expect(selectMock).toHaveBeenCalled();
+  });
+});
