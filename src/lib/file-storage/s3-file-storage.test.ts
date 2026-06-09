@@ -93,3 +93,85 @@ describe("s3-file-storage", () => {
     expect(url).toBe("https://cdn.example.com/uploads/x.txt");
   });
 });
+
+describe("s3-file-storage — return type invariants", () => {
+  beforeEach(() => {
+    sendMock.mockReset();
+    process.env.FILE_STORAGE_S3_BUCKET = "my-bucket";
+    process.env.FILE_STORAGE_S3_REGION = "us-east-1";
+    process.env.FILE_STORAGE_PREFIX = "files";
+    delete process.env.FILE_STORAGE_S3_PUBLIC_BASE_URL;
+  });
+
+  it("upload returns object with key, sourceUrl, and metadata", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createS3FileStorage();
+    const res = await storage.upload(Buffer.from("x"), {
+      filename: "t.txt",
+      contentType: "text/plain",
+    });
+    expect(res).toHaveProperty("key");
+    expect(res).toHaveProperty("sourceUrl");
+    expect(res).toHaveProperty("metadata");
+  });
+
+  it("upload metadata.size equals buffer byteLength", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const buf = Buffer.from("hello world");
+    const storage = createS3FileStorage();
+    const res = await storage.upload(buf, {
+      filename: "hw.txt",
+      contentType: "text/plain",
+    });
+    expect(res.metadata.size).toBe(buf.byteLength);
+  });
+
+  it("createUploadUrl returns object with url, method, and headers", async () => {
+    const storage = createS3FileStorage();
+    const res = await storage.createUploadUrl!({
+      filename: "photo.jpg",
+      contentType: "image/jpeg",
+      expiresInSeconds: 300,
+    });
+    expect(res).toHaveProperty("url");
+    expect(res).toHaveProperty("method");
+    expect(res).toHaveProperty("headers");
+  });
+
+  it("getSourceUrl returns a string", async () => {
+    const storage = createS3FileStorage();
+    const url = await storage.getSourceUrl("files/some.txt");
+    expect(typeof url).toBe("string");
+  });
+});
+
+describe("s3-file-storage — key prefix invariants", () => {
+  beforeEach(() => {
+    sendMock.mockReset();
+    process.env.FILE_STORAGE_S3_BUCKET = "my-bucket";
+    process.env.FILE_STORAGE_S3_REGION = "us-east-1";
+    process.env.FILE_STORAGE_PREFIX = "data";
+    delete process.env.FILE_STORAGE_S3_PUBLIC_BASE_URL;
+  });
+
+  it("upload key starts with configured prefix", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createS3FileStorage();
+    const res = await storage.upload(Buffer.from("x"), {
+      filename: "f.txt",
+      contentType: "text/plain",
+    });
+    expect(res.key.startsWith("data/")).toBe(true);
+  });
+
+  it("upload key is a non-empty string", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createS3FileStorage();
+    const res = await storage.upload(Buffer.from("x"), {
+      filename: "f.txt",
+      contentType: "text/plain",
+    });
+    expect(typeof res.key).toBe("string");
+    expect(res.key.length).toBeGreaterThan(0);
+  });
+});

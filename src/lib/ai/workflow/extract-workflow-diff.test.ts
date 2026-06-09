@@ -91,3 +91,64 @@ describe("extractWorkflowDiff", () => {
     expect(result.updateEdges[0].id).toBe("edge1");
   });
 });
+
+describe("extractWorkflowDiff — return type invariants", () => {
+  const n = (id: string): UINode => createTestNode(id, id);
+  const e = (id: string, s: string, t: string): Edge => createTestEdge(id, s, t);
+
+  it("result always has deleteNodes, deleteEdges, updateNodes, updateEdges", () => {
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes: [], edges: [] });
+    expect(result).toHaveProperty("deleteNodes");
+    expect(result).toHaveProperty("deleteEdges");
+    expect(result).toHaveProperty("updateNodes");
+    expect(result).toHaveProperty("updateEdges");
+  });
+
+  it("all four fields are arrays", () => {
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes: [], edges: [] });
+    expect(Array.isArray(result.deleteNodes)).toBe(true);
+    expect(Array.isArray(result.deleteEdges)).toBe(true);
+    expect(Array.isArray(result.updateNodes)).toBe(true);
+    expect(Array.isArray(result.updateEdges)).toBe(true);
+  });
+
+  it("identical inputs produce empty diff", () => {
+    const nodes = [n("n1")];
+    const edges = [e("e1", "n1", "n2")];
+    const result = extractWorkflowDiff({ nodes, edges }, { nodes, edges });
+    expect(result.deleteNodes).toHaveLength(0);
+    expect(result.deleteEdges).toHaveLength(0);
+    expect(result.updateNodes).toHaveLength(0);
+    expect(result.updateEdges).toHaveLength(0);
+  });
+});
+
+describe("extractWorkflowDiff — edge case invariants", () => {
+  it("empty to non-empty adds all as updates", () => {
+    const nodes = [createTestNode("n1", "N1")];
+    const edges = [createTestEdge("e1", "n1", "n2")];
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes, edges });
+    expect(result.updateNodes).toHaveLength(1);
+    expect(result.updateEdges).toHaveLength(1);
+    expect(result.deleteNodes).toHaveLength(0);
+    expect(result.deleteEdges).toHaveLength(0);
+  });
+
+  it("non-empty to empty deletes everything", () => {
+    const nodes = [createTestNode("n1", "N1"), createTestNode("n2", "N2")];
+    const edges = [createTestEdge("e1", "n1", "n2")];
+    const result = extractWorkflowDiff({ nodes, edges }, { nodes: [], edges: [] });
+    expect(result.deleteNodes).toHaveLength(2);
+    expect(result.deleteEdges).toHaveLength(1);
+    expect(result.updateNodes).toHaveLength(0);
+    expect(result.updateEdges).toHaveLength(0);
+  });
+
+  it("node id appears exactly once in deleteNodes or updateNodes, not both", () => {
+    const old = { nodes: [createTestNode("n1", "old")], edges: [] };
+    const next = { nodes: [createTestNode("n1", "new")], edges: [] };
+    const result = extractWorkflowDiff(old, next);
+    const allIds = [...result.deleteNodes, ...result.updateNodes].map((n) => n.id);
+    expect(new Set(allIds).size).toBe(allIds.length);
+  });
+});
