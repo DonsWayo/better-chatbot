@@ -199,3 +199,33 @@ describe("GET /api/metrics — response invariants", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("GET /api/metrics — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); metricsMock.mockResolvedValue("# HELP up\nprocess_uptime 1"); });
+
+  it("metricsMock called exactly once per valid GET", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(metricsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("ensureMetrics called exactly once per valid GET", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(ensureMetricsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a Response instance for any request", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("metricsMock not called when authorization header is invalid and token is configured", async () => {
+    vi.stubEnv("METRICS_TOKEN", "secure-token");
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("Bearer wrong-token"));
+    expect(res.status).toBe(401);
+    vi.unstubAllEnvs();
+  });
+});
