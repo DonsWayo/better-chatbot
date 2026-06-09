@@ -81,4 +81,37 @@ describe("GET /api/mcp/tool-customizations/[server]", () => {
     const body = await res.json();
     expect(body).toBeNull();
   });
+
+  it("calls repository exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([]);
+    await GET(new Request("http://x"), makeContext("server-1"));
+    expect(mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([]);
+    const res = await GET(new Request("http://x"), makeContext("server-1"));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("does not call repository when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET(new Request("http://x"), makeContext("server-1"));
+    expect(mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId).not.toHaveBeenCalled();
+  });
+
+  it("returns multiple customizations", async () => {
+    const many = [
+      { id: "tc-1", toolName: "tool-a", mcpServerId: "s", prompt: "A" },
+      { id: "tc-2", toolName: "tool-b", mcpServerId: "s", prompt: "B" },
+    ];
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(many);
+    const res = await GET(new Request("http://x"), makeContext("s"));
+    const body = await res.json();
+    expect(body).toHaveLength(2);
+    expect(body[1].toolName).toBe("tool-b");
+  });
 });

@@ -57,4 +57,38 @@ describe("GET /api/thread", () => {
     const body = await res.json();
     expect(body).toEqual([]);
   });
+
+  it("calls selectThreadsByUserId exactly once", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.selectThreadsByUserId.mockResolvedValue([]);
+    await GET();
+    expect(chatRepositoryMock.selectThreadsByUserId).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.selectThreadsByUserId.mockResolvedValue([]);
+    const res = await GET();
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("does not call repository when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(chatRepositoryMock.selectThreadsByUserId).not.toHaveBeenCalled();
+  });
+
+  it("returns multiple threads", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const threads = [
+      { id: "t-1", title: "Thread A" },
+      { id: "t-2", title: "Thread B" },
+      { id: "t-3", title: "Thread C" },
+    ];
+    chatRepositoryMock.selectThreadsByUserId.mockResolvedValue(threads);
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveLength(3);
+    expect(body[2].id).toBe("t-3");
+  });
 });

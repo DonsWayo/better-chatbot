@@ -42,4 +42,38 @@ describe("jsExecutionSchema — shape invariants", () => {
       expect(jsExecutionSchema.properties).toHaveProperty(key);
     }
   });
+
+  it("required contains exactly 'code'", () => {
+    expect(jsExecutionSchema.required).toHaveLength(1);
+    expect(jsExecutionSchema.required).toContain("code");
+  });
+
+  it("properties contains only 'code'", () => {
+    const keys = Object.keys(jsExecutionSchema.properties ?? {});
+    expect(keys).toEqual(["code"]);
+  });
+
+  it("code description mentions console.log", () => {
+    expect(codeProp?.description).toMatch(/console\.log/);
+  });
+
+  it("code description mentions async", () => {
+    expect(codeProp?.description).toMatch(/async/);
+  });
+
+  it("code description mentions fetch", () => {
+    expect(codeProp?.description).toMatch(/fetch/);
+  });
+
+  it("jsExecutionSchema has no additionalProperties restriction", () => {
+    expect(jsExecutionSchema.additionalProperties).toBeUndefined();
+  });
+
+  it("code property has no enum restriction", () => {
+    expect(codeProp?.enum).toBeUndefined();
+  });
+
+  it("code property has no minLength set", () => {
+    expect(codeProp?.minLength).toBeUndefined();
+  });
 });

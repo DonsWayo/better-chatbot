@@ -100,4 +100,27 @@ describe("POST /api/chat/export", () => {
       expect.objectContaining({ expiresAt: undefined }),
     );
   });
+
+  it("does not call exportChat when access check fails", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.checkAccess.mockResolvedValue(false);
+    await POST(makeRequest(VALID_BODY));
+    expect(chatExportRepositoryMock.exportChat).not.toHaveBeenCalled();
+  });
+
+  it("calls checkAccess exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.checkAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.exportChat.mockResolvedValue(undefined);
+    await POST(makeRequest(VALID_BODY));
+    expect(chatRepositoryMock.checkAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.checkAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.exportChat.mockResolvedValue(undefined);
+    const res = await POST(makeRequest(VALID_BODY));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
 });
