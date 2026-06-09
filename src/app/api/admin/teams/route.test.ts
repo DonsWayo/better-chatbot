@@ -160,3 +160,65 @@ describe("GET /api/admin/teams — guard chain", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("GET /api/admin/teams — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getAdminTeams called exactly once on successful request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    getAdminTeamsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getAdminTeamsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has teams property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    getAdminTeamsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("teams");
+  });
+});
+
+describe("POST /api/admin/teams — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Theta" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("createTeam called exactly once on successful request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    createTeamMock.mockResolvedValueOnce({ id: "t-new", name: "Iota" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Iota" }));
+    expect(createTeamMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error when name is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ description: "no name" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls createTeam when name is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ description: "no name" }));
+    expect(createTeamMock).not.toHaveBeenCalled();
+  });
+});

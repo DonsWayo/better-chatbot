@@ -147,4 +147,22 @@ describe("PUT /api/user/preferences — body and exact-once", () => {
     await PUT({ json: () => Promise.resolve({ theme: "dark" }) } as unknown as Request);
     expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
   });
+
+  it("getSession called exactly once per PUT", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/user/preferences — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });

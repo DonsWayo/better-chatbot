@@ -159,4 +159,30 @@ describe("POST /api/cron/budget-reset", () => {
     expect(body.reset).toBe(2);
     expect(mockUpdate).toHaveBeenCalledTimes(2);
   });
+
+  it("never calls db update when unauthorized", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest("wrong-secret"));
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("never calls db select when unauthorized", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("200 body has reset property as number", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(typeof body.reset).toBe("number");
+  });
+
+  it("401 body has error field when no auth header", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });
