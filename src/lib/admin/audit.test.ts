@@ -243,3 +243,38 @@ describe("getAuditLog — additional", () => {
     expect(rows).toHaveLength(3);
   });
 });
+
+describe("getAuditLog — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    _selectRows = [];
+    _countRows = [{ total: 0 }];
+  });
+
+  it("returns empty rows array when DB has no entries", async () => {
+    const { getAuditLog } = await import("./audit");
+    const { rows } = await getAuditLog({ page: 1, limit: 10 });
+    expect(rows).toEqual([]);
+  });
+
+  it("total is 0 when count row is missing", async () => {
+    _countRows = [];
+    const { getAuditLog } = await import("./audit");
+    const { total } = await getAuditLog({ page: 1, limit: 10 });
+    expect(total).toBe(0);
+  });
+
+  it("rows is always an Array", async () => {
+    const { getAuditLog } = await import("./audit");
+    const { rows } = await getAuditLog({ page: 1, limit: 25 });
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  it("total equals the value returned by the count query", async () => {
+    _countRows = [{ total: 42 }];
+    const { getAuditLog } = await import("./audit");
+    const { total } = await getAuditLog({ page: 1, limit: 10 });
+    expect(total).toBe(42);
+  });
+});
