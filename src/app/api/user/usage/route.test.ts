@@ -231,3 +231,43 @@ describe("GET /api/user/usage — additional", () => {
     expect(mockGetSession).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/user/usage — response shape", () => {
+  it("response is always a Response instance for 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockSelect
+      .mockReturnValueOnce(makeMockChain([{ totalCostUsd: "0", promptTokens: 0, completionTokens: 0, requestCount: 0 }]))
+      .mockReturnValueOnce(makeMockChain([]))
+      .mockReturnValueOnce(makeMockChain([]));
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has budget property", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockSelect
+      .mockReturnValueOnce(makeMockChain([{ totalCostUsd: "0", promptTokens: 0, completionTokens: 0, requestCount: 0 }]))
+      .mockReturnValueOnce(makeMockChain([]))
+      .mockReturnValueOnce(makeMockChain([]));
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("budget");
+  });
+
+  it("200 body summary has totalCostUsd field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockSelect
+      .mockReturnValueOnce(makeMockChain([{ totalCostUsd: "5.00", promptTokens: 100, completionTokens: 20, requestCount: 3 }]))
+      .mockReturnValueOnce(makeMockChain([]))
+      .mockReturnValueOnce(makeMockChain([]));
+    const res = await GET();
+    const body = await res.json();
+    expect(body.summary).toHaveProperty("totalCostUsd");
+  });
+});

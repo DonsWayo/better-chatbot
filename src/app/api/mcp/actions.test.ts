@@ -231,3 +231,37 @@ describe("selectMcpClientsAction — additional", () => {
     expect(result).toEqual([]);
   });
 });
+
+describe("saveMcpClientAction — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.NOT_ALLOW_ADD_MCP_SERVERS;
+  });
+
+  it("throws when user is null (not logged in)", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+  });
+
+  it("getCurrentUser called exactly once per invocation", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("canCreateMCP not called when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    expect(canCreateMCPMock).not.toHaveBeenCalled();
+  });
+
+  it("throws for org scope from non-admin user", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u-basic", role: "user" });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "valid-name", scope: "org", config: {} } as any)).rejects.toThrow(/admin/i);
+  });
+});
