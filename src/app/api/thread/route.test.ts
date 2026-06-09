@@ -116,4 +116,29 @@ describe("GET /api/thread", () => {
     const res = await GET();
     expect(res.status).toBe(401);
   });
+
+  it("propagates repository error (does not swallow it)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.selectThreadsByUserId.mockRejectedValue(new Error("DB fail"));
+    await expect(GET()).rejects.toThrow("DB fail");
+  });
+
+  it("each returned thread has title field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.selectThreadsByUserId.mockResolvedValue([
+      { id: "t-1", title: "Thread One" },
+      { id: "t-2", title: "Thread Two" },
+    ]);
+    const res = await GET();
+    const body = await res.json() as { title: string }[];
+    for (const t of body) {
+      expect(t).toHaveProperty("title");
+    }
+  });
+
+  it("does not call selectThreadsByUserId when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await GET();
+    expect(chatRepositoryMock.selectThreadsByUserId).not.toHaveBeenCalled();
+  });
 });

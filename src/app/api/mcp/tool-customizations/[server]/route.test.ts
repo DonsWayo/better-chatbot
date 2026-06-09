@@ -139,4 +139,36 @@ describe("GET /api/mcp/tool-customizations/[server]", () => {
     const body = await res.json();
     expect(body[0].prompt).toBe("My custom prompt");
   });
+
+  it("propagates repository error (does not swallow it)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockRejectedValue(
+      new Error("DB fail"),
+    );
+    await expect(GET(new Request("http://x"), makeContext("server-1"))).rejects.toThrow("DB fail");
+  });
+
+  it("each returned customization has toolName field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
+      CUSTOMIZATIONS,
+    );
+    const res = await GET(new Request("http://x"), makeContext("server-1"));
+    const body = await res.json() as { toolName: string }[];
+    for (const c of body) {
+      expect(c).toHaveProperty("toolName");
+    }
+  });
+
+  it("each returned customization has mcpServerId field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
+      CUSTOMIZATIONS,
+    );
+    const res = await GET(new Request("http://x"), makeContext("server-1"));
+    const body = await res.json() as { mcpServerId: string }[];
+    for (const c of body) {
+      expect(c).toHaveProperty("mcpServerId");
+    }
+  });
 });
