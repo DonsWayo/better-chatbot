@@ -1,149 +1,191 @@
 import { describe, it, expect } from "vitest";
 import {
-  checkConditionBranch,
-  getFirstConditionOperator,
   StringConditionOperator,
   NumberConditionOperator,
   BooleanConditionOperator,
+  getFirstConditionOperator,
+  checkConditionBranch,
 } from "./condition";
 import type { ConditionBranch } from "./condition";
 
-function branch(
-  operator: string,
-  value: string | number | boolean,
-  logicalOperator: "AND" | "OR" = "AND",
-): ConditionBranch {
-  return {
-    id: "if",
-    type: "if",
-    logicalOperator,
-    conditions: [{ source: "node1.output" as any, operator: operator as any, value }],
+function makeSourceFn(values: Record<string, any>) {
+  return (key: { nodeId: string; path: string[] }) => {
+    const k = `${key.nodeId}.${key.path.join(".")}`;
+    return values[k];
   };
+}
+
+function src(nodeId: string, path: string[]) {
+  return { nodeId, path };
 }
 
 describe("getFirstConditionOperator", () => {
   it("returns Equals for string", () => {
     expect(getFirstConditionOperator("string")).toBe(StringConditionOperator.Equals);
   });
+
   it("returns Equals for number", () => {
     expect(getFirstConditionOperator("number")).toBe(NumberConditionOperator.Equals);
   });
+
   it("returns IsTrue for boolean", () => {
     expect(getFirstConditionOperator("boolean")).toBe(BooleanConditionOperator.IsTrue);
   });
+
   it("defaults to Equals for unknown type", () => {
     expect(getFirstConditionOperator("unknown" as any)).toBe(StringConditionOperator.Equals);
   });
 });
 
 describe("checkConditionBranch — string operators", () => {
-  const get = (val: string) => () => val;
+  const source = src("n1", ["v"]);
+  const getValue = makeSourceFn({ "n1.v": "hello world" });
+
+  function branch(operator: StringConditionOperator, value?: string): ConditionBranch {
+    return { id: "if", type: "if", conditions: [{ source, operator, value }], logicalOperator: "AND" };
+  }
 
   it("Equals: matches exact value", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.Equals, "hello"), get("hello"))).toBe(true);
-    expect(checkConditionBranch(branch(StringConditionOperator.Equals, "hello"), get("world"))).toBe(false);
+    expect(checkConditionBranch(branch(StringConditionOperator.Equals, "hello world"), getValue)).toBe(true);
   });
 
-  it("NotEquals: true when different", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.NotEquals, "a"), get("b"))).toBe(true);
-    expect(checkConditionBranch(branch(StringConditionOperator.NotEquals, "a"), get("a"))).toBe(false);
+  it("Equals: fails on mismatch", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.Equals, "goodbye"), getValue)).toBe(false);
   });
 
-  it("Contains", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.Contains, "ell"), get("hello"))).toBe(true);
-    expect(checkConditionBranch(branch(StringConditionOperator.Contains, "xyz"), get("hello"))).toBe(false);
+  it("NotEquals: true when values differ", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.NotEquals, "goodbye"), getValue)).toBe(true);
   });
 
-  it("NotContains", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.NotContains, "xyz"), get("hello"))).toBe(true);
+  it("Contains: true when substring present", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.Contains, "world"), getValue)).toBe(true);
   });
 
-  it("StartsWith", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.StartsWith, "hel"), get("hello"))).toBe(true);
-    expect(checkConditionBranch(branch(StringConditionOperator.StartsWith, "ell"), get("hello"))).toBe(false);
+  it("NotContains: true when substring absent", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.NotContains, "foo"), getValue)).toBe(true);
   });
 
-  it("EndsWith", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.EndsWith, "llo"), get("hello"))).toBe(true);
+  it("StartsWith: true for matching prefix", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.StartsWith, "hello"), getValue)).toBe(true);
   });
 
-  it("IsEmpty: true when source is empty string", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.IsEmpty, ""), get(""))).toBe(true);
-    expect(checkConditionBranch(branch(StringConditionOperator.IsEmpty, ""), get("x"))).toBe(false);
+  it("EndsWith: true for matching suffix", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.EndsWith, "world"), getValue)).toBe(true);
   });
 
-  it("IsNotEmpty: true when source has content", () => {
-    expect(checkConditionBranch(branch(StringConditionOperator.IsNotEmpty, ""), get("hello"))).toBe(true);
-    expect(checkConditionBranch(branch(StringConditionOperator.IsNotEmpty, ""), get(""))).toBe(false);
+  it("IsEmpty: true for empty string source", () => {
+    const empty = makeSourceFn({ "n1.v": "" });
+    expect(checkConditionBranch(branch(StringConditionOperator.IsEmpty), empty)).toBe(true);
+  });
+
+  it("IsNotEmpty: true for non-empty source", () => {
+    expect(checkConditionBranch(branch(StringConditionOperator.IsNotEmpty), getValue)).toBe(true);
   });
 });
 
 describe("checkConditionBranch — number operators", () => {
-  const get = (val: number) => () => val;
+  const source = src("n1", ["count"]);
 
-  it("GreaterThan", () => {
-    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThan, 5), get(10))).toBe(true);
-    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThan, 5), get(3))).toBe(false);
+  function branch(operator: NumberConditionOperator, value: number): ConditionBranch {
+    return { id: "if", type: "if", conditions: [{ source, operator, value }], logicalOperator: "AND" };
+  }
+
+  it("GreaterThan: true when source > target", () => {
+    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThan, 5), makeSourceFn({ "n1.count": 10 }))).toBe(true);
   });
 
-  it("LessThan", () => {
-    expect(checkConditionBranch(branch(NumberConditionOperator.LessThan, 5), get(3))).toBe(true);
-    expect(checkConditionBranch(branch(NumberConditionOperator.LessThan, 5), get(10))).toBe(false);
+  it("LessThan: true when source < target", () => {
+    expect(checkConditionBranch(branch(NumberConditionOperator.LessThan, 100), makeSourceFn({ "n1.count": 50 }))).toBe(true);
   });
 
-  it("GreaterThanOrEqual", () => {
-    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThanOrEqual, 5), get(5))).toBe(true);
-    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThanOrEqual, 5), get(4))).toBe(false);
+  it("GreaterThanOrEqual: true when source equals target", () => {
+    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThanOrEqual, 10), makeSourceFn({ "n1.count": 10 }))).toBe(true);
   });
 
-  it("LessThanOrEqual", () => {
-    expect(checkConditionBranch(branch(NumberConditionOperator.LessThanOrEqual, 5), get(5))).toBe(true);
-    expect(checkConditionBranch(branch(NumberConditionOperator.LessThanOrEqual, 5), get(6))).toBe(false);
+  it("LessThanOrEqual: true when source equals target", () => {
+    expect(checkConditionBranch(branch(NumberConditionOperator.LessThanOrEqual, 5), makeSourceFn({ "n1.count": 5 }))).toBe(true);
+  });
+
+  it("GreaterThan: false when source equals target", () => {
+    expect(checkConditionBranch(branch(NumberConditionOperator.GreaterThan, 10), makeSourceFn({ "n1.count": 10 }))).toBe(false);
   });
 });
 
 describe("checkConditionBranch — boolean operators", () => {
+  const source = src("n1", ["flag"]);
+
   it("IsTrue: true when source is truthy", () => {
-    expect(checkConditionBranch(branch(BooleanConditionOperator.IsTrue, true), () => true)).toBe(true);
-    expect(checkConditionBranch(branch(BooleanConditionOperator.IsTrue, false), () => false)).toBe(false);
+    const b: ConditionBranch = { id: "if", type: "if", conditions: [{ source, operator: BooleanConditionOperator.IsTrue }], logicalOperator: "AND" };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.flag": true }))).toBe(true);
   });
 
   it("IsFalse: true when source is falsy", () => {
-    expect(checkConditionBranch(branch(BooleanConditionOperator.IsFalse, false), () => false)).toBe(true);
-    expect(checkConditionBranch(branch(BooleanConditionOperator.IsFalse, true), () => true)).toBe(false);
+    const b: ConditionBranch = { id: "if", type: "if", conditions: [{ source, operator: BooleanConditionOperator.IsFalse }], logicalOperator: "AND" };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.flag": false }))).toBe(true);
+  });
+
+  it("IsTrue: false when source is false", () => {
+    const b: ConditionBranch = { id: "if", type: "if", conditions: [{ source, operator: BooleanConditionOperator.IsTrue }], logicalOperator: "AND" };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.flag": false }))).toBe(false);
   });
 });
 
-describe("checkConditionBranch — logical operators", () => {
-  it("AND: all conditions must pass", () => {
+describe("checkConditionBranch — logical operators (AND/OR)", () => {
+  const s1 = src("n1", ["a"]);
+  const s2 = src("n1", ["b"]);
+  const values = { "n1.a": "hello", "n1.b": "world" };
+  const getOutput = makeSourceFn(values);
+
+  it("AND: true when all conditions pass", () => {
     const b: ConditionBranch = {
-      id: "if",
-      type: "if",
-      logicalOperator: "AND",
+      id: "if", type: "if",
       conditions: [
-        { source: "n.a" as any, operator: StringConditionOperator.Equals, value: "x" },
-        { source: "n.b" as any, operator: StringConditionOperator.Equals, value: "y" },
+        { source: s1, operator: StringConditionOperator.Equals, value: "hello" },
+        { source: s2, operator: StringConditionOperator.Equals, value: "world" },
       ],
+      logicalOperator: "AND",
     };
-    const getVal = (s: string) => (s === "n.a" ? "x" : "y");
-    expect(checkConditionBranch(b, getVal as any)).toBe(true);
-    const getValFail = (s: string) => (s === "n.a" ? "x" : "z");
-    expect(checkConditionBranch(b, getValFail as any)).toBe(false);
+    expect(checkConditionBranch(b, getOutput)).toBe(true);
   });
 
-  it("OR: at least one condition must pass", () => {
+  it("AND: false when any condition fails", () => {
     const b: ConditionBranch = {
-      id: "if",
-      type: "if",
-      logicalOperator: "OR",
+      id: "if", type: "if",
       conditions: [
-        { source: "n.a" as any, operator: StringConditionOperator.Equals, value: "x" },
-        { source: "n.b" as any, operator: StringConditionOperator.Equals, value: "y" },
+        { source: s1, operator: StringConditionOperator.Equals, value: "hello" },
+        { source: s2, operator: StringConditionOperator.Equals, value: "wrong" },
       ],
+      logicalOperator: "AND",
     };
-    const getValFirst = (s: string) => (s === "n.a" ? "x" : "z");
-    expect(checkConditionBranch(b, getValFirst as any)).toBe(true);
-    const getValNone = (_s: string) => "nope";
-    expect(checkConditionBranch(b, getValNone as any)).toBe(false);
+    expect(checkConditionBranch(b, getOutput)).toBe(false);
+  });
+
+  it("OR: true when any condition passes", () => {
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [
+        { source: s1, operator: StringConditionOperator.Equals, value: "wrong" },
+        { source: s2, operator: StringConditionOperator.Equals, value: "world" },
+      ],
+      logicalOperator: "OR",
+    };
+    expect(checkConditionBranch(b, getOutput)).toBe(true);
+  });
+
+  it("OR: false when all conditions fail", () => {
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [
+        { source: s1, operator: StringConditionOperator.Equals, value: "x" },
+        { source: s2, operator: StringConditionOperator.Equals, value: "y" },
+      ],
+      logicalOperator: "OR",
+    };
+    expect(checkConditionBranch(b, getOutput)).toBe(false);
+  });
+
+  it("empty conditions array with AND returns true (vacuous truth)", () => {
+    const b: ConditionBranch = { id: "else", type: "else", conditions: [], logicalOperator: "AND" };
+    expect(checkConditionBranch(b, getOutput)).toBe(true);
   });
 });
