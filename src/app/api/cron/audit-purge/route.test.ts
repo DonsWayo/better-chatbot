@@ -175,3 +175,43 @@ describe("POST /api/cron/audit-purge — additional", () => {
     expect(cutoff.getTime()).toBeLessThan(Date.now());
   });
 });
+
+describe("POST /api/cron/audit-purge — env handling", () => {
+  const OLD_ENV = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env = { ...OLD_ENV, CRON_SECRET: "correct-secret" };
+
+    const returningMock = vi.fn().mockResolvedValue([]);
+    const whereMock = vi.fn().mockReturnValue({ returning: returningMock });
+    mockDelete.mockReturnValue({ where: whereMock });
+  });
+
+  it("returns 401 when CRON_SECRET env is undefined", async () => {
+    delete process.env.CRON_SECRET;
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("correct-secret"));
+    expect(res.status).toBe(401);
+  });
+
+  it("succeeds when secret matches CRON_SECRET exactly", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("correct-secret"));
+    expect(res.status).toBe(200);
+  });
+
+  it("response is always a Response instance", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 response deleted field is non-negative", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("correct-secret"));
+    const body = await res.json();
+    expect(body.deleted).toBeGreaterThanOrEqual(0);
+  });
+});

@@ -175,3 +175,60 @@ describe("GET /api/admin/budget-alerts", () => {
     expect(body.alerts[0].alert).toBe(false);
   });
 });
+
+describe("GET /api/admin/budget-alerts — alert record shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectFromMock.mockReturnValue({ innerJoin: dbSelectInnerJoinMock });
+    dbSelectInnerJoinMock.mockReturnValue({ where: dbSelectWhereMock });
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+  });
+
+  it("each alert record includes teamId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-7", teamName: "Sales", budgetUsd: "200.00", usedUsd: "150.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts[0]).toHaveProperty("teamId", "t-7");
+  });
+
+  it("each alert record includes teamName", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-8", teamName: "Support", budgetUsd: "300.00", usedUsd: "200.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts[0]).toHaveProperty("teamName", "Support");
+  });
+
+  it("utilizationRatio is 0 when usedUsd is 0", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-9", teamName: "Empty", budgetUsd: "100.00", usedUsd: "0.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts[0].utilizationRatio).toBeCloseTo(0);
+    expect(body.alerts[0].alert).toBe(false);
+  });
+
+  it("multiple teams returned in alerts array in order", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "ta", teamName: "Alpha", budgetUsd: "100.00", usedUsd: "50.00", periodStart: new Date(), periodEnd: new Date() },
+      { teamId: "tb", teamName: "Beta", budgetUsd: "100.00", usedUsd: "90.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts).toHaveLength(2);
+    expect(body.alerts[0].teamId).toBe("ta");
+    expect(body.alerts[1].teamId).toBe("tb");
+  });
+});
