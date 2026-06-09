@@ -94,4 +94,37 @@ describe("POST /api/chat", () => {
     const res = await POST(makeRequest({ messages: [], threadId: "t1" }));
     expect(res.status).toBe(401);
   });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
+
+  it("never calls checkKillSwitch when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { checkKillSwitch } = await import("lib/observability/kill-switch");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(checkKillSwitch)).not.toHaveBeenCalled();
+  });
+
+  it("never calls checkRateLimit when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { checkRateLimit } = await import("lib/rate-limit");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(checkRateLimit)).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 when rate limited", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { checkRateLimit } = await import("lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, limit: 10, remaining: 0, resetAt: 9999999999000 });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(429);
+  });
 });

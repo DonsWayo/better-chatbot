@@ -97,4 +97,27 @@ describe("POST /api/admin/users/[id]/erasure", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("eraseUserData called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    eraseUserDataMock.mockResolvedValue({ tablesCleared: [] });
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "some-user" }) });
+    expect(eraseUserDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls eraseUserData for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "target-user" }) });
+    expect(eraseUserDataMock).not.toHaveBeenCalled();
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

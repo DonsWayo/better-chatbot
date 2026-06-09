@@ -88,3 +88,33 @@ describe("User Utils", () => {
     });
   });
 });
+
+describe("getUserAvatar — additional", () => {
+  beforeEach(() => { delete process.env.DISABLE_DEFAULT_AVATAR; });
+
+  it("returns string type in all code paths", () => {
+    expect(typeof getUserAvatar({ image: "http://example.com/img.jpg" })).toBe("string");
+    expect(typeof getUserAvatar({ image: null })).toBe("string");
+    expect(typeof getUserAvatar({})).toBe("string");
+  });
+
+  it("whitespace-only image is truthy and returned as-is", () => {
+    expect(getUserAvatar({ image: " " })).toBe(" ");
+  });
+});
+
+describe("getIsUserAdmin — additional", () => {
+  it("returns boolean type, not just truthy/falsy value", () => {
+    expect(typeof getIsUserAdmin({ role: USER_ROLES.ADMIN })).toBe("boolean");
+    expect(typeof getIsUserAdmin({ role: USER_ROLES.USER })).toBe("boolean");
+    expect(typeof getIsUserAdmin(undefined)).toBe("boolean");
+  });
+
+  it("space before admin in comma-separated string is not matched", () => {
+    expect(getIsUserAdmin({ role: "user, admin" })).toBe(false);
+  });
+
+  it("trailing comma after admin still matches", () => {
+    expect(getIsUserAdmin({ role: `${USER_ROLES.ADMIN},` })).toBe(true);
+  });
+});

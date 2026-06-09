@@ -93,4 +93,27 @@ describe("DELETE /api/admin/users/[id]/model-grants/[grantId]", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("403 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "u-1", grantId: "g-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("revokeUserModelGrant called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    revokeUserModelGrantMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "u-1", grantId: "g-1" }) });
+    expect(revokeUserModelGrantMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls revokeUserModelGrant for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "u-1", grantId: "g-1" }) });
+    expect(revokeUserModelGrantMock).not.toHaveBeenCalled();
+  });
 });
