@@ -134,3 +134,30 @@ describe("hasAcceptedAup — additional cases", () => {
     expect(typeof result).toBe("boolean");
   });
 });
+
+describe("recordAupAcceptance — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    insertValuesMock.mockReturnValue({ onConflictDoNothing: insertOnConflictMock });
+    insertMock.mockReturnValue({ values: insertValuesMock });
+  });
+
+  it("calls insert exactly once per recordAupAcceptance", async () => {
+    const { recordAupAcceptance } = await import("./aup");
+    await recordAupAcceptance("user-once");
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("onConflictDoNothing is always used (idempotent re-acceptance)", async () => {
+    const { recordAupAcceptance } = await import("./aup");
+    await recordAupAcceptance("user-idem");
+    expect(insertOnConflictMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves with undefined (no return value)", async () => {
+    const { recordAupAcceptance } = await import("./aup");
+    const result = await recordAupAcceptance("user-ret");
+    expect(result).toBeUndefined();
+  });
+});

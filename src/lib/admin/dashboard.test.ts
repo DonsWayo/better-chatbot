@@ -146,4 +146,41 @@ describe("getDashboardStats", () => {
 
     expect(stats.guardrailFiringsLast24h).toBe(12);
   });
+
+  it("costLast7dUsd defaults to 0 when DB returns null cost", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.costLast7dUsd).toBe(0);
+  });
+
+  it("budgetsNearLimit is 0 when no budgets exist", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.budgetsNearLimit).toBe(0);
+  });
+
+  it("all numeric fields are finite numbers", async () => {
+    setupMocks([
+      [{ total: 5 }], [{ total: 3 }],
+      [{ requests: 10, costUsd: "0.50" }],
+      [{ requests: 100, costUsd: "5.00" }],
+      [{ total: 2 }],
+      [{ budgetUsd: "100.00", usedUsd: "90.00" }],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    for (const [key, value] of Object.entries(stats)) {
+      expect(isFinite(value as number), `${key} should be finite`).toBe(true);
+    }
+  });
 });

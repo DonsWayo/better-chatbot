@@ -151,4 +151,54 @@ describe("revokeUserModelGrant", () => {
     expect(deleteMock).toHaveBeenCalledTimes(1);
     expect(deleteWhereMock).toHaveBeenCalledTimes(1);
   });
+
+  it("resolves without throwing", async () => {
+    const { revokeUserModelGrant } = await import("./user-grants");
+    await expect(revokeUserModelGrant("grant-ok", "user-ok")).resolves.toBeUndefined();
+  });
+});
+
+describe("getUserModelGrants — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    selectWhereMock.mockResolvedValue([]);
+    selectFromMock.mockReturnValue({ where: selectWhereMock });
+    selectMock.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("returns only string model IDs (not row objects)", async () => {
+    selectWhereMock.mockResolvedValue([{ modelId: "gpt-5.1" }, { modelId: "claude-opus-4.8" }]);
+    const { getUserModelGrants } = await import("./user-grants");
+    const result = await getUserModelGrants("u-str");
+    expect(result.every((m) => typeof m === "string")).toBe(true);
+  });
+
+  it("returns empty array when no grants found", async () => {
+    selectWhereMock.mockResolvedValue([]);
+    const { getUserModelGrants } = await import("./user-grants");
+    const result = await getUserModelGrants("u-none");
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe("grantUserModel — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    insertConflictMock.mockResolvedValue([]);
+    insertValuesMock.mockReturnValue({ onConflictDoUpdate: insertConflictMock });
+    insertMock.mockReturnValue({ values: insertValuesMock });
+  });
+
+  it("resolves without throwing", async () => {
+    const { grantUserModel } = await import("./user-grants");
+    await expect(grantUserModel("u1", "gpt-5.1", "admin-1", null)).resolves.not.toThrow();
+  });
+
+  it("calls insertMock exactly once per grant", async () => {
+    const { grantUserModel } = await import("./user-grants");
+    await grantUserModel("u2", "gemini-2.5-flash", "admin-1", null);
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
 });
