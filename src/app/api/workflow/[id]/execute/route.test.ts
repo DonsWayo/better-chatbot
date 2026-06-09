@@ -124,4 +124,41 @@ describe("POST /api/workflow/[id]/execute", () => {
       "user-42",
     );
   });
+
+  it("calls selectStructureById with workflow id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
+    const executor = makeExecutorMock();
+    createWorkflowExecutorMock.mockReturnValue(executor);
+    await POST(makeRequest({ query: "run" }), makeContext("wf-special"));
+    expect(workflowRepositoryMock.selectStructureById).toHaveBeenCalledWith("wf-special");
+  });
+
+  it("calls createWorkflowExecutor exactly once", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
+    const executor = makeExecutorMock();
+    createWorkflowExecutorMock.mockReturnValue(executor);
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(createWorkflowExecutorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not create executor when workflow not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.selectStructureById.mockResolvedValue(null);
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("response has correct streaming content type", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
+    createWorkflowExecutorMock.mockReturnValue(makeExecutorMock());
+    const res = await POST(makeRequest({ query: "hello" }), makeContext("wf-1"));
+    expect(res.headers.get("Content-Type")).toBe("application/octet-stream");
+  });
 });

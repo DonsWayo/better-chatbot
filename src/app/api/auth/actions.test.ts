@@ -96,4 +96,53 @@ describe("signUpAction", () => {
     expect(result.success).toBe(false);
     expect(result.message).toBe("Failed to sign up");
   });
+
+  it("result has success:true and user object on success", async () => {
+    const mockUser = { id: "u-1", email: validData.email, name: validData.name };
+    mockAuth.api.signUpEmail.mockResolvedValue({ user: mockUser, session: null, token: "" });
+    const result = await signUpAction(validData);
+    expect(result).toHaveProperty("success", true);
+    expect(result).toHaveProperty("user");
+  });
+
+  it("returns failure with short password (fails UserZodSchema)", async () => {
+    const result = await signUpAction({ email: "a@b.com", name: "Alice", password: "short" });
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("Invalid data");
+    expect(mockAuth.api.signUpEmail).not.toHaveBeenCalled();
+  });
+
+  it("returns failure with missing name", async () => {
+    const result = await signUpAction({ email: "a@b.com", name: "", password: "Password1!" });
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("Invalid data");
+  });
+
+  it("calls signUpEmail with headers", async () => {
+    mockAuth.api.signUpEmail.mockResolvedValue({ user: { id: "u" }, session: null, token: "" });
+    await signUpAction(validData);
+    expect(mockAuth.api.signUpEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: expect.anything() }),
+    );
+  });
+});
+
+describe("existsByEmailAction — additional invariants", () => {
+  it("passes email verbatim to repository", async () => {
+    mockUserRepo.existsByEmail.mockResolvedValue(false);
+    await existsByEmailAction("test+tag@sub.domain.com");
+    expect(mockUserRepo.existsByEmail).toHaveBeenCalledWith("test+tag@sub.domain.com");
+  });
+
+  it("returns boolean type", async () => {
+    mockUserRepo.existsByEmail.mockResolvedValue(true);
+    const result = await existsByEmailAction("user@example.com");
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("calls existsByEmail exactly once per action call", async () => {
+    mockUserRepo.existsByEmail.mockResolvedValue(false);
+    await existsByEmailAction("a@b.com");
+    expect(mockUserRepo.existsByEmail).toHaveBeenCalledTimes(1);
+  });
 });

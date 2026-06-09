@@ -102,4 +102,48 @@ describe("GET /api/user/details/[id]", () => {
     const body = await res.json();
     expect(body.error).toBe("Permission check failed");
   });
+
+  it("returns email from user object", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canManageUserMock.mockResolvedValue(true);
+    getUserMock.mockResolvedValue(USER);
+    const res = await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    const body = await res.json();
+    expect(body.email).toBe("alice@example.com");
+  });
+
+  it("does not call getUser when canManageUser returns false", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-2" } });
+    canManageUserMock.mockResolvedValue(false);
+    await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canManageUserMock.mockResolvedValue(true);
+    getUserMock.mockResolvedValue(USER);
+    const res = await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("calls canManageUser exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canManageUserMock.mockResolvedValue(true);
+    getUserMock.mockResolvedValue(USER);
+    await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    expect(canManageUserMock).toHaveBeenCalledTimes(1);
+  });
 });

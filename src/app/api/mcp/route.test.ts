@@ -94,4 +94,43 @@ describe("POST /api/mcp", () => {
     const body = await res.json();
     expect(body.message).toBe("Connection failed");
   });
+
+  it("calls canCreateMCP before saveMcpClientAction", async () => {
+    const callOrder: string[] = [];
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockImplementation(async () => { callOrder.push("canCreate"); return true; });
+    saveMcpClientActionMock.mockImplementation(async () => { callOrder.push("save"); return { client: { getInfo: () => ({ id: "x" }) } }; });
+    await POST(makeRequest(MCP_BODY));
+    expect(callOrder[0]).toBe("canCreate");
+    expect(callOrder[1]).toBe("save");
+  });
+
+  it("does not call saveMcpClientAction when canCreateMCP returns false", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(false);
+    await POST(makeRequest(MCP_BODY));
+    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
+
+  it("returns success=true in body when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(true);
+    saveMcpClientActionMock.mockResolvedValue({
+      client: { getInfo: () => ({ id: "mcp-abc" }) },
+    });
+    const res = await POST(makeRequest(MCP_BODY));
+    const body = await res.json();
+    expect(body).toHaveProperty("success", true);
+    expect(body).toHaveProperty("id", "mcp-abc");
+  });
+
+  it("500 message falls back when error has no message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(true);
+    saveMcpClientActionMock.mockRejectedValue({});
+    const res = await POST(makeRequest(MCP_BODY));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.message).toBe("Failed to save MCP client");
+  });
 });

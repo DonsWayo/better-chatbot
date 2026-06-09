@@ -65,4 +65,35 @@ describe("GET /api/user/details", () => {
     const body = await res.json();
     expect(body.error).toBe("DB fail");
   });
+
+  it("returns email field from user object", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockResolvedValue(USER);
+    const res = await GET();
+    const body = await res.json();
+    expect(body.email).toBe("alice@example.com");
+  });
+
+  it("calls getUser exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockResolvedValue(USER);
+    await GET();
+    expect(getUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockResolvedValue(USER);
+    const res = await GET();
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("500 error message falls back when error has no message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockRejectedValue({});
+    const res = await GET();
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Failed to get user details");
+  });
 });

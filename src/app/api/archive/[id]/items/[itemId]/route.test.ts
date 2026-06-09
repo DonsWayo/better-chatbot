@@ -90,4 +90,38 @@ describe("DELETE /api/archive/[id]/items/[itemId]", () => {
     const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
     expect(res.status).toBe(500);
   });
+
+  it("calls getArchiveById with the archive id from params", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.getArchiveById.mockResolvedValue(null);
+    await DELETE(new Request("http://x"), makeContext("arch-999", "item-1"));
+    expect(archiveRepositoryMock.getArchiveById).toHaveBeenCalledWith("arch-999");
+  });
+
+  it("calls getArchiveItems with the archive id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
+    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
+    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
+    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    expect(archiveRepositoryMock.getArchiveItems).toHaveBeenCalledWith("arch-1");
+  });
+
+  it("does not call removeItemFromArchive when item does not exist", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
+    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "other" }]);
+    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    expect(archiveRepositoryMock.removeItemFromArchive).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 response body with success: true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
+    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
+    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
+    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    const body = await res.json();
+    expect(body).toHaveProperty("success", true);
+  });
 });
