@@ -152,3 +152,38 @@ describe("POST /api/agent/ai — additional", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("POST /api/agent/ai — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+  });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hello" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "build an agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("streamObject not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
