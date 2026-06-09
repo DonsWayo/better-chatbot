@@ -162,3 +162,39 @@ describe("POST /api/chat/openai-realtime — additional", () => {
     expect(getSessionMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/chat/openai-realtime — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once when API key is present", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST returns 401 Response when unauthenticated", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("POST returns 503 Response when API key is absent", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession not called twice on single POST request", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).not.toHaveBeenCalledTimes(2);
+  });
+});

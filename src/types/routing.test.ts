@@ -164,3 +164,25 @@ describe("RoutingRequestSchema — invariants", () => {
     expect(result.success).toBe(true);
   });
 });
+
+describe("RoutingRequestSchema — shape invariants", () => {
+  it("accepts object with no fields (all optional)", () => {
+    const result = RoutingRequestSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects array input", () => {
+    const result = RoutingRequestSchema.safeParse([]);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects null input", () => {
+    const result = RoutingRequestSchema.safeParse(null);
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts valid declaredTaskClass string", () => {
+    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "code" });
+    expect(result.success).toBe(true);
+  });
+});

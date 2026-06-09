@@ -158,3 +158,36 @@ describe("POST /api/admin/users/[id]/erasure — additional", () => {
     expect(eraseUserDataMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/admin/users/[id]/erasure — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("eraseUserData not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(eraseUserDataMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("eraseUserData not called for non-admin role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-2", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "u-3" }) });
+    expect(eraseUserDataMock).not.toHaveBeenCalled();
+  });
+});

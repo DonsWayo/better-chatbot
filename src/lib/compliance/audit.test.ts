@@ -187,3 +187,25 @@ describe("hashContent — additional", () => {
     expect(short.length).toBe(long.length);
   });
 });
+
+describe("hashContent and auditChatRequest — type invariants", () => {
+  it("hashContent returns a string", async () => {
+    const { hashContent } = await import("./audit");
+    expect(typeof hashContent("any input")).toBe("string");
+  });
+
+  it("hashContent returns a non-empty string", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("input").length).toBeGreaterThan(0);
+  });
+
+  it("hashContent is deterministic for same input", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("same")).toBe(hashContent("same"));
+  });
+
+  it("hashContent differs for different inputs", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("abc")).not.toBe(hashContent("def"));
+  });
+});

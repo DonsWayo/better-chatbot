@@ -189,3 +189,37 @@ describe("GET /api/workflow/tools — response shape", () => {
     expect(selectExecuteAbilityMock).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/workflow/tools — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("selectExecuteAbility not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectExecuteAbilityMock).not.toHaveBeenCalled();
+  });
+
+  it("selectExecuteAbility called exactly once for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce({ canExecute: true });
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectExecuteAbilityMock).toHaveBeenCalledTimes(1);
+  });
+});

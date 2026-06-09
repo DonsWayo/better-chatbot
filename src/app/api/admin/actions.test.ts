@@ -188,3 +188,25 @@ describe("UpdateUserBanStatusSchema — invariants", () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe("UpdateUserBanStatusSchema — null input invariants", () => {
+  it("rejects null input", () => {
+    const result = UpdateUserBanStatusSchema.safeParse(null);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects undefined input", () => {
+    const result = UpdateUserBanStatusSchema.safeParse(undefined);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty object (missing required fields)", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects object with only userId and no banned field", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: "00000000-0000-0000-0000-000000000001" });
+    expect(result.success).toBe(false);
+  });
+});

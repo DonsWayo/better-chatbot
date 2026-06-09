@@ -187,3 +187,36 @@ describe("POST /api/agent/ai — response shape", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/agent/ai — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "test" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "test" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("streamObject not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "test" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession not called twice on single request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "test" }));
+    expect(getSessionMock).not.toHaveBeenCalledTimes(2);
+  });
+});
