@@ -40,6 +40,16 @@ export function AppSidebar({
       collapsible="offcanvas"
       className="border-r border-sidebar-border/80"
     >
+      {/* A-SAFE pellet particles drifting behind the sidebar content */}
+      <div className="absolute inset-0 pointer-events-none z-0 opacity-50 fade-in animate-in duration-5000">
+        <Particles
+          className="bg-transparent"
+          particleCount={80}
+          particleBaseSize={8}
+          speed={0.06}
+          alphaParticles
+        />
+      </div>
       <SidebarHeaderShared
         title={<AsafeLogo className="h-6" />}
         href="/"
