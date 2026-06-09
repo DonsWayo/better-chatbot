@@ -28,13 +28,15 @@ import {
   CardHeader,
   CardTitle,
 } from "ui/card";
-import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck, BarChart3 } from "lucide-react";
+import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck, BarChart3, Settings } from "lucide-react";
 import Link from "next/link";
 import {
   addTeamMemberAction,
   removeTeamMemberAction,
   setBudgetAction,
   setModelAllowListAction,
+  setEmailDomainsAction,
+  setPolicyAction,
 } from "@/app/(chat)/(admin)/admin/teams/[id]/actions";
 
 type Role = "admin" | "editor" | "member";
@@ -80,6 +82,11 @@ interface Team {
   members: Member[];
   budget: Budget | null;
   modelAllowList: string[];
+  allowedEmailDomains: string[];
+  guardrailPolicy: string;
+  allowImageGen: boolean;
+  allowVision: boolean;
+  allowSpeech: boolean;
 }
 
 interface TeamDetailClientProps {
@@ -121,6 +128,68 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
       .catch(() => {})
       .finally(() => setUsageLoading(false));
   }, [team.id]);
+
+  // Team policy state (guardrail + feature toggles)
+  const [guardrailPolicy, setGuardrailPolicy] = useState(team.guardrailPolicy ?? "standard");
+  const [allowImageGen, setAllowImageGen] = useState(team.allowImageGen ?? false);
+  const [allowVision, setAllowVision] = useState(team.allowVision ?? false);
+  const [allowSpeech, setAllowSpeech] = useState(team.allowSpeech ?? false);
+  const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policySuccess, setPolicySuccess] = useState(false);
+
+  const handleSavePolicy = async () => {
+    setIsSavingPolicy(true);
+    setPolicyError(null);
+    setPolicySuccess(false);
+    try {
+      await setPolicyAction(team.id, {
+        guardrailPolicy: guardrailPolicy as "strict" | "standard" | "permissive",
+        allowImageGen,
+        allowVision,
+        allowSpeech,
+      });
+      setPolicySuccess(true);
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      setPolicyError(err instanceof Error ? err.message : "Failed to save policy");
+    } finally {
+      setIsSavingPolicy(false);
+    }
+  };
+
+  // Email domain allow-list state
+  const [emailDomains, setEmailDomains] = useState<string[]>(team.allowedEmailDomains ?? []);
+  const [newDomain, setNewDomain] = useState("");
+  const [isSavingDomains, setIsSavingDomains] = useState(false);
+  const [domainsError, setDomainsError] = useState<string | null>(null);
+  const [domainsSuccess, setDomainsSuccess] = useState(false);
+
+  const handleAddDomain = () => {
+    const d = newDomain.trim().toLowerCase();
+    if (!d || emailDomains.includes(d)) return;
+    setEmailDomains([...emailDomains, d]);
+    setNewDomain("");
+  };
+
+  const handleRemoveDomain = (d: string) => {
+    setEmailDomains(emailDomains.filter((x) => x !== d));
+  };
+
+  const handleSaveDomains = async () => {
+    setIsSavingDomains(true);
+    setDomainsError(null);
+    setDomainsSuccess(false);
+    try {
+      await setEmailDomainsAction(team.id, emailDomains);
+      setDomainsSuccess(true);
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      setDomainsError(err instanceof Error ? err.message : "Failed to save domains");
+    } finally {
+      setIsSavingDomains(false);
+    }
+  };
 
   // Model allow-list state
   const [selectedModels, setSelectedModels] = useState<string[]>(team.modelAllowList ?? []);
@@ -468,6 +537,153 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           </Button>
           {modelsError && <p className="text-sm text-destructive">{modelsError}</p>}
           {modelsSuccess && <p className="text-sm text-green-600">Model list saved.</p>}
+        </CardContent>
+      </Card>
+
+      {/* Guardrail policy + feature toggles */}
+      <Card data-testid="policy-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Team Policy
+          </CardTitle>
+          <CardDescription>
+            Configure guardrail strictness and which AI capabilities are enabled for this team.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Guardrail Policy
+            </label>
+            <Select
+              value={guardrailPolicy}
+              onValueChange={(v) => setGuardrailPolicy(v)}
+              disabled={isSavingPolicy}
+            >
+              <SelectTrigger className="w-full sm:w-56" data-testid="guardrail-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="strict">Strict — block sensitive topics</SelectItem>
+                <SelectItem value="standard">Standard — balanced filtering</SelectItem>
+                <SelectItem value="permissive">Permissive — minimal filtering</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Feature Toggles
+            </p>
+            {(
+              [
+                { key: "allowImageGen", label: "Image generation", value: allowImageGen, set: setAllowImageGen },
+                { key: "allowVision",   label: "Vision (image input)", value: allowVision, set: setAllowVision },
+                { key: "allowSpeech",  label: "Speech / audio", value: allowSpeech, set: setAllowSpeech },
+              ] as const
+            ).map(({ key, label, value, set }) => (
+              <label
+                key={key}
+                className="flex items-center gap-3 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/40 transition-colors"
+                data-testid={`toggle-${key}`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={value}
+                  onChange={(e) => set(e.target.checked)}
+                  disabled={isSavingPolicy}
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
+
+          <Button
+            onClick={handleSavePolicy}
+            disabled={isSavingPolicy}
+            className="w-full sm:w-auto"
+            data-testid="save-policy-btn"
+          >
+            {isSavingPolicy ? "Saving…" : "Save Policy"}
+          </Button>
+          {policyError && <p className="text-sm text-destructive">{policyError}</p>}
+          {policySuccess && <p className="text-sm text-green-600">Policy saved.</p>}
+        </CardContent>
+      </Card>
+
+      {/* Email domain allow-list */}
+      <Card data-testid="email-domains-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Email Domain Allow-List
+          </CardTitle>
+          <CardDescription>
+            Restrict membership to users with specific email domains. Empty = any domain allowed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Current domain chips */}
+          {emailDomains.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {emailDomains.map((d) => (
+                <span
+                  key={d}
+                  className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs font-mono"
+                  data-testid={`domain-chip-${d}`}
+                >
+                  {d}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveDomain(d)}
+                    disabled={isSavingDomains}
+                    className="text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                    aria-label={`Remove domain ${d}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No domain restrictions — any email domain can be added as a member.
+            </p>
+          )}
+
+          {/* Add domain input */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="example.com"
+              value={newDomain}
+              onChange={(e) => setNewDomain(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddDomain(); }}
+              className="flex-1"
+              disabled={isSavingDomains}
+              data-testid="domain-input"
+            />
+            <Button
+              variant="outline"
+              onClick={handleAddDomain}
+              disabled={!newDomain.trim() || isSavingDomains}
+              data-testid="add-domain-btn"
+            >
+              Add
+            </Button>
+          </div>
+
+          <Button
+            onClick={handleSaveDomains}
+            disabled={isSavingDomains}
+            className="w-full sm:w-auto"
+            data-testid="save-domains-btn"
+          >
+            {isSavingDomains ? "Saving…" : "Save Domains"}
+          </Button>
+          {domainsError && <p className="text-sm text-destructive">{domainsError}</p>}
+          {domainsSuccess && <p className="text-sm text-green-600">Domain list saved.</p>}
         </CardContent>
       </Card>
 

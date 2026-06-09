@@ -11,6 +11,7 @@ const PatchTeamSchema = z.object({
   allowVision: z.boolean().optional(),
   allowSpeech: z.boolean().optional(),
   modelAllowList: z.array(z.enum(APPROVED_MODEL_IDS)).optional(),
+  allowedEmailDomains: z.array(z.string().regex(/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/, "Invalid domain")).optional(),
 });
 
 export async function PATCH(

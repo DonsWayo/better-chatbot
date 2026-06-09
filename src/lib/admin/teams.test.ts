@@ -15,15 +15,20 @@ const selectMock = vi.fn().mockReturnValue({ from: fromMock });
 const updateSetMock = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({ rowCount: 1 }) });
 const updateMock = vi.fn().mockReturnValue({ set: updateSetMock });
 
+const onConflictMock = vi.fn().mockResolvedValue([]);
+const insertValuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictMock });
+const insertMock = vi.fn().mockReturnValue({ values: insertValuesMock });
+
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: {
     select: selectMock,
     update: updateMock,
+    insert: insertMock,
   },
 }));
 
 vi.mock("@/lib/db/pg/schema.pg", () => ({
-  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech", modelAllowList: "modelAllowList" },
+  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech", modelAllowList: "modelAllowList", allowedEmailDomains: "allowedEmailDomains" },
   AsafeTeamMemberTable: { id: "id", teamId: "teamId", userId: "userId", role: "role", createdAt: "createdAt" },
   AsafeTeamBudgetTable: { teamId: "teamId", budgetUsd: "budgetUsd", usedUsd: "usedUsd" },
   AsafeUsageEventTable: { model: "model", provider: "provider", promptTokens: "promptTokens", completionTokens: "completionTokens", costUsd: "costUsd", taskClass: "taskClass", createdAt: "createdAt" },
@@ -315,5 +320,153 @@ describe("updateTeamPolicy", () => {
 
     expect(selectMock).toHaveBeenCalledTimes(2);
     expect(fresh.guardrailPolicy).toBe("strict");
+  });
+});
+
+// ── emailDomain helper ─────────────────────────────────────────────────────────
+
+describe("emailDomain", () => {
+  it("extracts the domain from a normal email", async () => {
+    const { emailDomain } = await import("./teams");
+    expect(emailDomain("alice@example.com")).toBe("example.com");
+  });
+
+  it("lowercases the domain", async () => {
+    const { emailDomain } = await import("./teams");
+    expect(emailDomain("BOB@ACME.ORG")).toBe("acme.org");
+  });
+
+  it("returns empty string for an email without @", async () => {
+    const { emailDomain } = await import("./teams");
+    expect(emailDomain("notanemail")).toBe("");
+  });
+
+  it("handles subdomains correctly", async () => {
+    const { emailDomain } = await import("./teams");
+    expect(emailDomain("user@mail.corp.example.com")).toBe("mail.corp.example.com");
+  });
+});
+
+// ── addTeamMember — domain enforcement ────────────────────────────────────────
+
+describe("addTeamMember", () => {
+  const sharedBeforeEach = () => {
+    vi.clearAllMocks();
+    _selectRows = [];
+
+    limitMock.mockImplementation(() => Promise.resolve(_selectRows));
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
+
+    onConflictMock.mockResolvedValue([]);
+    insertValuesMock.mockReturnValue({ onConflictDoUpdate: onConflictMock });
+    insertMock.mockReturnValue({ values: insertValuesMock });
+
+    vi.resetModules();
+  };
+
+  beforeEach(sharedBeforeEach);
+  afterEach(() => { vi.resetModules(); });
+
+  it("inserts member when domain allow-list is empty (no restriction)", async () => {
+    // SELECT for team row — empty domains
+    _selectRows = [{ allowedEmailDomains: [] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { addTeamMember } = await import("./teams");
+    await expect(addTeamMember("team-1", "user-1", "member", "alice@anywhere.io")).resolves.toBeUndefined();
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("inserts member when their domain matches the allow-list", async () => {
+    _selectRows = [{ allowedEmailDomains: ["asafe.ai", "example.com"] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { addTeamMember } = await import("./teams");
+    await expect(addTeamMember("team-2", "user-2", "editor", "bob@asafe.ai")).resolves.toBeUndefined();
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when email domain is not in the allow-list", async () => {
+    _selectRows = [{ allowedEmailDomains: ["asafe.ai"] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { addTeamMember } = await import("./teams");
+    await expect(
+      addTeamMember("team-3", "user-3", "member", "outsider@gmail.com"),
+    ).rejects.toThrow('Email domain "gmail.com" is not allowed for this team.');
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("skips domain check when no userEmail is provided", async () => {
+    // No select call expected since we skip the check
+    const { addTeamMember } = await import("./teams");
+    await expect(addTeamMember("team-4", "user-4", "member")).resolves.toBeUndefined();
+    expect(selectMock).not.toHaveBeenCalled();
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("is case-insensitive for the domain comparison", async () => {
+    _selectRows = [{ allowedEmailDomains: ["asafe.ai"] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { addTeamMember } = await import("./teams");
+    await expect(addTeamMember("team-5", "user-5", "member", "USER@ASAFE.AI")).resolves.toBeUndefined();
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses ON CONFLICT DO UPDATE (re-adding resets role)", async () => {
+    _selectRows = [{ allowedEmailDomains: [] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { addTeamMember } = await import("./teams");
+    await addTeamMember("team-6", "user-6", "admin", "charlie@corp.com");
+
+    expect(onConflictMock).toHaveBeenCalledWith(
+      expect.objectContaining({ set: expect.objectContaining({ role: "admin" }) }),
+    );
+  });
+});
+
+// ── getTeamPolicy — allowedEmailDomains field ─────────────────────────────────
+
+describe("getTeamPolicy allowedEmailDomains", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _selectRows = [];
+    limitMock.mockImplementation(() => Promise.resolve(_selectRows));
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
+    vi.resetModules();
+  });
+
+  afterEach(() => { vi.resetModules(); });
+
+  it("returns allowedEmailDomains from DB row", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: ["asafe.ai", "corp.example.com"] }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-domains");
+    expect(policy.allowedEmailDomains).toEqual(["asafe.ai", "corp.example.com"]);
+  });
+
+  it("defaults allowedEmailDomains to [] when row is missing", async () => {
+    _selectRows = [];
+    limitMock.mockResolvedValue([]);
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-no-row");
+    expect(policy.allowedEmailDomains).toEqual([]);
+  });
+
+  it("defaults allowedEmailDomains to [] on DB error", async () => {
+    limitMock.mockRejectedValue(new Error("Timeout"));
+
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-err2");
+    expect(policy.allowedEmailDomains).toEqual([]);
   });
 });

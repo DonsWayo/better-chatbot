@@ -221,11 +221,33 @@ export async function getTeamWithMembers(teamId: string) {
   return { ...team, members, budget: activeBudget[0] ?? null };
 }
 
+/** Returns the domain part of an email address, lowercased. */
+export function emailDomain(email: string): string {
+  return email.split("@")[1]?.toLowerCase() ?? "";
+}
+
 export async function addTeamMember(
   teamId: string,
   userId: string,
   role: "admin" | "editor" | "member" = "member",
+  userEmail?: string,
 ) {
+  // Enforce email domain allow-list when configured
+  if (userEmail) {
+    const [teamRow] = await db
+      .select({ allowedEmailDomains: AsafeTeamTable.allowedEmailDomains })
+      .from(AsafeTeamTable)
+      .where(eq(AsafeTeamTable.id, teamId))
+      .limit(1);
+    const domains = (teamRow?.allowedEmailDomains as string[]) ?? [];
+    if (domains.length > 0) {
+      const domain = emailDomain(userEmail);
+      if (!domains.includes(domain)) {
+        throw new Error(`Email domain "${domain}" is not allowed for this team.`);
+      }
+    }
+  }
+
   // Insert with ON CONFLICT DO UPDATE to handle re-adding
   await db
     .insert(AsafeTeamMemberTable)
@@ -289,6 +311,8 @@ export interface TeamPolicy {
   allowSpeech: boolean;
   /** Empty array = all approved models allowed; non-empty = restricted to listed model IDs */
   modelAllowList: string[];
+  /** Empty array = any email domain allowed; non-empty = only matching domains */
+  allowedEmailDomains: string[];
 }
 
 const _teamPolicyCache = new Map<string, { policy: TeamPolicy; expiresAt: number }>();
@@ -306,6 +330,7 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
         allowVision: AsafeTeamTable.allowVision,
         allowSpeech: AsafeTeamTable.allowSpeech,
         modelAllowList: AsafeTeamTable.modelAllowList,
+        allowedEmailDomains: AsafeTeamTable.allowedEmailDomains,
       })
       .from(AsafeTeamTable)
       .where(eq(AsafeTeamTable.id, teamId))
@@ -317,11 +342,12 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
       allowVision: false,
       allowSpeech: false,
       modelAllowList: [],
+      allowedEmailDomains: [],
     };
     _teamPolicyCache.set(teamId, { policy, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
     return policy;
   } catch {
-    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [] };
+    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: [] };
   }
 }
 

@@ -408,6 +408,8 @@ export const AsafeTeamTable = pgTable(
     allowSpeech: boolean("allow_speech").notNull().default(false),
     // W4: model allow-list — empty array = all approved models allowed
     modelAllowList: jsonb("model_allow_list").$type<string[]>().notNull().default([]),
+    // W5+: email domain allow-list — empty array = any email domain allowed
+    allowedEmailDomains: jsonb("allowed_email_domains").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
