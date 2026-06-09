@@ -97,4 +97,39 @@ describe("POST /api/mcp", () => {
     const body = await res.json();
     expect(body).toHaveProperty("message");
   });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("saveMcpClientAction called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "srv-ok" }) },
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "new-mcp" }));
+    expect(saveMcpClientActionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls saveMcpClientAction when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
 });

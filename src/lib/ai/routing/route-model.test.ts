@@ -98,4 +98,33 @@ describe("routeModel", () => {
     const d = routeModel({ text: "continue", totalChars: 8001 });
     expect(d.taskClass).toBe("long_context");
   });
+
+  it("totalChars at exactly LONG_CONTEXT_CHARS (8000) triggers long_context", () => {
+    const d = routeModel({ text: "continue", totalChars: 8000 });
+    expect(d.taskClass).toBe("long_context");
+  });
+
+  it("totalChars below threshold (7999) with plain text stays general", () => {
+    const d = routeModel({ text: "hi there", totalChars: 7999 });
+    expect(d.taskClass).toBe("general");
+  });
+
+  it("hasImage beats hasTools (vision checked before tool_use)", () => {
+    const d = routeModel({ text: "analyze this image with tools", hasImage: true, hasTools: true });
+    expect(d.taskClass).toBe("vision");
+  });
+
+  it("returned decision always has all required fields", () => {
+    const d = routeModel({ text: "hello" });
+    expect(d).toHaveProperty("taskClass");
+    expect(d).toHaveProperty("model");
+    expect(d).toHaveProperty("candidates");
+    expect(d).toHaveProperty("reason");
+  });
+
+  it("chosen model always has provider and model fields", () => {
+    const d = routeModel({ text: "hello" });
+    expect(typeof d.model.provider).toBe("string");
+    expect(typeof d.model.model).toBe("string");
+  });
 });

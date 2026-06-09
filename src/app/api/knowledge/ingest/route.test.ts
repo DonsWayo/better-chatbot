@@ -97,4 +97,68 @@ describe("POST /api/knowledge/ingest", () => {
       { collectionId: "col-1", sourceRef: "policy.md", maxTokens: undefined },
     );
   });
+
+  it("never calls dbSelect when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "hello" }));
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls ingestDocument when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "hello" }));
+    expect(ingestDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls ingestDocument for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "hello" }));
+    expect(ingestDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls ingestDocument when collection is not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "missing", text: "hello" }));
+    expect(ingestDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "hi" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "hi" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("ingestDocument called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    ingestDocumentMock.mockResolvedValueOnce(3);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "some text" }));
+    expect(ingestDocumentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response body includes collectionId on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-xyz" }]);
+    ingestDocumentMock.mockResolvedValueOnce(2);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-xyz", text: "content" }));
+    const body = await res.json();
+    expect(body.collectionId).toBe("col-xyz");
+  });
 });

@@ -99,4 +99,41 @@ describe("equal", () => {
   it("object key order does not affect equality", () => {
     expect(equal({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true);
   });
+
+  it("Set comparison is order-independent", () => {
+    expect(equal(new Set([1, 2, 3]), new Set([3, 2, 1]))).toBe(true);
+    expect(equal(new Set([1, 2]), new Set([1, 3]))).toBe(false);
+  });
+
+  it("Set with object values uses reference equality (shallow)", () => {
+    const obj = { x: 1 };
+    expect(equal(new Set([obj]), new Set([obj]))).toBe(true);
+    expect(equal(new Set([{ x: 1 }]), new Set([{ x: 1 }]))).toBe(false);
+  });
+
+  it("Map with deep-equal object values returns true", () => {
+    expect(equal(new Map([["k", { x: 1 }]]), new Map([["k", { x: 1 }]]))).toBe(true);
+    expect(equal(new Map([["k", { x: 1 }]]), new Map([["k", { x: 2 }]]))).toBe(false);
+  });
+
+  it("object with extra undefined key differs from object without it", () => {
+    expect(equal({ a: undefined }, {})).toBe(false);
+    expect(equal({}, { a: undefined })).toBe(false);
+  });
+
+  it("number and string are not equal even with same value", () => {
+    expect(equal(1, "1")).toBe(false);
+    expect(equal(0, "0")).toBe(false);
+    expect(equal(0, false)).toBe(false);
+  });
+
+  it("Infinity and -Infinity", () => {
+    expect(equal(Infinity, Infinity)).toBe(true);
+    expect(equal(-Infinity, -Infinity)).toBe(true);
+    expect(equal(Infinity, -Infinity)).toBe(false);
+  });
+
+  it("Symbol instances are never equal even with same description", () => {
+    expect(equal(Symbol("x"), Symbol("x"))).toBe(false);
+  });
 });
