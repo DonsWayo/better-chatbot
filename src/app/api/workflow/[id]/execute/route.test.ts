@@ -240,3 +240,36 @@ describe("POST /api/workflow/[id]/execute — response shape", () => {
     expect(checkAccessMock).toHaveBeenCalledWith("specific-wf-id", expect.anything());
   });
 });
+
+describe("POST /api/workflow/[id]/execute — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkAccess never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("selectStructureById never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("createWorkflowExecutor never called when access denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+});

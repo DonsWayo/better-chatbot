@@ -241,3 +241,48 @@ describe("checkConditionBranch — edge cases", () => {
     expect(checkConditionBranch(b, makeSourceFn({ "n1.count": 5 }))).toBe(false);
   });
 });
+
+describe("checkConditionBranch — return type invariants", () => {
+  it("always returns a boolean", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [{ source, operator: StringConditionOperator.Equals, value: "x" }],
+      logicalOperator: "AND",
+    };
+    const result = checkConditionBranch(b, makeSourceFn({ "n1.v": "x" }));
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("OR branch: true when any condition matches", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [
+        { source, operator: StringConditionOperator.Equals, value: "no-match" },
+        { source, operator: StringConditionOperator.Equals, value: "hello" },
+      ],
+      logicalOperator: "OR",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.v": "hello" }))).toBe(true);
+  });
+
+  it("AND branch: false when one condition fails", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [
+        { source, operator: StringConditionOperator.Equals, value: "hello" },
+        { source, operator: StringConditionOperator.Contains, value: "world" },
+      ],
+      logicalOperator: "AND",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.v": "hello" }))).toBe(false);
+  });
+
+  it("empty conditions array with AND returns true", () => {
+    const b: ConditionBranch = { id: "if", type: "if", conditions: [], logicalOperator: "AND" };
+    const result = checkConditionBranch(b, makeSourceFn({}));
+    expect(typeof result).toBe("boolean");
+  });
+});

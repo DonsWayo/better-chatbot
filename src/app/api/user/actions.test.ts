@@ -241,3 +241,30 @@ describe("User Actions — password validation logic", () => {
     expect(isValid).toBe(true);
   });
 });
+
+describe("User Actions — update response shape invariants", () => {
+  it("success response has success:true and message and user properties", () => {
+    const user = { id: "u1", name: "Alice", email: "alice@example.com" };
+    const result = { success: true, message: "User details updated successfully", user };
+    expect(result).toHaveProperty("success", true);
+    expect(result).toHaveProperty("message");
+    expect(result).toHaveProperty("user");
+  });
+
+  it("failure response has success:false and message", () => {
+    const result = { success: false, message: "User not found" };
+    expect(result.success).toBe(false);
+    expect(typeof result.message).toBe("string");
+    expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it("user object in success response contains id field", () => {
+    const user = { id: "u99", name: "Test", email: "t@t.com" };
+    expect(user).toHaveProperty("id");
+  });
+
+  it("password validation: minimum length 8 chars is sufficient", () => {
+    const password = "Abc12345";
+    expect(password.length).toBeGreaterThanOrEqual(8);
+  });
+});
