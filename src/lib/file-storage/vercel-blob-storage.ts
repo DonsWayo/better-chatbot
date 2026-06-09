@@ -13,12 +13,10 @@ import {
 } from "./storage-utils";
 import { generateUUID } from "lib/utils";
 
-const STORAGE_PREFIX = resolveStoragePrefix();
-
-const buildPathname = (filename: string) => {
+const buildPathname = (filename: string, storagePrefix: string) => {
   const safeName = sanitizeFilename(filename);
   const id = generateUUID();
-  const prefix = STORAGE_PREFIX ? `${STORAGE_PREFIX}/` : "";
+  const prefix = storagePrefix ? `${storagePrefix}/` : "";
   return path.posix.join(prefix, `${id}-${safeName}`);
 };
 
@@ -58,11 +56,12 @@ const fetchSourceBuffer = async (url: string) => {
 };
 
 export const createVercelBlobStorage = (): FileStorage => {
+  const storagePrefix = resolveStoragePrefix();
   return {
     async upload(content, options: UploadOptions = {}) {
       const buffer = await toBuffer(content);
       const filename = options.filename ?? "file";
-      const pathname = buildPathname(filename);
+      const pathname = buildPathname(filename, storagePrefix);
 
       const result = await put(pathname, buffer, {
         access: "public",
