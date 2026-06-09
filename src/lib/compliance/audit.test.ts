@@ -163,3 +163,27 @@ describe("writeAuditLog — no details field", () => {
     expect(dbInsertValuesMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("hashContent — additional", () => {
+  it("returns a non-empty string", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("input").length).toBeGreaterThan(0);
+  });
+
+  it("hash is deterministic across multiple calls", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("deterministic")).toBe(hashContent("deterministic"));
+  });
+
+  it("hash changes when a single character is added", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("hello")).not.toBe(hashContent("hello!"));
+  });
+
+  it("long input produces same length hash as short input", async () => {
+    const { hashContent } = await import("./audit");
+    const short = hashContent("ab");
+    const long = hashContent("a".repeat(1000));
+    expect(short.length).toBe(long.length);
+  });
+});

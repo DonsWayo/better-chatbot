@@ -161,3 +161,44 @@ describe("recordAupAcceptance — additional", () => {
     expect(result).toBeUndefined();
   });
 });
+
+describe("hasAcceptedAup — response type invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    selectLimitMock.mockResolvedValue([]);
+    selectWhereMock.mockReturnValue({ limit: selectLimitMock });
+    selectFromMock.mockReturnValue({ where: selectWhereMock });
+    selectMock.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("returns boolean true when acceptance record exists", async () => {
+    selectLimitMock.mockResolvedValue([{ id: "x" }]);
+    const { hasAcceptedAup } = await import("./aup");
+    const result = await hasAcceptedAup("u-true");
+    expect(result).toBe(true);
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("returns boolean false when no acceptance record", async () => {
+    selectLimitMock.mockResolvedValue([]);
+    const { hasAcceptedAup } = await import("./aup");
+    const result = await hasAcceptedAup("u-false");
+    expect(result).toBe(false);
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("selectMock called exactly once per un-cached check", async () => {
+    selectLimitMock.mockResolvedValue([]);
+    const { hasAcceptedAup } = await import("./aup");
+    await hasAcceptedAup("fresh-user-rtype");
+    expect(selectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a boolean even when DB throws (fail-open)", async () => {
+    selectLimitMock.mockRejectedValue(new Error("db err"));
+    const { hasAcceptedAup } = await import("./aup");
+    const result = await hasAcceptedAup("err-user");
+    expect(typeof result).toBe("boolean");
+  });
+});

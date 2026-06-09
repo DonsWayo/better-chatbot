@@ -213,3 +213,36 @@ describe("signUpAction — name field handling", () => {
     expect(signUpEmailMock).not.toHaveBeenCalled();
   });
 });
+
+describe("signUpAction and existsByEmailAction — return type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("signUpAction always returns an object", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "u1", email: "z@z.com", name: "Z" } });
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "z@z.com", name: "Zed", password: "P@ssword1" });
+    expect(typeof result).toBe("object");
+    expect(result).not.toBeNull();
+  });
+
+  it("existsByEmailAction returns a boolean", async () => {
+    existsByEmailMock.mockResolvedValueOnce(false);
+    const { existsByEmailAction } = await import("./actions");
+    const result = await existsByEmailAction("new@test.com");
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("signUpAction returns success:false on API error", async () => {
+    signUpEmailMock.mockRejectedValueOnce(new Error("network error"));
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "err@err.com", name: "Err", password: "P@ssword1" });
+    expect(result.success).toBe(false);
+  });
+
+  it("existsByEmailAction returns true when email exists", async () => {
+    existsByEmailMock.mockResolvedValueOnce(true);
+    const { existsByEmailAction } = await import("./actions");
+    const result = await existsByEmailAction("existing@test.com");
+    expect(result).toBe(true);
+  });
+});

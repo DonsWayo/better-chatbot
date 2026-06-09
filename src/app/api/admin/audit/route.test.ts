@@ -227,3 +227,41 @@ describe("GET /api/admin/audit — query params handling", () => {
     expect(mockGetAuditLog).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/admin/audit — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); mockGetAuditLog.mockResolvedValue({ rows: [], total: 0 }); });
+
+  it("returns a Response instance for 401 (unauthenticated)", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a Response instance for 403 (non-admin)", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns a Response instance for 200 (admin)", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(200);
+  });
+
+  it("200 body has rows and total properties", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    mockGetAuditLog.mockResolvedValue({ rows: [{ id: "r1" }], total: 1 });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("rows");
+    expect(body).toHaveProperty("total");
+  });
+});

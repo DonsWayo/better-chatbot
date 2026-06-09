@@ -164,3 +164,38 @@ describe("GET /api/metrics — token authentication additional", () => {
     expect(res.headers.get("content-type")).toContain("text/plain");
   });
 });
+
+describe("GET /api/metrics — response invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    delete process.env.METRICS_AUTH_TOKEN;
+  });
+
+  it("returns a Response instance (no token configured)", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 401 (wrong token)", async () => {
+    process.env.METRICS_AUTH_TOKEN = "tok";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("Bearer wrong"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is a non-empty string (no token configured)", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const text = await res.text();
+    expect(typeof text).toBe("string");
+    expect(text.length).toBeGreaterThan(0);
+  });
+
+  it("200 status is exactly 200 (no token configured)", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+  });
+});

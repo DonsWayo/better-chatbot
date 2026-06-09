@@ -224,3 +224,37 @@ describe("GET /api/mcp/[id] — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("GET and DELETE /api/mcp/[id] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectById never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(selectByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("removeMcpClientAction never called when DELETE unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(removeMcpClientActionMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 body with error property when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});

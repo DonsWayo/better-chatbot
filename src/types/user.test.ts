@@ -165,3 +165,33 @@ describe("UserPreferencesZodSchema — additional", () => {
     expect(r.success).toBe(true);
   });
 });
+
+describe("UserZodSchema and UserPreferencesZodSchema — shared invariants", () => {
+  it("UserZodSchema data.name matches input on success", () => {
+    const r = UserZodSchema.safeParse({ name: "Alice", email: "alice@test.com", password: "Password1" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Alice");
+  });
+
+  it("UserZodSchema data.email matches input on success", () => {
+    const r = UserZodSchema.safeParse({ name: "Bob", email: "bob@test.com", password: "Password9" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.email).toBe("bob@test.com");
+  });
+
+  it("UserPreferencesZodSchema data.botName matches input on success", () => {
+    const r = UserPreferencesZodSchema.safeParse({ botName: "MyBot" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.botName).toBe("MyBot");
+  });
+
+  it("UserPreferencesZodSchema accepts all optional string fields together", () => {
+    const r = UserPreferencesZodSchema.safeParse({
+      displayName: "Alice",
+      botName: "Bot",
+      profession: "Dev",
+      responseStyleExample: "Keep it short",
+    });
+    expect(r.success).toBe(true);
+  });
+});

@@ -166,3 +166,39 @@ describe("GET /api/user/preferences — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/user/preferences — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is not null", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).not.toBeNull();
+  });
+
+  it("PUT returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ theme: "dark" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+});

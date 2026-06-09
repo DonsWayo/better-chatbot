@@ -165,3 +165,39 @@ describe("POST /api/chat/temporary — additional", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("POST /api/chat/temporary — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+  });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [] }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 500 (streamText throws)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    streamTextMock.mockImplementationOnce(() => { throw new Error("model error"); });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [] }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [] }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getModel called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [], chatModel: { provider: "openrouter", model: "gpt-5.1" } }));
+    expect(getModelMock).toHaveBeenCalledTimes(1);
+  });
+});

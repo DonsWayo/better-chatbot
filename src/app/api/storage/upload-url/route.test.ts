@@ -217,3 +217,37 @@ describe("POST /api/storage/upload-url — error body content", () => {
     expect(body.uploadUrl).toBe("https://s3/signed-url-abc");
   });
 });
+
+describe("POST /api/storage/upload-url — response type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("returns a Response instance for 401 (unauthenticated)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "f.txt" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a Response instance on storage config error", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, message: "not configured" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "f.txt" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "f.txt" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("createUploadUrl not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "f.txt" }));
+    expect(createUploadUrlMock).not.toHaveBeenCalled();
+  });
+});

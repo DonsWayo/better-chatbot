@@ -165,3 +165,22 @@ describe("customModelProvider registry invariants", () => {
     }
   });
 });
+
+describe("customModelProvider — additional edge cases", () => {
+  it("modelsInfo is always an array", () => {
+    const { customModelProvider } = modelsModule;
+    expect(Array.isArray(customModelProvider.modelsInfo)).toBe(true);
+  });
+
+  it("OPENAI_FILE_MIME_TYPES is non-empty", () => {
+    expect(OPENAI_FILE_MIME_TYPES.size).toBeGreaterThan(0);
+  });
+
+  it("GEMINI_FILE_MIME_TYPES is non-empty", () => {
+    expect(GEMINI_FILE_MIME_TYPES.size).toBeGreaterThan(0);
+  });
+
+  it("ANTHROPIC_FILE_MIME_TYPES is non-empty", () => {
+    expect(ANTHROPIC_FILE_MIME_TYPES.size).toBeGreaterThan(0);
+  });
+});

@@ -217,3 +217,36 @@ describe("POST /api/knowledge/collections — additional", () => {
     expect(body).toHaveProperty("collection");
   });
 });
+
+describe("GET and POST /api/knowledge/collections — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+
+  it("GET returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("POST returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "test", visibility: "org" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbInsert not called when unauthenticated POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "test", visibility: "org" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+});

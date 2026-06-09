@@ -227,3 +227,38 @@ describe("DELETE /api/prompts/[id] — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("PATCH, DELETE /api/prompts/[id] — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+
+  it("PATCH returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ title: "New" }), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("DELETE returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("dbUpdate not called when PATCH unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ title: "New" }), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("PATCH returns 404 when prompt not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ title: "X" }), { params: Promise.resolve({ id: "missing" }) });
+    expect(res.status).toBe(404);
+  });
+});

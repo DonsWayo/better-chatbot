@@ -164,3 +164,31 @@ describe("routeModel", () => {
     }
   });
 });
+
+describe("routeModel — invariants", () => {
+  it("reason is a non-empty string for every input", () => {
+    for (const text of ["", "fix this", "translate hello", "analyze image"]) {
+      const d = routeModel({ text });
+      expect(typeof d.reason).toBe("string");
+      expect(d.reason.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("candidates always contains at least one entry", () => {
+    const d = routeModel({ text: "some text" });
+    expect(d.candidates.length).toBeGreaterThan(0);
+  });
+
+  it("model.provider is always 'openRouter'", () => {
+    for (const text of ["hello", "fix code", "translate this quickly"]) {
+      const d = routeModel({ text });
+      expect(d.model.provider).toBe("openRouter");
+    }
+  });
+
+  it("taskClass is always a non-empty string", () => {
+    const d = routeModel({ text: "arbitrary input here" });
+    expect(typeof d.taskClass).toBe("string");
+    expect(d.taskClass.length).toBeGreaterThan(0);
+  });
+});

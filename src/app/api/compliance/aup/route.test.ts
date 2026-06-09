@@ -226,3 +226,35 @@ describe("POST /api/compliance/aup — response shape", () => {
     expect(writeAuditLogMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST and GET /api/compliance/aup — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbUpdate never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST();
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("dbSelect never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+});
