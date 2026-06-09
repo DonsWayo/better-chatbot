@@ -192,3 +192,24 @@ describe("routeModel — invariants", () => {
     expect(d.taskClass.length).toBeGreaterThan(0);
   });
 });
+
+describe("routeModel — return type invariants", () => {
+  it("returns a non-null object", () => {
+    expect(routeModel({ text: "anything" })).not.toBeNull();
+  });
+
+  it("returned model has a modelId property", () => {
+    const d = routeModel({ text: "test" });
+    expect(d.model).toHaveProperty("modelId");
+  });
+
+  it("returned model has a provider property", () => {
+    const d = routeModel({ text: "test" });
+    expect(d.model).toHaveProperty("provider");
+  });
+
+  it("taskClass is present in result", () => {
+    const d = routeModel({ text: "any text" });
+    expect(d).toHaveProperty("taskClass");
+  });
+});

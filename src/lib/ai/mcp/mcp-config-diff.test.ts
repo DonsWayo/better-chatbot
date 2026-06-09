@@ -191,3 +191,26 @@ describe("detectConfigChanges — additional invariants", () => {
     expect(changes[0].value).toEqual(cfg);
   });
 });
+
+describe("detectConfigChanges — edge case invariants", () => {
+  it("empty configs produce no changes", () => {
+    const changes = detectConfigChanges({}, {});
+    expect(changes).toHaveLength(0);
+  });
+
+  it("identical configs produce no changes", () => {
+    const cfg = { command: "node", args: ["server.js"] };
+    const changes = detectConfigChanges({ s: cfg }, { s: cfg });
+    expect(changes).toHaveLength(0);
+  });
+
+  it("returns an array for all inputs", () => {
+    const result = detectConfigChanges({ a: { command: "x" } }, { b: { command: "y" } });
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("add and remove detected when configs swap", () => {
+    const changes = detectConfigChanges({ old: { command: "a" } }, { new: { command: "b" } });
+    expect(changes.length).toBeGreaterThanOrEqual(2);
+  });
+});
