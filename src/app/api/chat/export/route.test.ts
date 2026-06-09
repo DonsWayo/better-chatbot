@@ -202,3 +202,36 @@ describe("POST /api/chat/export — response shape", () => {
     expect(body).toHaveProperty("message");
   });
 });
+
+describe("POST /api/chat/export — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkAccess not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("exportChat not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(exportChatMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});

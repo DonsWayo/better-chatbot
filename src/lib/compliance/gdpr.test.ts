@@ -233,3 +233,34 @@ describe("eraseUserData — call count invariants", () => {
     expect(result.tablesCleared).toContain("user");
   });
 });
+
+describe("eraseUserData and exportUserData — return type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbExecuteMock.mockResolvedValue([]); });
+
+  it("eraseUserData returns an object with tablesCleared array", async () => {
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u-type");
+    expect(result).toHaveProperty("tablesCleared");
+    expect(Array.isArray(result.tablesCleared)).toBe(true);
+  });
+
+  it("eraseUserData result is a non-null object", async () => {
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u-nonnull");
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe("object");
+  });
+
+  it("exportUserData returns an object", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("u-export");
+    expect(typeof result).toBe("object");
+    expect(result).not.toBeNull();
+  });
+
+  it("exportUserData result is non-null", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const data = await exportUserData("u-data");
+    expect(data).toBeDefined();
+  });
+});

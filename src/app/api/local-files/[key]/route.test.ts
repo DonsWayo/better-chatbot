@@ -209,3 +209,36 @@ describe("GET /api/local-files/[key] — dev mode additional types", () => {
     expect(readFileMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/local-files/[key] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); isDevMock.value = true; });
+
+  it("readFile called exactly once per GET in dev mode", async () => {
+    readFileMock.mockResolvedValueOnce(Buffer.from("data"));
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ key: "file.txt" }) });
+    expect(readFileMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response is always a Response instance for dev mode", async () => {
+    readFileMock.mockResolvedValueOnce(Buffer.from("content"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "doc.pdf" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("404 when readFile throws ENOENT in dev mode", async () => {
+    readFileMock.mockRejectedValueOnce(Object.assign(new Error("not found"), { code: "ENOENT" }));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "missing.png" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("production mode returns 404 without calling readFile", async () => {
+    isDevMock.value = false;
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "any.png" }) });
+    expect(res.status).toBe(404);
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+});

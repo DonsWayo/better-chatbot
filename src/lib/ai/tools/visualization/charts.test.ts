@@ -152,3 +152,27 @@ describe("all chart tools — shared invariants", () => {
     }
   });
 });
+
+describe("all chart tools — additional invariants", () => {
+  it("createBarChartTool has a name property", async () => {
+    const { createBarChartTool } = await import("./create-bar-chart");
+    expect(createBarChartTool).toHaveProperty("name");
+    expect(typeof createBarChartTool.name).toBe("string");
+  });
+
+  it("createLineChartTool has a name property", async () => {
+    const { createLineChartTool } = await import("./create-line-chart");
+    expect(createLineChartTool).toHaveProperty("name");
+    expect(typeof createLineChartTool.name).toBe("string");
+  });
+
+  it("createPieChartTool has an execute function", async () => {
+    const { createPieChartTool } = await import("./create-pie-chart");
+    expect(typeof createPieChartTool.execute).toBe("function");
+  });
+
+  it("createTableTool has an execute function", async () => {
+    const { createTableTool } = await import("./create-table");
+    expect(typeof createTableTool.execute).toBe("function");
+  });
+});

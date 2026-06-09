@@ -204,3 +204,36 @@ describe("POST /api/mcp — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("POST /api/mcp — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "mcp-1" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveMcpClientAction not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "mcp-1" }));
+    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
+
+  it("canCreateMCP not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "mcp-1" }));
+    expect(canCreateMCPMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "mcp-1" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});

@@ -148,3 +148,25 @@ describe("McpToolCustomizationZodSchema — field rules", () => {
     expect(r.success).toBe(false);
   });
 });
+
+describe("MCP schemas — additional invariants", () => {
+  it("MCPStdioConfigZodSchema rejects empty command string", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "", args: [] });
+    expect(r.success).toBe(false);
+  });
+
+  it("MCPRemoteConfigZodSchema rejects non-http url", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: "ftp://example.com" });
+    expect(r.success).toBe(false);
+  });
+
+  it("MCPStdioConfigZodSchema accepts valid command with args", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "node", args: ["server.js"] });
+    expect(r.success).toBe(true);
+  });
+
+  it("McpServerCustomizationZodSchema rejects missing mcpServerId", () => {
+    const r = McpServerCustomizationZodSchema.safeParse({ prompt: "help" });
+    expect(r.success).toBe(false);
+  });
+});
