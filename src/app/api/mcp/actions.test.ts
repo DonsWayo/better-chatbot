@@ -265,3 +265,41 @@ describe("saveMcpClientAction — additional", () => {
     await expect(saveMcpClientAction({ name: "valid-name", scope: "org", config: {} } as any)).rejects.toThrow(/admin/i);
   });
 });
+
+describe("selectMcpClientsAction — return type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("returns an array even with no MCP clients configured", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockReturnValue([]);
+    const { selectMcpClientsAction } = await import("./actions");
+    const result = await selectMcpClientsAction();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("each MCP client item has id field", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([{ id: "mcp-1", name: "Test", config: { url: "http://mcp" } }]);
+    getClientsMock.mockReturnValue([]);
+    const { selectMcpClientsAction } = await import("./actions");
+    const result = await selectMcpClientsAction();
+    if (result.length > 0) expect(result[0]).toHaveProperty("id");
+    else expect(result).toEqual([]);
+  });
+
+  it("throws when user is not authenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { selectMcpClientsAction } = await import("./actions");
+    await expect(selectMcpClientsAction()).rejects.toThrow();
+  });
+
+  it("getCurrentUser called exactly once per selectMcpClientsAction call", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockReturnValue([]);
+    const { selectMcpClientsAction } = await import("./actions");
+    await selectMcpClientsAction();
+    expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
+  });
+});

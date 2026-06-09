@@ -264,3 +264,22 @@ describe("buildMcpServerCustomizationsSystemPrompt — additional", () => {
     expect(result).toContain("Use sparingly.");
   });
 });
+
+describe("prompt builders — return type invariants", () => {
+  it("buildUserSystemPrompt always returns a string", () => {
+    expect(typeof buildUserSystemPrompt({ name: "Alice", role: "user" } as any)).toBe("string");
+  });
+
+  it("buildMcpServerCustomizationsSystemPrompt always returns a string", () => {
+    expect(typeof buildMcpServerCustomizationsSystemPrompt({})).toBe("string");
+  });
+
+  it("generateExampleToolSchemaPrompt always returns a string", () => {
+    expect(typeof generateExampleToolSchemaPrompt()).toBe("string");
+  });
+
+  it("MANUAL_REJECT_RESPONSE_PROMPT is a non-empty string", () => {
+    expect(typeof MANUAL_REJECT_RESPONSE_PROMPT).toBe("string");
+    expect(MANUAL_REJECT_RESPONSE_PROMPT.length).toBeGreaterThan(0);
+  });
+});

@@ -265,3 +265,35 @@ describe("GET /api/mcp/server-customizations/[server] — response shape", () =>
     expect(body.success).toBe(true);
   });
 });
+
+describe("GET, POST, DELETE /api/mcp/server-customizations/[server] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectByUserIdAndMcpServerId never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
+  });
+
+  it("upsert never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "hello" }), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
+
+  it("deleteMcpServerCustomization never called when DELETE unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(deleteMcpServerCustomizationMock).not.toHaveBeenCalled();
+  });
+});
