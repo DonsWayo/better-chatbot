@@ -257,3 +257,36 @@ describe("GET /api/admin/users/[id]/model-grants — response shape", () => {
     expect(body.grants[0]).toHaveProperty("modelId");
   });
 });
+
+describe("GET and POST /api/admin/users/[id]/model-grants — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); mockListGrants.mockResolvedValue([]); });
+
+  it("getSession called exactly once per GET", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("listGrants never called when GET unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(mockListGrants).not.toHaveBeenCalled();
+  });
+
+  it("grantModel never called when POST unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makePostRequest({ modelId: "m1" }), makeParams("u1") as any);
+    expect(mockGrantModel).not.toHaveBeenCalled();
+  });
+
+  it("POST returns Response instance for 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makePostRequest({ modelId: "m1" }), makeParams("u1") as any);
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});
