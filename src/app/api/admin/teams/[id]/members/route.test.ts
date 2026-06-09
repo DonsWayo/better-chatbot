@@ -127,3 +127,101 @@ describe("POST /api/admin/teams/[id]/members", () => {
     expect(addTeamMemberMock).toHaveBeenCalledWith("t-1", "u-99", "editor");
   });
 });
+
+describe("GET /api/admin/teams/[id]/members — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls getTeamWithMembers when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(getTeamWithMembersMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls getTeamWithMembers for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(getTeamWithMembersMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body members is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    getTeamWithMembersMock.mockResolvedValueOnce({ id: "t-1", members: [MEMBER_ROW] });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body.members)).toBe(true);
+  });
+});
+
+describe("POST /api/admin/teams/[id]/members — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 403 for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls addTeamMember when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(addTeamMemberMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls addTeamMember for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(addTeamMemberMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});

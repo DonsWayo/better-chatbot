@@ -129,3 +129,38 @@ describe("GET /api/metrics — token authentication", () => {
     expect(metricsMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/metrics — token authentication additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("401 body is text 'Unauthorized' when no auth header provided", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("metrics() not called when no auth header provided", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(metricsMock).not.toHaveBeenCalled();
+  });
+
+  it("metrics() not called when wrong token provided", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    await GET(makeRequest("Bearer wrongtoken"));
+    expect(metricsMock).not.toHaveBeenCalled();
+  });
+
+  it("content-type is correct when authenticated", async () => {
+    process.env.METRICS_AUTH_TOKEN = "tok";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("Bearer tok"));
+    expect(res.headers.get("content-type")).toContain("text/plain");
+  });
+});

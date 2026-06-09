@@ -128,3 +128,30 @@ describe("POST /api/chat", () => {
     expect(res.status).toBe(429);
   });
 });
+
+describe("POST /api/chat — additional guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls checkBudget when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { checkBudget } = await import("lib/ai/budget");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(checkBudget)).not.toHaveBeenCalled();
+  });
+
+  it("never calls routeModel when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(routeModel)).not.toHaveBeenCalled();
+  });
+});
