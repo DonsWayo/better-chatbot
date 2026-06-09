@@ -140,3 +140,27 @@ describe("MODEL_TIERS — additional constraints", () => {
     }
   });
 });
+
+describe("RoutingRequestSchema — invariants", () => {
+  it("text defaults to empty string when omitted", () => {
+    const result = RoutingRequestSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.text).toBe("");
+  });
+
+  it("totalChars defaults to 0 when omitted", () => {
+    const result = RoutingRequestSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.totalChars).toBe(0);
+  });
+
+  it("long_context is accepted as a valid task class", () => {
+    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "long_context" });
+    expect(result.success).toBe(true);
+  });
+
+  it("tool_use is accepted as a valid task class", () => {
+    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "tool_use" });
+    expect(result.success).toBe(true);
+  });
+});

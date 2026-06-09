@@ -140,3 +140,29 @@ describe("buildCompressionConfig — ordering", () => {
     expect(config.level).toBe("light");
   });
 });
+
+describe("buildCompressionConfig — edge cases", () => {
+  it("no-arg call matches explicit 'standard' level and limits", () => {
+    const implicit = buildCompressionConfig();
+    const explicit = buildCompressionConfig("standard");
+    expect(implicit.level).toBe(explicit.level);
+    expect(implicit.maxToolOutputChars).toBe(explicit.maxToolOutputChars);
+  });
+
+  it("override of maxOldAssistantMsgChars is respected", () => {
+    const config = buildCompressionConfig("standard", { maxOldAssistantMsgChars: 777 });
+    expect(config.maxOldAssistantMsgChars).toBe(777);
+  });
+
+  it("off level historyCompressionThreshold is Infinity", () => {
+    const config = buildCompressionConfig("off");
+    expect(config.historyCompressionThreshold).toBe(Infinity);
+  });
+
+  it("all four levels return objects with a 'level' property", () => {
+    for (const level of ["off", "light", "standard", "aggressive"] as const) {
+      const config = buildCompressionConfig(level);
+      expect(config).toHaveProperty("level");
+    }
+  });
+});

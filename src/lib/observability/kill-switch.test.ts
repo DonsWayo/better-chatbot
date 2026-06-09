@@ -146,3 +146,29 @@ describe("kill-switch — _resetKillSwitchCache()", () => {
     expect(await isKillSwitchActive()).toBe(true);
   });
 });
+
+describe("kill-switch — response invariants", () => {
+  it("checkKillSwitch returns a Response instance when active", async () => {
+    mockSelect.mockResolvedValue([{ enabled: true }]);
+    const resp = await checkKillSwitch("team-1");
+    expect(resp).toBeInstanceOf(Response);
+  });
+
+  it("503 response Content-Type contains application/json", async () => {
+    mockSelect.mockResolvedValue([{ enabled: true }]);
+    const resp = await checkKillSwitch("t1");
+    expect(resp!.headers.get("content-type")).toContain("application/json");
+  });
+
+  it("isKillSwitchActive returns a boolean", async () => {
+    mockSelect.mockResolvedValue([{ enabled: false }]);
+    const result = await isKillSwitchActive();
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("DB is queried exactly once on first call after reset", async () => {
+    mockSelect.mockResolvedValue([{ enabled: false }]);
+    await isKillSwitchActive();
+    expect(mockSelect).toHaveBeenCalledTimes(1);
+  });
+});
