@@ -190,3 +190,29 @@ describe("MemoryMCPConfigStorage — additional invariants", () => {
     expect(storage.size()).toBe(before - 1);
   });
 });
+
+describe("MemoryMCPConfigStorage — state invariants", () => {
+  let storage: InstanceType<typeof MemoryMCPConfigStorage>;
+
+  beforeEach(() => {
+    storage = new MemoryMCPConfigStorage();
+  });
+
+  it("starts with size 0", () => {
+    expect(storage.size()).toBe(0);
+  });
+
+  it("size increments after save", async () => {
+    await storage.save({ name: "s1", config: { command: "node" } } as Parameters<MemoryMCPConfigStorage["save"]>[0]);
+    expect(storage.size()).toBe(1);
+  });
+
+  it("loadAll returns empty array initially", async () => {
+    const all = await storage.loadAll();
+    expect(all).toHaveLength(0);
+  });
+
+  it("delete on missing id does not throw", async () => {
+    await expect(storage.delete("non-existent-id")).resolves.not.toThrow();
+  });
+});
