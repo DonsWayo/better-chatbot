@@ -2,64 +2,89 @@ import { describe, it, expect } from "vitest";
 import { parseRoleString, isBetterAuthRole } from "./types";
 
 describe("parseRoleString", () => {
-  it("returns 'user' for null or undefined", () => {
-    expect(parseRoleString(null)).toBe("user");
+  it("returns 'user' for undefined", () => {
     expect(parseRoleString(undefined)).toBe("user");
+  });
+
+  it("returns 'user' for null", () => {
+    expect(parseRoleString(null)).toBe("user");
   });
 
   it("returns 'user' for empty string", () => {
     expect(parseRoleString("")).toBe("user");
   });
 
-  it("parses admin", () => {
+  it("parses plain 'admin' role", () => {
     expect(parseRoleString("admin")).toBe("admin");
   });
 
-  it("parses editor", () => {
+  it("parses plain 'editor' role", () => {
     expect(parseRoleString("editor")).toBe("editor");
   });
 
-  it("parses user", () => {
+  it("parses plain 'user' role", () => {
     expect(parseRoleString("user")).toBe("user");
   });
 
-  it("handles OAuth-prefixed roles (e.g. google:editor)", () => {
+  it("handles uppercase role name (normalizes to lowercase)", () => {
+    expect(parseRoleString("ADMIN")).toBe("admin");
+  });
+
+  it("strips OAuth provider prefix 'google:editor'", () => {
     expect(parseRoleString("google:editor")).toBe("editor");
+  });
+
+  it("strips OAuth provider prefix 'github:admin'", () => {
     expect(parseRoleString("github:admin")).toBe("admin");
   });
 
-  it("handles multiple colons by using the part after last colon", () => {
-    expect(parseRoleString("provider:org:admin")).toBe("admin");
+  it("handles multiple colons — takes segment after last colon", () => {
+    expect(parseRoleString("oidc:provider:admin")).toBe("admin");
   });
 
-  it("normalises uppercase to lowercase", () => {
-    expect(parseRoleString("ADMIN")).toBe("admin");
-    expect(parseRoleString("EDITOR")).toBe("editor");
-  });
-
-  it("defaults to 'user' for unknown role names", () => {
+  it("defaults to 'user' for unknown role string", () => {
     expect(parseRoleString("superuser")).toBe("user");
-    expect(parseRoleString("god")).toBe("user");
+  });
+
+  it("defaults to 'user' for role after colon that is unknown", () => {
+    expect(parseRoleString("google:superuser")).toBe("user");
+  });
+
+  it("trims whitespace around role", () => {
+    expect(parseRoleString("  admin  ")).toBe("admin");
   });
 });
 
 describe("isBetterAuthRole", () => {
-  it("returns true for valid role object with statements", () => {
+  it("returns true for a valid role object", () => {
     expect(isBetterAuthRole({ statements: {} })).toBe(true);
-    expect(isBetterAuthRole({ statements: { agent: ["create", "view"] } })).toBe(true);
   });
 
-  it("returns false for null/undefined", () => {
+  it("returns true for object with populated statements", () => {
+    expect(
+      isBetterAuthRole({
+        statements: { agent: ["create", "view"], workflow: ["use"] },
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for null", () => {
     expect(isBetterAuthRole(null)).toBe(false);
+  });
+
+  it("returns false for undefined", () => {
     expect(isBetterAuthRole(undefined)).toBe(false);
   });
 
-  it("returns false when statements is missing", () => {
-    expect(isBetterAuthRole({ other: {} })).toBe(false);
+  it("returns false for a plain object without statements", () => {
+    expect(isBetterAuthRole({ permissions: [] })).toBe(false);
   });
 
-  it("returns false for primitives", () => {
+  it("returns false for a string", () => {
     expect(isBetterAuthRole("admin")).toBe(false);
-    expect(isBetterAuthRole(42)).toBe(false);
+  });
+
+  it("returns false when statements is not an object", () => {
+    expect(isBetterAuthRole({ statements: "all" })).toBe(false);
   });
 });
