@@ -61,4 +61,43 @@ describe("createBarChartTool — shape invariants", () => {
     expect(typeof createBarChartTool.description).toBe("string");
     expect(createBarChartTool.description.length).toBeGreaterThan(0);
   });
+
+  it("description mentions 'bar chart'", () => {
+    expect(createBarChartTool.description.toLowerCase()).toContain("bar");
+  });
+
+  it("has an execute function", () => {
+    expect(typeof createBarChartTool.execute).toBe("function");
+  });
+
+  it("execute resolves to 'Success'", async () => {
+    const result = await createBarChartTool.execute(
+      { data: [], title: "T", description: null, yAxisLabel: null },
+      { messages: [], toolCallId: "t1" },
+    );
+    expect(result).toBe("Success");
+  });
+
+  it("inputSchema rejects series item with missing seriesName", () => {
+    const input = {
+      ...validInput,
+      data: [{ xAxisLabel: "Jan", series: [{ value: 100 }] }],
+    };
+    expect(createBarChartTool.inputSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("inputSchema accepts multiple data points", () => {
+    const input = {
+      ...validInput,
+      data: [
+        { xAxisLabel: "Jan", series: [{ seriesName: "A", value: 10 }] },
+        { xAxisLabel: "Feb", series: [{ seriesName: "A", value: 20 }] },
+      ],
+    };
+    expect(createBarChartTool.inputSchema.safeParse(input).success).toBe(true);
+  });
+
+  it("inputSchema accepts null yAxisLabel", () => {
+    expect(createBarChartTool.inputSchema.safeParse({ ...validInput, yAxisLabel: null }).success).toBe(true);
+  });
 });

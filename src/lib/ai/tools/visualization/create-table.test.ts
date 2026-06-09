@@ -68,4 +68,45 @@ describe("createTableTool — shape invariants", () => {
     expect(typeof createTableTool.description).toBe("string");
     expect(createTableTool.description.length).toBeGreaterThan(0);
   });
+
+  it("description mentions 'table'", () => {
+    expect(createTableTool.description.toLowerCase()).toContain("table");
+  });
+
+  it("has an execute function", () => {
+    expect(typeof createTableTool.execute).toBe("function");
+  });
+
+  it("execute resolves to 'Success'", async () => {
+    const result = await createTableTool.execute(
+      { title: "T", description: null, columns: [], data: [] },
+      { messages: [], toolCallId: "t1" },
+    );
+    expect(result).toBe("Success");
+  });
+
+  it("accepts multiple columns with different types", () => {
+    const input = {
+      ...validInput,
+      columns: [
+        { key: "name", label: "Name", type: "string" },
+        { key: "age", label: "Age", type: "number" },
+        { key: "active", label: "Active", type: "boolean" },
+        { key: "joined", label: "Joined", type: "date" },
+      ],
+    };
+    expect(createTableTool.inputSchema.safeParse(input).success).toBe(true);
+  });
+
+  it("accepts null description", () => {
+    expect(createTableTool.inputSchema.safeParse({ ...validInput, description: null }).success).toBe(true);
+  });
+
+  it("accepts multiple data rows", () => {
+    const input = {
+      ...validInput,
+      data: [{ name: "Alice" }, { name: "Bob" }, { name: "Carol" }],
+    };
+    expect(createTableTool.inputSchema.safeParse(input).success).toBe(true);
+  });
 });
