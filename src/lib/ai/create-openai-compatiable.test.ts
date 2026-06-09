@@ -283,3 +283,33 @@ describe("createOpenAICompatibleModels — response invariants", () => {
     expect(result.unsupportedModels.has("tool-model")).toBe(false);
   });
 });
+
+describe("createOpenAICompatibleModels — additional invariants", () => {
+  it("returns object with providers and unsupportedModels keys", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(result).toHaveProperty("providers");
+    expect(result).toHaveProperty("unsupportedModels");
+  });
+
+  it("unsupportedModels is a Set", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(result.unsupportedModels).toBeInstanceOf(Set);
+  });
+
+  it("all models with supportsTools=true are NOT in unsupportedModels", () => {
+    const result = createOpenAICompatibleModels([
+      {
+        provider: "p",
+        apiKey: "k",
+        baseUrl: "http://z",
+        models: [{ apiName: "good-model", uiName: "G", supportsTools: true }],
+      },
+    ]);
+    expect(result.unsupportedModels.has("good-model")).toBe(false);
+  });
+
+  it("providers object is empty for empty config array", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(Object.keys(result.providers)).toHaveLength(0);
+  });
+});

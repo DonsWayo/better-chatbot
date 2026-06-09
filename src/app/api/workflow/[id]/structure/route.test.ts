@@ -281,3 +281,36 @@ describe("POST /api/workflow/[id]/structure — response shape", () => {
     expect(checkAccessMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST and GET /api/workflow/[id]/structure — guard invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveStructure not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(saveStructureMock).not.toHaveBeenCalled();
+  });
+
+  it("GET selectStructureById not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});

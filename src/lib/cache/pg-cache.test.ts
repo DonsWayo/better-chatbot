@@ -282,3 +282,37 @@ describe("PgCache — status and invariants", () => {
     expect(result).toBe(false);
   });
 });
+
+describe("PgCache — additional invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    limitMock.mockResolvedValue([]);
+  });
+
+  it("get() returns undefined for missing key", async () => {
+    const cache = new PgCache();
+    expect(await cache.get("no-such-key")).toBeUndefined();
+  });
+
+  it("set() followed by get() returns set value (mock chain)", async () => {
+    const cache = new PgCache();
+    const row = { value: JSON.stringify("hello"), expiresAt: null };
+    limitMock.mockResolvedValueOnce([row]);
+    await cache.set("greet", "hello");
+    const val = await cache.get("greet");
+    expect(val).toBe("hello");
+  });
+
+  it("clear() calls db.delete exactly once", async () => {
+    const cache = new PgCache();
+    await cache.clear();
+    expect(mockDbRef.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it("has() returns true when select returns one row", async () => {
+    const row = { value: JSON.stringify("v"), expiresAt: null };
+    limitMock.mockResolvedValueOnce([row]);
+    const cache = new PgCache();
+    expect(await cache.has("present-key")).toBe(true);
+  });
+});
