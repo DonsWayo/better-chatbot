@@ -249,3 +249,35 @@ describe("POST /api/admin/feature-flags — additional", () => {
     expect(mockInsert).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/admin/feature-flags — response shape", () => {
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockInsert.mockClear();
+    mockResetCache.mockClear();
+    mockSession = { user: { role: "admin" } };
+    mockSelect.mockResolvedValue([]);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array", async () => {
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("returns 401 when session is null", async () => {
+    mockSession = null;
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(401);
+  });
+
+  it("mockSelect called exactly once per GET", async () => {
+    await GET(makeRequest());
+    expect(mockSelect).toHaveBeenCalledTimes(1);
+  });
+});

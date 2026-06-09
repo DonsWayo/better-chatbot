@@ -244,3 +244,32 @@ describe("Admin Server - Business Logic", () => {
     });
   });
 });
+
+describe("getAdminUsers — response invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+  });
+
+  it("returns an array", async () => {
+    const result = await getAdminUsers();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("calls pgAdminRepository.getUsers exactly once", async () => {
+    await getAdminUsers();
+    expect(pgAdminRepository.getUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls requireUserListPermission before listing users", async () => {
+    await getAdminUsers();
+    expect(requireUserListPermission).toHaveBeenCalled();
+  });
+
+  it("returns empty array when repository returns no users", async () => {
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+    const result = await getAdminUsers();
+    expect(result).toHaveLength(0);
+  });
+});

@@ -248,3 +248,40 @@ describe("GET /api/admin/teams/[id]/usage — additional", () => {
     expect(body.totals).toHaveProperty("totalRequests");
   });
 });
+
+describe("GET /api/admin/teams/[id]/usage — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    mockSelect.mockReturnValue({ from: fromMock });
+    limitMock.mockResolvedValue([]);
+  });
+
+  it("returns a Response instance for 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body teamId matches route param", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-xyz") as any);
+    const body = await res.json();
+    expect(body.teamId).toBe("team-xyz");
+  });
+
+  it("200 body has usageByModel array", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(Array.isArray(body.usageByModel)).toBe(true);
+  });
+});
