@@ -141,3 +141,40 @@ describe("POST /api/chat/title", () => {
     expect(upsertThreadMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/chat/title — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+  });
+
+  it("never calls upsertThread when streamText throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    streamTextMock.mockImplementationOnce(() => { throw new Error("stream fail"); });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi", threadId: "t1" }));
+    expect(upsertThreadMock).not.toHaveBeenCalled();
+  });
+
+  it("getModel called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hello", threadId: "t1", chatModel: { provider: "openai", model: "gpt-4o" } }));
+    expect(getModelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("result is a 200 Response instance on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "test", threadId: "t2" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(200);
+  });
+
+  it("never calls getModel when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi", threadId: "t1" }));
+    expect(getModelMock).not.toHaveBeenCalled();
+  });
+});
