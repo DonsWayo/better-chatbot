@@ -123,6 +123,86 @@ if (!isPrimaryInstance) {
 
 let mainWindow: BrowserWindow | null = null;
 
+// ---------------------------------------------------------------------------
+// Frameless window chrome (Claude Desktop / Codex style)
+//
+// macOS: hiddenInset traffic lights drawn over the web app.
+// Windows: hidden titlebar with native overlay window controls.
+// Linux: native frame (frameless UX is inconsistent across WMs).
+//
+// Because the desktop is a thin client, the drag region + traffic-light
+// padding is injected as CSS from here rather than shipped in the web app —
+// it works against any deployed web version.
+// ---------------------------------------------------------------------------
+
+const IS_MAC = process.platform === "darwin";
+const IS_WIN = process.platform === "win32";
+
+function framelessOptions(): Electron.BrowserWindowConstructorOptions {
+  if (IS_MAC) {
+    return {
+      titleBarStyle: "hiddenInset",
+      trafficLightPosition: { x: 14, y: 13 },
+    };
+  }
+  if (IS_WIN) {
+    return {
+      titleBarStyle: "hidden",
+      titleBarOverlay: {
+        color: "#00000000",
+        symbolColor: "#9f9f9f",
+        height: 40,
+      },
+    };
+  }
+  return {};
+}
+
+const DESKTOP_CHROME_CSS = `
+  /* App chrome doubles as the window drag region */
+  header,
+  [data-sidebar="header"] {
+    -webkit-app-region: drag;
+  }
+  header button, header a, header input, header [role="button"],
+  [data-sidebar="header"] button,
+  [data-sidebar="header"] a,
+  [data-sidebar="header"] [role="button"] {
+    -webkit-app-region: no-drag;
+  }
+  /* Pages without app chrome (e.g. sign-in): top strip stays draggable */
+  body:not(:has(header))::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 36px;
+    -webkit-app-region: drag;
+    z-index: 2147483647;
+  }
+`;
+
+const MAC_TRAFFIC_LIGHT_CSS = `
+  /* Make room for inset traffic lights in the sidebar header… */
+  [data-sidebar="header"] > ul {
+    padding-left: 72px;
+  }
+  /* …and in the main header when the sidebar rail is collapsed (offcanvas).
+     The sidebar is a sibling of <main>, so match via :has() on the wrapper. */
+  [data-slot="sidebar-wrapper"]:has([data-slot="sidebar"][data-state="collapsed"]) header,
+  body:not(:has([data-slot="sidebar"])) header {
+    padding-left: 76px;
+  }
+`;
+
+function injectDesktopChrome(win: BrowserWindow): void {
+  win.webContents.on("dom-ready", () => {
+    void win.webContents.insertCSS(DESKTOP_CHROME_CSS);
+    if (IS_MAC) {
+      void win.webContents.insertCSS(MAC_TRAFFIC_LIGHT_CSS);
+    }
+  });
+}
+
 function createWindow(): void {
   const windowState = windowStateKeeper({
     defaultWidth: 1280,
@@ -137,6 +217,7 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     title: "Asafe AI",
+    ...framelessOptions(),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -146,6 +227,7 @@ function createWindow(): void {
   });
 
   windowState.manage(mainWindow);
+  injectDesktopChrome(mainWindow);
   mainWindow.loadURL(APP_URL);
 
   // ------------------------------------------------------------------
