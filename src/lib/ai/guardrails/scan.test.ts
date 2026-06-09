@@ -235,3 +235,26 @@ describe("scanOutput", () => {
     expect(result.text.match(/\[REDACTED\]/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("scanOutput — additional", () => {
+  it("returns leaked=false for clean output", () => {
+    const result = scanOutput("Here is a summary of your documents.");
+    expect(result.leaked).toBe(false);
+  });
+
+  it("text field is always a string", () => {
+    const result = scanOutput("Some text");
+    expect(typeof result.text).toBe("string");
+  });
+
+  it("leaked field is always a boolean", () => {
+    const result = scanOutput("Clean response");
+    expect(typeof result.leaked).toBe("boolean");
+  });
+
+  it("non-leaked text is returned unchanged", () => {
+    const input = "This is a clean response.";
+    const result = scanOutput(input);
+    expect(result.text).toBe(input);
+  });
+});
