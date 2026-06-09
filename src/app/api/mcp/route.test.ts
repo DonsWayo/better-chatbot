@@ -133,4 +133,30 @@ describe("POST /api/mcp", () => {
     const body = await res.json();
     expect(body.message).toBe("Failed to save MCP client");
   });
+
+  it("calls canCreateMCP exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(true);
+    saveMcpClientActionMock.mockResolvedValue({
+      client: { getInfo: () => ({ id: "x" }) },
+    });
+    await POST(makeRequest(MCP_BODY));
+    expect(canCreateMCPMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call canCreateMCP when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest(MCP_BODY));
+    expect(canCreateMCPMock).not.toHaveBeenCalled();
+  });
+
+  it("calls saveMcpClientAction exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(true);
+    saveMcpClientActionMock.mockResolvedValue({
+      client: { getInfo: () => ({ id: "x" }) },
+    });
+    await POST(makeRequest(MCP_BODY));
+    expect(saveMcpClientActionMock).toHaveBeenCalledTimes(1);
+  });
 });
