@@ -111,18 +111,20 @@ const Particles: React.FC<ParticlesProps> = ({
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const { theme } = useTheme();
 
+  // A-SAFE polymer pellets ("materia prima") — the safety-yellow granulate
+  // that barriers are injection-molded from.
   const getDefaultColors = (): [number, number, number][] => {
     if (theme === "dark") {
       return [
-        [1.0, 1.0, 1.0], // 순수 흰색
-        [0.9, 0.9, 0.9], // 밝은 회색
-        [0.8, 0.8, 0.8], // 회색
+        hexToRgb("#FFC72C"), // brand safety yellow
+        hexToRgb("#FFD75E"), // light pellet
+        hexToRgb("#F0B400"), // amber pellet
       ];
     } else {
       return [
-        [0.0, 0.0, 0.0], // 순수 검은색
-        [0.1, 0.1, 0.1], // 어두운 회색
-        [0.2, 0.2, 0.2], // 회색
+        hexToRgb("#F0B400"), // amber pellet (contrast on light bg)
+        hexToRgb("#D99E00"), // deep amber
+        hexToRgb("#FFC72C"), // brand safety yellow
       ];
     }
   };

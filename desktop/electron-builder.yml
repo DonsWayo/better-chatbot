@@ -7,6 +7,7 @@ productName: Asafe AI
 # Source files to include in the packaged app
 files:
   - dist/**/*
+  - assets/**/*
   - package.json
 
 directories:

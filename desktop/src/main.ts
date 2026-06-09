@@ -20,9 +20,11 @@ import {
   Notification,
   dialog,
   ipcMain,
+  nativeTheme,
   shell,
   type MenuItemConstructorOptions,
 } from "electron";
+import { createSplashWindow, dismissSplash } from "./splash.js";
 // electron-updater is CommonJS — named imports break under ESM ("type": "module")
 import electronUpdaterPkg from "electron-updater";
 import windowStateKeeper from "electron-window-state";
@@ -124,6 +126,31 @@ if (!isPrimaryInstance) {
 let mainWindow: BrowserWindow | null = null;
 
 // ---------------------------------------------------------------------------
+// Splash — branded shine animation while the web app loads.
+// The main window stays hidden until ready-to-show AND the splash has been
+// visible for SPLASH_MIN_MS (so the animation registers on fast loads).
+// ---------------------------------------------------------------------------
+
+let splashWindow: BrowserWindow | null = null;
+let splashShownAt = 0;
+// Overridable for visual testing (e.g. ASAFE_SPLASH_MIN_MS=8000 + Electron MCP screenshot)
+const SPLASH_MIN_MS = Number(process.env["ASAFE_SPLASH_MIN_MS"]) || 1500;
+
+function revealMainWindow(): void {
+  if (!mainWindow) return;
+  if (splashWindow) {
+    const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashShownAt));
+    setTimeout(() => {
+      mainWindow?.show();
+      dismissSplash(splashWindow);
+      splashWindow = null;
+    }, wait);
+  } else if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Frameless window chrome (Claude Desktop / Codex style)
 //
 // macOS: hiddenInset traffic lights drawn over the web app.
@@ -217,6 +244,8 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     title: "Asafe AI",
+    show: false, // revealed by revealMainWindow() once ready (splash handoff)
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
     ...framelessOptions(),
     webPreferences: {
       contextIsolation: true,
@@ -228,6 +257,8 @@ function createWindow(): void {
 
   windowState.manage(mainWindow);
   injectDesktopChrome(mainWindow);
+  mainWindow.once("ready-to-show", revealMainWindow);
+  mainWindow.webContents.once("did-fail-load", revealMainWindow);
   mainWindow.loadURL(APP_URL);
 
   // ------------------------------------------------------------------
@@ -439,6 +470,8 @@ function initAutoUpdate(): void {
 
 app.on("ready", () => {
   buildMenu();
+  splashWindow = createSplashWindow();
+  splashShownAt = Date.now();
   createWindow();
   initAutoUpdate();
 });

@@ -63,3 +63,5 @@ asafe-*.png
 openai-compatible.config.ts
 certificates
 public/uploads
+# runtime logs (contains security keys)
+logs/
