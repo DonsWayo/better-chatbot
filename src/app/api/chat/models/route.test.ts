@@ -94,4 +94,29 @@ describe("GET /api/chat/models", () => {
       { id: "claude", hasAPIKey: true, name: "Claude" },
     ];
   });
+
+  it("each model has id and name fields", async () => {
+    const res = await GET();
+    const body = await res.json() as { id: string; name: string }[];
+    for (const m of body) {
+      expect(m).toHaveProperty("id");
+      expect(m).toHaveProperty("name");
+    }
+  });
+
+  it("all models from modelsInfo are in the response", async () => {
+    const res = await GET();
+    const body = await res.json() as { id: string }[];
+    const ids = body.map((m) => m.id);
+    expect(ids).toContain("gpt-4");
+    expect(ids).toContain("gemini");
+    expect(ids).toContain("claude");
+  });
+
+  it("hasAPIKey=false models have that value in response", async () => {
+    const res = await GET();
+    const body = await res.json() as { id: string; hasAPIKey: boolean }[];
+    const gemini = body.find((m) => m.id === "gemini");
+    expect(gemini?.hasAPIKey).toBe(false);
+  });
 });

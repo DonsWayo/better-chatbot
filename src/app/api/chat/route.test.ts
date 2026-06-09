@@ -244,4 +244,29 @@ describe("POST /api/chat", () => {
     await POST(makeRequest(makeRequestBody()));
     expect(chatRepositoryMock.insertThread).not.toHaveBeenCalled();
   });
+
+  it("calls createUIMessageStream exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest(makeRequestBody()));
+    expect(createUIMessageStreamMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls createUIMessageStreamResponse exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest(makeRequestBody()));
+    expect(createUIMessageStreamResponseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call streamText when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest(makeRequestBody()));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call streamText when thread belongs to different user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-2" } });
+    chatRepositoryMock.selectThreadDetails.mockResolvedValue({ ...THREAD, userId: "user-1" });
+    await POST(makeRequest(makeRequestBody()));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
 });

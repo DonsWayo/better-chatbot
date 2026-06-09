@@ -139,4 +139,24 @@ describe("POST /api/chat/title", () => {
     const res = await POST(makeRequest({ message: "What is AI?", threadId: "t-1" }));
     expect(res.status).toBe(200);
   });
+
+  it("calls streamText exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: () => new Response("ok") });
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(streamTextMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call streamText when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("calls getSession exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: () => new Response("ok") });
+    await POST(makeRequest({ message: "Hello", threadId: "my-thread" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
