@@ -70,4 +70,52 @@ describe("LONG_CONTEXT_CHARS", () => {
     expect(LONG_CONTEXT_CHARS).toBeGreaterThan(0);
     expect(typeof LONG_CONTEXT_CHARS).toBe("number");
   });
+
+  it("is a meaningful threshold (> 1000 chars)", () => {
+    expect(LONG_CONTEXT_CHARS).toBeGreaterThan(1000);
+  });
+});
+
+describe("TIER_MODEL — specific model assignments", () => {
+  it("frontier tier uses claude-opus-4.8", () => {
+    expect(TIER_MODEL.frontier.model).toBe("claude-opus-4.8");
+  });
+
+  it("balanced tier uses gpt-5.1", () => {
+    expect(TIER_MODEL.balanced.model).toBe("gpt-5.1");
+  });
+
+  it("fast tier uses gemini-2.5-flash", () => {
+    expect(TIER_MODEL.fast.model).toBe("gemini-2.5-flash");
+  });
+
+  it("cheap tier uses gemini-2.5-flash-lite", () => {
+    expect(TIER_MODEL.cheap.model).toBe("gemini-2.5-flash-lite");
+  });
+
+  it("all tier models are distinct", () => {
+    const models = Object.values(TIER_MODEL).map((t) => t.model);
+    const unique = new Set(models);
+    expect(unique.size).toBe(models.length);
+  });
+});
+
+describe("TASK_TIERS — specific task class assignments", () => {
+  it("vision uses fast as primary tier", () => {
+    expect(TASK_TIERS.vision[0]).toBe("fast");
+  });
+
+  it("general uses fast as primary tier", () => {
+    expect(TASK_TIERS.general[0]).toBe("fast");
+  });
+
+  it("tool_use uses balanced as primary tier", () => {
+    expect(TASK_TIERS.tool_use[0]).toBe("balanced");
+  });
+
+  it("all task classes have at least one fallback tier", () => {
+    for (const [cls, tiers] of Object.entries(TASK_TIERS)) {
+      expect(tiers.length, `${cls} has no tiers`).toBeGreaterThanOrEqual(1);
+    }
+  });
 });

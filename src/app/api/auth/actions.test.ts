@@ -69,4 +69,45 @@ describe("signUpAction", () => {
     expect(result.success).toBe(false);
     expect(result.message).toContain("Email already in use");
   });
+
+  it("never calls signUpEmail when validation fails", async () => {
+    const { signUpAction } = await import("./actions");
+    await signUpAction({ email: "a@b.com", name: "Alice", password: "" });
+    expect(signUpEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("returns success:true with message on success", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "u2", email: "b@c.com", name: "Bob" } });
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "b@c.com", name: "Bob", password: "Pass123!" });
+    expect(result.success).toBe(true);
+    expect(result.message).toBeDefined();
+    expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it("returns generic failure message when auth throws non-Error", async () => {
+    signUpEmailMock.mockRejectedValueOnce("some string error");
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "x@y.com", name: "X", password: "Pass123!" });
+    expect(result.success).toBe(false);
+    expect(typeof result.message).toBe("string");
+  });
+});
+
+describe("existsByEmailAction — edge cases", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("passes exact email string to existsByEmail", async () => {
+    existsByEmailMock.mockResolvedValueOnce(false);
+    const { existsByEmailAction } = await import("./actions");
+    await existsByEmailAction("UPPER@EXAMPLE.COM");
+    expect(existsByEmailMock).toHaveBeenCalledWith("UPPER@EXAMPLE.COM");
+  });
+
+  it("calls existsByEmail exactly once", async () => {
+    existsByEmailMock.mockResolvedValueOnce(true);
+    const { existsByEmailAction } = await import("./actions");
+    await existsByEmailAction("a@b.com");
+    expect(existsByEmailMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -56,4 +56,40 @@ describe("POST /api/chat/export", () => {
       expect.objectContaining({ threadId: "t-1", exporterId: "u1" }),
     );
   });
+
+  it("never calls exportChat when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(exportChatMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls exportChat when access is denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(exportChatMock).not.toHaveBeenCalled();
+  });
+
+  it("calls checkAccess with threadId and userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "thread-xyz" }));
+    expect(checkAccessMock).toHaveBeenCalledWith("thread-xyz", "user-abc");
+  });
+
+  it("passes expiresAt to exportChat when provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u2" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const expiresAt = new Date("2026-12-31").toISOString();
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-2", expiresAt }));
+    expect(exportChatMock).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: "t-2", exporterId: "u2", expiresAt }),
+    );
+  });
 });

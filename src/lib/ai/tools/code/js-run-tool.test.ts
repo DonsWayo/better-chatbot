@@ -57,4 +57,28 @@ describe("jsExecutionTool", () => {
     const result = jsExecutionTool.inputSchema.safeParse({ code: null });
     expect(result.success).toBe(false);
   });
+
+  it("inputSchema accepts multi-line JS code", () => {
+    const code = `const x = 1;\nconst y = 2;\nconsole.log(x + y);`;
+    expect(jsExecutionTool.inputSchema.safeParse({ code }).success).toBe(true);
+  });
+
+  it("has no server-side execute function (client-side only)", () => {
+    expect(jsExecutionTool.execute).toBeUndefined();
+  });
+});
+
+describe("jsExecutionSchema — properties completeness", () => {
+  it("has a properties field", () => {
+    expect(jsExecutionSchema.properties).toBeDefined();
+  });
+
+  it("has a required field as array", () => {
+    expect(Array.isArray(jsExecutionSchema.required)).toBe(true);
+  });
+
+  it("code is the only required field", () => {
+    expect(jsExecutionSchema.required).toHaveLength(1);
+    expect(jsExecutionSchema.required[0]).toBe("code");
+  });
 });

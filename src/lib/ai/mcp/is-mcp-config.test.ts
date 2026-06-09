@@ -62,4 +62,48 @@ describe("isMaybeMCPServerConfig", () => {
     expect(isMaybeMCPServerConfig(null)).toBe(false);
     expect(isMaybeMCPServerConfig(42)).toBe(false);
   });
+
+  it("returns true for object with both command and url (stdio wins)", () => {
+    expect(isMaybeMCPServerConfig({ command: "node", url: "http://example.com" })).toBe(true);
+  });
+
+  it("returns false for object with boolean url", () => {
+    expect(isMaybeMCPServerConfig({ url: true })).toBe(false);
+  });
+});
+
+describe("isMaybeStdioConfig — additional cases", () => {
+  it("returns true for command with empty args array", () => {
+    expect(isMaybeStdioConfig({ command: "python", args: [] })).toBe(true);
+  });
+
+  it("returns true for command as empty string (type guard only checks typeof)", () => {
+    expect(isMaybeStdioConfig({ command: "" })).toBe(true);
+  });
+
+  it("returns false for array input", () => {
+    expect(isMaybeStdioConfig([])).toBe(false);
+  });
+
+  it("returns false for number input", () => {
+    expect(isMaybeStdioConfig(123)).toBe(false);
+  });
+});
+
+describe("isMaybeRemoteConfig — additional cases", () => {
+  it("returns true for ws:// url", () => {
+    expect(isMaybeRemoteConfig({ url: "ws://mcp.example.com/stream" })).toBe(true);
+  });
+
+  it("returns true for url as empty string (type guard only checks typeof)", () => {
+    expect(isMaybeRemoteConfig({ url: "" })).toBe(true);
+  });
+
+  it("returns false for array input", () => {
+    expect(isMaybeRemoteConfig([])).toBe(false);
+  });
+
+  it("returns false for number input", () => {
+    expect(isMaybeRemoteConfig(42)).toBe(false);
+  });
 });
