@@ -1,0 +1,75 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("auth/server", () => ({
+  getSession: vi.fn(),
+}));
+
+vi.mock("lib/db/repository", () => ({
+  workflowRepository: {
+    selectExecuteAbility: vi.fn(),
+  },
+}));
+
+import { getSession } from "auth/server";
+import { workflowRepository } from "lib/db/repository";
+import { selectExecuteAbilityWorkflowsAction } from "./actions";
+
+const mockGetSession = vi.mocked(getSession);
+const mockWorkflowRepo = vi.mocked(workflowRepository);
+
+type MockSession = Awaited<ReturnType<typeof getSession>>;
+const mockSessionFor = (userId: string): MockSession =>
+  ({ user: { id: userId }, session: {} }) as unknown as MockSession;
+
+const mockWorkflow = {
+  id: "wf-1",
+  name: "Research Workflow",
+  isPublished: true,
+  userId: "user-1",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("selectExecuteAbilityWorkflowsAction", () => {
+  it("returns workflows for authenticated user", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([mockWorkflow]);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(mockWorkflowRepo.selectExecuteAbility).toHaveBeenCalledWith("user-1");
+    expect(result).toEqual([mockWorkflow]);
+  });
+
+  it("returns empty array when not authenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result).toEqual([]);
+    expect(mockWorkflowRepo.selectExecuteAbility).not.toHaveBeenCalled();
+  });
+
+  it("returns empty array when repository returns empty", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-2"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([]);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns multiple workflows", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    const workflows = [mockWorkflow, { ...mockWorkflow, id: "wf-2", name: "Code Workflow" }];
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue(workflows);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result).toHaveLength(2);
+  });
+});
