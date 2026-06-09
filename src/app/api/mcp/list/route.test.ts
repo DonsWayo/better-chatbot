@@ -221,3 +221,41 @@ describe("GET /api/mcp/list — server response fields", () => {
     expect(selectAllForUserMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/mcp/list — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("401 body has error field", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("refreshClient called with server id when not in memory", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]);
+    refreshClientMock.mockResolvedValue(undefined);
+    const { GET } = await import("./route");
+    await GET();
+    expect(refreshClientMock).toHaveBeenCalledWith("mcp-1");
+  });
+});

@@ -225,3 +225,38 @@ describe("POST /api/admin/teams/[id]/members — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/admin/teams/[id]/members — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    getTeamWithMembersMock.mockResolvedValueOnce({ id: "t-1", members: [MEMBER_ROW] });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has members property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    getTeamWithMembersMock.mockResolvedValueOnce({ id: "t-1", members: [] });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("members");
+  });
+});
