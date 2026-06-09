@@ -211,3 +211,32 @@ describe("UpdateUserRoleSchema — additional boundaries", () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe("UpdateUserRoleSchema — invariants", () => {
+  it("accepts role=user", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: USER_ROLES.USER,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts role=editor when present in USER_ROLES", () => {
+    if (!USER_ROLES.EDITOR) return;
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: USER_ROLES.EDITOR,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing userId", () => {
+    const result = UpdateUserRoleSchema.safeParse({ role: USER_ROLES.ADMIN });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing role", () => {
+    const result = UpdateUserRoleSchema.safeParse({ userId: "123e4567-e89b-12d3-a456-426614174000" });
+    expect(result.success).toBe(false);
+  });
+});

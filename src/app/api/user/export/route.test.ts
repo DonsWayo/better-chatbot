@@ -208,3 +208,37 @@ describe("GET /api/user/export — response shape", () => {
     expect(res.headers.get("content-type")).toContain("application/json");
   });
 });
+
+describe("GET /api/user/export — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("pgDbSelect not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(pgDbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("GET returns 200 Response for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-1", name: "A", email: "a@b.com", role: "user" } });
+    pgDbSelectMock.mockReturnValue({ from: () => ({ where: () => Promise.resolve([]) }) });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+  });
+});

@@ -210,3 +210,36 @@ describe("DELETE /api/export/[id]/comments/[commentId] — guard chain", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("DELETE /api/export/[id]/comments/[commentId] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkCommentAccess not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(checkCommentAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("deleteComment not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).not.toHaveBeenCalled();
+  });
+
+  it("DELETE returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});
