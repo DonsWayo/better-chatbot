@@ -2,8 +2,9 @@ import type { LanguageModel, LanguageModelMiddleware } from "ai";
 import { wrapLanguageModel } from "ai";
 import { pgDb } from "@/lib/db/pg/db.pg";
 import { AsafeGuardrailEventTable } from "@/lib/db/pg/schema.pg";
+import { guardrailFiringsTotal, guardrailBlocksTotal } from "lib/observability/metrics";
 import { scanInput, scanOutput, type GuardrailFiring } from "./scan";
-import { resolvePolicy } from "./policies";
+import { resolvePolicy, type GuardrailPolicy } from "./policies";
 
 export { scanInput, scanOutput } from "./scan";
 export { resolvePolicy } from "./policies";
@@ -16,14 +17,23 @@ async function logGuardrailEvent(
   userId: string,
   firings: GuardrailFiring[],
   blocked: boolean,
+  posture: string,
 ): Promise<void> {
-  if (firings.length === 0) return;
+  if (firings.length === 0 && !blocked) return;
   try {
-    await pgDb.insert(AsafeGuardrailEventTable).values({
-      userId,
-      blocked,
-      firings: JSON.stringify(firings),
-    });
+    // Prometheus counters
+    for (const f of firings) {
+      guardrailFiringsTotal.inc({ category: f.category, action: f.action, posture });
+    }
+    if (blocked) guardrailBlocksTotal.inc({ posture });
+
+    if (firings.length > 0) {
+      await pgDb.insert(AsafeGuardrailEventTable).values({
+        userId,
+        blocked,
+        firings: JSON.stringify(firings),
+      });
+    }
   } catch {
     // Fail open — never crash a chat request because of logging
   }
@@ -35,15 +45,15 @@ async function logGuardrailEvent(
  */
 function buildGuardrailMiddleware(
   userId: string,
-  teamPolicy?: string | null,
+  policy: GuardrailPolicy,
 ): LanguageModelMiddleware {
-  const policy = resolvePolicy(teamPolicy);
-
   return {
     middlewareVersion: "v2",
 
     async transformParams({ params }) {
       const firings: GuardrailFiring[] = [];
+      let blocked = false;
+      let blockReason: string | undefined;
 
       const processedMessages = params.prompt.map((msg) => {
         if (msg.role !== "user") return msg;
@@ -53,7 +63,8 @@ function buildGuardrailMiddleware(
           const result = scanInput(part.text, policy);
           firings.push(...result.firings);
           if (result.blocked) {
-            throw new Error(result.blockReason ?? "Input blocked by guardrails.");
+            blocked = true;
+            blockReason = result.blockReason;
           }
           return result.text !== part.text ? { ...part, text: result.text } : part;
         });
@@ -61,7 +72,11 @@ function buildGuardrailMiddleware(
         return { ...msg, content: processedContent };
       });
 
-      void logGuardrailEvent(userId, firings, false);
+      void logGuardrailEvent(userId, firings, blocked, policy.posture);
+
+      if (blocked) {
+        throw new Error(blockReason ?? "Input blocked by guardrails.");
+      }
 
       return { ...params, prompt: processedMessages };
     },
@@ -70,6 +85,7 @@ function buildGuardrailMiddleware(
       const result = await doGenerate();
 
       if (!policy.outputLeakProtection) return result;
+
 
       // Scan text parts in the content array
       const processedContent = result.content.map((part) => {
@@ -114,8 +130,9 @@ export function wrapWithGuardrails(
 ): LanguageModel {
   if (!GUARDRAILS_ENABLED) return model;
 
+  const policy = resolvePolicy(teamPolicy);
   return wrapLanguageModel({
     model: model as Parameters<typeof wrapLanguageModel>[0]["model"],
-    middleware: buildGuardrailMiddleware(userId, teamPolicy),
+    middleware: buildGuardrailMiddleware(userId, policy),
   }) as LanguageModel;
 }

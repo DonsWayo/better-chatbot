@@ -730,3 +730,21 @@ export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {
 });
 
 export type AsafeFeatureFlagEntity = typeof AsafeFeatureFlagTable.$inferSelect;
+
+// ── W8 AUP Acceptance (GDPR/EU AI Act: informed consent record) ──────────────
+
+export const AsafeAupAcceptanceTable = pgTable(
+  "asafe_aup_acceptance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    aupVersion: text("aup_version").notNull().default("1.0"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("uq_aup_user_version").on(t.userId, t.aupVersion),
+    index("idx_aup_user_id").on(t.userId),
+  ],
+);
+
+export type AsafeAupAcceptanceEntity = typeof AsafeAupAcceptanceTable.$inferSelect;

@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { AsafeAuditLogTable } from "@/lib/db/pg/schema.pg";
-import { lt, sql } from "drizzle-orm";
+import { lt } from "drizzle-orm";
 import globalLogger from "logger";
 
 const logger = globalLogger.withDefaults({ message: "cron/audit-purge: " });
