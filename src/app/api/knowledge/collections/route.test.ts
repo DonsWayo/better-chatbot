@@ -160,4 +160,60 @@ describe("GET /api/knowledge/collections — guard chains", () => {
     await POST(makeRequest({ name: "X Docs", visibility: "org" }));
     expect(dbInsertMock).toHaveBeenCalledTimes(1);
   });
+
+  it("never calls db.insert when name is empty string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/knowledge/collections — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has collections property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const selectAllMock = vi.fn().mockResolvedValue([]);
+    dbSelectMock.mockReturnValueOnce({ from: selectAllMock });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("collections");
+  });
+});
+
+describe("POST /api/knowledge/collections — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Test" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error when name is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 body has collection property on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "col-y", name: "Y Docs" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Y Docs", visibility: "org" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("collection");
+  });
 });
