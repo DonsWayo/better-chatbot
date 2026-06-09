@@ -170,3 +170,42 @@ describe("GET /api/local-files/[key] — dev mode", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("GET /api/local-files/[key] — dev mode additional types", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    isDevMock.value = true;
+  });
+
+  it("sets Content-Type image/svg+xml for .svg files", async () => {
+    readFileMock.mockResolvedValueOnce(Buffer.from("<svg/>"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "icon.svg" }) });
+    expect(res.headers.get("Content-Type")).toContain("svg");
+  });
+
+  it("200 response has non-empty body for existing file", async () => {
+    const buf = Buffer.from("hello world");
+    readFileMock.mockResolvedValueOnce(buf);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "hello.txt" }) });
+    expect(res.status).toBe(200);
+    const body = await res.arrayBuffer();
+    expect(body.byteLength).toBeGreaterThan(0);
+  });
+
+  it("returns 404 for keys with no extension", async () => {
+    readFileMock.mockRejectedValueOnce(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "noextension" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("readFile not called more than once per request", async () => {
+    readFileMock.mockResolvedValueOnce(Buffer.from("x"));
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ key: "x.png" }) });
+    expect(readFileMock).toHaveBeenCalledTimes(1);
+  });
+});
