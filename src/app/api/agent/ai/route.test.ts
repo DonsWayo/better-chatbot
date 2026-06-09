@@ -100,4 +100,36 @@ describe("POST /api/agent/ai", () => {
       expect.objectContaining({ prompt: "hello" }),
     );
   });
+
+  it("returns 200 status on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const res = await POST(makeRequest({ message: "Create agent" }));
+    expect(res.status).toBe(200);
+  });
+
+  it("calls streamObject exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ message: "test" }));
+    expect(streamObjectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not throw when streamObject throws (catch swallows)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamObjectMock.mockImplementation(() => {
+      throw new Error("Model unavailable");
+    });
+    await expect(POST(makeRequest({ message: "test" }))).resolves.not.toThrow();
+  });
+
+  it("does not call streamObject when unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ message: "test" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("calls workflowRepository.selectExecuteAbility with user id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
+    await POST(makeRequest({ message: "test" }));
+    expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledWith("user-99");
+  });
 });

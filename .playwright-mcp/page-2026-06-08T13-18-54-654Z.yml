@@ -1,0 +1,150 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e6]:
+        - list [ref=e8]:
+          - listitem [ref=e9]:
+            - link "Asafe AI" [ref=e10] [cursor=pointer]:
+              - /url: /
+              - heading "Asafe AI" [level=4] [ref=e11]
+        - generic [ref=e13]:
+          - generic [ref=e15]:
+            - list [ref=e16]:
+              - listitem [ref=e17]:
+                - link "New Chat ⌘ ⇧ O" [ref=e18] [cursor=pointer]:
+                  - /url: /
+                  - button "New Chat ⌘ ⇧ O" [ref=e19]:
+                    - img [ref=e20]
+                    - text: New Chat
+                    - generic [ref=e22]:
+                      - generic [ref=e23]: ⌘
+                      - generic [ref=e24]: ⇧
+                      - generic [ref=e25]: O
+            - list [ref=e26]:
+              - listitem [ref=e27]:
+                - link "MCP Configuration" [ref=e28] [cursor=pointer]:
+                  - /url: /mcp
+                  - button "MCP Configuration" [ref=e29]:
+                    - img [ref=e30]
+                    - text: MCP Configuration
+            - list [ref=e33]:
+              - listitem [ref=e34]:
+                - link "Workflow" [ref=e35] [cursor=pointer]:
+                  - /url: /workflow
+                  - button "Workflow" [ref=e36]:
+                    - img [ref=e37]
+                    - text: Workflow
+            - list [ref=e44]:
+              - listitem [ref=e45]:
+                - link "Admin" [ref=e46] [cursor=pointer]:
+                  - /url: /admin
+                  - button "Admin" [ref=e47]:
+                    - img [ref=e48]
+                    - text: Admin
+              - list [ref=e50]:
+                - listitem [ref=e51]:
+                  - generic [ref=e52]: Users
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - button "Archive" [ref=e55] [cursor=pointer]:
+                  - img [ref=e56]
+                  - text: Archive
+                - button [ref=e60] [cursor=pointer]:
+                  - img [ref=e61]
+          - list [ref=e64]:
+            - listitem [ref=e65]:
+              - link "Agents" [ref=e66] [cursor=pointer]:
+                - /url: /agents
+              - button [ref=e67] [cursor=pointer]:
+                - img [ref=e68]
+            - link "Create an agent Create your own specialized AI agent with unique features and personality" [ref=e70] [cursor=pointer]:
+              - /url: /agent/new
+              - generic [ref=e71]:
+                - generic [ref=e72]:
+                  - paragraph [ref=e73]: Create an agent
+                  - img [ref=e74]
+                - paragraph [ref=e77]: Create your own specialized AI agent with unique features and personality
+          - list [ref=e80]:
+            - listitem [ref=e81]:
+              - heading "Recent Chats" [level=4] [ref=e83]
+        - list [ref=e109]:
+          - listitem [ref=e110]:
+            - button [ref=e111] [cursor=pointer]
+      - main [ref=e114]:
+        - button "Toggle Sidebar" [ref=e116] [cursor=pointer]:
+          - img
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]: All Users
+            - generic [ref=e124]: View and manage user accounts
+          - generic [ref=e126]:
+            - generic [ref=e128]:
+              - img [ref=e129]
+              - textbox "Search by name or email..." [disabled]
+            - table [ref=e136]:
+              - rowgroup [ref=e137]:
+                - row "User Role Status Joined" [ref=e138]:
+                  - columnheader "User" [ref=e139]
+                  - columnheader "Role" [ref=e140]
+                  - columnheader "Status" [ref=e141]
+                  - columnheader "Joined" [ref=e142]
+                  - columnheader [ref=e143]
+              - rowgroup [ref=e144]:
+                - row [ref=e145]:
+                  - cell [ref=e146]
+                  - cell [ref=e154]
+                  - cell [ref=e158]
+                  - cell [ref=e160]
+                  - cell [ref=e162]:
+                    - img [ref=e163]
+                - row [ref=e165]:
+                  - cell [ref=e166]
+                  - cell [ref=e174]
+                  - cell [ref=e177]
+                  - cell [ref=e179]
+                  - cell [ref=e181]:
+                    - img [ref=e182]
+                - row [ref=e184]:
+                  - cell [ref=e185]
+                  - cell [ref=e193]
+                  - cell [ref=e196]
+                  - cell [ref=e198]
+                  - cell [ref=e200]:
+                    - img [ref=e201]
+                - row [ref=e203]:
+                  - cell [ref=e204]
+                  - cell [ref=e212]
+                  - cell [ref=e216]
+                  - cell [ref=e218]
+                  - cell [ref=e220]:
+                    - img [ref=e221]
+                - row [ref=e223]:
+                  - cell [ref=e224]
+                  - cell [ref=e232]
+                  - cell [ref=e235]
+                  - cell [ref=e237]
+                  - cell [ref=e239]:
+                    - img [ref=e240]
+                - row [ref=e242]:
+                  - cell [ref=e243]
+                  - cell [ref=e251]
+                  - cell [ref=e254]
+                  - cell [ref=e256]
+                  - cell [ref=e258]:
+                    - img [ref=e259]
+                - row [ref=e261]:
+                  - cell [ref=e262]
+                  - cell [ref=e270]
+                  - cell [ref=e274]
+                  - cell [ref=e276]
+                  - cell [ref=e278]:
+                    - img [ref=e279]
+                - row [ref=e281]:
+                  - cell [ref=e282]
+                  - cell [ref=e290]
+                  - cell [ref=e293]
+                  - cell [ref=e295]
+                  - cell [ref=e297]:
+                    - img [ref=e298]
+    - region "Notifications alt+T"

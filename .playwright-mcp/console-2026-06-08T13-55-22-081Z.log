@@ -1,0 +1,99 @@
+[     312ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     335ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     539ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     541ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   70721ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   71288ms] [LOG] [Fast Refresh] done in 452ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   71451ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   71453ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   71605ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   71858ms] [LOG] [Fast Refresh] done in 353ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   82786ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   82979ms] [LOG] [Fast Refresh] done in 83ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   83125ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   83126ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   83276ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   83326ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  109044ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  109078ms] [LOG] [Fast Refresh] done in 136ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  188278ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  188323ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  188405ms] [LOG] [Fast Refresh] done in 226ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  188507ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  188572ms] [LOG] [Fast Refresh] done in 166ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190035ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190065ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190254ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190256ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190309ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190330ms] [LOG] [Fast Refresh] done in 130ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190452ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  190453ms] [LOG] [Fast Refresh] done in 102ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  209430ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  209493ms] [LOG] [Fast Refresh] done in 132ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  222284ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  222499ms] [LOG] [Fast Refresh] done in 105ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  222625ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  222626ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  407304ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  409739ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  409759ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  410001ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  410004ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  410506ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/api/compliance/aup:0
+[  410562ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/api/compliance/aup:0

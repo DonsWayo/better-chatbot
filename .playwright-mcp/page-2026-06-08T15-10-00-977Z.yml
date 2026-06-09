@@ -1,0 +1,289 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - list [ref=e17]:
+          - listitem [ref=e18]:
+            - link "Asafe AI" [ref=e19] [cursor=pointer]:
+              - /url: /
+              - heading "Asafe AI" [level=4] [ref=e20]
+        - generic [ref=e22]:
+          - generic [ref=e24]:
+            - list [ref=e25]:
+              - listitem [ref=e26]:
+                - link "New Chat ⌘ ⇧ O" [ref=e27] [cursor=pointer]:
+                  - /url: /
+                  - button "New Chat ⌘ ⇧ O" [ref=e28]:
+                    - img [ref=e29]
+                    - text: New Chat
+                    - generic [ref=e31]:
+                      - generic [ref=e32]: ⌘
+                      - generic [ref=e33]: ⇧
+                      - generic [ref=e34]: O
+            - list [ref=e35]:
+              - listitem [ref=e36]:
+                - link "MCP Configuration" [ref=e37] [cursor=pointer]:
+                  - /url: /mcp
+                  - button "MCP Configuration" [ref=e38]:
+                    - img [ref=e39]
+                    - text: MCP Configuration
+            - list [ref=e42]:
+              - listitem [ref=e43]:
+                - link "Workflow" [ref=e44] [cursor=pointer]:
+                  - /url: /workflow
+                  - button "Workflow" [ref=e45]:
+                    - img [ref=e46]
+                    - text: Workflow
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "Admin" [ref=e55] [cursor=pointer]:
+                  - /url: /admin
+                  - button "Admin" [ref=e56]:
+                    - img [ref=e57]
+                    - text: Admin
+              - list [ref=e59]:
+                - listitem [ref=e60]:
+                  - generic [ref=e61]: Users
+                - listitem [ref=e62]:
+                  - generic [ref=e63]: Teams
+                - listitem [ref=e64]:
+                  - generic [ref=e65]: Usage
+                - listitem [ref=e66]:
+                  - generic [ref=e67]: MCP Catalog
+                - listitem [ref=e68]:
+                  - generic [ref=e69]: Knowledge Base
+                - listitem [ref=e70]:
+                  - generic [ref=e71]: Feature Flags
+            - list [ref=e72]:
+              - listitem [ref=e73]:
+                - button "Archive" [ref=e74] [cursor=pointer]:
+                  - img [ref=e75]
+                  - text: Archive
+                - button [ref=e79] [cursor=pointer]:
+                  - img [ref=e80]
+          - list [ref=e83]:
+            - listitem [ref=e84]:
+              - link "Agents" [ref=e85] [cursor=pointer]:
+                - /url: /agents
+              - button [ref=e86] [cursor=pointer]:
+                - img [ref=e87]
+            - link "Create an agent Create your own specialized AI agent with unique features and personality" [ref=e89] [cursor=pointer]:
+              - /url: /agent/new
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - paragraph [ref=e92]: Create an agent
+                  - img [ref=e93]
+                - paragraph [ref=e96]: Create your own specialized AI agent with unique features and personality
+          - list [ref=e99]:
+            - listitem [ref=e100]:
+              - generic [ref=e101]:
+                - heading "Today" [level=4] [ref=e102]
+                - button [ref=e103] [cursor=pointer]:
+                  - img
+              - list [ref=e104]:
+                - listitem [ref=e105]:
+                  - generic [ref=e106]:
+                    - link "Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8" [ref=e107] [cursor=pointer]:
+                      - /url: /chat/8a23b3d5-a6a6-45ef-86a7-6aea569fbfa9
+                      - paragraph [ref=e108]: Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8
+                    - button [ref=e109] [cursor=pointer]:
+                      - img [ref=e110]
+        - list [ref=e115]:
+          - listitem [ref=e116]:
+            - button [ref=e117] [cursor=pointer]
+      - main [ref=e120]:
+        - button "Toggle Sidebar" [ref=e122] [cursor=pointer]:
+          - img
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]: All Users
+            - generic [ref=e130]: View and manage user accounts
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - generic [ref=e135]:
+                - img [ref=e136]
+                - textbox "Search by name or email..." [ref=e139]
+              - generic [ref=e140]: 23 users total
+            - table [ref=e143]:
+              - rowgroup [ref=e144]:
+                - row "User Role Status Joined" [ref=e145]:
+                  - columnheader "User" [ref=e146] [cursor=pointer]:
+                    - generic [ref=e147]:
+                      - generic [ref=e148]: User
+                      - img [ref=e149]
+                  - columnheader "Role" [ref=e152] [cursor=pointer]:
+                    - generic [ref=e153]:
+                      - text: Role
+                      - img [ref=e154]
+                  - columnheader "Status" [ref=e157]
+                  - columnheader "Joined" [ref=e158] [cursor=pointer]:
+                    - generic [ref=e159]:
+                      - text: Joined
+                      - img [ref=e160]
+                  - columnheader [ref=e162]
+              - rowgroup [ref=e163]:
+                - row "Test User 21 testuser21@test-seed.local User Banned Jun 8, 2026" [ref=e164] [cursor=pointer]:
+                  - cell "Test User 21 testuser21@test-seed.local" [ref=e165]:
+                    - generic [ref=e166]:
+                      - img [ref=e168]
+                      - generic [ref=e169]:
+                        - generic [ref=e170]: Test User 21
+                        - generic [ref=e171]: testuser21@test-seed.local
+                  - cell "User" [ref=e172]:
+                    - generic [ref=e174]: User
+                  - cell "Banned" [ref=e175]:
+                    - generic [ref=e176]: Banned
+                  - cell "Jun 8, 2026" [ref=e177]
+                  - cell [ref=e178]:
+                    - img [ref=e179]
+                - row "Test User 20 testuser20@test-seed.local User Active Jun 8, 2026" [ref=e181] [cursor=pointer]:
+                  - cell "Test User 20 testuser20@test-seed.local" [ref=e182]:
+                    - generic [ref=e183]:
+                      - img [ref=e185]
+                      - generic [ref=e186]:
+                        - generic [ref=e187]: Test User 20
+                        - generic [ref=e188]: testuser20@test-seed.local
+                  - cell "User" [ref=e189]:
+                    - generic [ref=e191]: User
+                  - cell "Active" [ref=e192]:
+                    - generic [ref=e193]: Active
+                  - cell "Jun 8, 2026" [ref=e194]
+                  - cell [ref=e195]:
+                    - img [ref=e196]
+                - row "Test User 19 testuser19@test-seed.local User Active Jun 8, 2026" [ref=e198] [cursor=pointer]:
+                  - cell "Test User 19 testuser19@test-seed.local" [ref=e199]:
+                    - generic [ref=e200]:
+                      - img [ref=e202]
+                      - generic [ref=e203]:
+                        - generic [ref=e204]: Test User 19
+                        - generic [ref=e205]: testuser19@test-seed.local
+                  - cell "User" [ref=e206]:
+                    - generic [ref=e208]: User
+                  - cell "Active" [ref=e209]:
+                    - generic [ref=e210]: Active
+                  - cell "Jun 8, 2026" [ref=e211]
+                  - cell [ref=e212]:
+                    - img [ref=e213]
+                - row "Test User 18 testuser18@test-seed.local User Active Jun 8, 2026" [ref=e215] [cursor=pointer]:
+                  - cell "Test User 18 testuser18@test-seed.local" [ref=e216]:
+                    - generic [ref=e217]:
+                      - img [ref=e219]
+                      - generic [ref=e220]:
+                        - generic [ref=e221]: Test User 18
+                        - generic [ref=e222]: testuser18@test-seed.local
+                  - cell "User" [ref=e223]:
+                    - generic [ref=e225]: User
+                  - cell "Active" [ref=e226]:
+                    - generic [ref=e227]: Active
+                  - cell "Jun 8, 2026" [ref=e228]
+                  - cell [ref=e229]:
+                    - img [ref=e230]
+                - row "Test User 17 testuser17@test-seed.local User Active Jun 8, 2026" [ref=e232] [cursor=pointer]:
+                  - cell "Test User 17 testuser17@test-seed.local" [ref=e233]:
+                    - generic [ref=e234]:
+                      - img [ref=e236]
+                      - generic [ref=e237]:
+                        - generic [ref=e238]: Test User 17
+                        - generic [ref=e239]: testuser17@test-seed.local
+                  - cell "User" [ref=e240]:
+                    - generic [ref=e242]: User
+                  - cell "Active" [ref=e243]:
+                    - generic [ref=e244]: Active
+                  - cell "Jun 8, 2026" [ref=e245]
+                  - cell [ref=e246]:
+                    - img [ref=e247]
+                - row "Test User 16 testuser16@test-seed.local User Active Jun 8, 2026" [ref=e249] [cursor=pointer]:
+                  - cell "Test User 16 testuser16@test-seed.local" [ref=e250]:
+                    - generic [ref=e251]:
+                      - img [ref=e253]
+                      - generic [ref=e254]:
+                        - generic [ref=e255]: Test User 16
+                        - generic [ref=e256]: testuser16@test-seed.local
+                  - cell "User" [ref=e257]:
+                    - generic [ref=e259]: User
+                  - cell "Active" [ref=e260]:
+                    - generic [ref=e261]: Active
+                  - cell "Jun 8, 2026" [ref=e262]
+                  - cell [ref=e263]:
+                    - img [ref=e264]
+                - row "Test User 15 testuser15@test-seed.local User Active Jun 8, 2026" [ref=e266] [cursor=pointer]:
+                  - cell "Test User 15 testuser15@test-seed.local" [ref=e267]:
+                    - generic [ref=e268]:
+                      - img [ref=e270]
+                      - generic [ref=e271]:
+                        - generic [ref=e272]: Test User 15
+                        - generic [ref=e273]: testuser15@test-seed.local
+                  - cell "User" [ref=e274]:
+                    - generic [ref=e276]: User
+                  - cell "Active" [ref=e277]:
+                    - generic [ref=e278]: Active
+                  - cell "Jun 8, 2026" [ref=e279]
+                  - cell [ref=e280]:
+                    - img [ref=e281]
+                - row "Test User 14 testuser14@test-seed.local User Active Jun 8, 2026" [ref=e283] [cursor=pointer]:
+                  - cell "Test User 14 testuser14@test-seed.local" [ref=e284]:
+                    - generic [ref=e285]:
+                      - img [ref=e287]
+                      - generic [ref=e288]:
+                        - generic [ref=e289]: Test User 14
+                        - generic [ref=e290]: testuser14@test-seed.local
+                  - cell "User" [ref=e291]:
+                    - generic [ref=e293]: User
+                  - cell "Active" [ref=e294]:
+                    - generic [ref=e295]: Active
+                  - cell "Jun 8, 2026" [ref=e296]
+                  - cell [ref=e297]:
+                    - img [ref=e298]
+                - row "Test User 13 testuser13@test-seed.local User Active Jun 8, 2026" [ref=e300] [cursor=pointer]:
+                  - cell "Test User 13 testuser13@test-seed.local" [ref=e301]:
+                    - generic [ref=e302]:
+                      - img [ref=e304]
+                      - generic [ref=e305]:
+                        - generic [ref=e306]: Test User 13
+                        - generic [ref=e307]: testuser13@test-seed.local
+                  - cell "User" [ref=e308]:
+                    - generic [ref=e310]: User
+                  - cell "Active" [ref=e311]:
+                    - generic [ref=e312]: Active
+                  - cell "Jun 8, 2026" [ref=e313]
+                  - cell [ref=e314]:
+                    - img [ref=e315]
+                - row "Test User 12 testuser12@test-seed.local User Active Jun 8, 2026" [ref=e317] [cursor=pointer]:
+                  - cell "Test User 12 testuser12@test-seed.local" [ref=e318]:
+                    - generic [ref=e319]:
+                      - img [ref=e321]
+                      - generic [ref=e322]:
+                        - generic [ref=e323]: Test User 12
+                        - generic [ref=e324]: testuser12@test-seed.local
+                  - cell "User" [ref=e325]:
+                    - generic [ref=e327]: User
+                  - cell "Active" [ref=e328]:
+                    - generic [ref=e329]: Active
+                  - cell "Jun 8, 2026" [ref=e330]
+                  - cell [ref=e331]:
+                    - img [ref=e332]
+            - navigation "pagination" [ref=e334]:
+              - list [ref=e335]:
+                - listitem [ref=e336]:
+                  - link "Go to previous page":
+                    - /url: "#"
+                    - img
+                    - generic: Previous
+                - listitem [ref=e337]:
+                  - link "1" [ref=e338] [cursor=pointer]:
+                    - /url: /admin/users
+                - listitem [ref=e339]:
+                  - link "2" [ref=e340] [cursor=pointer]:
+                    - /url: /admin/users?page=2
+                - listitem [ref=e341]:
+                  - link "3" [ref=e342] [cursor=pointer]:
+                    - /url: /admin/users?page=3
+                - listitem [ref=e343]:
+                  - link "Go to next page" [ref=e344] [cursor=pointer]:
+                    - /url: /admin/users?page=2
+                    - generic [ref=e345]: Next
+                    - img
+    - region "Notifications alt+T"

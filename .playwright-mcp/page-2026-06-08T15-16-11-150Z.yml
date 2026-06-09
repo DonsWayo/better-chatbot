@@ -1,0 +1,129 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - list [ref=e17]:
+          - listitem [ref=e18]:
+            - link "Asafe AI" [ref=e19] [cursor=pointer]:
+              - /url: /
+              - heading "Asafe AI" [level=4] [ref=e20]
+        - generic [ref=e22]:
+          - generic [ref=e24]:
+            - list [ref=e25]:
+              - listitem [ref=e26]:
+                - link "New Chat ⌘ ⇧ O" [ref=e27] [cursor=pointer]:
+                  - /url: /
+                  - button "New Chat ⌘ ⇧ O" [ref=e28]:
+                    - img [ref=e29]
+                    - text: New Chat
+                    - generic [ref=e31]:
+                      - generic [ref=e32]: ⌘
+                      - generic [ref=e33]: ⇧
+                      - generic [ref=e34]: O
+            - list [ref=e35]:
+              - listitem [ref=e36]:
+                - link "MCP Configuration" [ref=e37] [cursor=pointer]:
+                  - /url: /mcp
+                  - button "MCP Configuration" [ref=e38]:
+                    - img [ref=e39]
+                    - text: MCP Configuration
+            - list [ref=e42]:
+              - listitem [ref=e43]:
+                - link "Workflow" [ref=e44] [cursor=pointer]:
+                  - /url: /workflow
+                  - button "Workflow" [ref=e45]:
+                    - img [ref=e46]
+                    - text: Workflow
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "Admin" [ref=e55] [cursor=pointer]:
+                  - /url: /admin
+                  - button "Admin" [ref=e56]:
+                    - img [ref=e57]
+                    - text: Admin
+              - list [ref=e59]:
+                - listitem [ref=e60]:
+                  - generic [ref=e61]: Users
+                - listitem [ref=e62]:
+                  - generic [ref=e63]: Teams
+                - listitem [ref=e64]:
+                  - generic [ref=e65]: Usage
+                - listitem [ref=e66]:
+                  - generic [ref=e67]: MCP Catalog
+                - listitem [ref=e68]:
+                  - generic [ref=e69]: Knowledge Base
+                - listitem [ref=e70]:
+                  - generic [ref=e71]: Quality
+                - listitem [ref=e72]:
+                  - generic [ref=e73]: Guardrails
+                - listitem [ref=e74]:
+                  - generic [ref=e75]: Feature Flags
+            - list [ref=e76]:
+              - listitem [ref=e77]:
+                - button "Archive" [ref=e78] [cursor=pointer]:
+                  - img [ref=e79]
+                  - text: Archive
+                - button [ref=e83] [cursor=pointer]:
+                  - img [ref=e84]
+          - list [ref=e87]:
+            - listitem [ref=e88]:
+              - link "Agents" [ref=e89] [cursor=pointer]:
+                - /url: /agents
+              - button [ref=e90] [cursor=pointer]:
+                - img [ref=e91]
+            - link "Create an agent Create your own specialized AI agent with unique features and personality" [ref=e93] [cursor=pointer]:
+              - /url: /agent/new
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - paragraph [ref=e96]: Create an agent
+                  - img [ref=e97]
+                - paragraph [ref=e100]: Create your own specialized AI agent with unique features and personality
+          - list [ref=e103]:
+            - listitem [ref=e104]:
+              - generic [ref=e105]:
+                - heading "Today" [level=4] [ref=e106]
+                - button [ref=e107] [cursor=pointer]:
+                  - img
+              - list [ref=e108]:
+                - listitem [ref=e109]:
+                  - generic [ref=e110]:
+                    - link "Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8" [ref=e111] [cursor=pointer]:
+                      - /url: /chat/8a23b3d5-a6a6-45ef-86a7-6aea569fbfa9
+                      - paragraph [ref=e112]: Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8
+                    - button [ref=e113] [cursor=pointer]:
+                      - img [ref=e114]
+        - list [ref=e119]:
+          - listitem [ref=e120]:
+            - button [ref=e121] [cursor=pointer]
+      - main [ref=e124]:
+        - button "Toggle Sidebar" [ref=e126] [cursor=pointer]:
+          - img
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - heading "Quality Monitoring" [level=1] [ref=e130]:
+              - img [ref=e131]
+              - text: Quality Monitoring
+            - paragraph [ref=e133]: User feedback (👍/👎) on AI responses — Wave 9 quality tracking.
+          - generic [ref=e134]:
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - img [ref=e138]
+                - paragraph [ref=e140]: "0"
+              - paragraph [ref=e141]: Thumbs up
+            - generic [ref=e143]:
+              - generic [ref=e144]:
+                - img [ref=e145]
+                - paragraph [ref=e147]: "0"
+              - paragraph [ref=e148]: Thumbs down
+            - generic [ref=e150]:
+              - paragraph [ref=e151]: —
+              - paragraph [ref=e152]: Satisfaction rate
+          - generic [ref=e153]:
+            - generic [ref=e154]:
+              - generic [ref=e155]: Recent Feedback
+              - generic [ref=e156]: Last 100 ratings, newest first
+            - generic [ref=e157]: No feedback recorded yet. Users can rate responses with 👍 / 👎 in the chat.
+    - region "Notifications alt+T"

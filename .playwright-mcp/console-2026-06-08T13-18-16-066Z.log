@@ -1,0 +1,6 @@
+[     212ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/sign-in:0
+[    9848ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3000/_next/static/chunks/9b89b8406fa3b322.js:0

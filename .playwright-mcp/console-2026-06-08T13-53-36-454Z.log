@@ -1,0 +1,46 @@
+[     251ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     273ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     460ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     462ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    7486ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    7616ms] [LOG] [Fast Refresh] done in 232ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    7694ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/api/storage/upload:0
+[   24378ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   25284ms] [LOG] [Fast Refresh] done in 1009ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   71128ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   72102ms] [LOG] [Fast Refresh] done in 1077ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   79555ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=LueTGQcDRCt-WjBTgJJRy' failed:  @ http://localhost:3001/_next/static/chunks/86321_next_dist_client_5864c2d7._.js:12047
+[   80566ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=LueTGQcDRCt-WjBTgJJRy' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/86321_next_dist_client_5864c2d7._.js:12047
+[   81570ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=LueTGQcDRCt-WjBTgJJRy' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/86321_next_dist_client_5864c2d7._.js:12047
+[   82575ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=LueTGQcDRCt-WjBTgJJRy' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/86321_next_dist_client_5864c2d7._.js:12047
+[   83581ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=LueTGQcDRCt-WjBTgJJRy' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/86321_next_dist_client_5864c2d7._.js:12047
+[   84584ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=LueTGQcDRCt-WjBTgJJRy' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/86321_next_dist_client_5864c2d7._.js:12047
+[   89594ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92405ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92436ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92625ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92627ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92681ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92759ms] [LOG] [Fast Refresh] done in 183ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   92863ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   93018ms] [LOG] [Fast Refresh] done in 257ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   93193ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   93231ms] [LOG] [Fast Refresh] done in 141ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  100127ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  100287ms] [LOG] [Fast Refresh] done in 262ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053

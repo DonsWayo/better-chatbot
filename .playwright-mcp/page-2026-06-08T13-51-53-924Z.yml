@@ -1,0 +1,132 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e16]:
+        - list [ref=e18]:
+          - listitem [ref=e19]:
+            - link "Asafe AI" [ref=e20] [cursor=pointer]:
+              - /url: /
+              - heading "Asafe AI" [level=4] [ref=e21]
+        - generic [ref=e23]:
+          - generic [ref=e25]:
+            - list [ref=e26]:
+              - listitem [ref=e27]:
+                - link "New Chat ⌘ ⇧ O" [ref=e28] [cursor=pointer]:
+                  - /url: /
+                  - button "New Chat ⌘ ⇧ O" [ref=e29]:
+                    - img [ref=e30]
+                    - text: New Chat
+                    - generic [ref=e32]:
+                      - generic [ref=e33]: ⌘
+                      - generic [ref=e34]: ⇧
+                      - generic [ref=e35]: O
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "MCP Configuration" [ref=e38] [cursor=pointer]:
+                  - /url: /mcp
+                  - button "MCP Configuration" [ref=e39]:
+                    - img [ref=e40]
+                    - text: MCP Configuration
+            - list [ref=e43]:
+              - listitem [ref=e44]:
+                - link "Workflow" [ref=e45] [cursor=pointer]:
+                  - /url: /workflow
+                  - button "Workflow" [ref=e46]:
+                    - img [ref=e47]
+                    - text: Workflow
+            - list [ref=e54]:
+              - listitem [ref=e55]:
+                - link "Admin" [ref=e56] [cursor=pointer]:
+                  - /url: /admin
+                  - button "Admin" [ref=e57]:
+                    - img [ref=e58]
+                    - text: Admin
+            - list [ref=e60]:
+              - listitem [ref=e61]:
+                - button "Archive" [ref=e62] [cursor=pointer]:
+                  - img [ref=e63]
+                  - text: Archive
+                - button [ref=e67] [cursor=pointer]:
+                  - img [ref=e68]
+          - list [ref=e71]:
+            - listitem [ref=e72]:
+              - link "Agents" [ref=e73] [cursor=pointer]:
+                - /url: /agents
+              - button [ref=e74] [cursor=pointer]:
+                - img [ref=e75]
+            - listitem [ref=e76]
+          - list [ref=e83]:
+            - listitem [ref=e84]:
+              - heading "Recent Chats" [level=4] [ref=e86]
+        - list [ref=e112]:
+          - listitem [ref=e113]:
+            - button "Test Admin User admin@test-seed.local" [ref=e114] [cursor=pointer]:
+              - img "Test Admin User" [ref=e116]
+              - generic [ref=e117]: admin@test-seed.local
+              - img [ref=e118]
+      - main [ref=e121]:
+        - generic [ref=e122]:
+          - button "Toggle Sidebar" [ref=e123] [cursor=pointer]:
+            - img
+          - generic [ref=e124]:
+            - button [ref=e125] [cursor=pointer]:
+              - img
+            - button [ref=e126] [cursor=pointer]:
+              - img
+        - generic [ref=e128]:
+          - heading "W h e r e w o u l d y o u l i k e t o s t a r t ?" [level=1] [ref=e131]:
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - generic [ref=e134]: W
+                - generic [ref=e135]: h
+                - generic [ref=e136]: e
+                - generic [ref=e137]: r
+                - generic [ref=e138]: e
+              - generic [ref=e140]:
+                - generic [ref=e141]: w
+                - generic [ref=e142]: o
+                - generic [ref=e143]: u
+                - generic [ref=e144]: l
+                - generic [ref=e145]: d
+              - generic [ref=e147]:
+                - generic [ref=e148]: "y"
+                - generic [ref=e149]: o
+                - generic [ref=e150]: u
+              - generic [ref=e152]:
+                - generic [ref=e153]: l
+                - generic [ref=e154]: i
+                - generic [ref=e155]: k
+                - generic [ref=e156]: e
+              - generic [ref=e158]:
+                - generic [ref=e159]: t
+                - generic [ref=e160]: o
+              - generic [ref=e162]:
+                - generic [ref=e163]: s
+                - generic [ref=e164]: t
+                - generic [ref=e165]: a
+                - generic [ref=e166]: r
+                - generic [ref=e167]: t
+                - generic [ref=e168]: "?"
+          - group [ref=e173]:
+            - generic [ref=e178]:
+              - button [ref=e179] [cursor=pointer]:
+                - img
+              - button "Prompt library" [ref=e180] [cursor=pointer]:
+                - img
+              - button [ref=e183] [cursor=pointer]:
+                - img
+              - button "Tools" [ref=e185] [cursor=pointer]:
+                - generic [ref=e186]: Tools
+                - generic [ref=e188]:
+                  - img
+              - button "Knowledge base" [ref=e189] [cursor=pointer]:
+                - img
+              - button "gpt-5.1" [ref=e190] [cursor=pointer]:
+                - generic [ref=e191]: gpt-5.1
+                - img
+              - button [ref=e192] [cursor=pointer]:
+                - img
+    - region "Notifications alt+T"

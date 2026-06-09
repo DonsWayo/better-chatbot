@@ -76,4 +76,68 @@ describe("addExportChatCommentAction", () => {
 
     expect(result).toBe("comment-id");
   });
+
+  it("passes content object to repository", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+    const content = { type: "doc" as const, content: [{ type: "paragraph", content: [] }] };
+
+    await addExportChatCommentAction({ exportId: "exp-1", content });
+
+    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
+      expect.objectContaining({ content }),
+    );
+  });
+
+  it("omits parentId when not provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+
+    await addExportChatCommentAction({
+      exportId: "exp-1",
+      content: { type: "doc", content: [] },
+    });
+
+    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
+      expect.not.objectContaining({ parentId: expect.anything() }),
+    );
+  });
+
+  it("passes correct exportId when multiple calls differ", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+
+    await addExportChatCommentAction({
+      exportId: "export-abc",
+      content: { type: "doc", content: [] },
+    });
+
+    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
+      expect.objectContaining({ exportId: "export-abc" }),
+    );
+  });
+
+  it("calls insertComment exactly once per action call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+
+    await addExportChatCommentAction({
+      exportId: "exp-1",
+      content: { type: "doc", content: [] },
+    });
+
+    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates repository rejection", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockRejectedValue(new Error("DB error"));
+
+    await expect(
+      addExportChatCommentAction({
+        exportId: "exp-1",
+        content: { type: "doc", content: [] },
+      }),
+    ).rejects.toThrow("DB error");
+  });
 });

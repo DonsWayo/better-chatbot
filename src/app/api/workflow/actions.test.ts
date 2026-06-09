@@ -72,4 +72,41 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
 
     expect(result).toHaveLength(2);
   });
+
+  it("calls selectExecuteAbility with userId from session", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-xyz"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([]);
+
+    await selectExecuteAbilityWorkflowsAction();
+
+    expect(mockWorkflowRepo.selectExecuteAbility).toHaveBeenCalledWith("user-xyz");
+  });
+
+  it("calls selectExecuteAbility exactly once per invocation", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([]);
+
+    await selectExecuteAbilityWorkflowsAction();
+
+    expect(mockWorkflowRepo.selectExecuteAbility).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the raw repository result", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    const expected = [mockWorkflow];
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue(expected);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result).toBe(expected);
+  });
+
+  it("result is always an array", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([]);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(Array.isArray(result)).toBe(true);
+  });
 });

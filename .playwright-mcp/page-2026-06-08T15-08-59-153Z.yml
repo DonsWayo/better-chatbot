@@ -1,0 +1,114 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e15]:
+        - list [ref=e17]:
+          - listitem [ref=e18]:
+            - link "Asafe AI" [ref=e19] [cursor=pointer]:
+              - /url: /
+              - heading "Asafe AI" [level=4] [ref=e20]
+        - generic [ref=e22]:
+          - generic [ref=e24]:
+            - list [ref=e25]:
+              - listitem [ref=e26]:
+                - link "New Chat ⌘ ⇧ O" [ref=e27] [cursor=pointer]:
+                  - /url: /
+                  - button "New Chat ⌘ ⇧ O" [ref=e28]:
+                    - img [ref=e29]
+                    - text: New Chat
+                    - generic [ref=e31]:
+                      - generic [ref=e32]: ⌘
+                      - generic [ref=e33]: ⇧
+                      - generic [ref=e34]: O
+            - list [ref=e35]:
+              - listitem [ref=e36]:
+                - link "MCP Configuration" [ref=e37] [cursor=pointer]:
+                  - /url: /mcp
+                  - button "MCP Configuration" [ref=e38]:
+                    - img [ref=e39]
+                    - text: MCP Configuration
+            - list [ref=e42]:
+              - listitem [ref=e43]:
+                - link "Workflow" [ref=e44] [cursor=pointer]:
+                  - /url: /workflow
+                  - button "Workflow" [ref=e45]:
+                    - img [ref=e46]
+                    - text: Workflow
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "Admin" [ref=e55] [cursor=pointer]:
+                  - /url: /admin
+                  - button "Admin" [ref=e56]:
+                    - img [ref=e57]
+                    - text: Admin
+              - list [ref=e59]:
+                - listitem [ref=e60]:
+                  - generic [ref=e61]: Users
+                - listitem [ref=e62]:
+                  - generic [ref=e63]: Teams
+                - listitem [ref=e64]:
+                  - generic [ref=e65]: Usage
+                - listitem [ref=e66]:
+                  - generic [ref=e67]: MCP Catalog
+                - listitem [ref=e68]:
+                  - generic [ref=e69]: Knowledge Base
+                - listitem [ref=e70]:
+                  - generic [ref=e71]: Feature Flags
+            - list [ref=e72]:
+              - listitem [ref=e73]:
+                - button "Archive" [ref=e74] [cursor=pointer]:
+                  - img [ref=e75]
+                  - text: Archive
+                - button [ref=e79] [cursor=pointer]:
+                  - img [ref=e80]
+          - list [ref=e83]:
+            - listitem [ref=e84]:
+              - link "Agents" [ref=e85] [cursor=pointer]:
+                - /url: /agents
+              - button [ref=e86] [cursor=pointer]:
+                - img [ref=e87]
+            - link "Create an agent Create your own specialized AI agent with unique features and personality" [ref=e89] [cursor=pointer]:
+              - /url: /agent/new
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - paragraph [ref=e92]: Create an agent
+                  - img [ref=e93]
+                - paragraph [ref=e96]: Create your own specialized AI agent with unique features and personality
+          - list [ref=e99]:
+            - listitem [ref=e100]:
+              - generic [ref=e101]:
+                - heading "Today" [level=4] [ref=e102]
+                - button [ref=e103] [cursor=pointer]:
+                  - img
+              - list [ref=e104]:
+                - listitem [ref=e105]:
+                  - generic [ref=e106]:
+                    - link "Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8" [ref=e107] [cursor=pointer]:
+                      - /url: /chat/8a23b3d5-a6a6-45ef-86a7-6aea569fbfa9
+                      - paragraph [ref=e108]: Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8
+                    - button [ref=e109] [cursor=pointer]:
+                      - img [ref=e110]
+        - list [ref=e115]:
+          - listitem [ref=e116]:
+            - button [ref=e117] [cursor=pointer]
+      - main [ref=e120]:
+        - button "Toggle Sidebar" [ref=e122] [cursor=pointer]:
+          - img
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - heading "Feature Flags" [level=1] [ref=e126]
+            - paragraph [ref=e127]: Operator controls for platform-wide behaviour. Changes take effect within 5 seconds.
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - generic [ref=e130]:
+                - generic [ref=e131]:
+                  - img [ref=e132]
+                  - generic [ref=e134]: Kill Switch
+                  - generic [ref=e135]: inactive
+                - switch "Kill Switch" [ref=e136] [cursor=pointer]
+              - generic [ref=e137]: Block all AI inference instantly. Deactivate as soon as the incident is resolved.
+            - paragraph [ref=e139]: "Last updated: 8 Jun 2026, 16:55"
+    - region "Notifications alt+T"

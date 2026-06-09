@@ -86,4 +86,57 @@ describe("POST /api/chat/title", () => {
     const res = await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
     expect(res.status).toBe(500);
   });
+
+  it("uses hello as default message when message is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: () => new Response("ok"),
+    });
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(streamTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "hello" }),
+    );
+  });
+
+  it("calls customModelProvider.getModel with chatModel from request", async () => {
+    const { customModelProvider } = await import("lib/ai/models");
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: () => new Response("ok"),
+    });
+    const chatModel = { provider: "openai", model: "gpt-4.1" };
+    await POST(makeRequest({ message: "Hi", threadId: "t-1", chatModel }));
+    expect(customModelProvider.getModel).toHaveBeenCalledWith(chatModel);
+  });
+
+  it("passes abortSignal from request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: () => new Response("ok"),
+    });
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(streamTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ abortSignal: expect.anything() }),
+    );
+  });
+
+  it("applies smoothStream transform to streamText call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: () => new Response("ok"),
+    });
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(streamTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ experimental_transform: expect.anything() }),
+    );
+  });
+
+  it("returns 200 on successful generation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: () => new Response("title-stream", { status: 200 }),
+    });
+    const res = await POST(makeRequest({ message: "What is AI?", threadId: "t-1" }));
+    expect(res.status).toBe(200);
+  });
 });

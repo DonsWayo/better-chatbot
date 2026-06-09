@@ -1,0 +1,10 @@
+[    1334ms] [LOG] this H @ https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:1
+[   16897ms] [WARNING] MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 CookieControl:PermissionsUpdated listeners added. Use emitter.setMaxListeners() to increase limit
+    at c (https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:56422)
+    at s.addListener (https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:59006)
+    at Object.on (https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:2483)
+    at Object.load (https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:9795)
+    at https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:119449
+    at https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:120146
+    at https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:2:120149 @ https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:1
+[   17070ms] [LOG] this H @ https://webcdn.asafe.com/assets/js/content.bundle.js?v=20260428.1:1

@@ -1,0 +1,142 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e16]:
+        - list [ref=e18]:
+          - listitem [ref=e19]:
+            - link "Asafe AI" [ref=e20] [cursor=pointer]:
+              - /url: /
+              - heading "Asafe AI" [level=4] [ref=e21]
+        - generic [ref=e23]:
+          - generic [ref=e25]:
+            - list [ref=e26]:
+              - listitem [ref=e27]:
+                - link "New Chat ⌘ ⇧ O" [ref=e28] [cursor=pointer]:
+                  - /url: /
+                  - button "New Chat ⌘ ⇧ O" [ref=e29]:
+                    - img [ref=e30]
+                    - text: New Chat
+                    - generic [ref=e32]:
+                      - generic [ref=e33]: ⌘
+                      - generic [ref=e34]: ⇧
+                      - generic [ref=e35]: O
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "MCP Configuration" [ref=e38] [cursor=pointer]:
+                  - /url: /mcp
+                  - button "MCP Configuration" [ref=e39]:
+                    - img [ref=e40]
+                    - text: MCP Configuration
+            - list [ref=e43]:
+              - listitem [ref=e44]:
+                - link "Workflow" [ref=e45] [cursor=pointer]:
+                  - /url: /workflow
+                  - button "Workflow" [ref=e46]:
+                    - img [ref=e47]
+                    - text: Workflow
+            - list [ref=e54]:
+              - listitem [ref=e55]:
+                - link "Admin" [ref=e56] [cursor=pointer]:
+                  - /url: /admin
+                  - button "Admin" [ref=e57]:
+                    - img [ref=e58]
+                    - text: Admin
+              - list [ref=e60]:
+                - listitem [ref=e61]:
+                  - generic [ref=e62]: Users
+                - listitem [ref=e63]:
+                  - generic [ref=e64]: Teams
+                - listitem [ref=e65]:
+                  - generic [ref=e66]: Usage
+                - listitem [ref=e67]:
+                  - generic [ref=e68]: MCP Catalog
+                - listitem [ref=e69]:
+                  - generic [ref=e70]: Knowledge Base
+            - list [ref=e71]:
+              - listitem [ref=e72]:
+                - button "Archive" [ref=e73] [cursor=pointer]:
+                  - img [ref=e74]
+                  - text: Archive
+                - button [ref=e78] [cursor=pointer]:
+                  - img [ref=e79]
+          - list [ref=e82]:
+            - listitem [ref=e83]:
+              - link "Agents" [ref=e84] [cursor=pointer]:
+                - /url: /agents
+              - button [ref=e85] [cursor=pointer]:
+                - img [ref=e86]
+            - link "Create an agent Create your own specialized AI agent with unique features and personality" [ref=e88] [cursor=pointer]:
+              - /url: /agent/new
+              - generic [ref=e89]:
+                - generic [ref=e90]:
+                  - paragraph [ref=e91]: Create an agent
+                  - img [ref=e92]
+                - paragraph [ref=e95]: Create your own specialized AI agent with unique features and personality
+          - list [ref=e98]:
+            - listitem [ref=e99]:
+              - generic [ref=e100]:
+                - heading "Today" [level=4] [ref=e101]
+                - button [ref=e102] [cursor=pointer]:
+                  - img
+              - list [ref=e103]:
+                - listitem [ref=e104]:
+                  - generic [ref=e105]:
+                    - link "Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8" [ref=e106] [cursor=pointer]:
+                      - /url: /chat/8a23b3d5-a6a6-45ef-86a7-6aea569fbfa9
+                      - paragraph [ref=e107]: Test AI Conversation 731f3d46-689c-450f-81bd-6d2ce7954ea8
+                    - button [ref=e108] [cursor=pointer]:
+                      - img [ref=e109]
+        - list [ref=e114]:
+          - listitem [ref=e115]:
+            - button [ref=e116] [cursor=pointer]
+      - main [ref=e119]:
+        - button "Toggle Sidebar" [ref=e121] [cursor=pointer]:
+          - img
+        - generic [ref=e126]:
+          - generic [ref=e127]:
+            - generic [ref=e128]: Usage Cost Dashboard
+            - generic [ref=e129]: View AI usage and cost breakdown by model and task class
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - generic [ref=e134]: Budget Alerts
+              - paragraph [ref=e136]: No active budget periods found.
+            - generic [ref=e137]:
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - generic [ref=e141]: Total Requests
+                  - paragraph [ref=e143]: "0"
+                - generic [ref=e144]:
+                  - generic [ref=e146]: Total Cost
+                  - paragraph [ref=e148]: $0.00
+                - generic [ref=e149]:
+                  - generic [ref=e151]: Period
+                  - paragraph [ref=e153]: Last 30 days
+              - generic [ref=e154]:
+                - heading "Cost by Model" [level=3] [ref=e155]
+                - table [ref=e158]:
+                  - rowgroup [ref=e159]:
+                    - row "Model Provider Requests Prompt Tokens Completion Tokens Cost USD" [ref=e160]:
+                      - columnheader "Model" [ref=e161]
+                      - columnheader "Provider" [ref=e162]
+                      - columnheader "Requests" [ref=e163]
+                      - columnheader "Prompt Tokens" [ref=e164]
+                      - columnheader "Completion Tokens" [ref=e165]
+                      - columnheader "Cost USD" [ref=e166]
+                  - rowgroup [ref=e167]:
+                    - row "No usage data for this period." [ref=e168]:
+                      - cell "No usage data for this period." [ref=e169]
+              - generic [ref=e170]:
+                - heading "Cost by Task Class" [level=3] [ref=e171]
+                - table [ref=e174]:
+                  - rowgroup [ref=e175]:
+                    - row "Task Class Requests Cost USD" [ref=e176]:
+                      - columnheader "Task Class" [ref=e177]
+                      - columnheader "Requests" [ref=e178]
+                      - columnheader "Cost USD" [ref=e179]
+                  - rowgroup [ref=e180]:
+                    - row "No usage data for this period." [ref=e181]:
+                      - cell "No usage data for this period." [ref=e182]
+    - region "Notifications alt+T"

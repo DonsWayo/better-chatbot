@@ -1,0 +1,114 @@
+- generic [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - main [ref=e4]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e10]:
+            - generic:
+              - img "Background Paths"
+            - generic:
+              - img "Background Paths"
+          - heading "Chat Bot" [level=1] [ref=e11]:
+            - generic [ref=e13]: Chat Bot
+          - generic [ref=e15]:
+            - generic [ref=e16]:
+              - generic [ref=e17]: W
+              - generic [ref=e18]: e
+              - generic [ref=e19]: l
+              - generic [ref=e20]: c
+              - generic [ref=e21]: o
+              - generic [ref=e22]: m
+              - generic [ref=e23]: e
+            - generic [ref=e25]:
+              - generic [ref=e26]: t
+              - generic [ref=e27]: o
+            - generic [ref=e29]:
+              - generic [ref=e30]: A
+              - generic [ref=e31]: s
+              - generic [ref=e32]: a
+              - generic [ref=e33]: f
+              - generic [ref=e34]: e
+            - generic [ref=e36]:
+              - generic [ref=e37]: A
+              - generic [ref=e38]: I
+              - generic [ref=e39]: .
+            - generic [ref=e41]:
+              - generic [ref=e42]: S
+              - generic [ref=e43]: i
+              - generic [ref=e44]: g
+              - generic [ref=e45]: "n"
+            - generic [ref=e47]:
+              - generic [ref=e48]: i
+              - generic [ref=e49]: "n"
+            - generic [ref=e51]:
+              - generic [ref=e52]: t
+              - generic [ref=e53]: o
+            - generic [ref=e55]:
+              - generic [ref=e56]: e
+              - generic [ref=e57]: x
+              - generic [ref=e58]: p
+              - generic [ref=e59]: e
+              - generic [ref=e60]: r
+              - generic [ref=e61]: i
+              - generic [ref=e62]: e
+              - generic [ref=e63]: "n"
+              - generic [ref=e64]: c
+              - generic [ref=e65]: e
+            - generic [ref=e67]:
+              - generic [ref=e68]: o
+              - generic [ref=e69]: u
+              - generic [ref=e70]: r
+            - generic [ref=e72]:
+              - generic [ref=e73]: A
+              - generic [ref=e74]: I
+              - generic [ref=e75]: "-"
+              - generic [ref=e76]: p
+              - generic [ref=e77]: o
+              - generic [ref=e78]: w
+              - generic [ref=e79]: e
+              - generic [ref=e80]: r
+              - generic [ref=e81]: e
+              - generic [ref=e82]: d
+            - generic [ref=e84]:
+              - generic [ref=e85]: c
+              - generic [ref=e86]: o
+              - generic [ref=e87]: "n"
+              - generic [ref=e88]: v
+              - generic [ref=e89]: e
+              - generic [ref=e90]: r
+              - generic [ref=e91]: s
+              - generic [ref=e92]: a
+              - generic [ref=e93]: t
+              - generic [ref=e94]: i
+              - generic [ref=e95]: o
+              - generic [ref=e96]: "n"
+              - generic [ref=e97]: a
+              - generic [ref=e98]: l
+            - generic [ref=e100]:
+              - generic [ref=e101]: t
+              - generic [ref=e102]: o
+              - generic [ref=e103]: o
+              - generic [ref=e104]: l
+              - generic [ref=e105]: s
+              - generic [ref=e106]: .
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]: Welcome Back
+            - generic [ref=e113]: Sign in to continue to your account
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: Email
+                - textbox "Email" [active] [ref=e118]:
+                  - /placeholder: user@example.com
+              - generic [ref=e119]:
+                - generic [ref=e121]: Password
+                - textbox "Password" [ref=e122]:
+                  - /placeholder: "********"
+              - button "Sign in" [ref=e123] [cursor=pointer]
+            - generic [ref=e124]:
+              - text: Don't have an account?
+              - link "Sign up" [ref=e125] [cursor=pointer]:
+                - /url: /sign-up
+    - region "Notifications alt+T"

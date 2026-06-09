@@ -58,4 +58,35 @@ describe("GET /api/workflow/tools", () => {
     const body = await res.json();
     expect(body).toEqual([]);
   });
+
+  it("returns JSON with workflows matching expected structure", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectExecuteAbility.mockResolvedValue(WORKFLOWS);
+    const res = await GET();
+    const body = await res.json() as { id: string; name: string }[];
+    expect(body[0]).toHaveProperty("id");
+    expect(body[0]).toHaveProperty("name");
+  });
+
+  it("response content-type is application/json", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const res = await GET();
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("returns 200 status even when no session (empty array)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const res = await GET();
+    expect(res.status).toBe(200);
+  });
+
+  it("returns multiple workflows with correct names", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectExecuteAbility.mockResolvedValue(WORKFLOWS);
+    const res = await GET();
+    const body = await res.json() as { id: string; name: string }[];
+    const names = body.map((w) => w.name);
+    expect(names).toContain("Workflow A");
+    expect(names).toContain("Workflow B");
+  });
 });

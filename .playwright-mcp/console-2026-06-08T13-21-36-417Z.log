@@ -1,0 +1,23 @@
+[    1395ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    1449ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    1581ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    3299ms] [LOG] [Fast Refresh] done in 1819ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    3656ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    3661ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    3716ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    4186ms] [LOG] [Fast Refresh] done in 647ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    4314ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    4326ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/api/knowledge/collections:0
+[    4536ms] [LOG] [Fast Refresh] done in 325ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    4609ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/api/mcp/list:0
+[    4650ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    4685ms] [LOG] [Fast Refresh] done in 137ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[   14403ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/api/knowledge/collections:0

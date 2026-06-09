@@ -1,0 +1,883 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]:
+          - list [ref=e8]:
+            - listitem [ref=e9]:
+              - 'button "País e idioma: España" [ref=e10] [cursor=pointer]'
+            - listitem [ref=e11]:
+              - link "Distribuidor" [ref=e12] [cursor=pointer]:
+                - /url: /es-es/distribuidor/
+          - list [ref=e13]:
+            - listitem [ref=e14]:
+              - link "ventas@asafe.es" [ref=e15] [cursor=pointer]:
+                - /url: "mailto:ventas@asafe.es "
+            - listitem [ref=e16]:
+              - link "+ 34 (96) 111 70 94" [ref=e17] [cursor=pointer]:
+                - /url: "tel:+ 34 (96) 111 70 94                           "
+        - generic [ref=e19]:
+          - link "A-SAFE" [ref=e21] [cursor=pointer]:
+            - /url: https://www.asafe.com/es-es/
+            - img "A-SAFE" [ref=e22]
+          - navigation [ref=e23]:
+            - list [ref=e25]:
+              - listitem [ref=e26]:
+                - generic "Productos" [ref=e27]
+                - generic:
+                  - generic:
+                    - generic: TU PROBLEMA, NUESTRA INSPIRACIÓN
+                  - generic:
+                    - generic:
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link "La Barrera A-SAFE":
+                              - /url: /es-es/reduccion-de-riesgos/barreras/
+                          - listitem:
+                            - link "¿Qué quieres proteger?":
+                              - /url: /es-es/productos/
+                          - listitem:
+                            - link "¿Cuál es tu industria?":
+                              - /url: /es-es/soluciones-para-industria/
+                          - listitem:
+                            - link "Categorías de Producto":
+                              - /url: /es-es/categorias/
+                          - listitem:
+                            - link "Ropa de seguridad / EPI":
+                              - /url: https://safeguru.com/?utm_source=www.a-safe.com&utm_medium=referral
+                          - listitem:
+                            - link "Ver todos los productos":
+                              - /url: /es-es/todos-los-productos/
+                      - generic:
+                        - generic: Loading ...
+                        - generic: Loading ...
+                        - generic:
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+              - listitem [ref=e28]:
+                - generic "RackEye™" [ref=e29]
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link "Gestión de estanterías activas RackEye™":
+                              - /url: /es-es/rackeye/
+                      - generic:
+                        - generic: Loading ...
+                        - generic: Loading ...
+                        - generic:
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+              - listitem [ref=e30]:
+                - generic "Innovación" [ref=e31]
+                - generic:
+                  - generic:
+                    - generic: SEGURIDAD CIENTÍFICAMENTE DISEÑADA
+                  - generic:
+                    - generic:
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link "Polímero A-SAFE vs metal":
+                              - /url: /es-es/polimero-o-metal/
+                          - listitem:
+                            - link "Una nueva era":
+                              - /url: /es-es/reduccion-de-riesgos/
+                          - listitem:
+                            - link "Innovación a través de tests":
+                              - /url: /es-es/por-que-a-safe/prueba/
+                          - listitem:
+                            - link "Industria 4.0 y mucho más":
+                              - /url: /es-es/science-of-safety/manufacturing-excellence/
+                      - generic:
+                        - generic: Loading ...
+                        - generic: Loading ...
+                        - generic:
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+              - listitem [ref=e32]:
+                - generic "Servicios" [ref=e33]
+                - generic:
+                  - generic:
+                    - generic: UNA SOLUCIÓN COMPLETA
+                  - generic:
+                    - generic:
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link "Estudio in situ":
+                              - /url: /es-es/servicios/estudio-in-situ/
+                          - listitem:
+                            - link "Propuesta y coste":
+                              - /url: /es-es/servicios/propuesta-y-coste/
+                          - listitem:
+                            - link "Instalación":
+                              - /url: /es-es/servicios/instalacion/
+                      - generic:
+                        - generic: Loading ...
+                        - generic: Loading ...
+                        - generic:
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+              - listitem [ref=e34]:
+                - generic "¿Por qué A-SAFE?" [ref=e35]
+                - generic:
+                  - generic:
+                    - generic: ¿POR QUÉ SOMOS DE CONFIANZA PARA LOS MEJORES?
+                  - generic:
+                    - generic:
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link "¿Por qué A-SAFE?":
+                              - /url: /es-es/por-que-a-safe/
+                          - listitem:
+                            - link "Premios":
+                              - /url: /es-es/por-que-a-safe/premios/
+                          - listitem:
+                            - link "Nuestra Historia":
+                              - /url: /es-es/por-que-a-safe/nuestra-historia/
+                          - listitem:
+                            - link "Nuestra Singularidad Científica":
+                              - /url: /es-es/por-que-a-safe/nuestra-diferencia-cientifica/
+                          - listitem:
+                            - link "Empleo":
+                              - /url: https://asafe.careers.hibob.com/
+                          - listitem:
+                            - link "Noticias":
+                              - /url: /es-es/noticias/
+                          - listitem:
+                            - link "A-SAFE Blog":
+                              - /url: /es-es/blog/
+                      - generic:
+                        - generic: Loading ...
+                        - generic: Loading ...
+                        - generic:
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+              - listitem [ref=e36]:
+                - generic "Recursos" [ref=e37]
+                - generic:
+                  - generic:
+                    - generic: RECURSOS DE SEGURIDAD Y DATOS TÉCNICOS
+                  - generic:
+                    - generic:
+                      - generic:
+                        - list:
+                          - listitem:
+                            - link "Casos de Estudio":
+                              - /url: /es-es/recursos/casos-de-estudio/
+                          - listitem:
+                            - link "Videoteca":
+                              - /url: /es-es/recursos/videoteca/
+                          - listitem:
+                            - link "Documentos técnicos":
+                              - /url: /es-es/recursos/documentos-tecnicos/
+                          - listitem:
+                            - link "Folletos de productos":
+                              - /url: /es-es/recursos/folletos-de-productos/
+                          - listitem:
+                            - link "Objetos BIM":
+                              - /url: /es-es/recursos/objetos-bim/
+                      - generic:
+                        - generic: Loading ...
+                        - generic: Loading ...
+                        - generic:
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+                          - link "Loading ...":
+                            - /url: "#"
+              - listitem [ref=e38]:
+                - link "Contacto" [ref=e39] [cursor=pointer]:
+                  - /url: /es-es/contacto/
+          - link "search" [ref=e40] [cursor=pointer]:
+            - /url: /es-es/busqueda/
+          - generic:
+            - textbox "Búsqueda" [ref=e41]
+            - button "submit search" [ref=e42] [cursor=pointer]
+      - generic:
+        - generic:
+          - generic:
+            - generic: Región
+          - list:
+            - listitem "Australia":
+              - link "Australia":
+                - /url: /switch/?locale=en-au
+                - img
+                - generic: Australia
+            - listitem "Belgique":
+              - link "Belgique":
+                - /url: /switch/?locale=fr-be
+                - img
+                - generic: Belgique
+            - listitem "België":
+              - link "België":
+                - /url: /switch/?locale=nl-be
+                - img
+                - generic: België
+            - listitem "Canada (en)":
+              - link "Canada (en)":
+                - /url: /switch/?locale=en-ca
+                - img
+                - generic: Canada (en)
+            - listitem "Canada (fr)":
+              - link "Canada (fr)":
+                - /url: /switch/?locale=fr-ca
+                - img
+                - generic: Canada (fr)
+            - listitem "Danmark":
+              - link "Danmark":
+                - /url: /switch/?locale=da-dk
+                - img
+                - generic: Danmark
+            - listitem "Deutschland":
+              - link "Deutschland":
+                - /url: /switch/?locale=de-de
+                - img
+                - generic: Deutschland
+            - listitem "España":
+              - link "España":
+                - /url: /es-es/
+                - img
+                - generic: España
+            - listitem "France":
+              - link "France":
+                - /url: /switch/?locale=fr-fr
+                - img
+                - generic: France
+            - listitem "Italia":
+              - link "Italia":
+                - /url: /switch/?locale=it-it
+                - img
+                - generic: Italia
+            - listitem "México":
+              - link "México":
+                - /url: /switch/?locale=es-mx
+                - img
+                - generic: México
+            - listitem "Middle East":
+              - link "Middle East":
+                - /url: /switch/?locale=ar-ae
+                - img
+                - generic: Middle East
+            - listitem "Nederland":
+              - link "Nederland":
+                - /url: /switch/?locale=nl-nl
+                - img
+                - generic: Nederland
+            - listitem "日本":
+              - link "日本":
+                - /url: /switch/?locale=ja-jp
+                - img
+                - generic: 日本
+            - listitem "Polska":
+              - link "Polska":
+                - /url: /switch/?locale=pl-pl
+                - img
+                - generic: Polska
+            - listitem "Sverige":
+              - link "Sverige":
+                - /url: /switch/?locale=sv-se
+                - img
+                - generic: Sverige
+            - listitem "United Kingdom":
+              - link "United Kingdom":
+                - /url: /switch/?locale=en-gb
+                - img
+                - generic: United Kingdom
+            - listitem "United States":
+              - link "United States":
+                - /url: /switch/?locale=en-us
+                - img
+                - generic: United States
+    - generic [ref=e43]:
+      - generic [ref=e46]:
+        - tabpanel [ref=e47]:
+          - generic [ref=e54]:
+            - heading "Las barreras de seguridad industrial más fiables en el mundo" [level=1] [ref=e55]:
+              - generic [ref=e56]:
+                - text: Las barreras de seguridad industrial más
+                - strong [ref=e57]: fiables
+                - text: en el mundo
+            - paragraph [ref=e58]: Un revolucionario diseño tricapa totalmente polimérico que ofrece un rendimiento sin igual en un único sistema, protegiendo tu planta y aumentando su eficiencia.
+            - generic [ref=e59]:
+              - link "Descubre más" [ref=e60] [cursor=pointer]:
+                - /url: /es-es/reduccion-de-riesgos/barreras/
+              - link "Pide tu informe técnico" [ref=e61] [cursor=pointer]:
+                - /url: "#pf-30198"
+        - tabpanel [ref=e62]:
+          - generic [ref=e68]:
+            - heading [level=2] [ref=e69]:
+              - generic [ref=e70]:
+                - text: Nuevo sistema de
+                - strong [ref=e71]: acoplamiento
+            - paragraph [ref=e72]: El sistema de acoplamiento totalmente nuevo reduce la cantidad de piezas, lo que agiliza la instalación y minimiza el tiempo de inactividad.
+            - generic [ref=e73]:
+              - link [ref=e74] [cursor=pointer]:
+                - /url: /es-es/reduccion-de-riesgos/sistema-de-acoplamiento/
+                - text: Descubre más
+              - link [ref=e75] [cursor=pointer]:
+                - /url: "#pf-30198"
+                - text: Pide un informe técnico
+        - tabpanel [ref=e76]:
+          - generic [ref=e82]:
+            - heading [level=2] [ref=e83]:
+              - generic [ref=e84]:
+                - text: Aplica la
+                - strong [ref=e85]: NTP
+                - text: "1778"
+            - paragraph [ref=e86]: Actualiza tus instalaciones y adelántate a la norma. Aplica la nueva Nota Técnica de Prevención 1178 en tu planta. Unos estándares de seguridad avanzados son posibles.
+            - generic [ref=e87]:
+              - link [ref=e88] [cursor=pointer]:
+                - /url: /es-es/por-que-a-safe/estandares-y-cumplimiento/ntp-1178/
+                - text: Más información
+              - link [ref=e89] [cursor=pointer]:
+                - /url: "#pf-30198"
+                - text: Pide un informe de tu planta
+      - tablist [ref=e91]:
+        - tab "1 of 3" [selected] [ref=e92] [cursor=pointer]: "1"
+        - tab "2 of 3" [ref=e93] [cursor=pointer]: "2"
+        - tab "3 of 3" [ref=e94] [cursor=pointer]: "3"
+    - generic [ref=e95]:
+      - heading "Puestos de trabajo más seguros y avanzados" [level=2] [ref=e98]
+      - generic [ref=e99]:
+        - generic [ref=e100]:
+          - img "Barreras de seguridad industrial para proteger a las personas en un pasillo" [ref=e101]
+          - heading "Proteger personas" [level=3] [ref=e102]
+          - paragraph [ref=e103]: Mantén a las personas seguras, reduce el riesgo e impulsa la eficiencia con barreras de resistencia industrial que flexionan tras el impacto, absorben la energía del vehículo y luego se recuperan totalmente para una protección continua.
+        - generic [ref=e104]:
+          - img "Barreras de seguridad de polímero que amortiguan los golpes de las carretillas elevadoras" [ref=e105]
+          - heading "Reducir costes operativos" [level=3] [ref=e106]
+          - paragraph [ref=e107]: Reduce costes de mantenimiento, reparaciones, reemplazos y tiempos de inactividad con barreras avanzadas que no se corroen, oxidan o decoloran, no requieren repintado y se recuperan después del impacto.
+        - generic [ref=e108]:
+          - img "Barreras de seguridad industrial sometidas a pruebas según BSI PAS13 y la NTP 1178" [ref=e109]
+          - heading "Cumplimiento de seguridad" [level=3] [ref=e110]
+          - paragraph [ref=e111]: Elige barreras de seguridad que están rigurosamente probadas y certificadas de forma independiente según estándares globales reconocidos para asegurarte su rendimiento cuando más se necesita.
+      - link "Acerca de A-SAFE" [ref=e115] [cursor=pointer]:
+        - /url: /es-es/por-que-a-safe/
+    - generic [ref=e116]:
+      - heading "La Nueva Barrera A-SAFE" [level=2] [ref=e119]
+      - generic [ref=e122]:
+        - generic [ref=e125]:
+          - img [ref=e127]
+          - generic [ref=e128]:
+            - heading [level=3] [ref=e129]: Active Technology
+            - paragraph [ref=e130]: La Active Technology de A-SAFE se integra con RackEye, A-GUARD y la nueva barrera A-SAFE para proporcionar información procesable y los datos que necesitas para garantizar que el personal esté protegido y mejorar la eficiencia de tus instalaciones.
+            - link [ref=e132] [cursor=pointer]:
+              - /url: /es-es/reduccion-de-riesgos/tecnologia-activa/
+              - text: Descubre más
+        - tabpanel [ref=e133]:
+          - generic [ref=e135]:
+            - img "Barrera A-SAFE" [ref=e137]
+            - generic [ref=e138]:
+              - heading "Barrera A-SAFE" [level=3] [ref=e139]
+              - paragraph [ref=e140]: Nuestra última innovación, la gama de barreras A-SAFE, es más que una barrera amarilla. Es un sistema de seguridad integral, diseñado para proteger a las personas, la infraestructura y las operaciones con un rendimiento y fiabilidad inigualables.
+              - paragraph [ref=e141]: .
+              - link "Descubre más" [ref=e143] [cursor=pointer]:
+                - /url: /es-es/reduccion-de-riesgos/barreras/
+        - tabpanel [ref=e144]:
+          - generic [ref=e146]:
+            - img [ref=e148]
+            - generic [ref=e149]:
+              - heading [level=3] [ref=e150]: Diseño Tricapa
+              - paragraph [ref=e151]: Nuestra estructura única de tres capas está diseñada para resistir repetidos impactos manteniendo la resistencia y la flexibilidad.
+              - link [ref=e153] [cursor=pointer]:
+                - /url: /es-es/reduccion-de-riesgos/diseno-tricapa/
+                - text: Descubre más
+        - tabpanel [ref=e154]:
+          - generic [ref=e156]:
+            - img [ref=e158]
+            - generic [ref=e159]:
+              - heading [level=3] [ref=e160]: Sistema de Acoplamiento
+              - paragraph [ref=e161]: Nuestro sistema de acoplamiento recién desarrollado simplifica la instalación, reduce los costes de mano de obra y permite una rápida reconfiguración.
+              - link [ref=e163] [cursor=pointer]:
+                - /url: /es-es/reduccion-de-riesgos/sistema-de-acoplamiento/
+                - text: Descubre más
+        - tabpanel [ref=e164]:
+          - generic [ref=e166]:
+            - img [ref=e168]
+            - generic [ref=e169]:
+              - heading [level=3] [ref=e170]: Active Technology
+              - paragraph [ref=e171]: La Active Technology de A-SAFE se integra con RackEye, A-GUARD y la nueva barrera A-SAFE para proporcionar información procesable y los datos que necesitas para garantizar que el personal esté protegido y mejorar la eficiencia de tus instalaciones.
+              - link [ref=e173] [cursor=pointer]:
+                - /url: /es-es/reduccion-de-riesgos/tecnologia-activa/
+                - text: Descubre más
+        - generic [ref=e176]:
+          - img [ref=e178]
+          - generic [ref=e179]:
+            - heading [level=3] [ref=e180]: Barrera A-SAFE
+            - paragraph [ref=e181]: Nuestra última innovación, la gama de barreras A-SAFE, es más que una barrera amarilla. Es un sistema de seguridad integral, diseñado para proteger a las personas, la infraestructura y las operaciones con un rendimiento y fiabilidad inigualables.
+            - paragraph [ref=e182]: .
+            - link [ref=e184] [cursor=pointer]:
+              - /url: /es-es/reduccion-de-riesgos/barreras/
+              - text: Descubre más
+        - generic [ref=e187]:
+          - img [ref=e189]
+          - generic [ref=e190]:
+            - heading [level=3] [ref=e191]: Diseño Tricapa
+            - paragraph [ref=e192]: Nuestra estructura única de tres capas está diseñada para resistir repetidos impactos manteniendo la resistencia y la flexibilidad.
+            - link [ref=e194] [cursor=pointer]:
+              - /url: /es-es/reduccion-de-riesgos/diseno-tricapa/
+              - text: Descubre más
+        - generic [ref=e197]:
+          - img [ref=e199]
+          - generic [ref=e200]:
+            - heading [level=3] [ref=e201]: Sistema de Acoplamiento
+            - paragraph [ref=e202]: Nuestro sistema de acoplamiento recién desarrollado simplifica la instalación, reduce los costes de mano de obra y permite una rápida reconfiguración.
+            - link [ref=e204] [cursor=pointer]:
+              - /url: /es-es/reduccion-de-riesgos/sistema-de-acoplamiento/
+              - text: Descubre más
+        - generic [ref=e207]:
+          - img [ref=e209]
+          - generic [ref=e210]:
+            - heading [level=3] [ref=e211]: Active Technology
+            - paragraph [ref=e212]: La Active Technology de A-SAFE se integra con RackEye, A-GUARD y la nueva barrera A-SAFE para proporcionar información procesable y los datos que necesitas para garantizar que el personal esté protegido y mejorar la eficiencia de tus instalaciones.
+            - link [ref=e214] [cursor=pointer]:
+              - /url: /es-es/reduccion-de-riesgos/tecnologia-activa/
+              - text: Descubre más
+      - tablist [ref=e216]
+    - generic [ref=e217]:
+      - heading "La protección adecuada para el trabajo." [level=2] [ref=e220]
+      - generic [ref=e223]:
+        - generic [ref=e226]:
+          - link [ref=e227] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-de-maquinaria-y-equipos/
+            - text: Protección de maquinaria y equipos
+          - img [ref=e228]
+          - generic [ref=e229]: Protección de maquinaria y equipos
+        - generic [ref=e232]:
+          - link [ref=e233] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-para-patios-de-servicio-y-muelles/
+            - text: Protección para patios de servicio y muelles de carga
+          - img [ref=e234]
+          - generic [ref=e235]: Protección para patios de servicio y muelles de carga
+        - tabpanel [ref=e236]:
+          - generic [ref=e238]:
+            - link "Protección peatonal en el trabajo" [ref=e239] [cursor=pointer]:
+              - /url: /es-es/aplicaciones/proteccion-peatonal/
+            - img "Barrera de seguridad industrial que protege a los peatones en el paso de carretillas elevadoras" [ref=e240]
+            - generic [ref=e241]: Protección peatonal en el trabajo
+        - tabpanel [ref=e242]:
+          - generic [ref=e244]:
+            - link "Protecciones para edificios y columnas" [ref=e245] [cursor=pointer]:
+              - /url: /es-es/aplicaciones/proteccion-para-edificios-paredes-y-columnas/
+            - img "Barreras de seguridad y protectores de columna de polímero para proteger edificios, escaleras y entreplantas" [ref=e246]
+            - generic [ref=e247]: Protecciones para edificios y columnas
+        - tabpanel [ref=e248]:
+          - generic [ref=e250]:
+            - link [ref=e251] [cursor=pointer]:
+              - /url: /es-es/aplicaciones/proteccion-de-estanterias/
+              - text: Protección de estanterías
+            - img [ref=e252]
+            - generic [ref=e253]: Protección de estanterías
+        - tabpanel [ref=e254]:
+          - generic [ref=e256]:
+            - link [ref=e257] [cursor=pointer]:
+              - /url: /es-es/aplicaciones/proteccion-de-maquinaria-y-equipos/
+              - text: Protección de maquinaria y equipos
+            - img [ref=e258]
+            - generic [ref=e259]: Protección de maquinaria y equipos
+        - tabpanel [ref=e260]:
+          - generic [ref=e262]:
+            - link [ref=e263] [cursor=pointer]:
+              - /url: /es-es/aplicaciones/proteccion-para-patios-de-servicio-y-muelles/
+              - text: Protección para patios de servicio y muelles de carga
+            - img [ref=e264]
+            - generic [ref=e265]: Protección para patios de servicio y muelles de carga
+        - generic [ref=e268]:
+          - link [ref=e269] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-peatonal/
+            - text: Protección peatonal en el trabajo
+          - img [ref=e270]
+          - generic [ref=e271]: Protección peatonal en el trabajo
+        - generic [ref=e274]:
+          - link [ref=e275] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-para-edificios-paredes-y-columnas/
+            - text: Protecciones para edificios y columnas
+          - img [ref=e276]
+          - generic [ref=e277]: Protecciones para edificios y columnas
+        - generic [ref=e280]:
+          - link [ref=e281] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-de-estanterias/
+            - text: Protección de estanterías
+          - img [ref=e282]
+          - generic [ref=e283]: Protección de estanterías
+        - generic [ref=e286]:
+          - link [ref=e287] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-de-maquinaria-y-equipos/
+            - text: Protección de maquinaria y equipos
+          - img [ref=e288]
+          - generic [ref=e289]: Protección de maquinaria y equipos
+        - generic [ref=e292]:
+          - link [ref=e293] [cursor=pointer]:
+            - /url: /es-es/aplicaciones/proteccion-para-patios-de-servicio-y-muelles/
+            - text: Protección para patios de servicio y muelles de carga
+          - img [ref=e294]
+          - generic [ref=e295]: Protección para patios de servicio y muelles de carga
+      - tablist [ref=e297]
+    - generic [ref=e299]:
+      - generic [ref=e300]:
+        - heading "De confianza para las marcas más importantes del mundo" [level=2] [ref=e301]
+        - paragraph [ref=e302]: Mantenemos una estrecha relación duradera con las marcas más importantes del mundo y las plantas industriales más concurridas. Echa un ojo a nuestro caso de éxito y descubre por qué estas marcas confían en A-SAFE para mantener a las personas a salvo, proteger el equipamiento y crear un entorno laboral más eficiente.
+        - link "Casos de éxito" [ref=e303] [cursor=pointer]:
+          - /url: /es-es/recursos/casos-de-estudio/
+      - generic [ref=e304]:
+        - img "De confianza para las marcas más importantes del mundo"
+    - generic [ref=e307]:
+      - generic [ref=e308]:
+        - generic [ref=e309]: Soluciones de seguridad diseñadas a medida
+        - paragraph [ref=e310]: Contacta hoy con nuestros expertos en seguridad para tu informe técnico sin compromiso.
+      - link "Pide tu informe técnico" [ref=e312] [cursor=pointer]:
+        - /url: "#pf-30198"
+    - generic [ref=e313]:
+      - generic [ref=e316]: Videoteca
+      - generic [ref=e318]:
+        - generic [ref=e320] [cursor=pointer]:
+          - img "Videoteca"
+        - generic [ref=e322]:
+          - generic [ref=e323]: Probadas y rendimiento calificado para los entornos laborales industriales más duros.
+          - paragraph [ref=e324]: Ningún fabricante de barreras de seguridad industrial realiza tantas pruebas como nosotros, ni tan exhaustivamente. Descubre nuestras barreras y bolardos en acción aquí.
+          - link "Vea Videos de impactos extremos" [ref=e325] [cursor=pointer]:
+            - /url: /es-es/recursos/videoteca/impactos/
+    - generic [ref=e326]:
+      - generic [ref=e329]:
+        - generic [ref=e332]:
+          - iframe [ref=e337]:
+            
+          - generic [ref=e338]:
+            - heading [level=3] [ref=e339]: Seguridad diseñada científicamente
+            - paragraph [ref=e340]: Desde la resistencia y la flexibilidad de la triple capa de nuestro revolucionario material Memaplex™ hasta nuestro Sistema de Absorción de Energía patentado, cada barrera peatonal de seguridad ha sido diseñada por nuestros científicos especializados en polímeros para ofrecer el máximo rendimiento en los entornos industriales más difíciles.
+            - link [ref=e342] [cursor=pointer]:
+              - /url: /es-es/por-que-a-safe/nuestra-diferencia-cientifica/
+              - text: Nuestra diferencia científica
+        - tabpanel [ref=e343]:
+          - generic [ref=e345]:
+            - img "Proceso integral de principio a fin" [ref=e347]
+            - generic [ref=e348]:
+              - heading "Proceso integral de principio a fin" [level=3] [ref=e349]
+              - paragraph [ref=e350]: Calidad incomparable significa contorlar cada aspecto del desarrollo y del proceso de producción. Nuestros productos están diseñados, desarrollados, manufacturados y probados en nuestras plantas de innovación y producción de última generación de Reino Unido.
+              - link "Nuestra diferencia científica" [ref=e352] [cursor=pointer]:
+                - /url: /es-es/por-que-a-safe/nuestra-diferencia-cientifica/
+        - tabpanel [ref=e353]:
+          - generic [ref=e355]:
+            - iframe [ref=e360]:
+              - main [ref=f30e2]:
+                - generic [ref=f30e3]:
+                  - heading "Externally hosted video" [level=2] [ref=f30e4]
+                  - paragraph [ref=f30e5]:
+                    - text: Please accept YouTube's cookies to view.
+                    - text: You can disable these cookies in your browser settings.
+                    - text: "Find out more:"
+                    - link "Cookie Policy" [ref=f30e7] [cursor=pointer]:
+                      - /url: "#"
+                  - link "Accept" [ref=f30e8] [cursor=pointer]:
+                    - /url: "#"
+            - generic [ref=e361]:
+              - heading [level=3] [ref=e362]: Rendimiento probado y certificado
+              - paragraph [ref=e363]: Los productos A-SAFE están probados en base a los rigurosos estándares del BSI PAS 13, el código de prácticas global para probar la resiliencia al impacto de las barreras de seguridad laboral. Además, la conformidad con el PAS 13 está inspeccionada y certificada de manera independiente por TUV Nord, una de las compañías de pruebas independientes más respetada.
+              - link [ref=e365] [cursor=pointer]:
+                - /url: /es-es/por-que-a-safe/estandares-y-cumplimiento/
+                - text: Estándares y cumplimiento
+        - tabpanel [ref=e366]:
+          - generic [ref=e368]:
+            - iframe [ref=e373]:
+              - main [ref=f31e2]:
+                - generic [ref=f31e3]:
+                  - heading "Externally hosted video" [level=2] [ref=f31e4]
+                  - paragraph [ref=f31e5]:
+                    - text: Please accept YouTube's cookies to view.
+                    - text: You can disable these cookies in your browser settings.
+                    - text: "Find out more:"
+                    - link "Cookie Policy" [ref=f31e7] [cursor=pointer]:
+                      - /url: "#"
+                  - link "Accept" [ref=f31e8] [cursor=pointer]:
+                    - /url: "#"
+            - generic [ref=e374]:
+              - heading [level=3] [ref=e375]: Líder mundial de innovación en polímeros
+              - paragraph [ref=e376]: Desde la invención de la primera barrera de polímero industrial del mundo en 2001, no nos hemos detenido. Estamos en constante innovación y mejora de productos para construir entornos laborales más seguros y eficientes.
+              - link [ref=e378] [cursor=pointer]:
+                - /url: /es-es/por-que-a-safe/
+                - text: Acerca de A-SAFE
+        - tabpanel [ref=e379]:
+          - generic [ref=e381]:
+            - iframe [ref=e386]:
+              - main [ref=f32e2]:
+                - generic [ref=f32e3]:
+                  - heading "Externally hosted video" [level=2] [ref=f32e4]
+                  - paragraph [ref=f32e5]:
+                    - text: Please accept YouTube's cookies to view.
+                    - text: You can disable these cookies in your browser settings.
+                    - text: "Find out more:"
+                    - link "Cookie Policy" [ref=f32e7] [cursor=pointer]:
+                      - /url: "#"
+                  - link "Accept" [ref=f32e8] [cursor=pointer]:
+                    - /url: "#"
+            - generic [ref=e387]:
+              - heading [level=3] [ref=e388]: Seguridad diseñada científicamente
+              - paragraph [ref=e389]: Desde la resistencia y la flexibilidad de la triple capa de nuestro revolucionario material Memaplex™ hasta nuestro Sistema de Absorción de Energía patentado, cada barrera peatonal de seguridad ha sido diseñada por nuestros científicos especializados en polímeros para ofrecer el máximo rendimiento en los entornos industriales más difíciles.
+              - link [ref=e391] [cursor=pointer]:
+                - /url: /es-es/por-que-a-safe/nuestra-diferencia-cientifica/
+                - text: Nuestra diferencia científica
+        - generic [ref=e394]:
+          - img [ref=e396]
+          - generic [ref=e397]:
+            - heading [level=3] [ref=e398]: Proceso integral de principio a fin
+            - paragraph [ref=e399]: Calidad incomparable significa contorlar cada aspecto del desarrollo y del proceso de producción. Nuestros productos están diseñados, desarrollados, manufacturados y probados en nuestras plantas de innovación y producción de última generación de Reino Unido.
+            - link [ref=e401] [cursor=pointer]:
+              - /url: /es-es/por-que-a-safe/nuestra-diferencia-cientifica/
+              - text: Nuestra diferencia científica
+        - generic [ref=e404]:
+          - iframe [ref=e409]:
+            
+          - generic [ref=e410]:
+            - heading [level=3] [ref=e411]: Rendimiento probado y certificado
+            - paragraph [ref=e412]: Los productos A-SAFE están probados en base a los rigurosos estándares del BSI PAS 13, el código de prácticas global para probar la resiliencia al impacto de las barreras de seguridad laboral. Además, la conformidad con el PAS 13 está inspeccionada y certificada de manera independiente por TUV Nord, una de las compañías de pruebas independientes más respetada.
+            - link [ref=e414] [cursor=pointer]:
+              - /url: /es-es/por-que-a-safe/estandares-y-cumplimiento/
+              - text: Estándares y cumplimiento
+        - generic [ref=e417]:
+          - iframe [ref=e422]:
+            
+          - generic [ref=e423]:
+            - heading [level=3] [ref=e424]: Líder mundial de innovación en polímeros
+            - paragraph [ref=e425]: Desde la invención de la primera barrera de polímero industrial del mundo en 2001, no nos hemos detenido. Estamos en constante innovación y mejora de productos para construir entornos laborales más seguros y eficientes.
+            - link [ref=e427] [cursor=pointer]:
+              - /url: /es-es/por-que-a-safe/
+              - text: Acerca de A-SAFE
+        - generic [ref=e430]:
+          - iframe [ref=e435]:
+            
+          - generic [ref=e436]:
+            - heading [level=3] [ref=e437]: Seguridad diseñada científicamente
+            - paragraph [ref=e438]: Desde la resistencia y la flexibilidad de la triple capa de nuestro revolucionario material Memaplex™ hasta nuestro Sistema de Absorción de Energía patentado, cada barrera peatonal de seguridad ha sido diseñada por nuestros científicos especializados en polímeros para ofrecer el máximo rendimiento en los entornos industriales más difíciles.
+            - link [ref=e440] [cursor=pointer]:
+              - /url: /es-es/por-que-a-safe/nuestra-diferencia-cientifica/
+              - text: Nuestra diferencia científica
+      - tablist [ref=e442]
+    - generic [ref=e443]:
+      - generic [ref=e445]: Seguridad en todas las industrias y sectores
+      - generic [ref=e447]:
+        - list [ref=e449]:
+          - listitem [ref=e450]:
+            - link "Fabricación" [ref=e451] [cursor=pointer]:
+              - /url: /es-es/industrias/fabricacion/
+            - img [ref=e452]
+          - listitem [ref=e454]:
+            - link "Almacenamiento y distribución" [ref=e455] [cursor=pointer]:
+              - /url: /es-es/industrias/almacenamiento-y-distribucion/
+            - img [ref=e456]
+          - listitem [ref=e458]:
+            - link "Aeropuertos" [ref=e459] [cursor=pointer]:
+              - /url: /es-es/industrias/aeropuertos/
+            - img [ref=e460]
+          - listitem [ref=e462]:
+            - link "Aparcamientos" [ref=e463] [cursor=pointer]:
+              - /url: /es-es/industrias/aparcamientos/
+            - img [ref=e464]
+          - listitem [ref=e466]:
+            - link "Nueva construcción" [ref=e467] [cursor=pointer]:
+              - /url: /es-es/industrias/arquitetura-e-ingenieria/
+            - img [ref=e468]
+          - listitem [ref=e470]:
+            - link "Automoción" [ref=e471] [cursor=pointer]:
+              - /url: /es-es/industrias/automocion/
+            - img [ref=e472]
+          - listitem [ref=e474]:
+            - link "Cold Storage" [ref=e475] [cursor=pointer]:
+              - /url: /es-es/industrias/cold-storage/
+            - img [ref=e476]
+          - listitem [ref=e478]:
+            - link "Química y Nuclear" [ref=e479] [cursor=pointer]:
+              - /url: /es-es/industrias/quimica-y-nuclear/
+            - img [ref=e480]
+          - listitem [ref=e482]:
+            - link "Alimentación y bebidas" [ref=e483] [cursor=pointer]:
+              - /url: /es-es/industrias/alimentacion/
+            - img [ref=e484]
+          - listitem [ref=e486]:
+            - link "Salud laboral e Higiene" [ref=e487] [cursor=pointer]:
+              - /url: /es-es/industrias/salud-laboral-e-higiene/
+            - img [ref=e488]
+          - listitem [ref=e490]:
+            - link "Envasado" [ref=e491] [cursor=pointer]:
+              - /url: /es-es/industrias/envasado/
+            - img [ref=e492]
+        - generic [ref=e496]:
+          - generic [ref=e497]: Fabricación
+          - paragraph [ref=e498]: Bolardos, barreras y soluciones de seguridad de fabricación para reducir riesgos y mejorar la eficiencia operativa en entornos de manufactura.
+          - link "Descubre más" [ref=e500] [cursor=pointer]:
+            - /url: /es-es/industrias/fabricacion/
+    - generic [ref=e501]:
+      - generic [ref=e504]:
+        - blockquote [ref=e511]:
+          - text: "\"El coste inicial de la instalación de las barreras A-SAFE ha estado más que compensado por el ahorro que hemos hecho al no cambiar las partes dañadas, ni la pintura habitual o el mantenimiento. Estas barreras son eficaces al reducir daños a nuestras carretillas elevadoras, y los trabajadores confían en que están mejor protegidos.\""
+          - generic [ref=e512]: Jefe de Equipo, Coca-Cola
+        - tabpanel [ref=e513]:
+          - generic [ref=e515]:
+            - generic [ref=e516]:
+              - img "Sonoco"
+            - blockquote [ref=e519]:
+              - text: "\"No conozco ninguna otra barrera que exista en el mercado que cumpla con el régimen de pruebas que hace A-SAFE\""
+              - generic [ref=e520]: Director de Seguridad de Sonoco Europa, Steff Williams
+        - tabpanel [ref=e521]:
+          - blockquote [ref=e527]:
+            - text: "\"El coste inicial de la instalación de las barreras A-SAFE ha estado más que compensado por el ahorro que hemos hecho al no cambiar las partes dañadas, ni la pintura habitual o el mantenimiento. Estas barreras son eficaces al reducir daños a nuestras carretillas elevadoras, y los trabajadores confían en que están mejor protegidos.\""
+            - generic [ref=e528]: Jefe de Equipo, Coca-Cola
+        - blockquote [ref=e535]:
+          - text: "\"No conozco ninguna otra barrera que exista en el mercado que cumpla con el régimen de pruebas que hace A-SAFE\""
+          - generic [ref=e536]: Director de Seguridad de Sonoco Europa, Steff Williams
+        - blockquote [ref=e543]:
+          - text: "\"El coste inicial de la instalación de las barreras A-SAFE ha estado más que compensado por el ahorro que hemos hecho al no cambiar las partes dañadas, ni la pintura habitual o el mantenimiento. Estas barreras son eficaces al reducir daños a nuestras carretillas elevadoras, y los trabajadores confían en que están mejor protegidos.\""
+          - generic [ref=e544]: Jefe de Equipo, Coca-Cola
+      - tablist [ref=e546]
+    - generic [ref=e551]:
+      - generic [ref=e552]:
+        - generic [ref=e553]: Descubre cómo A-SAFE te ayuda a proteger tu planta industrial
+        - paragraph [ref=e554]: Contacta hoy con nuestros expertos en seguridad para tu informe técnico sin compromiso.
+      - link "Pide tu informe técnico" [ref=e556] [cursor=pointer]:
+        - /url: "#pf-30198"
+    - contentinfo [ref=e557]:
+      - generic [ref=e559]:
+        - generic [ref=e561]:
+          - paragraph [ref=e564]:
+            - strong [ref=e565]: Suscríbete a nuestro Boletín de Noticias
+          - textbox [ref=e568]:
+            - /placeholder: Email*
+          - generic [ref=e569]:
+            - list [ref=e574]:
+              - listitem [ref=e575]:
+                - generic [ref=e577] [cursor=pointer]: Acepto recibir comunicaciones comerciales.
+            - list [ref=e582]:
+              - listitem [ref=e583]:
+                - generic [ref=e585] [cursor=pointer]:
+                  - text: He leído y acepto la
+                  - link "Política de privacidad" [ref=e586]:
+                    - /url: https://www.asafe.com/es-es/politica-de-privacidad/
+                  - text: y la
+                  - link "Política de cookies" [ref=e587]:
+                    - /url: https://www.asafe.com/es-es/politica-de-cookies/
+                  - text: .*
+          - button "Regístrate" [ref=e590] [cursor=pointer]
+        - list [ref=e591]:
+          - listitem [ref=e592]:
+            - link "Facebook" [ref=e593] [cursor=pointer]:
+              - /url: https://www.facebook.com/ASAFEESPANA/
+              - img "Facebook"
+          - listitem [ref=e594]:
+            - link "Twitter" [ref=e595] [cursor=pointer]:
+              - /url: https://twitter.com/asafe_espana?lang=en
+              - img "Twitter"
+          - listitem [ref=e596]:
+            - link "YouTube" [ref=e597] [cursor=pointer]:
+              - /url: https://www.youtube.com/channel/UCqd651fM4LKh9QA6wqvUAxQ
+              - img "YouTube"
+          - listitem [ref=e598]:
+            - link "Instagram" [ref=e599] [cursor=pointer]:
+              - /url: https://www.instagram.com/asafe.group/
+              - img "Instagram"
+          - listitem [ref=e600]:
+            - link "TikTok" [ref=e601] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@asafegroup
+              - img "TikTok"
+          - listitem [ref=e602]:
+            - link "Whatsapp" [ref=e603] [cursor=pointer]:
+              - /url: https://wa.me/0034610445536
+              - img "Whatsapp"
+          - listitem [ref=e604]:
+            - link "LinkedIn" [ref=e605] [cursor=pointer]:
+              - /url: https://www.linkedin.com/company/a-safe-espa%C3%B1a/
+              - img "LinkedIn"
+        - list [ref=e606]:
+          - listitem [ref=e607]:
+            - link "Contacto" [ref=e608] [cursor=pointer]:
+              - /url: /es-es/contacto/
+          - listitem [ref=e609]:
+            - link "Noticias" [ref=e610] [cursor=pointer]:
+              - /url: /es-es/noticias/
+          - listitem [ref=e611]:
+            - link "Blog" [ref=e612] [cursor=pointer]:
+              - /url: /es-es/blog/
+          - listitem [ref=e613]:
+            - link "Empleo" [ref=e614] [cursor=pointer]:
+              - /url: https://asafe.careers.hibob.com/
+      - generic [ref=e616]:
+        - paragraph [ref=e618]: Copyright © 2025 A-SAFE. Todos los derechos reservados. A-SAFE®, Atlas®, eFlex ™, FlexiShield ™, ForkGuard ™, iFlex®, Memaplex®, mFlex ™, RackEye ™, RackGuard ™ y SenseSafe ™ son marcas registradas o marcas comerciales de A-SAFE en el Reino Unido y / o otros países
+        - list [ref=e619]:
+          - listitem [ref=e620]:
+            - link "Politica de Privacidad" [ref=e621] [cursor=pointer]:
+              - /url: /es-es/politica-de-privacidad/
+          - listitem [ref=e622]:
+            - link "Política de Cookies" [ref=e623] [cursor=pointer]:
+              - /url: /es-es/politica-de-cookies/
+          - listitem [ref=e624]:
+            - link "Accesibilidad" [ref=e625] [cursor=pointer]:
+              - /url: /es-es/accesibilidad/
+          - listitem [ref=e626]:
+            - link "Terminos y condiciones" [ref=e627] [cursor=pointer]:
+              - /url: /es-es/terminos-y-condiciones/
+          - listitem [ref=e628]:
+            - link "Condiciones de la garantia de A-SAFE" [ref=e629] [cursor=pointer]:
+              - /url: /es-es/condiciones-de-la-garantia-de-a-safe/
+          - listitem [ref=e630]:
+            - link "Política De Calidad" [ref=e631] [cursor=pointer]:
+              - /url: https://webcdn.asafe.com/media/c3xptmkq/politica_de_calidad.pdf
+          - listitem [ref=e632]:
+            - link "Política Medio Ambient" [ref=e633] [cursor=pointer]:
+              - /url: https://webcdn.asafe.com/media/5ezfbm54/politica_medio_ambiente.pdf
+  - generic [ref=e634]:
+    - generic [ref=e636] [cursor=pointer]: ¿Te ayudamos?
+    - generic [ref=e637]:
+      - generic [ref=e638]:
+        - img "phone icon" [ref=e640]
+        - link "+ 34 (96) 111 70 94" [ref=e641] [cursor=pointer]:
+          - /url: tel:+ 34 (96) 111 70 94
+      - generic [ref=e642]:
+        - img "phone icon" [ref=e644]
+        - link "0034610445536" [ref=e645] [cursor=pointer]:
+          - /url: https://wa.me/0034610445536
+      - generic [ref=e646]:
+        - img [ref=e648]
+        - link "ventas@asafe.es" [ref=e650] [cursor=pointer]:
+          - /url: mailto:ventas@asafe.es
+      - link "Contacto" [ref=e651] [cursor=pointer]:
+        - /url: /es-es/contacto/
+  - generic [ref=e654]:
+    - heading "Esta web utiliza cookies" [level=2] [ref=e655]
+    - paragraph [ref=e656]:
+      - text: Usamos las cookies para ofrecerte la mejor experiencia online. Las cookies esenciales hacen que la web funcione adecuadamente, las cookies de analytics nos permiten optimizar la web para una mejor experiencia del usuario, y las cookies de marketing permiten ofrecer un contenido más personalizado y relevante de tipo publicitario. Las cookies establecidas pueden ser propias (puestas por nosotros) y/o de terceros (establecidas por otros dominios). Para más información, por favor lee nuestra
+      - link "Política de Cookies" [ref=e657] [cursor=pointer]:
+        - /url: /es-es/politica-de-cookies/
+      - text: .
+    - link "Aceptar" [ref=e658] [cursor=pointer]:
+      - /url: "#"
+    - paragraph [ref=e659]:
+      - link "Rechazar" [ref=e660] [cursor=pointer]:
+        - /url: "#"
+      - text: or
+      - link "Leer más y personalizar" [ref=e661] [cursor=pointer]:
+        - /url: "#"

@@ -1,0 +1,172 @@
+[     171ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     650ms] [LOG] [Fast Refresh] done in 581ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     956ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[     975ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    1136ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    1209ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    1212ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[    1228ms] [LOG] [Fast Refresh] done in 193ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  127755ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  127846ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  127958ms] [LOG] [Fast Refresh] done in 285ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  128063ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  128488ms] [LOG] [Fast Refresh] done in 526ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  129173ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  129191ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  129424ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  129427ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  129551ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  129688ms] [LOG] [Fast Refresh] done in 240ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  147314ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  147348ms] [LOG] [Fast Refresh] done in 108ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  162872ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  164271ms] [LOG] [Fast Refresh] done in 840ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  164584ms] [ERROR] IntlError: MISSING_MESSAGE: Could not resolve `Admin.Guardrails.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:850:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:880:28)
+    at translateFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:908:24)
+    at AppSidebarAdmin.useMemo[adminNavItems] (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js?id=%255Bproject%255D%252F.claude%252Fworktrees%252Fasafe-wave-01-foundation%252Fsrc%252Fcomponents%252Flayouts%252Fapp-sidebar-menu-admin.tsx+%255Bapp-client%255D+%2528ecmascript%2529:85:28)
+    at updateMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:5315:21)
+    at Object.useMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:16021:24)
+    at exports.useMemo (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:1782:36)
+    at AppSidebarAdmin (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js?id=%255Bproject%255D%252F.claude%252Fworktrees%252Fasafe-wave-01-foundation%252Fsrc%252Fcomponents%252Flayouts%252Fapp-sidebar-menu-admin.tsx+%255Bapp-client%255D+%2528ecmascript%2529:46:485)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:15592:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:4509:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6014:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6606:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:759:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9781:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9675:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9659:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9239:186)
+    at performSyncWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10666:9)
+    at flushSyncWorkAcrossRoots_impl (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10565:336)
+    at flushSyncWork$1 (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9408:86)
+    at Object.scheduleRefresh (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:82:13)
+    at http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:391:33
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:384:38)
+    at applyUpdate (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:878:31)
+    at http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:886:13 @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1883
+[  164584ms] [ERROR] IntlError: MISSING_MESSAGE: Could not resolve `Admin.Guardrails.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:850:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:880:28)
+    at translateFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:908:24)
+    at AppSidebarAdmin.useMemo[adminNavItems] (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js?id=%255Bproject%255D%252F.claude%252Fworktrees%252Fasafe-wave-01-foundation%252Fsrc%252Fcomponents%252Flayouts%252Fapp-sidebar-menu-admin.tsx+%255Bapp-client%255D+%2528ecmascript%2529:85:28)
+    at updateMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:5319:17)
+    at Object.useMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:16021:24)
+    at exports.useMemo (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:1782:36)
+    at AppSidebarAdmin (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js?id=%255Bproject%255D%252F.claude%252Fworktrees%252Fasafe-wave-01-foundation%252Fsrc%252Fcomponents%252Flayouts%252Fapp-sidebar-menu-admin.tsx+%255Bapp-client%255D+%2528ecmascript%2529:46:485)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:15592:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:4509:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6014:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6606:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:759:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9781:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9675:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9659:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9239:186)
+    at performSyncWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10666:9)
+    at flushSyncWorkAcrossRoots_impl (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10565:336)
+    at flushSyncWork$1 (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9408:86)
+    at Object.scheduleRefresh (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:82:13)
+    at http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:391:33
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:384:38)
+    at applyUpdate (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:878:31)
+    at http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:886:13 @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1883
+[  165204ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  165228ms] [LOG] [Fast Refresh] done in 125ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  165713ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  165735ms] [LOG] [HMR] connected @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  165931ms] [ERROR] IntlError: MISSING_MESSAGE: Could not resolve `Admin.Guardrails.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:850:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:880:28)
+    at translateFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:908:24)
+    at AppSidebarAdmin.useMemo[adminNavItems] (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js:609:28)
+    at mountMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:5295:25)
+    at Object.useMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:15769:24)
+    at exports.useMemo (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:1782:36)
+    at AppSidebarAdmin (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js:570:485)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:15592:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:4509:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6014:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6606:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:759:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9781:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9675:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9659:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9239:186)
+    at performSyncWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10666:9)
+    at flushSyncWorkAcrossRoots_impl (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10565:336)
+    at processRootScheduleInMicrotask (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10586:106)
+    at http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10677:158 @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1883
+[  165932ms] [ERROR] IntlError: MISSING_MESSAGE: Could not resolve `Admin.Guardrails.title` in messages for locale `en`.
+    at getFallbackFromErrorAndNotify (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:850:23)
+    at translateBaseFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:880:28)
+    at translateFn (http://localhost:3001/_next/static/chunks/514fe__pnpm_8a9792ba._.js:908:24)
+    at AppSidebarAdmin.useMemo[adminNavItems] (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js:609:28)
+    at mountMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:5299:17)
+    at Object.useMemo (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:15769:24)
+    at exports.useMemo (http://localhost:3001/_next/static/chunks/86321_next_dist_compiled_f75ccf84._.js:1782:36)
+    at AppSidebarAdmin (http://localhost:3001/_next/static/chunks/_claude_worktrees_asafe-wave-01-foundation_src_components_layouts_78102c19._.js:570:485)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:15592:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:4509:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6014:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:6606:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:759:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9781:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9675:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9659:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:9239:186)
+    at performSyncWorkOnRoot (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10666:9)
+    at flushSyncWorkAcrossRoots_impl (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10565:336)
+    at processRootScheduleInMicrotask (http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10586:106)
+    at http://localhost:3001/_next/static/chunks/a3982_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_acfd5ede.js:10677:158 @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1883
+[  165977ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  165980ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  166112ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  166134ms] [LOG] [Fast Refresh] done in 127ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  173157ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  173591ms] [LOG] [Fast Refresh] done in 78ms @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  174141ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
+[  174143ms] [LOG] %c█▄▄ █▀▀ ▀█▀ ▀█▀ █▀▀ █▀█
+█▄█ █▄▄  █   █  █▄▄ █▀▄
+
+%c⛓️ Just a Better Chatbot
+https://github.com/cgoinglove/better-chatbot color: #00d4ff; font-weight: bold; font-family: monospace; font-size: 16px; text-shadow: 0 0 10px #00d4ff; color: #888; font-size: 12px; @ http://localhost:3001/_next/static/chunks/86321_next_dist_9041aadd._.js:1053
