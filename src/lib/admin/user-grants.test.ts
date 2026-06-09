@@ -202,3 +202,30 @@ describe("grantUserModel — additional", () => {
     expect(insertMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("revokeUserModelGrant — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    deleteWhereMock.mockResolvedValue([]);
+    deleteMock.mockReturnValue({ where: deleteWhereMock });
+  });
+
+  it("deleteWhereMock called exactly once per revoke", async () => {
+    const { revokeUserModelGrant } = await import("./user-grants");
+    await revokeUserModelGrant("grant-1", "user-1");
+    expect(deleteWhereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves to undefined", async () => {
+    const { revokeUserModelGrant } = await import("./user-grants");
+    const result = await revokeUserModelGrant("grant-1", "user-1");
+    expect(result).toBeUndefined();
+  });
+
+  it("deleteMock called exactly once per revoke", async () => {
+    const { revokeUserModelGrant } = await import("./user-grants");
+    await revokeUserModelGrant("grant-2", "user-2");
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
+});

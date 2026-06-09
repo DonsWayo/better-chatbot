@@ -205,3 +205,38 @@ describe("POST /api/workflow/[id]/execute — executor guard chains", () => {
     expect(checkAccessMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/workflow/[id]/execute — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401 (no auth)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 404 (not found)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "missing" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per POST (response shape)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkAccess called with the correct id from route params", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "specific-wf-id" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith("specific-wf-id", expect.anything());
+  });
+});
