@@ -23,8 +23,11 @@ import {
   shell,
   type MenuItemConstructorOptions,
 } from "electron";
-import { autoUpdater } from "electron-updater";
+// electron-updater is CommonJS — named imports break under ESM ("type": "module")
+import electronUpdaterPkg from "electron-updater";
 import windowStateKeeper from "electron-window-state";
+
+const { autoUpdater } = electronUpdaterPkg;
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
