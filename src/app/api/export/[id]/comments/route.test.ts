@@ -229,3 +229,40 @@ describe("POST /api/export/[id]/comments — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("GET /api/export/[id]/comments — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 200", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 500", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockRejectedValueOnce(new Error("DB error"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array when comment count is zero", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("selectCommentsByExportId called with correct exportId", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "export-shape-check" }) });
+    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith("export-shape-check", expect.anything());
+  });
+});
