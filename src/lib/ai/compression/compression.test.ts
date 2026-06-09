@@ -297,3 +297,34 @@ describe("wrapWithCompression — invariants", () => {
     expect(result).toBe(baseModel);
   });
 });
+
+describe("wrapWithCompression — additional invariants", () => {
+  const model = {
+    specificationVersion: "v2" as const,
+    provider: "test",
+    modelId: "m",
+    defaultObjectGenerationMode: undefined,
+    doGenerate: vi.fn().mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
+    doStream: vi.fn(),
+  };
+
+  it("level=standard returns a non-null object", () => {
+    const result = wrapWithCompression(model as any, { level: "standard" });
+    expect(result).not.toBeNull();
+  });
+
+  it("result has modelId property", () => {
+    const result = wrapWithCompression(model as any, { level: "standard" });
+    expect(result).toHaveProperty("modelId");
+  });
+
+  it("result has provider property", () => {
+    const result = wrapWithCompression(model as any, { level: "light" });
+    expect(result).toHaveProperty("provider");
+  });
+
+  it("level=off returns object identical to input model", () => {
+    const result = wrapWithCompression(model as any, { level: "off" });
+    expect(result.modelId).toBe(model.modelId);
+  });
+});

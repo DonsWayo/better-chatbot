@@ -299,3 +299,26 @@ describe("FALLBACK_MODEL_IDS — invariants", () => {
     expect(FALLBACK_MODEL_IDS.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe("FALLBACK_MODEL_IDS — additional invariants", () => {
+  it("every entry includes a slash (provider/model format)", () => {
+    for (const id of FALLBACK_MODEL_IDS) {
+      expect(id).toContain("/");
+    }
+  });
+
+  it("first entry is a non-empty string", () => {
+    expect(typeof FALLBACK_MODEL_IDS[0]).toBe("string");
+    expect(FALLBACK_MODEL_IDS[0].length).toBeGreaterThan(0);
+  });
+
+  it("FALLBACK_MODEL_IDS is frozen or at least an array", () => {
+    expect(Array.isArray(FALLBACK_MODEL_IDS)).toBe(true);
+  });
+
+  it("isRetryableProviderError returns false for non-error values", () => {
+    expect(isRetryableProviderError(null)).toBe(false);
+    expect(isRetryableProviderError(undefined)).toBe(false);
+    expect(isRetryableProviderError("string")).toBe(false);
+  });
+});

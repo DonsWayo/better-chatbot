@@ -294,3 +294,36 @@ describe("POST /api/knowledge/ingest — edge cases", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("POST /api/knowledge/ingest — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("ingestDocument not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    expect(ingestDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it("dbSelect not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});
