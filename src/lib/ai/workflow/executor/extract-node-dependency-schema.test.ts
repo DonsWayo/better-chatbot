@@ -97,4 +97,45 @@ describe("extractNodeDependencySchema", () => {
     });
     expect((result.properties?.myKey as any).type).toBe("string");
   });
+
+  it("multiple output data entries produce multiple properties", () => {
+    const srcNode = makeBase({
+      id: "src",
+      kind: NodeKind.LLM,
+      outputSchema: {
+        type: "object" as const,
+        properties: { text: { type: "string" as const }, score: { type: "number" as const } },
+        required: [],
+      },
+    });
+    const outputNode = makeBase({
+      id: "out",
+      kind: NodeKind.Output,
+      outputData: [
+        { key: "result", source: { nodeId: "src", path: ["text"] } },
+        { key: "rating", source: { nodeId: "src", path: ["score"] } },
+      ],
+    });
+    const result = extractNodeDependencySchema({
+      targetId: "out",
+      nodes: [srcNode, outputNode],
+    });
+    expect(Object.keys(result.properties ?? {})).toHaveLength(2);
+    expect(result.properties?.result).toBeDefined();
+    expect(result.properties?.rating).toBeDefined();
+  });
+
+  it("result always has a properties object", () => {
+    const result = extractNodeDependencySchema({ targetId: "missing", nodes: [] });
+    expect(result.properties).toBeDefined();
+    expect(typeof result.properties).toBe("object");
+  });
+
+  it("result type is always 'object' for Input and LLM nodes", () => {
+    for (const kind of [NodeKind.Input, NodeKind.LLM]) {
+      const nodes = [makeBase({ id: "n1", kind })];
+      const result = extractNodeDependencySchema({ targetId: "n1", nodes });
+      expect(result.type).toBe("object");
+    }
+  });
 });

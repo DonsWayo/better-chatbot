@@ -95,4 +95,22 @@ describe("POST /api/workflow/[id]/execute", () => {
     const text = await res.text();
     expect(text.length).toBeGreaterThan(0);
   });
+
+  it("calls checkAccess with the workflow id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-xyz" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith(
+      expect.stringContaining("wf-xyz"),
+      expect.anything(),
+    );
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
 });

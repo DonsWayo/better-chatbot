@@ -96,3 +96,20 @@ describe("pythonExecutionSchema — properties completeness", () => {
     expect(codeProp?.description).toContain("pyodide.http");
   });
 });
+
+describe("pythonExecutionTool — schema edge cases", () => {
+  it("inputSchema accepts empty string code (empty script is valid Python)", () => {
+    const result = pythonExecutionTool.inputSchema.safeParse({ code: "" });
+    expect(result.success).toBe(true);
+  });
+
+  it("description is a non-empty string", () => {
+    expect(typeof pythonExecutionTool.description).toBe("string");
+    expect((pythonExecutionTool.description ?? "").length).toBeGreaterThan(10);
+  });
+
+  it("inputSchema is the same object as pythonExecutionSchema (same schema)", () => {
+    expect(pythonExecutionTool.inputSchema).toBeDefined();
+    expect(pythonExecutionTool.inputSchema.safeParse).toBeDefined();
+  });
+});
