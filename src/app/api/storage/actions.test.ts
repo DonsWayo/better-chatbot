@@ -265,3 +265,40 @@ describe("checkStorageAction — response shape", () => {
     expect(res.error).toBeUndefined();
   });
 });
+
+describe("checkStorageAction and getStorageInfoAction — result invariants", () => {
+  beforeEach(() => {
+    delete process.env.FILE_STORAGE_TYPE;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.FILE_STORAGE_S3_BUCKET;
+    delete process.env.FILE_STORAGE_S3_REGION;
+    delete process.env.AWS_REGION;
+  });
+
+  it("checkStorageAction result is always an object", async () => {
+    process.env.FILE_STORAGE_TYPE = "local";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(typeof res).toBe("object");
+    expect(res).not.toBeNull();
+  });
+
+  it("getStorageInfoAction result has type field", async () => {
+    const { getStorageInfoAction } = await importActions();
+    const res = await getStorageInfoAction();
+    expect(res).toHaveProperty("type");
+  });
+
+  it("getStorageInfoAction result type is a string", async () => {
+    const { getStorageInfoAction } = await importActions();
+    const res = await getStorageInfoAction();
+    expect(typeof res.type).toBe("string");
+  });
+
+  it("local storage returns isValid:true", async () => {
+    process.env.FILE_STORAGE_TYPE = "local";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.isValid).toBe(true);
+  });
+});

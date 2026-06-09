@@ -266,3 +266,34 @@ describe("GET /api/export/[id]/comments — response shape", () => {
     expect(selectCommentsByExportIdMock).toHaveBeenCalledWith("export-shape-check", expect.anything());
   });
 });
+
+describe("GET and POST /api/export/[id]/comments — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); selectCommentsByExportIdMock.mockResolvedValue([]); });
+
+  it("selectCommentsByExportId called exactly once per GET", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ex-cc-1" }) });
+    expect(selectCommentsByExportIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("insertComment never called when POST unauthenticated", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    const { POST } = await import("./route");
+    await POST(makeRequest({ content: { type: "doc", content: [] } }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(insertCommentMock).not.toHaveBeenCalled();
+  });
+
+  it("GET always returns a Response instance", async () => {
+    selectCommentsByExportIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-resp" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST returns Response instance when unauthenticated", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ content: { type: "doc", content: [] } }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

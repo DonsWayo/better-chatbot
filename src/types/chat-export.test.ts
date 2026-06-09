@@ -244,3 +244,26 @@ describe("ChatExportCommentCreateSchema — additional boundaries", () => {
     }
   });
 });
+
+describe("ChatExport schemas — cross-schema invariants", () => {
+  it("ChatExportByThreadIdSchema rejects non-string threadId", () => {
+    const r = ChatExportByThreadIdSchema.safeParse({ threadId: 123 });
+    expect(r.success).toBe(false);
+  });
+
+  it("ChatExportCreateSchema rejects empty threadId", () => {
+    const r = ChatExportCreateSchema.safeParse({ threadId: "", visibility: "public" });
+    expect(r.success).toBe(false);
+  });
+
+  it("ChatExportCommentUpdateSchema rejects empty content object", () => {
+    const r = ChatExportCommentUpdateSchema.safeParse({});
+    expect(r.success).toBe(false);
+  });
+
+  it("ChatExportCommentCreateSchema rejects non-string authorId", () => {
+    const content = { type: "doc", content: [] };
+    const r = ChatExportCommentCreateSchema.safeParse({ exportId: "e1", authorId: 42, content });
+    expect(r.success).toBe(false);
+  });
+});

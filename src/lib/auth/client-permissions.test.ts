@@ -254,3 +254,21 @@ describe("canDeleteAgent — additional", () => {
     expect(canDeleteAgent("user")).toBe(false);
   });
 });
+
+describe("workflow and MCP permissions — cross-role invariants", () => {
+  it("admin can create workflows", () => {
+    expect(canCreateWorkflow("admin")).toBe(true);
+  });
+
+  it("user cannot delete workflows", () => {
+    expect(canDeleteWorkflow("user")).toBe(false);
+  });
+
+  it("admin can delete MCP", () => {
+    expect(canDeleteMCP("admin")).toBe(true);
+  });
+
+  it("user cannot create MCP", () => {
+    expect(canCreateMCP("user")).toBe(false);
+  });
+});

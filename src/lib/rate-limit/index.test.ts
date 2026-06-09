@@ -255,3 +255,36 @@ describe("checkRateLimit — response invariants", () => {
     expect(typeof result.allowed).toBe("boolean");
   });
 });
+
+describe("checkRateLimit — result shape invariants", () => {
+  it("result has allowed, limit, remaining, and count properties", async () => {
+    const { valuesFn } = makeInsertChain(3);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-shape", 10, 60_000);
+    expect(result).toHaveProperty("allowed");
+    expect(result).toHaveProperty("limit");
+    expect(result).toHaveProperty("remaining");
+    expect(result).toHaveProperty("count");
+  });
+
+  it("count matches the DB returned value", async () => {
+    const { valuesFn } = makeInsertChain(7);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-count", 20, 60_000);
+    expect(result.count).toBe(7);
+  });
+
+  it("remaining is never negative", async () => {
+    const { valuesFn } = makeInsertChain(50);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-noneg", 10, 60_000);
+    expect(result.remaining).toBeGreaterThanOrEqual(0);
+  });
+
+  it("allowed is false when count exceeds limit", async () => {
+    const { valuesFn } = makeInsertChain(11);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-exceed", 10, 60_000);
+    expect(result.allowed).toBe(false);
+  });
+});

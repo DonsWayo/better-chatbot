@@ -240,3 +240,35 @@ describe("POST /api/feedback — response shape", () => {
     expect(body.ok).toBe(true);
   });
 });
+
+describe("POST and DELETE /api/feedback — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messageId: "m1", rating: 1 }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbInsert never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messageId: "m1", rating: 1 }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("dbDelete never called when DELETE unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns Response with status 401 when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messageId: "m1", rating: 1 }));
+    expect(res.status).toBe(401);
+  });
+});

@@ -273,3 +273,31 @@ describe("getAdminUsers — response invariants", () => {
     expect(result).toHaveLength(0);
   });
 });
+
+describe("getAdminUsers — constants and pagination invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+  });
+
+  it("ADMIN_USER_LIST_LIMIT is a positive number", () => {
+    expect(typeof ADMIN_USER_LIST_LIMIT).toBe("number");
+    expect(ADMIN_USER_LIST_LIMIT).toBeGreaterThan(0);
+  });
+
+  it("DEFAULT_SORT_BY is a non-empty string", () => {
+    expect(typeof DEFAULT_SORT_BY).toBe("string");
+    expect(DEFAULT_SORT_BY.length).toBeGreaterThan(0);
+  });
+
+  it("DEFAULT_SORT_DIRECTION is either 'asc' or 'desc'", () => {
+    expect(["asc", "desc"]).toContain(DEFAULT_SORT_DIRECTION);
+  });
+
+  it("getAdminUsers throws when requireUserListPermission rejects", async () => {
+    vi.mocked(requireUserListPermission).mockRejectedValueOnce(new Error("Forbidden"));
+    await expect(getAdminUsers()).rejects.toThrow("Forbidden");
+    expect(pgAdminRepository.getUsers).not.toHaveBeenCalled();
+  });
+});

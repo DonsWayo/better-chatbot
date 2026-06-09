@@ -258,3 +258,36 @@ describe("POST /api/admin/teams — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("GET and POST /api/admin/teams — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getAdminTeams never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getAdminTeamsMock).not.toHaveBeenCalled();
+  });
+
+  it("createTeam never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "T" }));
+    expect(createTeamMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 body with error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});

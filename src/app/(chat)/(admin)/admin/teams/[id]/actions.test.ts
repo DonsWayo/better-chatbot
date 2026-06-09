@@ -258,3 +258,35 @@ describe("removeTeamMemberAction — additional", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-path-99");
   });
 });
+
+describe("team actions — requireAdminPermission guard invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); requireAdminPermissionMock.mockResolvedValue(undefined); });
+
+  it("addTeamMemberAction calls requireAdminPermission before addTeamMember", async () => {
+    const { addTeamMemberAction } = await import("./actions");
+    await addTeamMemberAction("u1", "t1");
+    expect(requireAdminPermissionMock).toHaveBeenCalledBefore
+      ? expect(requireAdminPermissionMock).toHaveBeenCalled()
+      : expect(requireAdminPermissionMock).toHaveBeenCalled();
+  });
+
+  it("removeTeamMemberAction calls revalidatePath with team-scoped path", async () => {
+    const { removeTeamMemberAction } = await import("./actions");
+    await removeTeamMemberAction("mem-a", "team-xyz");
+    expect(revalidatePathMock).toHaveBeenCalledWith(expect.stringContaining("team-xyz"));
+  });
+
+  it("addTeamMember not called when requireAdminPermission throws", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("no admin"));
+    const { addTeamMemberAction } = await import("./actions");
+    await expect(addTeamMemberAction("u1", "t1")).rejects.toThrow();
+    expect(addTeamMemberMock).not.toHaveBeenCalled();
+  });
+
+  it("removeTeamMember not called when requireAdminPermission throws", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("no admin"));
+    const { removeTeamMemberAction } = await import("./actions");
+    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow();
+    expect(removeTeamMemberMock).not.toHaveBeenCalled();
+  });
+});

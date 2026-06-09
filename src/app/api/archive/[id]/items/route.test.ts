@@ -169,6 +169,38 @@ describe("GET /api/archive/[id]/items — additional", () => {
   });
 });
 
+describe("GET and POST /api/archive/[id]/items — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getArchiveById never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getArchiveByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("addItemToArchive never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "x", itemType: "chat" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(addItemToArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error property for GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});
 describe("POST /api/archive/[id]/items — additional", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 

@@ -268,3 +268,36 @@ describe("PATCH /api/admin/teams/[id] — edge cases", () => {
     expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
   });
 });
+
+describe("PATCH /api/admin/teams/[id] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); mockUpdateTeamPolicy.mockResolvedValue(undefined); });
+
+  it("getSession called exactly once per PATCH", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ allowVision: true }), makeParams("t1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateTeamPolicy never called when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ allowVision: true }), makeParams("t1") as any);
+    expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 Response instance when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ allowVision: true }), makeParams("t1") as any);
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("updateTeamPolicy called exactly once on valid admin PATCH", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ allowVision: true }), makeParams("t1") as any);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledTimes(1);
+  });
+});

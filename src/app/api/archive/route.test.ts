@@ -242,3 +242,36 @@ describe("POST /api/archive — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("GET and POST /api/archive — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getArchivesByUserId never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getArchivesByUserIdMock).not.toHaveBeenCalled();
+  });
+
+  it("createArchive never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "test" }));
+    expect(createArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "test" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});
