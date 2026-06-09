@@ -216,3 +216,36 @@ describe("POST /api/bookmark — additional", () => {
     expect(checkItemAccessMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST and DELETE /api/bookmark — response type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("POST returns Response instance when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ itemId: "x", itemType: "agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("DELETE returns Response instance when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest({ itemId: "x", itemType: "agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "x", itemType: "agent" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("createBookmark never called when access denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkItemAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "x", itemType: "agent" }));
+    expect(createBookmarkMock).not.toHaveBeenCalled();
+  });
+});

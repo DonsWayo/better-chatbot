@@ -215,3 +215,35 @@ describe("POST /api/cron/audit-purge — env handling", () => {
     expect(body.deleted).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe("POST /api/cron/audit-purge — response type invariants", () => {
+  const OLD_ENV = process.env;
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); process.env = { ...OLD_ENV, CRON_SECRET: "test-secret" }; });
+
+  it("always returns a Response instance for valid secret", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("401 response is also a Response instance", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("wrong-secret"));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("content-type is application/json for 200", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    expect(res.headers.get("content-type")).toContain("application/json");
+  });
+
+  it("body is parseable JSON object for 200", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(typeof body).toBe("object");
+    expect(body).not.toBeNull();
+  });
+});

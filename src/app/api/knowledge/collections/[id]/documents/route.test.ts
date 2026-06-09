@@ -217,3 +217,39 @@ describe("GET /api/knowledge/collections/[id]/documents — additional guard cha
     expect(body.documents).toHaveLength(0);
   });
 });
+
+describe("GET /api/knowledge/collections/[id]/documents — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a Response instance for 404", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectMock.mockReturnValue({ from: () => ({ where: () => Promise.resolve([]) }) });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "gone" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(404);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 body has error property", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});
