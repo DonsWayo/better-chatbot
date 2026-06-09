@@ -82,6 +82,28 @@ describe("POST /api/feedback", () => {
     await POST(makeRequest({ messageId: "m-1", threadId: "t-1", rating: "down" }));
     expect(dbInsertOnConflictMock).toHaveBeenCalledOnce();
   });
+
+  it("never calls dbInsert when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messageId: "m-1", rating: "up" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messageId: "m-1", rating: "up" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls dbInsert when validation fails", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ rating: "up" })); // missing messageId
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/feedback", () => {
@@ -108,5 +130,27 @@ describe("DELETE /api/feedback", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
+  });
+
+  it("never calls dbDelete when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls dbDelete when messageId is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(undefined, "http://localhost/api/feedback"));
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field for DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });

@@ -106,4 +106,29 @@ describe("DELETE /api/archive/[id]/items/[itemId]", () => {
     await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
     expect(removeItemFromArchiveMock).not.toHaveBeenCalled();
   });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body is text 'Forbidden'", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u2" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(await res.text()).toBe("Forbidden");
+  });
+
+  it("removeItemFromArchive called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-1" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(removeItemFromArchiveMock).toHaveBeenCalledTimes(1);
+  });
 });
