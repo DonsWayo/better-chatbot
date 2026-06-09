@@ -234,3 +234,44 @@ describe("MemoryCache — overwrite and edge cases", () => {
     expect(await cache.get("nil")).toBeNull();
   });
 });
+
+describe("MemoryCache — additional invariants", () => {
+  let cache: MemoryCache;
+
+  beforeEach(() => {
+    cache = new MemoryCache();
+  });
+
+  afterEach(() => {
+    cache.clear();
+  });
+
+  test("get returns undefined for key with expired TTL", async () => {
+    vi.useFakeTimers();
+    try {
+      await cache.set("ttl-key", "val", 200);
+      vi.advanceTimersByTime(201);
+      expect(await cache.get("ttl-key")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("has returns true for a non-expired item", async () => {
+    await cache.set("present", "here");
+    expect(await cache.has("present")).toBe(true);
+  });
+
+  test("getAll only returns non-expired entries", async () => {
+    await cache.set("live", "alive");
+    const all = await cache.getAll();
+    expect(all.has("live")).toBe(true);
+  });
+
+  test("clear empties the cache fully", async () => {
+    await cache.set("a", 1);
+    await cache.set("b", 2);
+    await cache.clear();
+    expect((await cache.getAll()).size).toBe(0);
+  });
+});

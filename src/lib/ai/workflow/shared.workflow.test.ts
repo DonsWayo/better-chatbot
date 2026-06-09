@@ -235,3 +235,46 @@ describe("encodeWorkflowEvent / decodeWorkflowEvents", () => {
     expect(typeof parsed.timestamp).toBe("number");
   });
 });
+
+describe("convertTiptapJsonToText — additional", () => {
+  it("handles multiple paragraphs separating their text", () => {
+    const json = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "First" }] },
+        { type: "paragraph", content: [{ type: "text", text: "Second" }] },
+      ],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(result).toContain("First");
+    expect(result).toContain("Second");
+  });
+
+  it("returns string type always", () => {
+    const json = { type: "doc", content: [] };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(typeof result).toBe("string");
+  });
+
+  it("preserves exact text in a simple paragraph", () => {
+    const text = "Exact text preserved";
+    const json = {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(result).toContain(text);
+  });
+
+  it("returns empty string for doc with only empty paragraphs", () => {
+    const json = {
+      type: "doc",
+      content: [
+        { type: "paragraph" },
+        { type: "paragraph" },
+      ],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(result.trim()).toBe("");
+  });
+});

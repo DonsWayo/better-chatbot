@@ -235,3 +235,51 @@ describe("SafeRedisCache — fallback behavior", () => {
     expect(await mockMemoryCache.has("del-key")).toBe(false);
   });
 });
+
+describe("SafeRedisCache — status and invariants", () => {
+  let cache: SafeRedisCache;
+  let mockRedisCache: any;
+  let mockMemoryCache: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRedisCache = {
+      get: vi.fn(),
+      set: vi.fn(),
+      has: vi.fn(),
+      delete: vi.fn(),
+      clear: vi.fn(),
+      getAll: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    mockMemoryCache = new MemoryCache();
+  });
+
+  it("getCacheStatus returns redis:true initially", () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    expect(cache.getCacheStatus().redis).toBe(true);
+  });
+
+  it("getCacheStatus returns redis:false after Redis failure", async () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    mockRedisCache.get.mockRejectedValue(new Error("down"));
+    await cache.get("any-key");
+    expect(cache.getCacheStatus().redis).toBe(false);
+  });
+
+  it("isUsingRedis returns a boolean", () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    expect(typeof cache.isUsingRedis()).toBe("boolean");
+  });
+
+  it("set falls back to memory when Redis rejects", async () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    mockRedisCache.set.mockRejectedValue(new Error("Redis unavailable"));
+    await cache.set("fallback-key", "fallback-val");
+    expect(await mockMemoryCache.get("fallback-key")).toBe("fallback-val");
+  });
+});
