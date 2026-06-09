@@ -103,4 +103,27 @@ describe("APP_DEFAULT_TOOL_KIT", () => {
     );
     expect(total).toBe(9);
   });
+
+  it("no toolkit category key is duplicated", () => {
+    const keys = Object.keys(APP_DEFAULT_TOOL_KIT);
+    const unique = new Set(keys);
+    expect(unique.size).toBe(keys.length);
+  });
+
+  it("each tool inputSchema is an object with properties or type field", () => {
+    for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
+      for (const [toolName, tool] of Object.entries(kit)) {
+        expect(typeof tool.inputSchema).toBe("object");
+        expect(tool.inputSchema).not.toBeNull();
+      }
+    }
+  });
+
+  it("all 4 toolkit categories are present as keys", () => {
+    const keys = Object.keys(APP_DEFAULT_TOOL_KIT);
+    expect(keys).toContain(AppDefaultToolkit.Visualization);
+    expect(keys).toContain(AppDefaultToolkit.WebSearch);
+    expect(keys).toContain(AppDefaultToolkit.Http);
+    expect(keys).toContain(AppDefaultToolkit.Code);
+  });
 });

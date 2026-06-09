@@ -100,4 +100,22 @@ describe("MODEL_PRICES", () => {
     expect(MODEL_PRICES["gpt-5.1"].outPerMTok).toBeLessThan(MODEL_PRICES["claude-opus-4.8"].outPerMTok);
     expect(MODEL_PRICES["gpt-5.1"].inPerMTok).toBeLessThan(MODEL_PRICES["claude-opus-4.8"].inPerMTok);
   });
+
+  it("fast tier (gemini-2.5-flash) is cheaper than balanced tier (gpt-5.1)", () => {
+    expect(MODEL_PRICES["gemini-2.5-flash"].inPerMTok).toBeLessThan(MODEL_PRICES["gpt-5.1"].inPerMTok);
+    expect(MODEL_PRICES["gemini-2.5-flash"].outPerMTok).toBeLessThan(MODEL_PRICES["gpt-5.1"].outPerMTok);
+  });
+
+  it("all model names in MODEL_PRICES are non-empty strings", () => {
+    for (const key of Object.keys(MODEL_PRICES)) {
+      expect(typeof key).toBe("string");
+      expect(key.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("price object has exactly inPerMTok and outPerMTok fields", () => {
+    for (const prices of Object.values(MODEL_PRICES)) {
+      expect(Object.keys(prices).sort()).toEqual(["inPerMTok", "outPerMTok"].sort());
+    }
+  });
 });

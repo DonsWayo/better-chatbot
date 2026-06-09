@@ -100,4 +100,24 @@ describe("EVAL_FIXTURES", () => {
       expect(knownClasses.has(prefix), `unknown task class in fixture: ${f.name}`).toBe(true);
     }
   });
+
+  it("totalChars field when present is a positive number", () => {
+    for (const f of EVAL_FIXTURES) {
+      if (f.request.totalChars !== undefined) {
+        expect(typeof f.request.totalChars).toBe("number");
+        expect(f.request.totalChars).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("request text is always a non-empty string", () => {
+    for (const f of EVAL_FIXTURES) {
+      expect(typeof f.request.text).toBe("string");
+      expect(f.request.text.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("general class has at least one fixture", () => {
+    expect(EVAL_FIXTURES.filter((f) => f.name.startsWith("general/")).length).toBeGreaterThanOrEqual(1);
+  });
 });
