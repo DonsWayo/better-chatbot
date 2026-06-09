@@ -164,4 +164,34 @@ describe("DELETE /api/mcp/[id]", () => {
     );
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-1"),
+    );
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectById when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-1"),
+    );
+    expect(pgMcpRepositoryMock.selectById).not.toHaveBeenCalled();
+  });
+
+  it("calls removeMcpClientAction exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    pgMcpRepositoryMock.selectById.mockResolvedValue(MCP_SERVER);
+    canManageMCPServerMock.mockResolvedValue(true);
+    removeMcpClientActionMock.mockResolvedValue(undefined);
+    await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-1"),
+    );
+    expect(removeMcpClientActionMock).toHaveBeenCalledTimes(1);
+  });
 });
