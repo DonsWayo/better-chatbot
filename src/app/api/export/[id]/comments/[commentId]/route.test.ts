@@ -133,4 +133,26 @@ describe("DELETE /api/export/[id]/comments/[commentId]", () => {
     const body = await res.json();
     expect(body.error).toBe("Timeout");
   });
+
+  it("calls checkCommentAccess exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    expect(chatExportRepositoryMock.checkCommentAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
+    const res = await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("does not call checkCommentAccess when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    expect(chatExportRepositoryMock.checkCommentAccess).not.toHaveBeenCalled();
+  });
 });

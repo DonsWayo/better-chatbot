@@ -97,4 +97,24 @@ describe("GET /api/export", () => {
     const body = await res.json();
     expect(body).toEqual([]);
   });
+
+  it("calls repository exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([]);
+    await GET();
+    expect(chatExportRepositoryMock.selectSummaryByExporterId).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call repository when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(chatExportRepositoryMock.selectSummaryByExporterId).not.toHaveBeenCalled();
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([]);
+    const res = await GET();
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
 });

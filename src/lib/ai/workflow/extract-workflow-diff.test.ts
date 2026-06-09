@@ -152,4 +152,34 @@ describe("extractWorkflowDiff — edge case invariants", () => {
     const allIds = [...result.deleteNodes, ...result.updateNodes].map((n) => n.id);
     expect(new Set(allIds).size).toBe(allIds.length);
   });
+
+  it("updating position of a node produces it in updateNodes", () => {
+    const nodes = [createTestNode("n1", "N1", { x: 0, y: 0 })];
+    const nodes2 = [createTestNode("n1", "N1", { x: 100, y: 200 })];
+    const result = extractWorkflowDiff({ nodes, edges: [] }, { nodes: nodes2, edges: [] });
+    expect(result.updateNodes.some((n) => n.id === "n1")).toBe(true);
+  });
+
+  it("unchanged edges produce no updates or deletes", () => {
+    const edges = [createTestEdge("e1", "a", "b")];
+    const nodes = [createTestNode("n1", "N1")];
+    const result = extractWorkflowDiff({ nodes, edges }, { nodes, edges });
+    expect(result.updateEdges).toHaveLength(0);
+    expect(result.deleteEdges).toHaveLength(0);
+  });
+
+  it("swapping source/target of edge is detected as update", () => {
+    const old = { nodes: [], edges: [createTestEdge("e1", "a", "b")] };
+    const next = { nodes: [], edges: [createTestEdge("e1", "b", "a")] };
+    const result = extractWorkflowDiff(old, next);
+    expect(result.updateEdges.some((e) => e.id === "e1")).toBe(true);
+  });
+
+  it("completely different sets produce only deletes and updates (no shared keys)", () => {
+    const old = { nodes: [createTestNode("n1", "N1")], edges: [createTestEdge("e1", "n1", "n2")] };
+    const next = { nodes: [createTestNode("n2", "N2")], edges: [createTestEdge("e2", "n2", "n3")] };
+    const result = extractWorkflowDiff(old, next);
+    expect(result.deleteNodes.some((n) => n.id === "n1")).toBe(true);
+    expect(result.updateNodes.some((n) => n.id === "n2")).toBe(true);
+  });
 });
