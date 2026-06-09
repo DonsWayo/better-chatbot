@@ -71,6 +71,43 @@ describe("PATCH /api/admin/mcp/servers/[id]", () => {
     const body = await res.json();
     expect(body.server.enabled).toBe(false);
   });
+
+  it("never calls dbUpdate when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ enabled: true }), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls dbUpdate for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ enabled: true }), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ enabled: true }), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({}), { params: Promise.resolve({ id: "srv-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({}), { params: Promise.resolve({ id: "srv-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });
 
 describe("DELETE /api/admin/mcp/servers/[id]", () => {
@@ -100,5 +137,42 @@ describe("DELETE /api/admin/mcp/servers/[id]", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.id).toBe("srv-1");
+  });
+
+  it("returns 403 for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("never calls dbDelete when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls dbDelete for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });

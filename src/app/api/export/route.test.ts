@@ -103,4 +103,29 @@ describe("GET /api/export", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("selectSummaryByExporterId called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response body is an array on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([{ id: "ex-1" }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });
