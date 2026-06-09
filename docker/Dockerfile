@@ -15,11 +15,14 @@ ENV NEXT_STANDALONE_OUTPUT="true"
 
 RUN pnpm build
 
-# Bundle the standalone migrate script so it has no external module deps in the runner image
-RUN pnpm exec esbuild scripts/standalone-migrate.mjs \
-  --bundle --platform=node --format=esm \
-  --outfile=scripts/standalone-migrate.mjs.tmp && \
-  mv scripts/standalone-migrate.mjs.tmp scripts/standalone-migrate.mjs
+FROM node:23-alpine AS migrate-bundler
+WORKDIR /app
+COPY scripts/standalone-migrate.mjs ./scripts/
+# Bundle drizzle-orm + pg so the runner image needs no extra node_modules
+RUN npm install --save-exact drizzle-orm pg && \
+    npx --yes esbuild scripts/standalone-migrate.mjs \
+      --bundle --platform=node --format=cjs \
+      --outfile=scripts/standalone-migrate.bundled.cjs
 
 FROM node:23-alpine AS runner
 
@@ -42,8 +45,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy migrations content
 COPY --from=builder /app/src/lib/db/migrations ./src/lib/db/migrations
 
-# Standalone migration entrypoint (used by the EKS Helm pre-upgrade Job — ADR-0006)
-COPY --from=builder /app/scripts/standalone-migrate.mjs ./scripts/standalone-migrate.mjs
+# Standalone migration entrypoint (bundled — no external module deps required)
+COPY --from=migrate-bundler /app/scripts/standalone-migrate.bundled.cjs ./scripts/standalone-migrate.cjs
 
 USER nextjs
 
