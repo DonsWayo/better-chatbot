@@ -194,3 +194,38 @@ describe("GET /api/export/[id]/comments — additional", () => {
     expect(body).toHaveLength(2);
   });
 });
+
+describe("POST /api/export/[id]/comments — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has success field as boolean true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response is a Response instance even on 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockRejectedValueOnce(new Error("DB error"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

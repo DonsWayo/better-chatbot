@@ -194,3 +194,42 @@ describe("auditMcpInvocation", () => {
     );
   });
 });
+
+describe("auditMcpInvocation — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+  });
+
+  it("insert called with toolName matching input", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "u-1", toolName: "my_tool", outcome: "success" });
+    expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ toolName: "my_tool" }));
+  });
+
+  it("always returns undefined", async () => {
+    const result = await auditMcpInvocation({ userId: "u-1", toolName: "tool", outcome: "success" });
+    expect(result).toBeUndefined();
+  });
+
+  it("insert called exactly once when durationMs is provided", async () => {
+    await auditMcpInvocation({ userId: "u-1", toolName: "tool", outcome: "success", durationMs: 99 });
+    expect(mockPgDb.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores userId matching input", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "specific-user", toolName: "t", outcome: "error" });
+    expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "specific-user" }));
+  });
+
+  it("durationMs=0 is stored as 0 not null", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "u-1", toolName: "t", outcome: "success", durationMs: 0 });
+    expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ durationMs: 0 }));
+  });
+});
