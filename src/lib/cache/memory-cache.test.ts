@@ -169,3 +169,95 @@ describe("MemoryCache", () => {
     }
   });
 });
+
+describe("MemoryCache — overwrite invariants", () => {
+  let cache: MemoryCache;
+
+  beforeEach(() => {
+    cache = new MemoryCache();
+  });
+
+  afterEach(() => {
+    cache.clear();
+  });
+
+  test("set overwrites a previously stored value", async () => {
+    await cache.set("k", "v1");
+    await cache.set("k", "v2");
+    expect(await cache.get("k")).toBe("v2");
+  });
+
+  test("set overwrites and updates TTL", async () => {
+    vi.useFakeTimers();
+    try {
+      await cache.set("k", "v1", 50);
+      vi.advanceTimersByTime(30);
+      await cache.set("k", "v2", 200);
+      vi.advanceTimersByTime(60);
+      expect(await cache.get("k")).toBe("v2");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("has returns false after delete", async () => {
+    await cache.set("k", "v");
+    await cache.delete("k");
+    expect(await cache.has("k")).toBe(false);
+  });
+
+  test("delete of non-existent key does not throw", async () => {
+    await expect(cache.delete("nonexistent")).resolves.not.toThrow();
+  });
+
+  test("getAll returns only non-expired entries after mixed set", async () => {
+    vi.useFakeTimers();
+    try {
+      await cache.set("persistent", "p");
+      await cache.set("short", "s", 10);
+      vi.advanceTimersByTime(20);
+      const all = await cache.getAll();
+      expect(all.has("persistent")).toBe(true);
+      expect(all.has("short")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("MemoryCache — type invariants", () => {
+  let cache: MemoryCache;
+
+  beforeEach(() => {
+    cache = new MemoryCache();
+  });
+
+  afterEach(() => {
+    cache.clear();
+  });
+
+  test("stores and retrieves a number", async () => {
+    await cache.set("num", 123);
+    expect(await cache.get("num")).toBe(123);
+  });
+
+  test("stores and retrieves a boolean", async () => {
+    await cache.set("bool", false);
+    expect(await cache.get("bool")).toBe(false);
+  });
+
+  test("stores and retrieves null", async () => {
+    await cache.set("nil", null);
+    expect(await cache.get("nil")).toBeNull();
+  });
+
+  test("stores and retrieves an array", async () => {
+    await cache.set("arr", [1, 2, 3]);
+    expect(await cache.get("arr")).toEqual([1, 2, 3]);
+  });
+
+  test("getAll returns a Map", async () => {
+    const result = await cache.getAll();
+    expect(result).toBeInstanceOf(Map);
+  });
+});

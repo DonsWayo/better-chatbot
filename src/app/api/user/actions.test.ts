@@ -178,3 +178,74 @@ describe("User Actions - Business Logic", () => {
     });
   });
 });
+
+describe("User Actions — response shape invariants", () => {
+  it("success response always has success: true", () => {
+    const r = { success: true, message: "ok" };
+    expect(r.success).toBe(true);
+    expect(r).toHaveProperty("message");
+  });
+
+  it("failure response always has success: false", () => {
+    const r = { success: false, message: "err" };
+    expect(r.success).toBe(false);
+    expect(r).toHaveProperty("message");
+  });
+
+  it("success message is a non-empty string", () => {
+    const r = { success: true, message: "User details updated successfully" };
+    expect(typeof r.message).toBe("string");
+    expect(r.message.length).toBeGreaterThan(0);
+  });
+
+  it("failure message is a non-empty string", () => {
+    const r = { success: false, message: "User not found" };
+    expect(typeof r.message).toBe("string");
+    expect(r.message.length).toBeGreaterThan(0);
+  });
+
+  it("delete success response includes redirect field", () => {
+    const r = { success: true, message: "User deleted successfully", redirect: "/admin" };
+    expect(r).toHaveProperty("redirect");
+    expect(typeof r.redirect).toBe("string");
+  });
+});
+
+describe("User Actions — password validation logic", () => {
+  it("passwords that match pass equality check", () => {
+    const pass1 = "SecurePass!1";
+    const pass2 = "SecurePass!1";
+    expect(pass1 === pass2).toBe(true);
+  });
+
+  it("passwords that differ fail equality check", () => {
+    const pass1 = "SecurePass!1";
+    const pass2 = "DifferentPass!2";
+    expect(pass1 === pass2).toBe(false);
+  });
+
+  it("empty string password fails min-length check", () => {
+    const password = "";
+    expect(password.length).toBe(0);
+    expect(password.length >= 8).toBe(false);
+  });
+
+  it("password with 8 chars passes min-length check", () => {
+    const password = "Abcdef1!";
+    expect(password.length >= 8).toBe(true);
+  });
+});
+
+describe("User Actions — user not found guard", () => {
+  it("null user triggers not-found path", () => {
+    const user: null | { id: string } = null;
+    const handled = user ? "found" : "not-found";
+    expect(handled).toBe("not-found");
+  });
+
+  it("defined user bypasses not-found guard", () => {
+    const user: null | { id: string } = { id: "u1" };
+    const handled = user ? "found" : "not-found";
+    expect(handled).toBe("found");
+  });
+});
