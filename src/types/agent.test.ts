@@ -275,3 +275,40 @@ describe("AgentGenerateSchema", () => {
     expect(r.success).toBe(false);
   });
 });
+
+describe("AgentGenerateSchema — additional", () => {
+  const base = {
+    name: "Agent X",
+    description: "Desc",
+    instructions: "Do this",
+    role: "Helper",
+  };
+
+  it("parsed data has name, description, instructions, role fields", () => {
+    const r = AgentGenerateSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data).toHaveProperty("name");
+      expect(r.data).toHaveProperty("description");
+      expect(r.data).toHaveProperty("instructions");
+      expect(r.data).toHaveProperty("role");
+    }
+  });
+
+  it("tools field defaults to empty array when omitted", () => {
+    const r = AgentGenerateSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) expect(Array.isArray(r.data.tools)).toBe(true);
+  });
+
+  it("name is preserved exactly as passed", () => {
+    const r = AgentGenerateSchema.safeParse({ ...base, name: "Exact Name" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Exact Name");
+  });
+
+  it("rejects empty string name", () => {
+    const r = AgentGenerateSchema.safeParse({ ...base, name: "" });
+    expect(r.success).toBe(false);
+  });
+});

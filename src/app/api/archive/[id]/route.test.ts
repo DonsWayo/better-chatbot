@@ -259,3 +259,39 @@ describe("DELETE /api/archive/[id] — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("PUT /api/archive/[id] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "a-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    updateArchiveMock.mockResolvedValueOnce({ ...ARCHIVE, name: "Updated" });
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "Updated" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("updateArchive not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(updateArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("updateArchive called exactly once on successful PUT", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    updateArchiveMock.mockResolvedValueOnce(ARCHIVE);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "New" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(updateArchiveMock).toHaveBeenCalledTimes(1);
+  });
+});

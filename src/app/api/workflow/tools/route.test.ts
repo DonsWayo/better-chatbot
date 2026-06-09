@@ -153,3 +153,39 @@ describe("GET /api/workflow/tools — additional", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("GET /api/workflow/tools — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an object (not null)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).not.toBeNull();
+    expect(typeof body).toBe("object");
+  });
+
+  it("selectExecuteAbility not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectExecuteAbilityMock).not.toHaveBeenCalled();
+  });
+});

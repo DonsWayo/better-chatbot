@@ -247,3 +247,39 @@ describe("POST /api/workflow (edit existing) — additional", () => {
     expect(checkAccessMock).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/workflow — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("selectAll called with userId for authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-abc" }));
+  });
+});

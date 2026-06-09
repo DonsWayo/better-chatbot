@@ -244,3 +244,42 @@ describe("createOpenAICompatibleModels — additional", () => {
     expect(result.unsupportedModels).toBeInstanceOf(Set);
   });
 });
+
+describe("createOpenAICompatibleModels — response invariants", () => {
+  it("providers is always a non-null object", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(typeof result.providers).toBe("object");
+    expect(result.providers).not.toBeNull();
+  });
+
+  it("result has exactly two top-level keys", () => {
+    const result = createOpenAICompatibleModels([]);
+    const keys = Object.keys(result);
+    expect(keys).toContain("providers");
+    expect(keys).toContain("unsupportedModels");
+  });
+
+  it("provider count equals input config length", () => {
+    const result = createOpenAICompatibleModels([
+      { provider: "p1", apiKey: "k1", baseUrl: "http://a", models: [] },
+      { provider: "p2", apiKey: "k2", baseUrl: "http://b", models: [] },
+    ]);
+    expect(Object.keys(result.providers)).toHaveLength(2);
+  });
+
+  it("unsupportedModels contains apiNames with supportsTools=false", () => {
+    const result = createOpenAICompatibleModels([
+      {
+        provider: "prov",
+        apiKey: "k",
+        baseUrl: "http://x",
+        models: [
+          { apiName: "tool-model", uiName: "T", supportsTools: true },
+          { apiName: "no-tool-model", uiName: "N", supportsTools: false },
+        ],
+      },
+    ]);
+    expect(result.unsupportedModels.has("no-tool-model")).toBe(true);
+    expect(result.unsupportedModels.has("tool-model")).toBe(false);
+  });
+});

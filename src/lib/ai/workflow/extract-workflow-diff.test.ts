@@ -149,3 +149,50 @@ describe("extractWorkflowDiff", () => {
     expect(result.deleteNodes).toHaveLength(0);
   });
 });
+
+describe("extractWorkflowDiff — additional", () => {
+  const makeNode = (id: string, name: string): UINode => ({
+    id,
+    type: "default",
+    position: { x: 0, y: 0 },
+    data: {
+      id,
+      name,
+      kind: NodeKind.Input,
+      outputSchema: { type: "object", properties: {} },
+      runtime: {},
+    },
+  } as unknown as UINode);
+
+  it("adding a node appears in updateNodes when base is empty", () => {
+    const result = extractWorkflowDiff(
+      { nodes: [], edges: [] },
+      { nodes: [makeNode("new-1", "New")], edges: [] },
+    );
+    expect(result.updateNodes.map((n) => n.id)).toContain("new-1");
+  });
+
+  it("removing a node appears in deleteNodes", () => {
+    const result = extractWorkflowDiff(
+      { nodes: [makeNode("del-1", "Old")], edges: [] },
+      { nodes: [], edges: [] },
+    );
+    expect(result.deleteNodes.map((n) => n.id)).toContain("del-1");
+  });
+
+  it("unchanged node does not appear in deleteNodes or updateNodes when unchanged", () => {
+    const node = makeNode("stable", "Stable");
+    const result = extractWorkflowDiff(
+      { nodes: [node], edges: [] },
+      { nodes: [node], edges: [] },
+    );
+    expect(result.deleteNodes.map((n) => n.id)).not.toContain("stable");
+    expect(result.updateNodes.map((n) => n.id)).not.toContain("stable");
+  });
+
+  it("result keys are exactly deleteNodes, deleteEdges, updateNodes, updateEdges", () => {
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes: [], edges: [] });
+    const keys = Object.keys(result).sort();
+    expect(keys).toEqual(["deleteEdges", "deleteNodes", "updateEdges", "updateNodes"]);
+  });
+});

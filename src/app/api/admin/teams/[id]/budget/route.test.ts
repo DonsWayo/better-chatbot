@@ -255,3 +255,37 @@ describe("GET /api/admin/teams/[id]/budget — response shape", () => {
     expect(body).toHaveProperty("budget");
   });
 });
+
+describe("POST /api/admin/teams/[id]/budget — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbInsertReturningMock.mockResolvedValue([{ id: "b-1", teamId: "t-1", budgetUsd: "200.00" }]);
+  });
+
+  it("returns a Response instance on successful POST", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ budgetUsd: "200.00" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance on admin permission error", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ budgetUsd: "100.00" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("requireAdminPermission called exactly once per POST", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ budgetUsd: "100.00" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbInsert called exactly once on valid POST", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ budgetUsd: "300.00" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(dbInsertMock).toHaveBeenCalledTimes(1);
+  });
+});

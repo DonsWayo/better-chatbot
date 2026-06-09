@@ -156,3 +156,29 @@ describe("GetWeather — edge connectivity", () => {
     }
   });
 });
+
+describe("workflow examples — structural invariants", () => {
+  it("GetWeather has at least one edge", () => {
+    const { edges } = GetWeather();
+    expect(edges.length).toBeGreaterThan(0);
+  });
+
+  it("BabyResearch has at least one edge", () => {
+    const { edges } = BabyResearch();
+    expect(edges.length).toBeGreaterThan(0);
+  });
+
+  it("GetWeather result has workflow, nodes, and edges properties", () => {
+    const result = GetWeather();
+    expect(result).toHaveProperty("workflow");
+    expect(result).toHaveProperty("nodes");
+    expect(result).toHaveProperty("edges");
+  });
+
+  it("BabyResearch result has workflow, nodes, and edges properties", () => {
+    const result = BabyResearch();
+    expect(result).toHaveProperty("workflow");
+    expect(result).toHaveProperty("nodes");
+    expect(result).toHaveProperty("edges");
+  });
+});

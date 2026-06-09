@@ -150,3 +150,41 @@ describe("GET /api/thread — additional", () => {
     expect(selectThreadsByUserIdMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/thread — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("selectThreadsByUserId called with correct userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "specific-user" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectThreadsByUserIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "specific-user" }),
+    );
+  });
+});
