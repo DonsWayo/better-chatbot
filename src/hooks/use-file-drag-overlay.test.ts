@@ -82,4 +82,28 @@ describe("isFileDragEvent", () => {
     const event = createDragEvent({ types: [] });
     expect(isFileDragEvent(event)).toBe(false);
   });
+
+  it("returns false when types has no 'Files' entry among multiple types", () => {
+    const event = createDragEvent({ types: ["text/html", "text/plain", "application/json"] });
+    expect(isFileDragEvent(event)).toBe(false);
+  });
+
+  it("'Files' anywhere in types array matches", () => {
+    const event = createDragEvent({ types: ["text/plain", "Files", "application/json"] });
+    expect(isFileDragEvent(event)).toBe(true);
+  });
+
+  it("items takes priority over types when items has length", () => {
+    const event = createDragEvent({
+      items: [{ kind: "string" }] as unknown as DataTransferItemList,
+      types: ["Files"],
+    });
+    // items has length=1 and kind=string → false even though types has "Files"
+    expect(isFileDragEvent(event)).toBe(false);
+  });
+
+  it("returns false when dataTransfer has no types and no items", () => {
+    const event = createDragEvent({});
+    expect(isFileDragEvent(event)).toBe(false);
+  });
 });

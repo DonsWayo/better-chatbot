@@ -83,3 +83,37 @@ describe("exaContentsTool", () => {
     expect(result).toBeDefined();
   });
 });
+
+describe("schema shapes", () => {
+  it("exaSearchSchema type is object", () => {
+    expect(exaSearchSchema.type).toBe("object");
+  });
+
+  it("exaContentsSchema type is object", () => {
+    expect(exaContentsSchema.type).toBe("object");
+  });
+
+  it("exaSearchSchema has properties", () => {
+    expect(exaSearchSchema.properties).toBeDefined();
+    expect(typeof exaSearchSchema.properties).toBe("object");
+  });
+
+  it("exaContentsSchema has properties", () => {
+    expect(exaContentsSchema.properties).toBeDefined();
+    expect(typeof exaContentsSchema.properties).toBe("object");
+  });
+
+  it("exaSearchSchema required array is non-empty", () => {
+    expect(Array.isArray(exaSearchSchema.required)).toBe(true);
+    expect((exaSearchSchema.required as string[]).length).toBeGreaterThan(0);
+  });
+
+  it("exaContentsSchema required array is non-empty", () => {
+    expect(Array.isArray(exaContentsSchema.required)).toBe(true);
+    expect((exaContentsSchema.required as string[]).length).toBeGreaterThan(0);
+  });
+
+  it("search and contents tools have distinct inputSchemas", () => {
+    expect(exaSearchTool.inputSchema).not.toBe(exaContentsTool.inputSchema);
+  });
+});

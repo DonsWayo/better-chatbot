@@ -76,4 +76,30 @@ describe("sanitizeCssVariableName", () => {
   it("uppercase letters with numbers are normalized", () => {
     expect(sanitizeCssVariableName("Color123")).toBe("color123");
   });
+
+  it("tab character becomes underscore (not removed like space)", () => {
+    expect(sanitizeCssVariableName("a\tb")).toBe("a_b");
+  });
+
+  it("colon becomes underscore", () => {
+    expect(sanitizeCssVariableName("key:value")).toBe("key_value");
+  });
+
+  it("spaces are removed, not replaced with underscore", () => {
+    expect(sanitizeCssVariableName("a b")).toBe("ab");
+    expect(sanitizeCssVariableName("a b")).not.toBe("a_b");
+  });
+
+  it("parentheses become underscores", () => {
+    expect(sanitizeCssVariableName("(foo)")).toBe("_foo_");
+  });
+
+  it("plus sign becomes underscore", () => {
+    expect(sanitizeCssVariableName("a+b")).toBe("a_b");
+  });
+
+  it("result is deterministic (same input → same output)", () => {
+    const input = "My Component [Active] v2.0";
+    expect(sanitizeCssVariableName(input)).toBe(sanitizeCssVariableName(input));
+  });
 });
