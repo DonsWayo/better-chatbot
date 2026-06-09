@@ -126,3 +126,33 @@ describe("GetWeather and BabyResearch — shared invariants", () => {
     }
   });
 });
+
+describe("GetWeather — edge connectivity", () => {
+  it("all edge source and target ids reference existing node ids", () => {
+    const { nodes, edges } = GetWeather();
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    for (const edge of edges) {
+      expect(nodeIds.has(edge.source), `edge source ${edge.source} not in nodes`).toBe(true);
+      expect(nodeIds.has(edge.target), `edge target ${edge.target} not in nodes`).toBe(true);
+    }
+  });
+
+  it("workflow object has a name string", () => {
+    const { workflow } = GetWeather();
+    expect(typeof workflow.name).toBe("string");
+    expect(workflow.name.length).toBeGreaterThan(0);
+  });
+
+  it("BabyResearch has at least 3 nodes", () => {
+    expect(BabyResearch().nodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("BabyResearch all edge source/target ids reference existing node ids", () => {
+    const { nodes, edges } = BabyResearch();
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    for (const edge of edges) {
+      expect(nodeIds.has(edge.source), `edge source ${edge.source} not found`).toBe(true);
+      expect(nodeIds.has(edge.target), `edge target ${edge.target} not found`).toBe(true);
+    }
+  });
+});

@@ -126,3 +126,40 @@ describe("hashContent — length and format", () => {
     expect(h).toMatch(/^[0-9a-f]+$/);
   });
 });
+
+describe("auditChatRequest — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+
+  it("fires with guardrailFired=true and does not throw", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { auditChatRequest } = await import("./audit");
+    expect(() =>
+      auditChatRequest({ userId: "u1", model: "gpt-5.1", promptHash: "abc", guardrailFired: true, ragUsed: false }),
+    ).not.toThrow();
+  });
+
+  it("fires with ragUsed=false and does not throw", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { auditChatRequest } = await import("./audit");
+    expect(() =>
+      auditChatRequest({ userId: "u2", model: "claude-opus-4.8", promptHash: "xyz", guardrailFired: false, ragUsed: false }),
+    ).not.toThrow();
+  });
+});
+
+describe("writeAuditLog — no details field", () => {
+  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+
+  it("inserts without throwing when details is omitted", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await expect(writeAuditLog({ userId: "u1", eventType: "aup_accepted" })).resolves.toBeUndefined();
+  });
+
+  it("calls DB exactly once", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await writeAuditLog({ userId: "u99", eventType: "guardrail_firing" });
+    expect(dbInsertValuesMock).toHaveBeenCalledTimes(1);
+  });
+});
