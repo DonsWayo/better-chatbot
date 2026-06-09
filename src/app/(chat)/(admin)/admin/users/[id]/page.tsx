@@ -6,6 +6,7 @@ import {
   UserStatsCardLoaderSkeleton,
 } from "@/components/user/user-detail/user-stats-card-loader";
 import { UserAdminActions } from "@/components/admin/user-admin-actions";
+import { UserModelGrants } from "@/components/admin/user-model-grants";
 
 import { Suspense } from "react";
 import { getSession } from "auth/server";
@@ -48,8 +49,9 @@ export default async function UserDetailPage({ params }: PageProps) {
         }
         view="admin"
       />
-      <div className="px-4 md:px-6 pb-6 max-w-3xl">
+      <div className="px-4 md:px-6 pb-6 max-w-3xl space-y-4">
         <UserAdminActions userId={id} />
+        <UserModelGrants userId={id} />
       </div>
     </div>
   );

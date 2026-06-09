@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
@@ -28,7 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "ui/card";
-import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import {
   addTeamMemberAction,
@@ -64,6 +64,13 @@ const APPROVED_MODELS = [
   { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", note: "cheapest" },
 ] as const;
 
+interface UsageRow {
+  model: string;
+  provider: string;
+  requests: number;
+  totalCostUsd: string | null;
+}
+
 interface Team {
   id: string;
   name: string;
@@ -98,6 +105,22 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
   // Remove state
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Per-team usage state (fetched client-side to avoid blocking SSR)
+  const [usageRows, setUsageRows] = useState<UsageRow[]>([]);
+  const [usageTotals, setUsageTotals] = useState<{ totalRequests: number; totalCostUsd: string | null } | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/admin/teams/${team.id}/usage?days=30`)
+      .then((r) => r.json())
+      .then((d) => {
+        setUsageRows(d.byModel ?? []);
+        setUsageTotals(d.totals ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setUsageLoading(false));
+  }, [team.id]);
 
   // Model allow-list state
   const [selectedModels, setSelectedModels] = useState<string[]>(team.modelAllowList ?? []);
@@ -224,6 +247,51 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           Created {format(new Date(team.createdAt), "MMM d, yyyy")}
         </p>
       </div>
+
+      {/* Usage summary (last 30 days) */}
+      <Card data-testid="team-usage-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Usage (Last 30 Days)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          {usageLoading ? (
+            <p className="text-sm text-muted-foreground italic">Loading…</p>
+          ) : usageTotals && usageTotals.totalRequests > 0 ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Requests</p>
+                  <p className="text-lg font-bold">{usageTotals.totalRequests.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Cost</p>
+                  <p className="text-lg font-bold">
+                    ${Number(usageTotals.totalCostUsd ?? 0).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+              {usageRows.length > 0 && (
+                <div className="rounded-md border divide-y text-sm">
+                  {usageRows.map((r, i) => (
+                    <div key={`${r.model}-${i}`} className="flex items-center justify-between px-3 py-1.5">
+                      <code className="text-xs">{r.model}</code>
+                      <div className="text-right">
+                        <span className="text-xs text-muted-foreground mr-2">{r.requests.toLocaleString()} req</span>
+                        <span className="text-xs font-mono">${Number(r.totalCostUsd ?? 0).toFixed(4)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No usage data for this team in the last 30 days.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Members table */}
       <Card>

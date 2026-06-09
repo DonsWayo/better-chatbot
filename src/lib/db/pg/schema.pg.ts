@@ -697,6 +697,28 @@ export const AsafeGuardrailEventTable = pgTable("asafe_guardrail_event", {
 
 export type AsafeGuardrailEventEntity = typeof AsafeGuardrailEventTable.$inferSelect;
 
+// ── W5 Per-user model grants ─────────────────────────────────────────────────
+// Admins can grant a specific user access to a model that their team's
+// allow-list would otherwise block. expiresAt=null means permanent.
+
+export const AsafeUserModelGrantTable = pgTable(
+  "asafe_user_model_grant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    modelId: text("model_id").notNull(),
+    grantedBy: text("granted_by").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_user_model_grant_user_id").on(t.userId),
+    unique("uq_user_model_grant").on(t.userId, t.modelId),
+  ],
+);
+
+export type AsafeUserModelGrantEntity = typeof AsafeUserModelGrantTable.$inferSelect;
+
 // ── W12 Feature Flags (kill switch + future toggles) ─────────────────────────
 
 export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {

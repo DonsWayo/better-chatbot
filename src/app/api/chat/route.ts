@@ -261,13 +261,18 @@ export async function POST(request: Request) {
           });
     const effectiveModel = routing ? routing.model : chatModel;
 
-    // W4: per-team model allow-list enforcement
+    // W4/W5: per-team model allow-list + per-user model grant enforcement
     const teamAllowList = teamPolicy?.modelAllowList ?? [];
     if (teamAllowList.length > 0 && effectiveModel?.model && !teamAllowList.includes(effectiveModel.model)) {
-      return Response.json(
-        { message: `Model "${effectiveModel.model}" is not permitted for your team.` },
-        { status: 403 },
-      );
+      // W5: check if the user has a personal grant that overrides the team restriction
+      const { getUserModelGrants } = await import("lib/admin/user-grants");
+      const userGrants = await getUserModelGrants(session.user.id);
+      if (!userGrants.includes(effectiveModel.model)) {
+        return Response.json(
+          { message: `Model "${effectiveModel.model}" is not permitted for your team.` },
+          { status: 403 },
+        );
+      }
     }
 
     const rawModel = customModelProvider.getModel(effectiveModel);
