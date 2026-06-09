@@ -1,97 +1,129 @@
 import { describe, it, expect } from "vitest";
 import { arrangeNodes } from "./arrange-nodes";
 import { NodeKind } from "./workflow.interface";
+import type { UINode } from "./workflow.interface";
+import type { Edge } from "@xyflow/react";
 
-function makeNode(id: string, kind: NodeKind, position = { x: 0, y: 0 }): any {
+function makeNode(id: string, kind: NodeKind, x = 0, y = 0): UINode {
   return {
     id,
-    position,
-    data: { kind, id, name: id.toUpperCase(), outputSchema: { type: "object", properties: {} } },
+    position: { x, y },
     type: "default",
-  };
+    data: {
+      id,
+      kind,
+      name: id.toUpperCase(),
+      outputSchema: { type: "object", properties: {} },
+    },
+  } as any;
 }
 
-function makeEdge(source: string, target: string): any {
-  return { id: `${source}-${target}`, source, target };
+function makeEdge(source: string, target: string, id?: string): Edge {
+  return {
+    id: id ?? `${source}->${target}`,
+    source,
+    target,
+  } as Edge;
 }
 
 describe("arrangeNodes", () => {
-  it("returns nodes unchanged when no Input node exists", () => {
-    const nodes = [makeNode("n1", NodeKind.LLM), makeNode("n2", NodeKind.Output)];
-    const edges = [makeEdge("n1", "n2")];
-    const { nodes: result } = arrangeNodes(nodes, edges);
-    expect(result).toHaveLength(2);
-    // No repositioning happened since there's no Input node
-    expect(result[0].id).toBe("n1");
-  });
-
-  it("arranges a linear chain Input→LLM→Output", () => {
-    const nodes = [
-      makeNode("input", NodeKind.Input),
-      makeNode("llm", NodeKind.LLM),
-      makeNode("output", NodeKind.Output),
-    ];
-    const edges = [makeEdge("input", "llm"), makeEdge("llm", "output")];
-    const { nodes: result } = arrangeNodes(nodes, edges);
-
-    const inputNode = result.find((n) => n.id === "input")!;
-    const llmNode = result.find((n) => n.id === "llm")!;
-    const outputNode = result.find((n) => n.id === "output")!;
-
-    // Each level should be further right than the previous
-    expect(llmNode.position.x).toBeGreaterThan(inputNode.position.x);
-    expect(outputNode.position.x).toBeGreaterThan(llmNode.position.x);
-  });
-
-  it("preserves total node count", () => {
-    const nodes = [
-      makeNode("input", NodeKind.Input),
-      makeNode("llm1", NodeKind.LLM),
-      makeNode("llm2", NodeKind.LLM),
-      makeNode("output", NodeKind.Output),
-    ];
-    const edges = [
-      makeEdge("input", "llm1"),
-      makeEdge("input", "llm2"),
-      makeEdge("llm1", "output"),
-      makeEdge("llm2", "output"),
-    ];
-    const { nodes: result } = arrangeNodes(nodes, edges);
-    expect(result).toHaveLength(4);
-  });
-
-  it("handles disconnected nodes (no edges)", () => {
-    const nodes = [makeNode("n1", NodeKind.Input), makeNode("n2", NodeKind.LLM)];
+  it("returns original nodes when no input node exists", () => {
+    const nodes = [makeNode("a", NodeKind.LLM, 50, 50)];
     const { nodes: result } = arrangeNodes(nodes, []);
-    // No edges means no repositioning — nodes stay at original positions
-    expect(result).toHaveLength(2);
+    expect(result[0].position).toEqual({ x: 50, y: 50 });
   });
 
-  it("returns ArrangeNodesResult shape", () => {
-    const nodes = [makeNode("input", NodeKind.Input), makeNode("output", NodeKind.Output)];
-    const edges = [makeEdge("input", "output")];
-    const result = arrangeNodes(nodes, edges);
-    expect(result).toHaveProperty("nodes");
-    expect(Array.isArray(result.nodes)).toBe(true);
-  });
-
-  it("parallel branches do not overlap (different y positions)", () => {
+  it("places input node at origin", () => {
     const nodes = [
-      makeNode("input", NodeKind.Input, { x: 0, y: 0 }),
-      makeNode("branch1", NodeKind.LLM, { x: 0, y: 0 }),
-      makeNode("branch2", NodeKind.LLM, { x: 0, y: 200 }),
-      makeNode("output", NodeKind.Output, { x: 0, y: 100 }),
+      makeNode("input", NodeKind.Input, 999, 999),
+      makeNode("output", NodeKind.Output, 0, 0),
+    ];
+    const edges = [makeEdge("input", "output")];
+    const { nodes: result } = arrangeNodes(nodes, edges);
+    const input = result.find((n) => n.id === "input")!;
+    expect(input.position).toEqual({ x: 0, y: 0 });
+  });
+
+  it("places child to the right of input (x > 0)", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input, 0, 0),
+      makeNode("llm", NodeKind.LLM, 0, 0),
+    ];
+    const edges = [makeEdge("input", "llm")];
+    const { nodes: result } = arrangeNodes(nodes, edges);
+    const llm = result.find((n) => n.id === "llm")!;
+    expect(llm.position.x).toBeGreaterThan(0);
+  });
+
+  it("arranges linear chain in increasing x positions", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input),
+      makeNode("mid", NodeKind.LLM),
+      makeNode("output", NodeKind.Output),
     ];
     const edges = [
-      makeEdge("input", "branch1"),
-      makeEdge("input", "branch2"),
-      makeEdge("branch1", "output"),
-      makeEdge("branch2", "output"),
+      makeEdge("input", "mid"),
+      makeEdge("mid", "output"),
     ];
     const { nodes: result } = arrangeNodes(nodes, edges);
-    const b1 = result.find((n) => n.id === "branch1")!;
-    const b2 = result.find((n) => n.id === "branch2")!;
-    // Parallel siblings should be at different y positions
-    expect(b1.position.y).not.toBe(b2.position.y);
+    const inputX = result.find((n) => n.id === "input")!.position.x;
+    const midX = result.find((n) => n.id === "mid")!.position.x;
+    const outputX = result.find((n) => n.id === "output")!.position.x;
+    expect(midX).toBeGreaterThan(inputX);
+    expect(outputX).toBeGreaterThan(midX);
+  });
+
+  it("preserves nodes not connected to any edge", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input, 0, 0),
+      makeNode("isolated", NodeKind.Note, 123, 456),
+    ];
+    const edges: Edge[] = [];
+    const { nodes: result } = arrangeNodes(nodes, edges);
+    const isolated = result.find((n) => n.id === "isolated")!;
+    expect(isolated.position).toEqual({ x: 123, y: 456 });
+  });
+
+  it("returns all original nodes even when some have no edges", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input, 0, 0),
+      makeNode("connected", NodeKind.LLM, 0, 0),
+      makeNode("floating", NodeKind.Note, 999, 999),
+    ];
+    const edges = [makeEdge("input", "connected")];
+    const { nodes: result } = arrangeNodes(nodes, edges);
+    expect(result).toHaveLength(3);
+  });
+
+  it("does not mutate original nodes array", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input, 0, 0),
+      makeNode("output", NodeKind.Output, 0, 0),
+    ];
+    const originalPositions = nodes.map((n) => ({ ...n.position }));
+    arrangeNodes(nodes, [makeEdge("input", "output")]);
+    // Original nodes should remain at their original positions
+    nodes.forEach((n, i) => {
+      expect(n.position).toEqual(originalPositions[i]);
+    });
+  });
+
+  it("distributes parallel branches vertically", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input, 0, 0),
+      makeNode("branchA", NodeKind.LLM, 0, 0),
+      makeNode("branchB", NodeKind.LLM, 0, 0),
+    ];
+    const edges = [
+      makeEdge("input", "branchA"),
+      makeEdge("input", "branchB"),
+    ];
+    const { nodes: result } = arrangeNodes(nodes, edges);
+    const a = result.find((n) => n.id === "branchA")!;
+    const b = result.find((n) => n.id === "branchB")!;
+    // Both should be at the same x level
+    expect(a.position.x).toBe(b.position.x);
+    // They should have different y positions (not overlapping)
+    expect(a.position.y).not.toBe(b.position.y);
   });
 });
