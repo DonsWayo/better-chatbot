@@ -259,3 +259,42 @@ describe("selectThreadWithMessagesAction — additional", () => {
     expect(selectMessagesMock).not.toHaveBeenCalled();
   });
 });
+
+describe("deleteThreadAction — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("throws when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { deleteThreadAction } = await import("./actions");
+    await expect(deleteThreadAction("t1")).rejects.toThrow();
+  });
+
+  it("deleteThread called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteThreadMock.mockResolvedValueOnce(undefined);
+    const { deleteThreadAction } = await import("./actions");
+    await deleteThreadAction("t1");
+    expect(deleteThreadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deleteThread not called when access check fails", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { deleteThreadAction } = await import("./actions");
+    try { await deleteThreadAction("t1"); } catch {}
+    expect(deleteThreadMock).not.toHaveBeenCalled();
+  });
+
+  it("checkAccess called with correct threadId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteThreadMock.mockResolvedValueOnce(undefined);
+    const { deleteThreadAction } = await import("./actions");
+    await deleteThreadAction("thread-xyz");
+    expect(checkAccessMock).toHaveBeenCalledWith(expect.objectContaining({ threadId: "thread-xyz" }));
+  });
+});

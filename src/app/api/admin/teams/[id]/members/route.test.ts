@@ -260,3 +260,39 @@ describe("GET /api/admin/teams/[id]/members — response shape", () => {
     expect(body).toHaveProperty("members");
   });
 });
+
+describe("POST /api/admin/teams/[id]/members — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValue([TEAM]);
+    addTeamMemberMock.mockResolvedValue({ memberId: "new-mem-1" });
+  });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("addTeamMember called exactly once on successful POST", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(addTeamMemberMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("addTeamMember not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ email: "alice@example.com" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(addTeamMemberMock).not.toHaveBeenCalled();
+  });
+});

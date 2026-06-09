@@ -263,3 +263,37 @@ describe("wrapWithCompression", () => {
     expect(result).toBeDefined();
   });
 });
+
+describe("wrapWithCompression — invariants", () => {
+  const baseModel = {
+    specificationVersion: "v2" as const,
+    provider: "test",
+    modelId: "model-id",
+    defaultObjectGenerationMode: undefined,
+    doGenerate: vi.fn().mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
+    doStream: vi.fn(),
+  };
+
+  it("returns a non-null object for any valid level", () => {
+    for (const level of ["off", "light", "standard", "aggressive"] as const) {
+      const result = wrapWithCompression(baseModel as any, { level });
+      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
+    }
+  });
+
+  it("level=light wraps model (not same reference)", () => {
+    const result = wrapWithCompression(baseModel as any, { level: "light" });
+    expect(result).not.toBe(baseModel);
+  });
+
+  it("level=aggressive wraps model (not same reference)", () => {
+    const result = wrapWithCompression(baseModel as any, { level: "aggressive" });
+    expect(result).not.toBe(baseModel);
+  });
+
+  it("level=off preserves exact same model reference", () => {
+    const result = wrapWithCompression(baseModel as any, { level: "off" });
+    expect(result).toBe(baseModel);
+  });
+});

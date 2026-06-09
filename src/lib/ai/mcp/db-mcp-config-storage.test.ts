@@ -266,3 +266,35 @@ describe("DB-based MCP Config Storage", () => {
     });
   });
 });
+
+describe("DB-based MCP Config Storage — getAll invariants", () => {
+  let storage: ReturnType<typeof createDbBasedMCPConfigsStorage>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    storage = createDbBasedMCPConfigsStorage();
+    vi.mocked(mockMcpRepository.selectAll).mockResolvedValue([]);
+  });
+
+  it("getAll returns an array", async () => {
+    const result = await storage.getAll();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("getAll calls mcpRepository.selectAll exactly once", async () => {
+    await storage.getAll();
+    expect(mockMcpRepository.selectAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("getAll returns empty array when repository returns empty", async () => {
+    vi.mocked(mockMcpRepository.selectAll).mockResolvedValue([]);
+    const result = await storage.getAll();
+    expect(result).toHaveLength(0);
+  });
+
+  it("deleteById calls mcpRepository.deleteById exactly once", async () => {
+    vi.mocked(mockMcpRepository.deleteById).mockResolvedValue(undefined);
+    await storage.deleteById("test-id");
+    expect(mockMcpRepository.deleteById).toHaveBeenCalledTimes(1);
+  });
+});
