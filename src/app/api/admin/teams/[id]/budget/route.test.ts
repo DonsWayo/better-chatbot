@@ -220,3 +220,38 @@ describe("POST /api/admin/teams/[id]/budget — guard chain", () => {
     expect(body).toHaveProperty("budget");
   });
 });
+
+describe("GET /api/admin/teams/[id]/budget — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200 null budget", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbSelectLimitMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST response is always a Response instance for 401", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has budget property when budget found", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbSelectLimitMock.mockResolvedValueOnce([{ id: "b-rsp", teamId: "t-1", budgetUsd: "100.00" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("budget");
+  });
+});

@@ -222,3 +222,40 @@ describe("exportChatAction", () => {
     );
   });
 });
+
+describe("selectThreadWithMessagesAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per call", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await expect(selectThreadWithMessagesAction("t1")).rejects.toThrow();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectThread called exactly once for owner", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue({ id: "t1", userId: "u1", title: "Test" });
+    selectMessagesMock.mockResolvedValue([]);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await selectThreadWithMessagesAction("t1");
+    expect(selectThreadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectMessages called exactly once when thread found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue({ id: "t1", userId: "u1", title: "Test" });
+    selectMessagesMock.mockResolvedValue([{ id: "m-1" }]);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await selectThreadWithMessagesAction("t1");
+    expect(selectMessagesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls selectMessages when thread not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue(null);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await selectThreadWithMessagesAction("t1");
+    expect(selectMessagesMock).not.toHaveBeenCalled();
+  });
+});
