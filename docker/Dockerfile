@@ -15,6 +15,12 @@ ENV NEXT_STANDALONE_OUTPUT="true"
 
 RUN pnpm build
 
+# Bundle the standalone migrate script so it has no external module deps in the runner image
+RUN pnpm exec esbuild scripts/standalone-migrate.mjs \
+  --bundle --platform=node --format=esm \
+  --outfile=scripts/standalone-migrate.mjs.tmp && \
+  mv scripts/standalone-migrate.mjs.tmp scripts/standalone-migrate.mjs
+
 FROM node:23-alpine AS runner
 
 WORKDIR /app
