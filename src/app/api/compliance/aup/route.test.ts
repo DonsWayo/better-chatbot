@@ -96,4 +96,38 @@ describe("GET /api/compliance/aup", () => {
     expect(body.accepted).toBe(true);
     expect(body.acceptedAt).toBe(acceptedAt);
   });
+
+  it("never calls db select when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/compliance/aup — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls dbUpdate when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST();
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("acceptedAt in response body is an ISO string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST();
+    const body = await res.json();
+    expect(typeof body.acceptedAt).toBe("string");
+    expect(body.acceptedAt.length).toBeGreaterThan(0);
+  });
+
+  it("calls dbUpdate exactly once per successful POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST();
+    expect(dbUpdateMock).toHaveBeenCalledTimes(1);
+  });
 });

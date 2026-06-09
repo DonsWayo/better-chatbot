@@ -99,4 +99,34 @@ describe("addEdgeBranchLabel", () => {
     expect(() => addEdgeBranchLabel(nodes, edges)).not.toThrow();
     expect(edges[0].uiConfig.label).toBe("B0");
   });
+
+  it("does not throw for empty edges with nodes", () => {
+    const nodes = [makeNode("input", NodeKind.Input), makeNode("output", NodeKind.Output)];
+    expect(() => addEdgeBranchLabel(nodes, [])).not.toThrow();
+  });
+
+  it("all labeled edges have non-empty string labels", () => {
+    const nodes = [
+      makeNode("input", NodeKind.Input),
+      makeNode("llm", NodeKind.LLM),
+      makeNode("output", NodeKind.Output),
+    ];
+    const edges = [makeEdge("input", "llm"), makeEdge("llm", "output")];
+    addEdgeBranchLabel(nodes, edges);
+    for (const edge of edges) {
+      expect(typeof edge.uiConfig.label).toBe("string");
+      expect(edge.uiConfig.label!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("linear chain of 3 nodes — all edges get B0 label", () => {
+    const nodes = [
+      makeNode("n1", NodeKind.Input),
+      makeNode("n2", NodeKind.LLM),
+      makeNode("n3", NodeKind.Output),
+    ];
+    const edges = [makeEdge("n1", "n2"), makeEdge("n2", "n3")];
+    addEdgeBranchLabel(nodes, edges);
+    expect(edges.every((e) => e.uiConfig.label === "B0")).toBe(true);
+  });
 });

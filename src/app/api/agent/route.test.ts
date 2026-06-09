@@ -96,4 +96,46 @@ describe("POST /api/agent", () => {
     expect(body.id).toBe("ag-new");
     expect(serverCacheDeleteMock).toHaveBeenCalledWith("agent:ag-new");
   });
+
+  it("never calls insertAgent when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(insertAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls insertAgent when creation is forbidden", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(insertAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never invalidates cache when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(serverCacheDeleteMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/agent — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls selectAgents when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(selectAgentsMock).not.toHaveBeenCalled();
+  });
+
+  it("returns empty array body when user has no agents", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAgentsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
 });
