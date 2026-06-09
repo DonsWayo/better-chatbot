@@ -94,4 +94,24 @@ describe("recordCompressionSavings", () => {
       0.5,
     );
   });
+
+  it("observeMock called exactly once per invocation", () => {
+    recordCompressionSavings({ teamId: "t1", level: "light", charsBefore: 100, charsAfter: 50 });
+    expect(observeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("ratio is 0 when all chars removed (charsAfter=0)", () => {
+    recordCompressionSavings({ teamId: "t1", level: "aggressive", charsBefore: 100, charsAfter: 0 });
+    expect(observeMock).toHaveBeenCalledWith(expect.anything(), 0);
+    expect(incMock).toHaveBeenCalledWith(expect.anything(), 100);
+  });
+
+  it("expansion (charsAfter > charsBefore): does not increment but does observe", () => {
+    recordCompressionSavings({ teamId: "t1", level: "standard", charsBefore: 50, charsAfter: 80 });
+    expect(incMock).not.toHaveBeenCalled();
+    expect(observeMock).toHaveBeenCalledWith(
+      expect.anything(),
+      80 / 50,
+    );
+  });
 });

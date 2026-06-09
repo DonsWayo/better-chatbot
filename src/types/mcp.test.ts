@@ -95,3 +95,56 @@ describe("McpServerCustomizationZodSchema", () => {
     expect(typeof McpServerCustomizationZodSchema.safeParse).toBe("function");
   });
 });
+
+describe("MCPRemoteConfigZodSchema — additional cases", () => {
+  it("accepts http:// URL (not only https)", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: "http://mcp.internal/sse" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects null as url", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: null });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("MCPStdioConfigZodSchema — additional cases", () => {
+  it("rejects missing command", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ args: ["--foo"] });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts args as empty array", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "node", args: [] });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("McpToolCustomizationZodSchema — field rules", () => {
+  it("requires toolName (min 1)", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "", mcpServerId: "s1" });
+    expect(r.success).toBe(false);
+  });
+
+  it("requires mcpServerId (min 1)", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "" });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts null prompt", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "s1", prompt: null });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts omitted prompt", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "s1" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects prompt over 1000 characters", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({
+      toolName: "search", mcpServerId: "s1", prompt: "x".repeat(1001),
+    });
+    expect(r.success).toBe(false);
+  });
+});

@@ -96,4 +96,59 @@ describe("createTableTool schema", () => {
     expect(valid.columns).toHaveLength(1);
     expect(valid.data).toHaveLength(2);
   });
+
+  it("inputSchema rejects missing columns", async () => {
+    const { createTableTool } = await import("./create-table");
+    const schema = createTableTool.inputSchema as any;
+    expect(() => schema.parse({ title: "T", data: [] })).toThrow();
+  });
+});
+
+describe("all chart tools — shared invariants", () => {
+  it("all 4 chart tools have inputSchema defined", async () => {
+    const [{ createBarChartTool }, { createLineChartTool }, { createPieChartTool }, { createTableTool }] =
+      await Promise.all([
+        import("./create-bar-chart"),
+        import("./create-line-chart"),
+        import("./create-pie-chart"),
+        import("./create-table"),
+      ]);
+    expect(createBarChartTool.inputSchema).toBeDefined();
+    expect(createLineChartTool.inputSchema).toBeDefined();
+    expect(createPieChartTool.inputSchema).toBeDefined();
+    expect(createTableTool.inputSchema).toBeDefined();
+  });
+
+  it("all 4 chart tools have an execute function", async () => {
+    const [{ createBarChartTool }, { createLineChartTool }, { createPieChartTool }, { createTableTool }] =
+      await Promise.all([
+        import("./create-bar-chart"),
+        import("./create-line-chart"),
+        import("./create-pie-chart"),
+        import("./create-table"),
+      ]);
+    expect(typeof createBarChartTool.execute).toBe("function");
+    expect(typeof createLineChartTool.execute).toBe("function");
+    expect(typeof createPieChartTool.execute).toBe("function");
+    expect(typeof createTableTool.execute).toBe("function");
+  });
+
+  it("all 4 tools return 'Success' on execute", async () => {
+    const [{ createBarChartTool }, { createLineChartTool }, { createPieChartTool }, { createTableTool }] =
+      await Promise.all([
+        import("./create-bar-chart"),
+        import("./create-line-chart"),
+        import("./create-pie-chart"),
+        import("./create-table"),
+      ]);
+    const results = await Promise.all([
+      createBarChartTool.execute!({} as any, {} as any),
+      createLineChartTool.execute!({} as any, {} as any),
+      createPieChartTool.execute!({} as any, {} as any),
+      createTableTool.execute!({} as any, {} as any),
+    ]);
+    for (const result of results) {
+      expect(result).toBe("Success");
+    }
+  });
 });
