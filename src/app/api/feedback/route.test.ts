@@ -206,3 +206,37 @@ describe("DELETE /api/feedback — additional", () => {
     expect(dbDeleteMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/feedback — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messageId: "m-1", rating: "up" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has ok true on successful feedback", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messageId: "m-1", rating: "up" }));
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it("DELETE response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("DELETE 200 body has ok true on successful delete", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+});

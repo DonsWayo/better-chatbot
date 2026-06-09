@@ -206,3 +206,31 @@ describe("buildToolCallUnsupportedModelSystemPrompt", () => {
     expect(buildToolCallUnsupportedModelSystemPrompt).toContain("Tool Call Limitation");
   });
 });
+
+describe("buildUserSystemPrompt — additional", () => {
+  it("returns a non-empty string", () => {
+    const prompt = buildUserSystemPrompt();
+    expect(typeof prompt).toBe("string");
+    expect(prompt.length).toBeGreaterThan(0);
+  });
+
+  it("includes today_date block", () => {
+    const prompt = buildUserSystemPrompt();
+    expect(prompt).toContain("<today_date>");
+  });
+
+  it("agent name takes priority over userPreferences botName", () => {
+    const prompt = buildUserSystemPrompt(
+      undefined,
+      { botName: "PrefBot" } as any,
+      { name: "AgentName", instructions: {} } as any,
+    );
+    expect(prompt).toContain("You are AgentName");
+    expect(prompt).not.toContain("You are PrefBot");
+  });
+
+  it("includes agent name in prompt when agent is defined", () => {
+    const prompt = buildUserSystemPrompt(undefined, undefined, { name: "SearchBot" } as any);
+    expect(prompt).toContain("SearchBot");
+  });
+});
