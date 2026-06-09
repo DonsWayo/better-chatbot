@@ -127,3 +127,47 @@ describe("cross-tag isolation", () => {
     expect(VercelAIWorkflowToolTag.isMaybe(taggedStream)).toBe(false);
   });
 });
+
+describe("VercelAIWorkflowToolTag — additional invariants", () => {
+  it("isMaybe returns false for a plain string", () => {
+    expect(VercelAIWorkflowToolTag.isMaybe("not a tool")).toBe(false);
+  });
+
+  it("isMaybe returns false for a number", () => {
+    expect(VercelAIWorkflowToolTag.isMaybe(42)).toBe(false);
+  });
+
+  it("isMaybe returns false for undefined", () => {
+    expect(VercelAIWorkflowToolTag.isMaybe(undefined)).toBe(false);
+  });
+
+  it("create then isMaybe returns true for different tools", () => {
+    for (const id of ["wf-1", "wf-2", "wf-abc"]) {
+      const tagged = VercelAIWorkflowToolTag.create(makeTool({ _workflowId: id }));
+      expect(VercelAIWorkflowToolTag.isMaybe(tagged)).toBe(true);
+    }
+  });
+});
+
+describe("VercelAIWorkflowToolStreamingResultTag — additional invariants", () => {
+  it("isMaybe returns false for undefined", () => {
+    expect(VercelAIWorkflowToolStreamingResultTag.isMaybe(undefined)).toBe(false);
+  });
+
+  it("isMaybe returns false for plain object without tag", () => {
+    expect(VercelAIWorkflowToolStreamingResultTag.isMaybe({ status: "success" })).toBe(false);
+  });
+
+  it("preserves startedAt and endedAt timestamps", () => {
+    const result = makeStreamingResult({ startedAt: 1234, endedAt: 5678 });
+    const tagged = VercelAIWorkflowToolStreamingResultTag.create(result);
+    expect(tagged.startedAt).toBe(1234);
+    expect(tagged.endedAt).toBe(5678);
+  });
+
+  it("preserves workflowName", () => {
+    const result = makeStreamingResult({ workflowName: "My Special Workflow" });
+    const tagged = VercelAIWorkflowToolStreamingResultTag.create(result);
+    expect(tagged.workflowName).toBe("My Special Workflow");
+  });
+});

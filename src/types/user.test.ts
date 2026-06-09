@@ -97,3 +97,84 @@ describe("UserZodSchema — return type invariants", () => {
     }
   });
 });
+
+describe("UserZodSchema — password validation", () => {
+  it("rejects password shorter than 8 chars", () => {
+    const result = UserZodSchema.safeParse({
+      name: "Alice",
+      email: "alice@test.com",
+      password: "abc123",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects password longer than 20 chars", () => {
+    const result = UserZodSchema.safeParse({
+      name: "Alice",
+      email: "alice@test.com",
+      password: "Abcdefghijk1234567890x",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts valid 8-char password with letter and number", () => {
+    const result = UserZodSchema.safeParse({
+      name: "Alice",
+      email: "alice@test.com",
+      password: "ValidP1!",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects password with no numbers", () => {
+    const result = UserZodSchema.safeParse({
+      name: "Alice",
+      email: "alice@test.com",
+      password: "OnlyLetters",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("UserPreferencesZodSchema — field types", () => {
+  it("rejects non-string displayName", () => {
+    const result = UserPreferencesZodSchema.safeParse({ displayName: 123 });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-string profession", () => {
+    const result = UserPreferencesZodSchema.safeParse({ profession: true });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts long responseStyleExample", () => {
+    const result = UserPreferencesZodSchema.safeParse({
+      responseStyleExample: "A".repeat(500),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts all four optional fields simultaneously", () => {
+    const result = UserPreferencesZodSchema.safeParse({
+      displayName: "Alice",
+      profession: "Engineer",
+      responseStyleExample: "Please be concise",
+      botName: "Aria",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.displayName).toBe("Alice");
+      expect(result.data.profession).toBe("Engineer");
+      expect(result.data.responseStyleExample).toBe("Please be concise");
+      expect(result.data.botName).toBe("Aria");
+    }
+  });
+
+  it("excludes extra fields from parsed result (strict passthrough behavior)", () => {
+    const result = UserPreferencesZodSchema.safeParse({
+      displayName: "Alice",
+      unknownField: "ignored",
+    });
+    expect(result.success).toBe(true);
+  });
+});
