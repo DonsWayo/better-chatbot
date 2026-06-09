@@ -11,16 +11,40 @@ describe("httpFetchSchema", () => {
     expect(urlProp?.type).toBe("string");
   });
 
-  it("method is an enum with expected values", () => {
+  it("method is an enum with all expected HTTP methods", () => {
     const methodProp = (httpFetchSchema.properties as any)?.method;
-    expect(methodProp?.enum).toContain("GET");
-    expect(methodProp?.enum).toContain("POST");
-    expect(methodProp?.enum).toContain("DELETE");
+    const methods = methodProp?.enum;
+    expect(methods).toContain("GET");
+    expect(methods).toContain("POST");
+    expect(methods).toContain("PUT");
+    expect(methods).toContain("DELETE");
+    expect(methods).toContain("PATCH");
+    expect(methods).toContain("HEAD");
+    expect(methods).toContain("OPTIONS");
   });
 
-  it("timeout has a default value", () => {
+  it("method has a default value of GET", () => {
+    const methodProp = (httpFetchSchema.properties as any)?.method;
+    expect(methodProp?.default).toBe("GET");
+  });
+
+  it("timeout has a positive default value", () => {
     const timeoutProp = (httpFetchSchema.properties as any)?.timeout;
     expect(timeoutProp?.default).toBeGreaterThan(0);
+  });
+
+  it("headers property allows additional properties (arbitrary headers)", () => {
+    const headersProp = (httpFetchSchema.properties as any)?.headers;
+    expect(headersProp?.additionalProperties).toBe(true);
+  });
+
+  it("body is a string property", () => {
+    const bodyProp = (httpFetchSchema.properties as any)?.body;
+    expect(bodyProp?.type).toBe("string");
+  });
+
+  it("schema type is object", () => {
+    expect(httpFetchSchema.type).toBe("object");
   });
 });
 
@@ -33,11 +57,22 @@ describe("httpFetchTool", () => {
     expect(httpFetchTool.inputSchema).toBeDefined();
   });
 
+  it("has a non-empty description", () => {
+    expect(typeof httpFetchTool.description).toBe("string");
+    expect(httpFetchTool.description!.length).toBeGreaterThan(0);
+  });
+
   it("execute returns error for invalid URL", async () => {
     const result = await httpFetchTool.execute!({ url: "not-a-url" } as any, {} as any);
-    // Should return an error object (safe wraps failures)
     expect(result).toBeDefined();
-    // The result will be an error description, not throw
     expect(typeof result === "object" || typeof result === "string").toBe(true);
+  });
+
+  it("execute returns error without throwing for unreachable host", async () => {
+    const result = await httpFetchTool.execute!(
+      { url: "http://localhost:99999/unreachable" } as any,
+      {} as any,
+    );
+    expect(result).toBeDefined();
   });
 });
