@@ -148,4 +148,30 @@ describe("GET /api/admin/budget-alerts", () => {
     expect(body.alerts[0].utilizationRatio).toBeCloseTo(1.0);
     expect(body.alerts[0].alert).toBe(true);
   });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect called exactly once on admin request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("alert is false when utilization is below 80%", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-6", teamName: "Marketing", budgetUsd: "100.00", usedUsd: "79.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts[0].alert).toBe(false);
+  });
 });

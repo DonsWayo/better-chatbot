@@ -167,4 +167,54 @@ describe("POST /api/admin/mcp/servers", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("dbInsert called exactly once on successful POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbInsertReturningMock.mockResolvedValue([{ id: "srv-ok", name: "Docs MCP", scope: "org" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Docs MCP", scope: "org", config: { url: "https://mcp.example.com/sse" } }));
+    expect(dbInsertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/admin/mcp/servers — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has servers property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValue([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("servers");
+  });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(403);
+  });
 });
