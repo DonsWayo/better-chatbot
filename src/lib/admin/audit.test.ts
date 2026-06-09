@@ -141,4 +141,58 @@ describe("AUDIT_EVENT_TYPES", () => {
     expect(AUDIT_EVENT_TYPES).toContain("user_erasure");
     expect(AUDIT_EVENT_TYPES).toContain("aup_accepted");
   });
+
+  it("is a non-empty array", async () => {
+    const { AUDIT_EVENT_TYPES } = await import("./audit");
+    expect(Array.isArray(AUDIT_EVENT_TYPES)).toBe(true);
+    expect(AUDIT_EVENT_TYPES.length).toBeGreaterThan(0);
+  });
+
+  it("all entries are strings", async () => {
+    const { AUDIT_EVENT_TYPES } = await import("./audit");
+    for (const type of AUDIT_EVENT_TYPES) {
+      expect(typeof type).toBe("string");
+      expect(type.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("getAuditLog — pagination defaults", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    _selectRows = [];
+    _countRows = [{ total: 0 }];
+    offsetMock.mockImplementation(() => Promise.resolve(_selectRows));
+    limitMock.mockReturnValue({ offset: offsetMock });
+    orderByMock.mockReturnValue({ limit: limitMock, offset: offsetMock });
+    whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+    leftJoinMock.mockReturnValue({ where: whereMock, orderBy: orderByMock });
+    fromMock.mockReturnValue({ where: whereMock, leftJoin: leftJoinMock, orderBy: orderByMock, limit: limitMock });
+    let c = 0;
+    selectMock.mockImplementation(() => {
+      c++;
+      if (c % 2 === 0) return { from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(_countRows) }) };
+      return { from: fromMock };
+    });
+  });
+
+  it("page 1 uses offset 0", async () => {
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ page: 1, limit: 20 });
+    expect(offsetMock).toHaveBeenCalledWith(0);
+  });
+
+  it("page 2 with limit 20 uses offset 20", async () => {
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ page: 2, limit: 20 });
+    expect(offsetMock).toHaveBeenCalledWith(20);
+  });
+
+  it("returns total as 0 when count query returns empty array", async () => {
+    _countRows = [];
+    const { getAuditLog } = await import("./audit");
+    const { total } = await getAuditLog({ page: 1, limit: 10 });
+    expect(total).toBe(0);
+  });
 });
