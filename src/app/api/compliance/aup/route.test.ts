@@ -130,4 +130,65 @@ describe("POST /api/compliance/aup — guard chains", () => {
     await POST();
     expect(dbUpdateMock).toHaveBeenCalledTimes(1);
   });
+
+  it("401 body has error field for POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/compliance/aup — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body has error field for GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("accepted is strictly boolean type", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectLimitMock.mockResolvedValueOnce([{ acceptedAupAt: null }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(typeof body.accepted).toBe("boolean");
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect called exactly once for authenticated GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectLimitMock.mockResolvedValueOnce([{ acceptedAupAt: null }]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has both accepted and acceptedAt properties", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectLimitMock.mockResolvedValueOnce([{ acceptedAupAt: null }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("accepted");
+    expect(body).toHaveProperty("acceptedAt");
+  });
 });

@@ -121,4 +121,73 @@ describe("GET /api/admin/teams/[id]/usage", () => {
     await GET(makeRequest(), makeParams("team-1") as any);
     expect(mockSelect).toHaveBeenCalledTimes(2);
   });
+
+  it("never calls mockSelect when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), makeParams("team-1") as any);
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("never calls mockSelect when non-admin", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "editor" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), makeParams("team-1") as any);
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("custom days within range parsed correctly", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ days: "7" }), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body.days).toBe(7);
+  });
+
+  it("days clamped to 1 when days=0", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ days: "0" }), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body.days).toBe(1);
+  });
+
+  it("byModel in 200 response is an array", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(Array.isArray(body.byModel)).toBe(true);
+  });
+
+  it("totals in 200 response is an object", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(typeof body.totals).toBe("object");
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), makeParams("team-1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
 });

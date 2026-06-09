@@ -66,6 +66,34 @@ describe("GET /api/workflow/[id]", () => {
     const body = await res.json();
     expect(body.id).toBe("wf-1");
   });
+
+  it("401 body is plain text Unauthorized when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls selectById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("PUT /api/workflow/[id]", () => {
@@ -99,6 +127,29 @@ describe("PUT /api/workflow/[id]", () => {
     const body = await res.json();
     expect(body.isPublished).toBe(true);
   });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls save when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(saveMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/workflow/[id]", () => {
@@ -130,5 +181,46 @@ describe("DELETE /api/workflow/[id]", () => {
     const body = await res.json();
     expect(body.message).toContain("deleted");
     expect(deleteMock).toHaveBeenCalledWith("wf-1");
+  });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteWorkflowMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls deleteMock when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls deleteMock when lacking delete permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteWorkflowMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it("deleteMock called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteWorkflowMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 });

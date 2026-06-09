@@ -130,4 +130,67 @@ describe("POST /api/export/[id]/comments", () => {
     const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
     expect(res.status).toBe(500);
   });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("500 body has error field when insertComment throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockRejectedValueOnce(new Error("insert failed"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("insertComment called exactly once per authenticated POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(insertCommentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/export/[id]/comments — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("selectCommentsByExportId called exactly once per GET", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(selectCommentsByExportIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 body has error field when selectCommentsByExportId throws", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockRejectedValueOnce(new Error("DB error"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 body is an array", async () => {
+    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    selectCommentsByExportIdMock.mockResolvedValueOnce([{ id: "c1" }, { id: "c2" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body).toHaveLength(2);
+  });
 });
