@@ -166,3 +166,45 @@ describe("GET /api/user/export — additional", () => {
     expect(body.profile.id).toBe("uid-match-test");
   });
 });
+
+describe("GET /api/user/export — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    pgDbSelectMock.mockReturnValue(makeChain());
+  });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-shape", name: "Jake", email: "j@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is not null", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-nn", name: "Kate", email: "k@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).not.toBeNull();
+  });
+
+  it("content-type is application/json for 200", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-ct", name: "Leo", email: "l@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.headers.get("content-type")).toContain("application/json");
+  });
+});

@@ -165,3 +165,42 @@ describe("POST /api/mcp — additional", () => {
     expect(body.id).toBe("mcp-success");
   });
 });
+
+describe("POST /api/mcp — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 403", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockRejectedValueOnce(new Error("failed"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "bad" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "mcp-ok" }) },
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "new-mcp" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+});
