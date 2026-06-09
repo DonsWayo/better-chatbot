@@ -173,3 +173,47 @@ describe("POST /api/storage/upload-url — additional", () => {
     expect(body.directUploadSupported).toBe(true);
   });
 });
+
+describe("POST /api/storage/upload-url — error body content", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("500 body includes solution field when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "Missing driver", solution: "Set FILE_STORAGE_TYPE" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body.solution).toBe("Set FILE_STORAGE_TYPE");
+  });
+
+  it("createUploadUrl called exactly once when storage is valid", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/img.png", uploadUrl: "https://s3/signed" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/img.png");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "img.png" }));
+    expect(createUploadUrlMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSourceUrl called once after successful createUploadUrl", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/doc.pdf", uploadUrl: "https://s3/signed" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/doc.pdf");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "doc.pdf" }));
+    expect(getSourceUrlMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("success response includes uploadUrl from createUploadUrl", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/data.json", uploadUrl: "https://s3/signed-url-abc" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/data.json");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "data.json" }));
+    const body = await res.json();
+    expect(body.uploadUrl).toBe("https://s3/signed-url-abc");
+  });
+});

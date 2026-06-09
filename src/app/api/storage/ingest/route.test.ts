@@ -183,3 +183,44 @@ describe("POST /api/storage/ingest — additional", () => {
     expect(downloadMock).toHaveBeenCalledWith("uploads/via-url.csv");
   });
 });
+
+describe("POST /api/storage/ingest — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("200 response body has ok:true", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("a,b\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["a", "b"], rows: [] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("csv");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/file.csv" }));
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it("200 response body has type:csv for csv files", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("h\nv"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["h"], rows: [["v"]] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("csv");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/data.csv" }));
+    const body = await res.json();
+    expect(body.type).toBe("csv");
+  });
+
+  it("response is always a Response instance", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ type: "csv" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 response text field matches formatCsvPreviewText output", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("x,y\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["x", "y"], rows: [] });
+    const EXPECTED_TEXT = "formatted output string";
+    formatCsvPreviewTextMock.mockReturnValueOnce(EXPECTED_TEXT);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/export.csv" }));
+    const body = await res.json();
+    expect(body.text).toBe(EXPECTED_TEXT);
+  });
+});

@@ -176,3 +176,67 @@ describe("DELETE /api/admin/mcp/servers/[id]", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("PATCH /api/admin/mcp/servers/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per PATCH", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({}), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbUpdate called exactly once on admin success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbUpdateReturningMock.mockResolvedValueOnce([{ id: "srv-1", name: "Test", enabled: true }]);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ enabled: true }), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(dbUpdateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has server.id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbUpdateReturningMock.mockResolvedValueOnce([{ id: "srv-42", name: "Srv", enabled: false }]);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ enabled: false }), { params: Promise.resolve({ id: "srv-42" }) });
+    const body = await res.json();
+    expect(body.server.id).toBe("srv-42");
+  });
+
+  it("never calls dbUpdate for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ enabled: true }), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/admin/mcp/servers/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbDelete called exactly once on admin success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbDeleteReturningMock.mockResolvedValueOnce([{ id: "srv-del" }]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-del" }) });
+    expect(dbDeleteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has ok:true and id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbDeleteReturningMock.mockResolvedValueOnce([{ id: "srv-check" }]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "srv-check" }) });
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.id).toBe("srv-check");
+  });
+});

@@ -192,3 +192,37 @@ describe("GET /api/compliance/aup — additional", () => {
     expect(body).toHaveProperty("acceptedAt");
   });
 });
+
+describe("POST /api/compliance/aup — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body ok field is strictly boolean true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST();
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it("writeAuditLog called once per successful POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    writeAuditLogMock.mockResolvedValue(undefined);
+    const { POST } = await import("./route");
+    await POST();
+    expect(writeAuditLogMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls writeAuditLog when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST();
+    expect(writeAuditLogMock).not.toHaveBeenCalled();
+  });
+});

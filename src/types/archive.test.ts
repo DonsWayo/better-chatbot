@@ -126,3 +126,38 @@ describe("ArchiveCreateSchema — additional boundaries", () => {
     expect(r.success).toBe(false);
   });
 });
+
+describe("ArchiveUpdateSchema — additional boundaries", () => {
+  it("rejects number as name", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: 99 });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts description at exactly 1 character", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Valid", description: "x" });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts undefined description (optional)", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Name" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("ArchiveCreateSchema and ArchiveUpdateSchema — type checks", () => {
+  it("name in ArchiveCreateSchema must be a string", () => {
+    expect(ArchiveCreateSchema.safeParse({ name: true }).success).toBe(false);
+    expect(ArchiveCreateSchema.safeParse({ name: null }).success).toBe(false);
+  });
+
+  it("name in ArchiveUpdateSchema must be a string when provided", () => {
+    expect(ArchiveUpdateSchema.safeParse({ name: false }).success).toBe(false);
+    expect(ArchiveUpdateSchema.safeParse({ name: [] }).success).toBe(false);
+  });
+
+  it("ArchiveCreateSchema returns name in data on success", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "Test" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Test");
+  });
+});

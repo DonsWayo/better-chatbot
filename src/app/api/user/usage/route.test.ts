@@ -188,3 +188,46 @@ describe("GET /api/user/usage", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("GET /api/user/usage — additional", () => {
+  it("response is always a Response instance", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("401 body has error field", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 body has summary field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockSelect
+      .mockReturnValueOnce(makeMockChain([{ totalCostUsd: "0", promptTokens: 0, completionTokens: 0, requestCount: 0 }]))
+      .mockReturnValueOnce(makeMockChain([]))
+      .mockReturnValueOnce(makeMockChain([]));
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("summary");
+  });
+
+  it("200 body has byModel array", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockSelect
+      .mockReturnValueOnce(makeMockChain([{ totalCostUsd: "0", promptTokens: 0, completionTokens: 0, requestCount: 0 }]))
+      .mockReturnValueOnce(makeMockChain([]))
+      .mockReturnValueOnce(makeMockChain([]));
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body.byModel)).toBe(true);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    mockGetSession.mockResolvedValue(null);
+    await GET();
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+});

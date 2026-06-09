@@ -191,3 +191,60 @@ describe("GET /api/admin/teams/[id]/usage", () => {
     expect(mockGetSession).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/admin/teams/[id]/usage — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    limitMock.mockResolvedValue([]);
+    orderByMock.mockReturnValue({ limit: limitMock });
+    groupByMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+    whereMock.mockReturnValue({ groupBy: groupByMock, orderBy: orderByMock });
+    fromMock.mockReturnValue({ where: whereMock });
+
+    let call = 0;
+    mockSelect.mockImplementation(() => {
+      call++;
+      if (call % 2 === 0) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{ totalRequests: 0, totalCostUsd: null, totalPromptTokens: 0, totalCompletionTokens: 0 }]),
+          }),
+        };
+      }
+      return { from: fromMock };
+    });
+  });
+
+  it("response is always a Response instance", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 days field is a number", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(typeof body.days).toBe("number");
+  });
+
+  it("negative days clamped to minimum 1", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ days: "-5" }), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body.days).toBeGreaterThanOrEqual(1);
+  });
+
+  it("200 totals object has totalRequests field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body.totals).toHaveProperty("totalRequests");
+  });
+});

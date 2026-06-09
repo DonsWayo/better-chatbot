@@ -148,3 +148,68 @@ describe("signUpAction — call args", () => {
     expect(result.user?.email).toBe("match@example.com");
   });
 });
+
+describe("signUpAction — additional edge cases", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("success result user has id field", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "new-id-abc", email: "a@b.com", name: "Alice" } });
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "a@b.com", name: "Alice", password: "Pass123!" });
+    expect(result.success).toBe(true);
+    expect(result.user?.id).toBe("new-id-abc");
+  });
+
+  it("failure result has success:false always", async () => {
+    signUpEmailMock.mockRejectedValueOnce(new Error("conflict"));
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "dup@b.com", name: "X", password: "Pass123!" });
+    expect(result.success).toBe(false);
+  });
+
+  it("signUpEmail not called when password is empty", async () => {
+    const { signUpAction } = await import("./actions");
+    await signUpAction({ email: "a@b.com", name: "Alice", password: "" });
+    expect(signUpEmailMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("existsByEmailAction — return value shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns false (not null/undefined) for missing email", async () => {
+    existsByEmailMock.mockResolvedValueOnce(false);
+    const { existsByEmailAction } = await import("./actions");
+    const result = await existsByEmailAction("nobody@example.com");
+    expect(result).toBe(false);
+    expect(result).not.toBeNull();
+    expect(result).not.toBeUndefined();
+  });
+
+  it("returns true (not truthy object) when email found", async () => {
+    existsByEmailMock.mockResolvedValueOnce(true);
+    const { existsByEmailAction } = await import("./actions");
+    const result = await existsByEmailAction("a@b.com");
+    expect(result).toBe(true);
+  });
+});
+
+describe("signUpAction — name field handling", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("signUpEmail called with correct name", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "u1", email: "a@b.com", name: "Bob Smith" } });
+    const { signUpAction } = await import("./actions");
+    await signUpAction({ email: "a@b.com", name: "Bob Smith", password: "Pass123!" });
+    expect(signUpEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ name: "Bob Smith" }) }),
+    );
+  });
+
+  it("failure when name is missing (validation fails)", async () => {
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "a@b.com", name: "", password: "Pass123!" });
+    expect(result.success).toBe(false);
+    expect(signUpEmailMock).not.toHaveBeenCalled();
+  });
+});

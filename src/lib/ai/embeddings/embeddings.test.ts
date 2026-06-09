@@ -127,3 +127,56 @@ describe("embedBatch", () => {
     expect(result[1][0]).toBe(2.0);
   });
 });
+
+describe("embedding constants — format", () => {
+  it("EMBEDDING_MODEL contains a slash (provider/model format)", () => {
+    expect(EMBEDDING_MODEL).toContain("/");
+  });
+
+  it("EMBEDDING_MODEL starts with 'openai/'", () => {
+    expect(EMBEDDING_MODEL.startsWith("openai/")).toBe(true);
+  });
+
+  it("EMBEDDING_DIMENSION is exactly 1536", () => {
+    expect(EMBEDDING_DIMENSION).toBe(1536);
+  });
+
+  it("EMBEDDING_DIMENSION is a safe integer", () => {
+    expect(Number.isSafeInteger(EMBEDDING_DIMENSION)).toBe(true);
+  });
+});
+
+describe("embedText — success cases", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("OPENROUTER_API_KEY", "sk-or-test-key");
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it("returns array of numbers on success", async () => {
+    const fakeEmbedding = Array.from({ length: EMBEDDING_DIMENSION }, (_, i) => i * 0.001);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ embedding: fakeEmbedding }] }),
+    }) as any;
+    const { embedText } = await import("./index");
+    const result = await embedText("test");
+    expect(result.every((v) => typeof v === "number")).toBe(true);
+  });
+
+  it("returned array has EMBEDDING_DIMENSION elements", async () => {
+    const fakeEmbedding = Array.from({ length: EMBEDDING_DIMENSION }, () => 0.5);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ embedding: fakeEmbedding }] }),
+    }) as any;
+    const { embedText } = await import("./index");
+    const result = await embedText("test");
+    expect(result).toHaveLength(EMBEDDING_DIMENSION);
+  });
+});

@@ -186,3 +186,55 @@ describe("POST /api/cron/budget-reset", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("POST /api/cron/budget-reset — additional", () => {
+  const OLD_ENV = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env = { ...OLD_ENV, CRON_SECRET: "test-secret" };
+
+    const updateWhereMock = vi.fn().mockResolvedValue([]);
+    const updateSetMock = vi.fn().mockReturnValue({ where: updateWhereMock });
+    mockUpdate.mockReturnValue({ set: updateSetMock });
+
+    const selectWhereMock = vi.fn().mockResolvedValue([]);
+    const selectFromMock = vi.fn().mockReturnValue({ where: selectWhereMock });
+    mockSelect.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("response is always a Response instance", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 reset property is non-negative", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(body.reset).toBeGreaterThanOrEqual(0);
+  });
+
+  it("secret is case-sensitive", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("TEST-SECRET"));
+    expect(res.status).toBe(401);
+  });
+
+  it("usedUsd is reset to '0' string not number", async () => {
+    const budget = { id: "b1", teamId: "t1", periodStart: new Date("2026-05-01"), periodEnd: new Date("2026-06-01"), budgetUsd: "100.00", usedUsd: "99.00" };
+    const capturedSet: any[] = [];
+    const updateWhereMock = vi.fn().mockResolvedValue([]);
+    const updateSetMock = vi.fn((v) => { capturedSet.push(v); return { where: updateWhereMock }; });
+    mockUpdate.mockReturnValue({ set: updateSetMock });
+    const selectWhereMock = vi.fn().mockResolvedValue([budget]);
+    const selectFromMock = vi.fn().mockReturnValue({ where: selectWhereMock });
+    mockSelect.mockReturnValue({ from: selectFromMock });
+
+    const { POST } = await import("./route");
+    await POST(makeRequest("test-secret"));
+    expect(capturedSet[0].usedUsd).toBe("0");
+  });
+});

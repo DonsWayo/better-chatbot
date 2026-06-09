@@ -202,3 +202,34 @@ describe("GET /api/health — readiness additional", () => {
     expect(body).toHaveProperty("checks");
   });
 });
+
+describe("GET /api/health — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("liveness is always a Response instance", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("readiness is a Response instance on DB success", async () => {
+    pgDbExecuteMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("readiness is a Response instance on DB failure", async () => {
+    pgDbExecuteMock.mockRejectedValueOnce(new Error("DB down"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("status field is always a string", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    const body = await res.json();
+    expect(typeof body.status).toBe("string");
+  });
+});

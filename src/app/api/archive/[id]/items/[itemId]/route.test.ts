@@ -171,3 +171,40 @@ describe("DELETE /api/archive/[id]/items/[itemId] — additional", () => {
     expect(removeItemFromArchiveMock).toHaveBeenCalledWith("a-1", "item-del");
   });
 });
+
+describe("DELETE /api/archive/[id]/items/[itemId] — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getArchiveItems when archive not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveItemsMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls getArchiveItems when user is unauthorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "other" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveItemsMock).not.toHaveBeenCalled();
+  });
+
+  it("getArchiveById called with archive id from params", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "archive-xyz", itemId: "i1" }) });
+    expect(getArchiveByIdMock).toHaveBeenCalledWith("archive-xyz");
+  });
+
+  it("getArchiveItems called with archive id on ownership pass", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveItemsMock).toHaveBeenCalledWith("a-1");
+  });
+});

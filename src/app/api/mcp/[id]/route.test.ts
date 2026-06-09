@@ -189,3 +189,38 @@ describe("DELETE /api/mcp/[id]", () => {
     expect(removeMcpClientActionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/mcp/[id] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has id field matching the MCP server", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    selectByIdMock.mockResolvedValueOnce(MCP_SERVER);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    const body = await res.json();
+    expect(body.id).toBe("mcp-1");
+  });
+
+  it("selectById called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    selectByIdMock.mockResolvedValueOnce(MCP_SERVER);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(selectByIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("DELETE response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "mcp-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

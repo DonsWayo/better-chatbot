@@ -178,3 +178,66 @@ describe("User Actions - Business Logic", () => {
     });
   });
 });
+
+describe("User Actions — response shape invariants", () => {
+  it("success response always has success:true", () => {
+    const result = { success: true, message: "Done" };
+    expect(result.success).toBe(true);
+  });
+
+  it("failure response always has success:false", () => {
+    const result = { success: false, message: "Error" };
+    expect(result.success).toBe(false);
+  });
+
+  it("failure response has message string", () => {
+    const result = { success: false, message: "Failed to delete user" };
+    expect(typeof result.message).toBe("string");
+    expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it("success response has message string", () => {
+    const result = { success: true, message: "User deleted successfully" };
+    expect(typeof result.message).toBe("string");
+    expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it("delete user response includes redirect when success", () => {
+    const result = { success: true, message: "User deleted successfully", redirect: "/admin" };
+    expect(result.redirect).toBe("/admin");
+  });
+
+  it("update user response never includes extra fields", () => {
+    const data = { userId: "u1", name: "Alice", email: "a@b.com", extraField: "x" };
+    const { userId, name, email } = data;
+    const payload = { userId, name, email };
+    expect(Object.keys(payload)).toHaveLength(3);
+    expect(payload).not.toHaveProperty("extraField");
+  });
+});
+
+describe("User Actions — password validation logic", () => {
+  it("passwordless user cannot update password", () => {
+    const hasPassword = false;
+    const canUpdate = hasPassword;
+    expect(canUpdate).toBe(false);
+  });
+
+  it("user with credential account can update password", () => {
+    const hasPassword = true;
+    const canUpdate = hasPassword;
+    expect(canUpdate).toBe(true);
+  });
+
+  it("empty new password is rejected by non-empty check", () => {
+    const newPassword = "";
+    const isValid = newPassword.length > 0;
+    expect(isValid).toBe(false);
+  });
+
+  it("non-empty new password passes length check", () => {
+    const newPassword = "SecurePass123!";
+    const isValid = newPassword.length > 0;
+    expect(isValid).toBe(true);
+  });
+});

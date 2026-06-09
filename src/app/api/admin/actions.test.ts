@@ -124,3 +124,40 @@ describe("UpdateUserBanStatusSchema", () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe("UpdateUserBanStatusSchema — additional", () => {
+  const VALID_UUID = "123e4567-e89b-12d3-a456-426614174000";
+
+  it("accepts boolean true for banned (not just string)", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: true });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banned).toBe(true);
+  });
+
+  it("accepts boolean false for banned (not just string)", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: false });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banned).toBe(false);
+  });
+
+  it("rejects empty string userId", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: "", banned: "true" });
+    expect(result.success).toBe(false);
+  });
+
+  it("result.data.userId matches input UUID exactly", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "false" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.userId).toBe(VALID_UUID);
+  });
+
+  it("accepts banReason as empty string", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "true", banReason: "" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects when banned field is missing entirely", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID });
+    expect(result.success).toBe(false);
+  });
+});

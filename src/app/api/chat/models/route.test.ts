@@ -183,3 +183,48 @@ describe("GET /api/chat/models — additional", () => {
     expect(body).toHaveLength(5);
   });
 });
+
+describe("GET /api/chat/models — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("GET always returns 200 (unauthenticated endpoint)", async () => {
+    modelsInfoMock.mockReturnValue([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+  });
+
+  it("response is a Response instance", async () => {
+    modelsInfoMock.mockReturnValue([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("id field is a string in each model", async () => {
+    modelsInfoMock.mockReturnValue([{ id: "openai/gpt-4o", name: "GPT-4o", hasAPIKey: true }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(typeof body[0].id).toBe("string");
+  });
+
+  it("hasAPIKey field is a boolean in each model", async () => {
+    modelsInfoMock.mockReturnValue([{ id: "m1", name: "M1", hasAPIKey: false }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(typeof body[0].hasAPIKey).toBe("boolean");
+  });
+
+  it("name field is a string in each model", async () => {
+    modelsInfoMock.mockReturnValue([{ id: "m1", name: "Model One", hasAPIKey: true }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(typeof body[0].name).toBe("string");
+  });
+});

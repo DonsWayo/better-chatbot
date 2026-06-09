@@ -101,4 +101,20 @@ describe("estimateCostUsd", () => {
     const combined = estimateCostUsd("gpt-5.1", 100_000, 100_000);
     expect(a + b).toBeCloseTo(combined, 10);
   });
+
+  it("returns exactly 0 when both token counts are 0", () => {
+    expect(estimateCostUsd("claude-opus-4.8", 0, 0)).toBe(0);
+    expect(estimateCostUsd("unknown-model", 0, 0)).toBe(0);
+  });
+
+  it("result is always a finite number (not NaN or Infinity)", () => {
+    const result = estimateCostUsd("gpt-5.1", 1_000_000, 1_000_000);
+    expect(Number.isFinite(result)).toBe(true);
+  });
+
+  it("very large token counts produce a finite result", () => {
+    const result = estimateCostUsd("gemini-2.5-flash-lite", 1_000_000_000, 1_000_000_000);
+    expect(Number.isFinite(result)).toBe(true);
+    expect(result).toBeGreaterThan(0);
+  });
 });

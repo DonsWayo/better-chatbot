@@ -166,3 +166,48 @@ describe("Admin Validations", () => {
     });
   });
 });
+
+describe("UpdateUserRoleSchema — additional boundaries", () => {
+  it("accepts null role (treated as absent)", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: null,
+    });
+    // null is not a valid enum value — should fail
+    expect(result.success).toBe(false);
+  });
+
+  it("parsed data.role is the exact string provided", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: "editor",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.role).toBe("editor");
+  });
+
+  it("rejects numeric userId", () => {
+    const result = UpdateUserRoleSchema.safeParse({ userId: 12345, role: "user" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects boolean userId", () => {
+    const result = UpdateUserRoleSchema.safeParse({ userId: true, role: "admin" });
+    expect(result.success).toBe(false);
+  });
+
+  it("parsed data.userId matches input UUID exactly", () => {
+    const uuid = "550e8400-e29b-41d4-a716-446655440000";
+    const result = UpdateUserRoleSchema.safeParse({ userId: uuid, role: "admin" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.userId).toBe(uuid);
+  });
+
+  it("rejects role as number", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: 1,
+    });
+    expect(result.success).toBe(false);
+  });
+});

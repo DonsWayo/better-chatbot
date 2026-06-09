@@ -174,3 +174,37 @@ describe("DELETE /api/export/[id] — additional", () => {
     expect(body.success).toBe(true);
   });
 });
+
+describe("DELETE /api/export/[id] — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("checkAccess called with export id and user id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-check" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteByIdMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "export-check" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith("export-check", "u-check");
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when session user is null", async () => {
+    getSessionMock.mockResolvedValue({ user: null });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res.status).toBe(401);
+  });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

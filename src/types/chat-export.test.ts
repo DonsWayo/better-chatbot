@@ -166,3 +166,81 @@ describe("ChatExportCommentUpdateSchema", () => {
     expect(r.success).toBe(true);
   });
 });
+
+describe("ChatExportByThreadIdSchema — additional boundaries", () => {
+  it("rejects empty threadId", () => {
+    const r = ChatExportByThreadIdSchema.safeParse({ threadId: "" });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts UUID-style threadId", () => {
+    const r = ChatExportByThreadIdSchema.safeParse({
+      threadId: "123e4567-e89b-12d3-a456-426614174000",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.threadId).toBe("123e4567-e89b-12d3-a456-426614174000");
+  });
+
+  it("parsed expiresAt is null when null provided", () => {
+    const r = ChatExportByThreadIdSchema.safeParse({ threadId: "t1", expiresAt: null });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.expiresAt).toBeNull();
+  });
+});
+
+describe("ChatExportCreateSchema — additional boundaries", () => {
+  const msgs = [{ id: "m1", role: "user", parts: [{ type: "text", text: "hi" }] }];
+
+  it("accepts title at exactly 200 characters", () => {
+    const r = ChatExportCreateSchema.safeParse({
+      title: "a".repeat(200),
+      exporterId: "u1",
+      messages: msgs,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects missing messages field", () => {
+    const r = ChatExportCreateSchema.safeParse({ title: "Export", exporterId: "u1" });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts expiresAt as null", () => {
+    const r = ChatExportCreateSchema.safeParse({
+      title: "Export",
+      exporterId: "u1",
+      messages: msgs,
+      expiresAt: null,
+    });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("ChatExportCommentCreateSchema — additional boundaries", () => {
+  const content = { type: "doc", content: [] };
+
+  it("accepts null parentId (top-level comment)", () => {
+    const r = ChatExportCommentCreateSchema.safeParse({
+      exportId: "e1",
+      authorId: "a1",
+      parentId: null,
+      content,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.parentId).toBeNull();
+  });
+
+  it("rejects missing content", () => {
+    const r = ChatExportCommentCreateSchema.safeParse({ exportId: "e1", authorId: "a1" });
+    expect(r.success).toBe(false);
+  });
+
+  it("parsed data includes exportId and authorId", () => {
+    const r = ChatExportCommentCreateSchema.safeParse({ exportId: "e1", authorId: "a1", content });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.exportId).toBe("e1");
+      expect(r.data.authorId).toBe("a1");
+    }
+  });
+});

@@ -152,3 +152,83 @@ describe("PATCH /api/admin/teams/[id]", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("PATCH /api/admin/teams/[id] — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateTeamPolicy.mockResolvedValue(undefined);
+  });
+
+  it("accepts allowImageGen=true patch", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ allowImageGen: true }), makeParams("team-img") as any);
+    expect(res.status).toBe(200);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-img", { allowImageGen: true });
+  });
+
+  it("accepts allowVision=false patch", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ allowVision: false }), makeParams("team-v") as any);
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts empty allowedEmailDomains array", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ allowedEmailDomains: [] }), makeParams("team-d") as any);
+    expect(res.status).toBe(200);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-d", { allowedEmailDomains: [] });
+  });
+
+  it("rejects invalid domain in allowedEmailDomains", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ allowedEmailDomains: ["not valid domain!"] }), makeParams("team-1") as any);
+    expect(res.status).toBe(400);
+  });
+
+  it("getSession called exactly once per PATCH", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PATCH /api/admin/teams/[id] — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateTeamPolicy.mockResolvedValue(undefined);
+  });
+
+  it("response is always a Response instance", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({}), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 ok field is strictly boolean true", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it("updateTeamPolicy receives the correct teamId", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-99") as any);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-99", expect.anything());
+  });
+
+  it("never calls updateTeamPolicy when validation fails", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "invalid-value" }), makeParams("team-1") as any);
+    expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
+  });
+});

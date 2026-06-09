@@ -146,4 +146,95 @@ describe("getDashboardStats", () => {
 
     expect(stats.guardrailFiringsLast24h).toBe(12);
   });
+
+  it("costLast7dUsd defaults to 0 when DB returns null cost", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.costLast7dUsd).toBe(0);
+  });
+
+  it("budgetsNearLimit is 0 when no budgets exist", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.budgetsNearLimit).toBe(0);
+  });
+
+  it("all numeric fields are finite numbers", async () => {
+    setupMocks([
+      [{ total: 5 }], [{ total: 3 }],
+      [{ requests: 10, costUsd: "0.50" }],
+      [{ requests: 100, costUsd: "5.00" }],
+      [{ total: 2 }],
+      [{ budgetUsd: "100.00", usedUsd: "90.00" }],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    for (const [key, value] of Object.entries(stats)) {
+      expect(isFinite(value as number), `${key} should be finite`).toBe(true);
+    }
+  });
+});
+
+describe("getDashboardStats — additional stats shapes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("totalUsers is an integer (not a float)", async () => {
+    setupMocks([
+      [{ total: 10 }], [{ total: 3 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(Number.isInteger(stats.totalUsers)).toBe(true);
+  });
+
+  it("totalTeams is an integer", async () => {
+    setupMocks([
+      [{ total: 5 }], [{ total: 2 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(Number.isInteger(stats.totalTeams)).toBe(true);
+  });
+
+  it("costLast24hUsd is non-negative", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 10, costUsd: "2.50" }],
+      [{ requests: 100, costUsd: "15.00" }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.costLast24hUsd).toBeGreaterThanOrEqual(0);
+  });
+
+  it("requestsLast24h and requestsLast7d are non-negative integers", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 5, costUsd: null }],
+      [{ requests: 50, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.requestsLast24h).toBeGreaterThanOrEqual(0);
+    expect(stats.requestsLast7d).toBeGreaterThanOrEqual(0);
+  });
 });

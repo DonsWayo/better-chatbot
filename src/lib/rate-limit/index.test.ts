@@ -178,3 +178,49 @@ describe("checkRateLimit (Postgres-backed)", () => {
     expect(result.remaining).toBe(98);
   });
 });
+
+describe("checkRateLimit — additional edge cases", () => {
+  it("allowed is false when count is exactly limit+1", async () => {
+    const limit = 10;
+    const { valuesFn } = makeInsertChain(limit + 1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("user-edge", limit, 60_000);
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+  });
+
+  it("remaining is 0 when count exactly equals limit+1", async () => {
+    const { valuesFn } = makeInsertChain(6);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("user-limit5", 5, 60_000);
+    expect(result.remaining).toBe(0);
+  });
+
+  it("remaining is limit-1 when count is 1", async () => {
+    const limit = 20;
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("user-first", limit, 60_000);
+    expect(result.remaining).toBe(limit - 1);
+  });
+
+  it("resetAt is always a positive number", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("user-rst", 10, 30_000);
+    expect(result.resetAt).toBeGreaterThan(0);
+  });
+
+  it("different windowMs values produce different resetAt ranges", async () => {
+    const windowMs1 = 10_000;
+    const windowMs2 = 60_000;
+    const { valuesFn: vf1 } = makeInsertChain(1);
+    const { valuesFn: vf2 } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce({ values: vf1 })
+      .mockReturnValueOnce({ values: vf2 });
+    const r1 = await checkRateLimit("u-w1", 10, windowMs1);
+    const r2 = await checkRateLimit("u-w2", 10, windowMs2);
+    expect(r1.resetAt).not.toBe(r2.resetAt);
+  });
+});

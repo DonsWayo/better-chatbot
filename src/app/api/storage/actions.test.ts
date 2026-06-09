@@ -173,3 +173,58 @@ describe("getStorageInfoAction", () => {
     expect(res.supportsDirectUpload).toBe(true);
   });
 });
+
+describe("checkStorageAction — unknown/default driver", () => {
+  beforeEach(() => {
+    delete process.env.FILE_STORAGE_TYPE;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.FILE_STORAGE_S3_BUCKET;
+    delete process.env.FILE_STORAGE_S3_REGION;
+    delete process.env.AWS_REGION;
+  });
+
+  it("defaults to local driver when FILE_STORAGE_TYPE is unset", async () => {
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.isValid).toBe(true);
+  });
+
+  it("result always has isValid boolean", async () => {
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(typeof res.isValid).toBe("boolean");
+  });
+
+  it("local driver result has no error message", async () => {
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.error).toBeUndefined();
+  });
+});
+
+describe("getStorageInfoAction — type field values", () => {
+  beforeEach(() => {
+    delete process.env.FILE_STORAGE_TYPE;
+  });
+
+  it("type field is vercel-blob for vercel-blob driver", async () => {
+    process.env.FILE_STORAGE_TYPE = "vercel-blob";
+    const { getStorageInfoAction } = await importActions();
+    const res = await getStorageInfoAction();
+    expect(res.type).toBe("vercel-blob");
+  });
+
+  it("type field is s3 for s3 driver", async () => {
+    process.env.FILE_STORAGE_TYPE = "s3";
+    const { getStorageInfoAction } = await importActions();
+    const res = await getStorageInfoAction();
+    expect(res.type).toBe("s3");
+  });
+
+  it("type field is local for local driver", async () => {
+    process.env.FILE_STORAGE_TYPE = "local";
+    const { getStorageInfoAction } = await importActions();
+    const res = await getStorageInfoAction();
+    expect(res.type).toBe("local");
+  });
+});

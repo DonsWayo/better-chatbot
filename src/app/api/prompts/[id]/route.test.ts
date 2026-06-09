@@ -145,3 +145,85 @@ describe("DELETE /api/prompts/[id]", () => {
     expect(body.ok).toBe(true);
   });
 });
+
+describe("GET /api/prompts/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body contains prompt id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([PROMPT]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    const body = await res.json();
+    expect(body.id).toBe("p-1");
+  });
+});
+
+describe("PATCH /api/prompts/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per PATCH", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ title: "X" }), { params: Promise.resolve({ id: "p-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbUpdate never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ title: "X" }), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("admin can update and 200 body has updated title", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin-2", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([PROMPT]);
+    dbUpdateReturningMock.mockResolvedValueOnce([{ ...PROMPT, title: "Admin Title" }]);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ title: "Admin Title" }), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.title).toBe("Admin Title");
+  });
+});
+
+describe("DELETE /api/prompts/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("admin can delete any prompt", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin-x", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([PROMPT]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(200);
+  });
+
+  it("dbDelete never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});

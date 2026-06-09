@@ -103,3 +103,45 @@ describe("acceptAupAction", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("acceptAupAction — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redirectMock.mockImplementation((url: string) => {
+      throw Object.assign(new Error(`NEXT_REDIRECT: ${url}`), { digest: `NEXT_REDIRECT;${url}` });
+    });
+  });
+
+  it("redirect to '/' called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    recordAupAcceptanceMock.mockResolvedValue(undefined);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(redirectMock).toHaveBeenCalledTimes(1);
+    expect(redirectMock).toHaveBeenCalledWith("/");
+  });
+
+  it("redirect to '/' not called when recordAupAcceptance throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    recordAupAcceptanceMock.mockRejectedValue(new Error("DB error"));
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow("DB error");
+    expect(redirectMock).not.toHaveBeenCalledWith("/");
+  });
+
+  it("recordAupAcceptance not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT.*signin/);
+    expect(recordAupAcceptanceMock).not.toHaveBeenCalled();
+  });
+
+  it("redirect is NEXT_REDIRECT type error on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    recordAupAcceptanceMock.mockResolvedValue(undefined);
+    const { acceptAupAction } = await import("./actions");
+    const err: any = await acceptAupAction().catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.digest).toMatch(/NEXT_REDIRECT/);
+  });
+});

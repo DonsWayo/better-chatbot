@@ -204,3 +204,38 @@ describe("DELETE /api/knowledge/collections/[id] — additional", () => {
     expect(body).toHaveProperty("ok");
   });
 });
+
+describe("GET /api/knowledge/collections/[id] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body collection has id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-42", name: "Test" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-42" }) });
+    const body = await res.json();
+    expect(body.collection).toHaveProperty("id");
+  });
+
+  it("dbSelectMock called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1", name: "Test" }]);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("DELETE response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

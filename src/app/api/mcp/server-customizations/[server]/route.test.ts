@@ -195,3 +195,38 @@ describe("DELETE /api/mcp/server-customizations/[server]", () => {
     expect(await res.text()).toBe("Unauthorized");
   });
 });
+
+describe("POST /api/mcp/server-customizations/[server] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ prompt: "test" }), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has prompt matching upsert result", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    upsertMock.mockResolvedValueOnce({ mcpServerId: "srv-1", prompt: "custom prompt" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ prompt: "custom prompt" }), { params: Promise.resolve({ server: "srv-1" }) });
+    const body = await res.json();
+    expect(body.prompt).toBe("custom prompt");
+  });
+
+  it("upsert called exactly once per authenticated POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    upsertMock.mockResolvedValueOnce({ mcpServerId: "srv-1", prompt: "x" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "x" }), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(upsertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "test" }), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});

@@ -194,3 +194,38 @@ describe("POST /api/prompts — guard chains", () => {
     expect(dbInsertMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/prompts — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ title: "T", content: "C" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("201 body has title field matching input", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-1", title: "My Prompt", content: "C" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ title: "My Prompt", content: "C" }));
+    const body = await res.json();
+    expect(body.title).toBe("My Prompt");
+  });
+
+  it("400 error message mentions the missing content field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ title: "T" }));
+    const body = await res.json();
+    expect(body.error).toMatch(/content/);
+  });
+
+  it("GET response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+});

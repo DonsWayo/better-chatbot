@@ -184,3 +184,50 @@ describe("saveMcpClientAction — guard chains", () => {
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 });
+
+describe("selectMcpClientsAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns array with matching client for each user server", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([
+      { id: "s1", userId: "u1", visibility: "private" },
+      { id: "s2", userId: "u1", visibility: "private" },
+    ]);
+    getClientsMock.mockResolvedValueOnce([
+      { id: "s1", client: { getInfo: () => ({ tools: [] }) } },
+      { id: "s2", client: { getInfo: () => ({ tools: [] }) } },
+    ]);
+    const { selectMcpClientsAction } = await import("./actions");
+    const result = await selectMcpClientsAction();
+    expect(result).toHaveLength(2);
+  });
+
+  it("never calls getClients when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { selectMcpClientsAction } = await import("./actions");
+    await selectMcpClientsAction();
+    expect(getClientsMock).not.toHaveBeenCalled();
+  });
+
+  it("result items have id field", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([{ id: "srv-check", userId: "u1", visibility: "private" }]);
+    getClientsMock.mockResolvedValueOnce([
+      { id: "srv-check", client: { getInfo: () => ({ tools: [] }) } },
+    ]);
+    const { selectMcpClientsAction } = await import("./actions");
+    const result = await selectMcpClientsAction();
+    expect(result[0]).toHaveProperty("id", "srv-check");
+  });
+
+  it("returns empty array not null when no servers found", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { selectMcpClientsAction } = await import("./actions");
+    const result = await selectMcpClientsAction();
+    expect(result).not.toBeNull();
+    expect(result).toEqual([]);
+  });
+});

@@ -178,3 +178,60 @@ describe("SafeRedisCache", () => {
     expect(status.retries).toBeLessThanOrEqual(2);
   });
 });
+
+describe("SafeRedisCache — fallback behavior", () => {
+  let cache: SafeRedisCache;
+  let mockRedisCache: any;
+  let mockMemoryCache: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRedisCache = {
+      get: vi.fn(),
+      set: vi.fn(),
+      has: vi.fn(),
+      delete: vi.fn(),
+      clear: vi.fn(),
+      getAll: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    mockMemoryCache = new MemoryCache();
+  });
+
+  it("falls back to memory for has() when Redis fails", async () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    await mockMemoryCache.set("k", "v");
+    mockRedisCache.get.mockRejectedValue(new Error("Redis down"));
+    // trigger fallback
+    await cache.get("k");
+    const result = await cache.has("k");
+    expect(result).toBe(true);
+  });
+
+  it("isUsingRedis starts true", async () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    expect(cache.isUsingRedis()).toBe(true);
+  });
+
+  it("getCacheStatus retries starts at 0", async () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    const status = cache.getCacheStatus();
+    expect(status.retries).toBe(0);
+  });
+
+  it("delete falls back to memory on redis failure", async () => {
+    vi.mocked(RedisCache).mockImplementation(() => mockRedisCache);
+    cache = new SafeRedisCache({ serverCache: mockMemoryCache });
+    await mockMemoryCache.set("del-key", "del-val");
+    mockRedisCache.get.mockRejectedValue(new Error("Redis down"));
+    // trigger fallback mode
+    await cache.get("del-key");
+    mockRedisCache.delete.mockRejectedValue(new Error("still down"));
+    await cache.delete("del-key");
+    // memory should have removed it
+    expect(await mockMemoryCache.has("del-key")).toBe(false);
+  });
+});

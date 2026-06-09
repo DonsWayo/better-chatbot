@@ -151,3 +151,48 @@ describe("exportUserData", () => {
     expect(Array.isArray(result.modelGrants)).toBe(true);
   });
 });
+
+describe("eraseUserData — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+
+  it("result has userId field matching input", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("user-id-check");
+    expect(result).toHaveProperty("userId");
+    expect((result as any).userId).toBe("user-id-check");
+  });
+
+  it("result is an object (not null)", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u-obj");
+    expect(result).toBeTruthy();
+    expect(typeof result).toBe("object");
+  });
+
+  it("tablesCleared is a non-empty array", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u-tc");
+    expect(Array.isArray(result.tablesCleared)).toBe(true);
+    expect(result.tablesCleared.length).toBeGreaterThan(0);
+  });
+});
+
+describe("exportUserData — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("exportedAt is an ISO date string", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("u-date");
+    expect(typeof result.exportedAt).toBe("string");
+    expect(new Date(result.exportedAt).toISOString()).toBeTruthy();
+  });
+
+  it("userId in result matches input argument", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("exact-user-id");
+    expect(result.userId).toBe("exact-user-id");
+  });
+});

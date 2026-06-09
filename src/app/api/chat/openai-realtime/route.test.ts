@@ -129,3 +129,36 @@ describe("POST /api/chat/openai-realtime", () => {
     expect(text).toBe("Unauthorized");
   });
 });
+
+describe("POST /api/chat/openai-realtime — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.stubEnv("OPENAI_API_KEY", "sk-test-key"); });
+
+  it("result is a Response instance when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns 401 for null user in session object", async () => {
+    getSessionMock.mockResolvedValue({ user: null });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(401);
+  });
+
+  it("result is a Response instance when API key missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession not called when OPENAI_API_KEY is absent", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).not.toHaveBeenCalled();
+  });
+});

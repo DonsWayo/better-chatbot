@@ -188,3 +188,42 @@ describe("POST /api/agent — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/agent — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAgentsMock.mockResolvedValueOnce([{ id: "ag-1" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("POST 200 body has id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(true);
+    insertAgentMock.mockResolvedValueOnce({ id: "ag-2", name: "A" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "A" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("id");
+  });
+
+  it("canCreateAgent called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(true);
+    insertAgentMock.mockResolvedValueOnce({ id: "ag-3", name: "B" });
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "B" }));
+    expect(canCreateAgentMock).toHaveBeenCalledTimes(1);
+  });
+});

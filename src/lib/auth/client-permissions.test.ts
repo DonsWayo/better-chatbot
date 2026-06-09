@@ -166,3 +166,55 @@ describe("OAuth-prefixed role strings are parsed correctly", () => {
     expect(canCreateAgent("unknown:superuser")).toBe(false);
   });
 });
+
+describe("canChangeVisibilityMCP — additional", () => {
+  it("editor cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP("editor")).toBe(false);
+  });
+
+  it("user cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP("user")).toBe(false);
+  });
+
+  it("undefined role cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP(undefined)).toBe(false);
+  });
+
+  it("null role cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP(null)).toBe(false);
+  });
+});
+
+describe("canUseResource — additional", () => {
+  it("user cannot use mcp resource", () => {
+    expect(canUseResource("user", "mcp")).toBe(false);
+  });
+
+  it("editor can use agent resource", () => {
+    expect(canUseResource("editor", "agent")).toBe(true);
+  });
+
+  it("editor can use workflow resource", () => {
+    expect(canUseResource("editor", "workflow")).toBe(true);
+  });
+
+  it("undefined role cannot use mcp resource", () => {
+    expect(canUseResource(undefined, "mcp")).toBe(false);
+  });
+});
+
+describe("canViewResource — additional", () => {
+  it("editor can view all resource types", () => {
+    expect(canViewResource("editor", "agent")).toBe(true);
+    expect(canViewResource("editor", "workflow")).toBe(true);
+    expect(canViewResource("editor", "mcp")).toBe(true);
+  });
+
+  it("user can view workflow resource", () => {
+    expect(canViewResource("user", "workflow")).toBe(true);
+  });
+
+  it("undefined role returns false for mcp view", () => {
+    expect(canViewResource(undefined, "mcp")).toBe(false);
+  });
+});

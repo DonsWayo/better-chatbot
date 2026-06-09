@@ -186,3 +186,61 @@ describe("PgCache", () => {
     );
   });
 });
+
+describe("PgCache — additional operations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    limitMock.mockResolvedValue([]);
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    mockDbRef.select.mockReturnValue(selectChain);
+
+    valuesMock.mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateMock });
+    onConflictDoUpdateMock.mockResolvedValue(undefined);
+    mockDbRef.insert.mockReturnValue(insertChain);
+
+    deleteWhereMock.mockResolvedValue(undefined);
+    mockDbRef.delete.mockReturnValue(deleteChain);
+  });
+
+  it("set() calls insert exactly once", async () => {
+    const cache = new PgCache();
+    await cache.set("key1", "val1");
+    expect(mockDbRef.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() calls db.delete exactly once", async () => {
+    const cache = new PgCache();
+    await cache.delete("key-del");
+    expect(mockDbRef.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it("get() calls db.select exactly once", async () => {
+    const cache = new PgCache();
+    await cache.get("key-get");
+    expect(mockDbRef.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("has() calls db.select exactly once", async () => {
+    const cache = new PgCache();
+    await cache.has("key-has");
+    expect(mockDbRef.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("set() with zero ttlMs stores null expiresAt", async () => {
+    const cache = new PgCache();
+    await cache.set("k", "v", 0);
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ expiresAt: null }),
+    );
+  });
+
+  it("no-prefix cache stores key without prefix separator", async () => {
+    const cache = new PgCache();
+    await cache.set("plain-key", "v");
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "plain-key" }),
+    );
+  });
+});

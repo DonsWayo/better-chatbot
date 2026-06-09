@@ -188,3 +188,42 @@ describe("GET /api/admin/audit — additional", () => {
     expect(body).toHaveProperty("limit");
   });
 });
+
+describe("GET /api/admin/audit — query params handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAuditLog.mockResolvedValue({ rows: [], total: 0 });
+  });
+
+  it("response is always a Response instance", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("passes userId filter to getAuditLog when provided", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest({ userId: "u-filter" }));
+    expect(mockGetAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "u-filter" }),
+    );
+  });
+
+  it("200 total field is a number", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    mockGetAuditLog.mockResolvedValue({ rows: [], total: 42 });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(typeof body.total).toBe("number");
+  });
+
+  it("getAuditLog called exactly once for admin GET", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(mockGetAuditLog).toHaveBeenCalledTimes(1);
+  });
+});

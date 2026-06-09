@@ -183,3 +183,41 @@ describe("GET /api/mcp/list — additional", () => {
     expect(selectAllForUserMock).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/mcp/list — server response fields", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("server record includes name from DB", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: { getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo: [] }) },
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].name).toBe("My MCP");
+  });
+
+  it("server record includes id field", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0]).toHaveProperty("id", "mcp-1");
+  });
+
+  it("selectAllForUser called exactly once per authenticated request", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllForUserMock).toHaveBeenCalledTimes(1);
+  });
+});

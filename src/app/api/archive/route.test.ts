@@ -205,3 +205,40 @@ describe("POST /api/archive — guard chain", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/archive — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Test" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has id field on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    createArchiveMock.mockResolvedValueOnce({ id: "arch-200", name: "Test", userId: "u1" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Test" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("id");
+  });
+
+  it("createArchive receives the correct userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "session-user-101" } });
+    createArchiveMock.mockResolvedValueOnce({ id: "a-1", name: "Test", userId: "session-user-101" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Test" }));
+    expect(createArchiveMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "session-user-101" }),
+    );
+  });
+
+  it("GET response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+});
