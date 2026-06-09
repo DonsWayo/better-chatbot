@@ -157,3 +157,36 @@ describe("GET /api/admin/users/[id]/data-export — additional", () => {
     expect(exportUserDataMock).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/admin/users/[id]/data-export — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("exportUserData not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(exportUserDataMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("exportUserData not called for non-admin role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(exportUserDataMock).not.toHaveBeenCalled();
+  });
+});

@@ -151,3 +151,37 @@ describe("GET /api/mcp/tool-customizations/[server] — additional", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("GET /api/mcp/tool-customizations/[server] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectByUserIdAndMcpServerId not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});
