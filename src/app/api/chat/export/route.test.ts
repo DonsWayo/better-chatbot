@@ -92,4 +92,32 @@ describe("POST /api/chat/export", () => {
       expect.objectContaining({ threadId: "t-2", exporterId: "u2", expiresAt }),
     );
   });
+
+  it("calls checkAccess exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(checkAccessMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls exportChat exactly once per successful request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(exportChatMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 response body contains message string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    const body = await res.json();
+    expect(typeof body.message).toBe("string");
+  });
 });

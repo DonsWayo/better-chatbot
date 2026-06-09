@@ -86,4 +86,29 @@ describe("GET /api/thread", () => {
     const body = await res.json();
     expect(body).toHaveLength(10);
   });
+
+  it("200 response body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("calls selectThreadsByUserId exactly once", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectThreadsByUserIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 response body is text (not JSON)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
 });

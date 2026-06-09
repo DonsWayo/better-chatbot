@@ -91,4 +91,29 @@ describe("GET /api/user/details", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("calls getUser exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockResolvedValueOnce({ id: "u1" });
+    const { GET } = await import("./route");
+    await GET();
+    expect(getUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 response body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("500 error message includes the thrown error message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockRejectedValueOnce(new Error("specific db failure"));
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.error).toContain("specific db failure");
+  });
 });
