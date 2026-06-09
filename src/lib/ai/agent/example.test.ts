@@ -104,4 +104,26 @@ describe("example agents — shared invariants", () => {
     expect((RandomDataGeneratorExample.instructions?.mentions ?? []).length).toBeGreaterThan(0);
     expect((WeatherExample.instructions?.mentions ?? []).length).toBeGreaterThan(0);
   });
+
+  it("both examples have non-empty roles", () => {
+    expect((RandomDataGeneratorExample.instructions?.role ?? "").length).toBeGreaterThan(0);
+    expect((WeatherExample.instructions?.role ?? "").length).toBeGreaterThan(0);
+  });
+
+  it("all mentions have a type and name field", () => {
+    const allMentions = [
+      ...(RandomDataGeneratorExample.instructions?.mentions ?? []),
+      ...(WeatherExample.instructions?.mentions ?? []),
+    ];
+    for (const mention of allMentions) {
+      expect(typeof mention.type).toBe("string");
+      expect(typeof mention.name).toBe("string");
+    }
+  });
+
+  it("both examples have different system prompts", () => {
+    expect(RandomDataGeneratorExample.instructions?.systemPrompt).not.toBe(
+      WeatherExample.instructions?.systemPrompt,
+    );
+  });
 });

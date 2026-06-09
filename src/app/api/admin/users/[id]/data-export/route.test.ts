@@ -106,4 +106,19 @@ describe("GET /api/admin/users/[id]/data-export", () => {
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "target-user-x" }) });
     expect(res.headers.get("content-disposition")).toContain("target-user-x");
   });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls exportUserData for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    expect(exportUserDataMock).not.toHaveBeenCalled();
+  });
 });

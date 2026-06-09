@@ -101,4 +101,29 @@ describe("GET /api/workflow/tools", () => {
     expect(body[0].name).toBe("Data Processor");
     expect(body[0].description).toBe("Processes data");
   });
+
+  it("selectExecuteAbility called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectExecuteAbilityMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([{ id: "wf-x" }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("response body is an array even when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
 });

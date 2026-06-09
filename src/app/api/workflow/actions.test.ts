@@ -96,4 +96,18 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
     const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
     await expect(selectExecuteAbilityWorkflowsAction()).rejects.toThrow("db timeout");
   });
+
+  it("result is always an array (never null/undefined) when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    const result = await selectExecuteAbilityWorkflowsAction();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("getSession is called exactly once per invocation when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    await selectExecuteAbilityWorkflowsAction();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
