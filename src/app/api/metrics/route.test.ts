@@ -107,4 +107,25 @@ describe("GET /api/metrics — token authentication", () => {
     await GET(makeRequest("Bearer wrongtoken"));
     expect(ensureMetricsMock).not.toHaveBeenCalled();
   });
+
+  it("401 body is text 'Unauthorized' when token required but wrong", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("Bearer bad"));
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("ensureMetrics called exactly once when authenticated", async () => {
+    process.env.METRICS_AUTH_TOKEN = "tok";
+    const { GET } = await import("./route");
+    await GET(makeRequest("Bearer tok"));
+    expect(ensureMetricsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("metrics() called exactly once per authenticated request", async () => {
+    process.env.METRICS_AUTH_TOKEN = "tok";
+    const { GET } = await import("./route");
+    await GET(makeRequest("Bearer tok"));
+    expect(metricsMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -107,4 +107,21 @@ describe("GET /api/mcp/tool-customizations/[server]", () => {
     expect(body[0].prompt).toBe("Fetch data carefully");
     expect(body[0].id).toBe("c-1");
   });
+
+  it("response body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("selectByUserIdAndMcpServerId called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledTimes(1);
+  });
 });

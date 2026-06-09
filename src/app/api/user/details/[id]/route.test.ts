@@ -109,4 +109,39 @@ describe("GET /api/user/details/[id]", () => {
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
     expect(res.status).toBe(500);
   });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u2", role: "user" } });
+    canManageUserMock.mockResolvedValueOnce(false);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("canManageUser called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1" } });
+    canManageUserMock.mockResolvedValueOnce(true);
+    getUserMock.mockResolvedValueOnce({ id: "u-1" });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(canManageUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getUser called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1" } });
+    canManageUserMock.mockResolvedValueOnce(true);
+    getUserMock.mockResolvedValueOnce({ id: "u-1" });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(getUserMock).toHaveBeenCalledTimes(1);
+  });
 });

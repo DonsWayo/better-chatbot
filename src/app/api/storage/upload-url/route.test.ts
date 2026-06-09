@@ -107,4 +107,21 @@ describe("POST /api/storage/upload-url", () => {
     const body = await res.json();
     expect(body.fallbackUrl).toBe("/api/storage/upload");
   });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("checkStorageAction called exactly once when authenticated and valid", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "report.pdf" }));
+    expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
+  });
 });

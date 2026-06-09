@@ -69,7 +69,7 @@ export async function DELETE(
       mcpServer.visibility,
     );
     if (!canManage) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await removeMcpClientAction(params.id);
