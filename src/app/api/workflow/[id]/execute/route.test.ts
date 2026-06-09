@@ -113,4 +113,58 @@ describe("POST /api/workflow/[id]/execute", () => {
     await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
     expect(checkAccessMock).not.toHaveBeenCalled();
   });
+
+  it("401 text body is Unauthorized when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    const text = await res.text();
+    expect(text).toMatch(/Unauthorized/i);
+  });
+
+  it("404 body text is not empty when structure missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "missing" }) });
+    const text = await res.text();
+    expect(text.length).toBeGreaterThan(0);
+  });
+
+  it("checkAccess called with userId from session", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "session-user-99" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "session-user-99",
+    );
+  });
+
+  it("checkAccess called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectStructureById called with the route id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-route-id" }) });
+    expect(selectStructureByIdMock).toHaveBeenCalledWith("wf-route-id");
+  });
+
+  it("getSession called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });

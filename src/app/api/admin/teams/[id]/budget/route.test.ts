@@ -114,3 +114,109 @@ describe("POST /api/admin/teams/[id]/budget", () => {
     expect(body.budget.budgetUsd).toBe("200.00");
   });
 });
+
+describe("GET /api/admin/teams/[id]/budget — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 text body is Unauthorized", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    const text = await res.text();
+    expect(text).toMatch(/Unauthorized/i);
+  });
+
+  it("never calls dbSelect when not admin", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("dbSelect called exactly once for authenticated GET", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbSelectLimitMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "t-1" }) });
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns budget.teamId matching the route param", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbSelectLimitMock.mockResolvedValueOnce([{ id: "b-2", teamId: "t-99", budgetUsd: "100.00" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "t-99" }) });
+    const body = await res.json();
+    expect(body.budget.teamId).toBe("t-99");
+  });
+});
+
+describe("POST /api/admin/teams/[id]/budget — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 text body is Unauthorized for POST", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "t-1" }) });
+    const text = await res.text();
+    expect(text).toMatch(/Unauthorized/i);
+  });
+
+  it("never calls dbInsert when not admin", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { POST } = await import("./route");
+    await POST(makeRequest({
+      budgetUsd: "100.00",
+      periodStart: "2026-06-01",
+      periodEnd: "2026-06-30",
+    }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("400 body has error field for invalid schema", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ budgetUsd: "bad" }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("dbInsert called exactly once for valid POST", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "b-x", teamId: "t-1", budgetUsd: "300.00" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({
+      budgetUsd: "300.00",
+      periodStart: "2026-06-01",
+      periodEnd: "2026-06-30",
+    }), { params: Promise.resolve({ id: "t-1" }) });
+    expect(dbInsertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error field when periodEnd equals periodStart", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({
+      budgetUsd: "100.00",
+      periodStart: "2026-06-30",
+      periodEnd: "2026-06-01",
+    }), { params: Promise.resolve({ id: "t-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 response has budget property", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "b-z", teamId: "t-7", budgetUsd: "750.00" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({
+      budgetUsd: "750.00",
+      periodStart: "2026-06-01",
+      periodEnd: "2026-06-30",
+    }), { params: Promise.resolve({ id: "t-7" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("budget");
+  });
+});

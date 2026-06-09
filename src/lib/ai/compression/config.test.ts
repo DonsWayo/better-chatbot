@@ -113,4 +113,30 @@ describe("buildCompressionConfig — ordering", () => {
     expect(config.recentMessageWindow).toBe(3);
     expect(config.level).toBe("standard");
   });
+
+  it("off level recentMessageWindow and maxOldAssistantMsgChars are both Infinity", () => {
+    const config = buildCompressionConfig("off");
+    expect(config.recentMessageWindow).toBe(Infinity);
+    expect(config.maxOldAssistantMsgChars).toBe(Infinity);
+  });
+
+  it("aggressive maxOldAssistantMsgChars is less than standard", () => {
+    const standard = buildCompressionConfig("standard");
+    const aggressive = buildCompressionConfig("aggressive");
+    expect(aggressive.maxOldAssistantMsgChars).toBeLessThan(standard.maxOldAssistantMsgChars);
+  });
+
+  it("partial override does not affect unspecified fields", () => {
+    const base = buildCompressionConfig("standard");
+    const overridden = buildCompressionConfig("standard", { maxToolOutputChars: 42 });
+    expect(overridden.recentMessageWindow).toBe(base.recentMessageWindow);
+    expect(overridden.maxOldAssistantMsgChars).toBe(base.maxOldAssistantMsgChars);
+    expect(overridden.historyCompressionThreshold).toBe(base.historyCompressionThreshold);
+  });
+
+  it("override of historyCompressionThreshold is respected", () => {
+    const config = buildCompressionConfig("light", { historyCompressionThreshold: 9999 });
+    expect(config.historyCompressionThreshold).toBe(9999);
+    expect(config.level).toBe("light");
+  });
 });
