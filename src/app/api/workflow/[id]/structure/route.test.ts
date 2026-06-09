@@ -143,3 +143,104 @@ describe("GET /api/workflow/[id]/structure — guard chains", () => {
     expect(body.edges).toHaveLength(1);
   });
 });
+
+describe("GET /api/workflow/[id]/structure — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("selectStructureById called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce({ nodes: [], edges: [] });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has both nodes and edges properties", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce({ nodes: [], edges: [], id: "wf-1" });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("nodes");
+    expect(body).toHaveProperty("edges");
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/workflow/[id]/structure — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("saveStructure called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(
+      makeRequest({ nodes: [{ id: "n-1" }], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
+    expect(saveStructureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body success is strictly true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+});

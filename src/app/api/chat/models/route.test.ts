@@ -121,3 +121,65 @@ describe("GET /api/chat/models", () => {
     expect(freeModels.map((m: { id: string }) => m.id)).toEqual(["free-1", "free-2"]);
   });
 });
+
+describe("GET /api/chat/models — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("response body is a direct array (not wrapped in object)", async () => {
+    modelsInfoMock.mockReturnValue([{ id: "m1", name: "M1", hasAPIKey: true }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("all-false hasAPIKey list preserves original order", async () => {
+    modelsInfoMock.mockReturnValue([
+      { id: "m-x", name: "X", hasAPIKey: false },
+      { id: "m-y", name: "Y", hasAPIKey: false },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.map((m: { id: string }) => m.id)).toEqual(["m-x", "m-y"]);
+  });
+
+  it("all-true hasAPIKey list preserves original order", async () => {
+    modelsInfoMock.mockReturnValue([
+      { id: "m-p", name: "P", hasAPIKey: true },
+      { id: "m-q", name: "Q", hasAPIKey: true },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.map((m: { id: string }) => m.id)).toEqual(["m-p", "m-q"]);
+  });
+
+  it("three models: one api-key, two non-api-key, api-key sorts first", async () => {
+    modelsInfoMock.mockReturnValue([
+      { id: "free-a", name: "Free A", hasAPIKey: false },
+      { id: "free-b", name: "Free B", hasAPIKey: false },
+      { id: "paid-a", name: "Paid A", hasAPIKey: true },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].id).toBe("paid-a");
+  });
+
+  it("model count matches provider list length", async () => {
+    const models = Array.from({ length: 5 }, (_, i) => ({
+      id: `model-${i}`,
+      name: `Model ${i}`,
+      hasAPIKey: i % 2 === 0,
+    }));
+    modelsInfoMock.mockReturnValue(models);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveLength(5);
+  });
+});

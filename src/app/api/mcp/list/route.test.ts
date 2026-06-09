@@ -122,3 +122,64 @@ describe("GET /api/mcp/list", () => {
     expect(body[0].toolInfo).toEqual(toolInfo);
   });
 });
+
+describe("GET /api/mcp/list — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body has error field", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getCurrentUser called exactly once", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls getClients when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getClientsMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body is an array", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("server object has status and toolInfo properties", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: {
+          getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo: [] }),
+        },
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0]).toHaveProperty("status");
+    expect(body[0]).toHaveProperty("toolInfo");
+  });
+
+  it("never calls selectAllForUser when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllForUserMock).not.toHaveBeenCalled();
+  });
+});

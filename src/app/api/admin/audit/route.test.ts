@@ -122,3 +122,69 @@ describe("GET /api/admin/audit", () => {
     expect(body.page).toBe(1);
   });
 });
+
+describe("GET /api/admin/audit — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetAuditLog.mockResolvedValue({ rows: [], total: 0 });
+  });
+
+  it("401 body has error field", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("400 body has error field for invalid from date", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ from: "not-a-date" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once per request", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults limit to 50 when not provided", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body.limit).toBe(50);
+  });
+
+  it("clamps minimum limit to 1", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest({ limit: "0" }));
+    expect(mockGetAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 1 }),
+    );
+  });
+
+  it("200 body has rows, total, page, limit fields", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("rows");
+    expect(body).toHaveProperty("total");
+    expect(body).toHaveProperty("page");
+    expect(body).toHaveProperty("limit");
+  });
+});

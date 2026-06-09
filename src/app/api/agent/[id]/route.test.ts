@@ -141,3 +141,151 @@ describe("DELETE /api/agent/[id]", () => {
     expect(serverCacheDeleteMock).toHaveBeenCalledWith("agent:ag-1");
   });
 });
+
+describe("GET /api/agent/[id] — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls selectAgentById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAgentById called exactly once when access granted", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PUT /api/agent/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls updateAgent when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(updateAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls updateAgent when lacking edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(updateAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("serverCacheDelete called once on successful update", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const UPDATED = { ...AGENT, name: "Renamed" };
+    updateAgentMock.mockResolvedValueOnce(UPDATED);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "Renamed" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(serverCacheDeleteMock).toHaveBeenCalledTimes(1);
+    expect(serverCacheDeleteMock).toHaveBeenCalledWith("agent:ag-1");
+  });
+
+  it("getSession called exactly once per PUT", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DELETE /api/agent/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls deleteAgent when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls deleteAgent when lacking delete permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("deleteAgent called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteAgentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
