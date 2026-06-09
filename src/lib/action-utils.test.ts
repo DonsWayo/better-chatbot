@@ -211,3 +211,49 @@ describe("action-utils", () => {
     });
   });
 });
+
+describe("validatedAction and validatedActionWithUser — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("validatedAction returns action result for valid input", async () => {
+    const schema = z.object({ val: z.string() });
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const wrapped = validatedAction(schema, action);
+    const fd = new FormData();
+    fd.set("val", "test");
+    const result = await wrapped({}, fd);
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("validatedAction returns error (not throws) on schema failure", async () => {
+    const schema = z.object({ num: z.string().regex(/^\d+$/, "digits only") });
+    const action = vi.fn();
+    const wrapped = validatedAction(schema, action);
+    const fd = new FormData();
+    fd.set("num", "abc");
+    const result = await wrapped({}, fd);
+    expect(result).toHaveProperty("error");
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("validatedAction passes parsed data as first argument to action", async () => {
+    const schema = z.object({ name: z.string() });
+    const action = vi.fn().mockResolvedValue({});
+    const wrapped = validatedAction(schema, action);
+    const fd = new FormData();
+    fd.set("name", "Alice");
+    await wrapped({}, fd);
+    expect(action).toHaveBeenCalledWith({ name: "Alice" }, fd);
+  });
+
+  it("validatedActionWithUser never calls action when session throws", async () => {
+    vi.mocked(getSession).mockRejectedValue(new Error("Auth error"));
+    const schema = z.object({ data: z.string() });
+    const action = vi.fn();
+    const wrapped = validatedActionWithUser(schema, action);
+    const fd = new FormData();
+    fd.set("data", "x");
+    await wrapped({}, fd);
+    expect(action).not.toHaveBeenCalled();
+  });
+});

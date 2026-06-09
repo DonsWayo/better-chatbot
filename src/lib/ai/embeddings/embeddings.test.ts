@@ -180,3 +180,61 @@ describe("embedText — success cases", () => {
     expect(result).toHaveLength(EMBEDDING_DIMENSION);
   });
 });
+
+describe("embedBatch — invariants", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("OPENROUTER_API_KEY", "sk-or-test-key");
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it("result length matches input length", async () => {
+    const emb = Array.from({ length: EMBEDDING_DIMENSION }, () => 0.1);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { index: 0, embedding: emb },
+          { index: 1, embedding: emb },
+          { index: 2, embedding: emb },
+        ],
+      }),
+    }) as any;
+    const { embedBatch } = await import("./index");
+    const result = await embedBatch(["a", "b", "c"]);
+    expect(result).toHaveLength(3);
+  });
+
+  it("each returned embedding has EMBEDDING_DIMENSION elements", async () => {
+    const embedding = Array.from({ length: EMBEDDING_DIMENSION }, () => 0.5);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ index: 0, embedding }] }),
+    }) as any;
+    const { embedBatch } = await import("./index");
+    const result = await embedBatch(["test"]);
+    expect(result[0]).toHaveLength(EMBEDDING_DIMENSION);
+  });
+
+  it("empty input always returns an array", async () => {
+    const { embedBatch } = await import("./index");
+    const result = await embedBatch([]);
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("single-item batch returns array with one element", async () => {
+    const embedding = Array.from({ length: EMBEDDING_DIMENSION }, () => 0.7);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ index: 0, embedding }] }),
+    }) as any;
+    const { embedBatch } = await import("./index");
+    const result = await embedBatch(["single"]);
+    expect(result).toHaveLength(1);
+  });
+});

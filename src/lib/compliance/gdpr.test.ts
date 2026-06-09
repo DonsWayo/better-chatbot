@@ -196,3 +196,40 @@ describe("exportUserData — additional", () => {
     expect(result.userId).toBe("exact-user-id");
   });
 });
+
+describe("eraseUserData — call count invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+    dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
+  });
+
+  it("db.update called at least once", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u-update");
+    expect(dbUpdateMock).toHaveBeenCalled();
+  });
+
+  it("db.execute called exactly once (erasure audit record)", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u-exec");
+    expect(dbExecuteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("tablesCleared contains no duplicate entries", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u-nodup");
+    const unique = new Set(result.tablesCleared);
+    expect(unique.size).toBe(result.tablesCleared.length);
+  });
+
+  it("tablesCleared always includes 'user'", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u-user");
+    expect(result.tablesCleared).toContain("user");
+  });
+});
