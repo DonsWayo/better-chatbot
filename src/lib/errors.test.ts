@@ -87,3 +87,53 @@ describe("NotImplementedError", () => {
     expect(err).toBeInstanceOf(Error);
   });
 });
+
+describe("FileStorageError subclasses — inheritance", () => {
+  it("FileNotFoundError is instanceof FileStorageError", () => {
+    expect(new FileNotFoundError("f1")).toBeInstanceOf(FileStorageError);
+  });
+
+  it("FileTooLargeError is instanceof FileStorageError", () => {
+    expect(new FileTooLargeError(100, 50)).toBeInstanceOf(FileStorageError);
+  });
+
+  it("StorageQuotaExceededError is instanceof FileStorageError", () => {
+    expect(new StorageQuotaExceededError()).toBeInstanceOf(FileStorageError);
+  });
+
+  it("UnsupportedFileTypeError is instanceof FileStorageError", () => {
+    expect(new UnsupportedFileTypeError("text/plain")).toBeInstanceOf(FileStorageError);
+  });
+});
+
+describe("AppError subclasses — inheritance", () => {
+  it("UnauthorizedError is instanceof AppError", () => {
+    expect(new UnauthorizedError()).toBeInstanceOf(AppError);
+  });
+
+  it("ForbiddenError is instanceof AppError", () => {
+    expect(new ForbiddenError()).toBeInstanceOf(AppError);
+  });
+
+  it("FileStorageError is instanceof Error (not AppError — separate hierarchy)", () => {
+    const err = new FileStorageError("fs error", "FS_ERR");
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(AppError);
+  });
+
+  it("all errors are also instanceof Error", () => {
+    const errors = [
+      new AppError("X", "x"),
+      new UnauthorizedError(),
+      new ForbiddenError(),
+      new FileNotFoundError("f"),
+      new FileTooLargeError(1, 0),
+      new StorageQuotaExceededError(),
+      new UnsupportedFileTypeError("t"),
+      new NotImplementedError("ni"),
+    ];
+    for (const e of errors) {
+      expect(e).toBeInstanceOf(Error);
+    }
+  });
+});

@@ -85,4 +85,58 @@ describe("RoutingRequestSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("defaults hasImage to false", () => {
+    const result = RoutingRequestSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.hasImage).toBe(false);
+  });
+
+  it("defaults hasTools to false", () => {
+    const result = RoutingRequestSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.hasTools).toBe(false);
+  });
+
+  it("accepts vision task class", () => {
+    const r = RoutingRequestSchema.safeParse({ declaredTaskClass: "vision", hasImage: true });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts reasoning task class", () => {
+    const r = RoutingRequestSchema.safeParse({ declaredTaskClass: "reasoning" });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts quick_rewrite task class", () => {
+    const r = RoutingRequestSchema.safeParse({ declaredTaskClass: "quick_rewrite" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("TASK_CLASSES — additional constraints", () => {
+  it("has no duplicate entries", () => {
+    const unique = new Set(TASK_CLASSES);
+    expect(unique.size).toBe(TASK_CLASSES.length);
+  });
+
+  it("does not contain any uppercase class names", () => {
+    for (const cls of TASK_CLASSES) {
+      expect(cls).not.toMatch(/[A-Z]/);
+    }
+  });
+});
+
+describe("MODEL_TIERS — additional constraints", () => {
+  it("has no duplicate entries", () => {
+    const unique = new Set(MODEL_TIERS);
+    expect(unique.size).toBe(MODEL_TIERS.length);
+  });
+
+  it("all tiers are lowercase strings", () => {
+    for (const t of MODEL_TIERS) {
+      expect(typeof t).toBe("string");
+      expect(t).toBe(t.toLowerCase());
+    }
+  });
 });

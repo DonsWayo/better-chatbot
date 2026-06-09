@@ -87,3 +87,37 @@ describe("APPROVED_MODEL_IDS contract", () => {
     }
   });
 });
+
+describe("W4 model allow-list enforcement predicate — edge cases", () => {
+  it("returns true for empty string modelId with non-empty list", () => {
+    // empty string is falsy → treated as auto-routed
+    expect(isModelAllowed("", ["gpt-5.1"])).toBe(true);
+  });
+
+  it("returns true for undefined modelId with single-item list", () => {
+    expect(isModelAllowed(undefined, ["gemini-2.5-flash"])).toBe(true);
+  });
+
+  it("is not case-insensitive — exact match required", () => {
+    expect(isModelAllowed("Gpt-5.1", ["gpt-5.1"])).toBe(false);
+  });
+
+  it("allows all APPROVED_MODEL_IDS when list = APPROVED_MODEL_IDS", () => {
+    for (const m of APPROVED_MODEL_IDS) {
+      expect(isModelAllowed(m, APPROVED_MODEL_IDS)).toBe(true);
+    }
+  });
+
+  it("blocks all APPROVED_MODEL_IDS when list contains only one model", () => {
+    const singleList = ["gpt-5.1"];
+    const others = APPROVED_MODEL_IDS.filter((m) => m !== "gpt-5.1");
+    for (const m of others) {
+      expect(isModelAllowed(m, singleList)).toBe(false);
+    }
+  });
+
+  it("returns false for a model not in a large allow-list", () => {
+    const list = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash"];
+    expect(isModelAllowed("some-random-model-xyz", list)).toBe(false);
+  });
+});

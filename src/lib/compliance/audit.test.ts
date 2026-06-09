@@ -87,3 +87,42 @@ describe("auditChatRequest", () => {
     ).not.toThrow();
   });
 });
+
+describe("writeAuditLog — details field", () => {
+  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+
+  it("serializes details as JSON string before inserting", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    const details = { model: "gpt-5.1", tokens: 1234 };
+    await writeAuditLog({ userId: "u1", eventType: "chat_request", details });
+    expect(dbInsertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ details: JSON.stringify(details) }),
+    );
+  });
+
+  it("calls db.insert exactly once per call", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await writeAuditLog({ userId: "u1", eventType: "guardrail_firing" });
+    expect(dbInsertValuesMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("hashContent — length and format", () => {
+  it("returns only hex characters", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("hello world 123")).toMatch(/^[0-9a-f]+$/);
+  });
+
+  it("hash is at most 8 characters long", async () => {
+    const { hashContent } = await import("./audit");
+    expect(hashContent("test input").length).toBeLessThanOrEqual(8);
+  });
+
+  it("hash of empty string returns a hex string", async () => {
+    const { hashContent } = await import("./audit");
+    const h = hashContent("");
+    expect(h).toMatch(/^[0-9a-f]+$/);
+  });
+});

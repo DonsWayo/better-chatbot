@@ -87,4 +87,49 @@ describe("POST /api/archive/[id]/items", () => {
     expect(body.itemId).toBe("item-42");
     expect(addItemToArchiveMock).toHaveBeenCalledWith("a-1", "item-42", "u1");
   });
+
+  it("never calls addItemToArchive when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(addItemToArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls addItemToArchive when archive not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(addItemToArchiveMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/archive/[id]/items — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getArchiveItems when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getArchiveItemsMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls getArchiveItems when archive not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getArchiveItemsMock).not.toHaveBeenCalled();
+  });
+
+  it("returns empty array for archive with no items", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveLength(0);
+  });
 });
