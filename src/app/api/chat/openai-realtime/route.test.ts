@@ -96,4 +96,36 @@ describe("POST /api/chat/openai-realtime", () => {
     const body = await res.json();
     expect(body.error).toContain("OPENAI_API_KEY");
   });
+
+  it("getSession called exactly once when API key is present", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 401 when session user id is undefined", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: undefined } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(401);
+  });
+
+  it("500 response body is valid JSON when key is missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(typeof body.error).toBe("string");
+  });
+
+  it("401 text equals exactly Unauthorized when session user id is empty string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
 });

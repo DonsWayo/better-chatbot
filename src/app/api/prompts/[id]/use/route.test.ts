@@ -112,4 +112,36 @@ describe("POST /api/prompts/[id]/use", () => {
     await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
     expect(dbUpdateMock).not.toHaveBeenCalled();
   });
+
+  it("dbSelect called exactly once per authenticated POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-1" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 response body has ok field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-1" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("ok");
+  });
+
+  it("never calls dbSelect when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
 });

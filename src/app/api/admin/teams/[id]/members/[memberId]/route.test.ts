@@ -115,4 +115,49 @@ describe("DELETE /api/admin/teams/[id]/members/[memberId]", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "t-1", memberId: "mem-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("404 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "t-1", memberId: "missing" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("removeTeamMember called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "mem-1" }]);
+    removeTeamMemberMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "t-1", memberId: "mem-1" }) });
+    expect(removeTeamMemberMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect called exactly once for admin request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "t-1", memberId: "any" }) });
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 response body has ok:true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "mem-7" }]);
+    removeTeamMemberMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "t-1", memberId: "mem-7" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("ok", true);
+  });
 });
