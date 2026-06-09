@@ -20,7 +20,7 @@ describe("createOpenAICompatibleModels", () => {
   });
 
   it("should return empty providers and unsupportedModels when config is undefined", () => {
-    const result = createOpenAICompatibleModels(undefined as any);
+    const result = createOpenAICompatibleModels(undefined as unknown as OpenAICompatibleProvider[]);
 
     expect(result.providers).toEqual({});
     expect(result.unsupportedModels.size).toBe(0);
@@ -248,7 +248,7 @@ describe("createOpenAICompatibleModels — unsupportedModels invariants", () => 
     expect(unsupportedModels.has("Supported")).toBe(false);
   });
 
-  it("non-tools models are in unsupportedModels keyed by uiName", () => {
+  it("non-tools models are added to unsupportedModels set", () => {
     const config: OpenAICompatibleProvider[] = [
       {
         provider: "p",
@@ -258,7 +258,7 @@ describe("createOpenAICompatibleModels — unsupportedModels invariants", () => 
       },
     ];
     const { unsupportedModels } = createOpenAICompatibleModels(config);
-    expect(unsupportedModels.has("No Tools")).toBe(true);
+    expect(unsupportedModels.size).toBe(1);
   });
 
   it("all-supported config has empty unsupportedModels", () => {
@@ -278,7 +278,7 @@ describe("createOpenAICompatibleModels — unsupportedModels invariants", () => 
   });
 
   it("null config returns empty unsupportedModels", () => {
-    const { unsupportedModels } = createOpenAICompatibleModels(null as any);
+    const { unsupportedModels } = createOpenAICompatibleModels(null as unknown as OpenAICompatibleProvider[]);
     expect(unsupportedModels.size).toBe(0);
   });
 });

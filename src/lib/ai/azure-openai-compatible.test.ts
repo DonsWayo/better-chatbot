@@ -160,7 +160,7 @@ describe("createAzureOpenAICompatible — return type invariants", () => {
   it("calling the returned function returns something defined", () => {
     const mockModel = { id: "az-model" };
     const mockFactory = vi.fn().mockReturnValue(mockModel);
-    mockCreateOpenAICompatible.mockReturnValueOnce(mockFactory as any);
+    mockCreateOpenAICompatible.mockReturnValueOnce(mockFactory as unknown as ReturnType<typeof createOpenAICompatible>);
     const config = { name: "Az", apiKey: "k", baseURL: "https://x.com/deployments/" };
     const provider = createAzureOpenAICompatible(config);
     const result = provider("m", "v");

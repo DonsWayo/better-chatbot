@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { GraphEvent } from "ts-edge";
 import { DBEdge, DBNode } from "app-types/workflow";
 import { NodeKind } from "../workflow.interface";
 import {
@@ -86,7 +87,7 @@ describe("createWorkflowExecutor", () => {
     id: string,
     kind: NodeKind | "NOOP",
     name: string = `Node ${id}`,
-    additionalConfig: Record<string, any> = {},
+    additionalConfig: Record<string, unknown> = {},
   ): DBNode => ({
     id,
     workflowId: "test-workflow",
@@ -165,7 +166,7 @@ describe("createWorkflowExecutor", () => {
     const executor = createWorkflowExecutor({ nodes, edges });
 
     const visitedNodes: string[] = [];
-    executor.subscribe((event: any) => {
+    executor.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodes.push(event.node.name);
       }
@@ -176,7 +177,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule) {
-      (nodeExecutorModule as any).__setTestInputData(inputData);
+      (nodeExecutorModule as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputData);
     }
 
     const result = await executor.run(inputData);
@@ -237,7 +238,7 @@ describe("createWorkflowExecutor", () => {
     const visitedNodesTrue: string[] = [];
     const inputDataTrue: Record<string, unknown> = { shouldGoTrue: true };
 
-    executor1.subscribe((event: any) => {
+    executor1.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodesTrue.push(event.node.name);
       }
@@ -246,7 +247,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule1 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule1) {
-      (nodeExecutorModule1 as any).__setTestInputData(inputDataTrue);
+      (nodeExecutorModule1 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataTrue);
     }
 
     const result1 = await executor1.run(inputDataTrue);
@@ -263,7 +264,7 @@ describe("createWorkflowExecutor", () => {
     const visitedNodesFalse: string[] = [];
     const inputDataFalse: Record<string, unknown> = { shouldGoTrue: false };
 
-    executor2.subscribe((event: any) => {
+    executor2.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodesFalse.push(event.node.name);
       }
@@ -272,7 +273,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule2 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule2) {
-      (nodeExecutorModule2 as any).__setTestInputData(inputDataFalse);
+      (nodeExecutorModule2 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataFalse);
     }
 
     const result2 = await executor2.run(inputDataFalse);
@@ -328,7 +329,7 @@ describe("createWorkflowExecutor", () => {
     const visitedNodesAdmin: string[] = [];
     const inputDataAdmin: Record<string, unknown> = { userRole: "admin" };
 
-    executor1.subscribe((event: any) => {
+    executor1.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodesAdmin.push(event.node.name);
       }
@@ -337,7 +338,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule1 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule1) {
-      (nodeExecutorModule1 as any).__setTestInputData(inputDataAdmin);
+      (nodeExecutorModule1 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataAdmin);
     }
 
     const result1 = await executor1.run(inputDataAdmin);
@@ -354,7 +355,7 @@ describe("createWorkflowExecutor", () => {
     const visitedNodesUser: string[] = [];
     const inputDataUser: Record<string, unknown> = { userRole: "user" };
 
-    executor2.subscribe((event: any) => {
+    executor2.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodesUser.push(event.node.name);
       }
@@ -363,7 +364,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule2 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule2) {
-      (nodeExecutorModule2 as any).__setTestInputData(inputDataUser);
+      (nodeExecutorModule2 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataUser);
     }
 
     const result2 = await executor2.run(inputDataUser);
@@ -406,7 +407,7 @@ describe("createWorkflowExecutor", () => {
     let skipCount = 0;
     const inputData: Record<string, unknown> = { parallelTest: true };
 
-    executor.subscribe((event: any) => {
+    executor.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         const nodeName = event.node.name;
         visitedNodes.push(nodeName);
@@ -422,7 +423,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule) {
-      (nodeExecutorModule as any).__setTestInputData(inputData);
+      (nodeExecutorModule as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputData);
     }
 
     const result = await executor.run(inputData);
@@ -510,7 +511,7 @@ describe("createWorkflowExecutor", () => {
     const visitedNodesParallel: string[] = [];
     const inputDataParallel: Record<string, unknown> = { useParallel: true };
 
-    executor1.subscribe((event: any) => {
+    executor1.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodesParallel.push(event.node.name);
       }
@@ -519,7 +520,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule1 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule1) {
-      (nodeExecutorModule1 as any).__setTestInputData(inputDataParallel);
+      (nodeExecutorModule1 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataParallel);
     }
 
     const result1 = await executor1.run(inputDataParallel);
@@ -536,7 +537,7 @@ describe("createWorkflowExecutor", () => {
     const visitedNodesSingle: string[] = [];
     const inputDataSingle: Record<string, unknown> = { useParallel: false };
 
-    executor2.subscribe((event: any) => {
+    executor2.subscribe((event: GraphEvent) => {
       if (event.eventType === "NODE_START") {
         visitedNodesSingle.push(event.node.name);
       }
@@ -545,7 +546,7 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule2 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule2) {
-      (nodeExecutorModule2 as any).__setTestInputData(inputDataSingle);
+      (nodeExecutorModule2 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataSingle);
     }
 
     const result2 = await executor2.run(inputDataSingle);
@@ -572,21 +573,21 @@ describe("createWorkflowExecutor", () => {
 
     const executor = createWorkflowExecutor({ nodes, edges });
 
-    const events: any[] = [];
+    const events: GraphEvent[] = [];
     const inputData: Record<string, unknown> = {
       userId: 123,
       taskName: "test-workflow",
       settings: { debug: true },
     };
 
-    executor.subscribe((event: any) => {
+    executor.subscribe((event: GraphEvent) => {
       events.push(event);
     });
 
     // Set test input data via mock
     const nodeExecutorModule = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule) {
-      (nodeExecutorModule as any).__setTestInputData(inputData);
+      (nodeExecutorModule as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputData);
     }
 
     const result = await executor.run(inputData);

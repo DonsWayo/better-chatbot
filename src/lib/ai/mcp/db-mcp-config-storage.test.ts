@@ -59,7 +59,7 @@ describe("DB-based MCP Config Storage", () => {
       addClient: vi.fn(),
       refreshClient: vi.fn(),
       removeClient: vi.fn(),
-    } as any;
+    } as unknown as MCPClientsManager;
   });
 
   afterEach(() => {

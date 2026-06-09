@@ -44,7 +44,7 @@ const mockChokidar = vi.mocked(chokidar);
 describe("File-based MCP Config Storage", () => {
   let storage: ReturnType<typeof createFileBasedMCPConfigsStorage>;
   let mockManager: MCPClientsManager;
-  let mockWatcher: any;
+  let mockWatcher: { close: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn> };
 
   const mockServerConfig: MCPServerConfig = {
     command: "python",
@@ -70,7 +70,7 @@ describe("File-based MCP Config Storage", () => {
       addClient: vi.fn(),
       refreshClient: vi.fn(),
       removeClient: vi.fn(),
-    } as any;
+    } as unknown as MCPClientsManager;
   });
 
   afterEach(() => {
@@ -100,7 +100,7 @@ describe("File-based MCP Config Storage", () => {
 
     it("should create empty config file when readConfigFile throws non-ENOENT error", async () => {
       const error = new Error("Permission denied");
-      (error as any).code = "EACCES";
+      (error as NodeJS.ErrnoException).code = "EACCES";
 
       mockReadFile.mockRejectedValueOnce(error);
       mockWriteFile.mockResolvedValue(undefined);
@@ -163,7 +163,7 @@ describe("File-based MCP Config Storage", () => {
 
     it("should return empty array when file doesn't exist", async () => {
       const error = new Error("File not found");
-      (error as any).code = "ENOENT";
+      (error as NodeJS.ErrnoException).code = "ENOENT";
 
       mockReadFile.mockRejectedValue(error);
 

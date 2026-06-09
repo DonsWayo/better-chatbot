@@ -4,6 +4,7 @@ import {
   MCPClientsManager,
 } from "./create-mcp-clients-manager";
 import type { MCPConfigStorage } from "./create-mcp-clients-manager";
+import type { MCPClient } from "./create-mcp-client";
 import type { MCPServerConfig } from "app-types/mcp";
 
 // Mock dependencies
@@ -51,7 +52,7 @@ const mockCreateMCPClient = await import("./create-mcp-client").then(
 describe("MCPClientsManager", () => {
   let manager: MCPClientsManager;
   let mockStorage: MCPConfigStorage;
-  let mockClient: any;
+  let mockClient: MCPClient;
 
   const mockServerConfig: MCPServerConfig = {
     command: "python",
@@ -471,7 +472,7 @@ describe("MCPClientsManager", () => {
       await manager.addClient("test-server", "test-server", mockServerConfig);
 
       const createCall = vi.mocked(mockCreateMCPClient).mock.calls.at(-1)!;
-      const options = createCall[3] as any;
+      const options = createCall[3] as Parameters<typeof mockCreateMCPClient>[3];
       expect(options.onToolInfoUpdate).toBeDefined();
 
       const newToolInfo = [{ name: "new-tool", description: "New tool" }];
@@ -493,7 +494,7 @@ describe("MCPClientsManager", () => {
       await manager.addClient("test-server", "test-server", mockServerConfig);
 
       const createCall = vi.mocked(mockCreateMCPClient).mock.calls.at(-1)!;
-      const options = createCall[3] as any;
+      const options = createCall[3] as Parameters<typeof mockCreateMCPClient>[3];
       expect(options.onConnectionStatusChange).toBeDefined();
 
       options.onConnectionStatusChange("connected");

@@ -76,7 +76,7 @@ describe("checkStorageAction — return type invariants", () => {
     const { checkStorageAction } = await importActions();
     const res = await checkStorageAction();
     expect(res.isValid).toBe(false);
-    expect(typeof (res as any).error).toBe("string");
+    expect(typeof (res as { error?: string }).error).toBe("string");
   });
 });
 

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: vi.fn(
-    async (_c, _cmd, { expiresIn }: any) =>
+    async (_c, _cmd, { expiresIn }: { expiresIn?: number }) =>
       `https://example.com/presigned?exp=${expiresIn}`,
   ),
 }));
@@ -11,7 +11,7 @@ const sendMock = vi.fn();
 
 vi.mock("@aws-sdk/client-s3", () => {
   class BaseCmd {
-    constructor(public input: any) {}
+    constructor(public input: Record<string, unknown>) {}
   }
   return {
     S3Client: vi.fn().mockImplementation(() => ({ send: sendMock })),
@@ -68,8 +68,7 @@ describe("s3-file-storage", () => {
     sendMock.mockResolvedValueOnce({});
     expect(await storage.exists("uploads/a.txt")).toBe(true);
     // false
-    const err: any = new Error("not found");
-    err.$metadata = { httpStatusCode: 404 };
+    const err = Object.assign(new Error("not found"), { $metadata: { httpStatusCode: 404 } });
     sendMock.mockRejectedValueOnce(err);
     expect(await storage.exists("uploads/missing.txt")).toBe(false);
   });

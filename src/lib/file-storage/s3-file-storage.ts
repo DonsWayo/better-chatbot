@@ -22,17 +22,15 @@ import {
 import { FileNotFoundError } from "lib/errors";
 import { generateUUID } from "lib/utils";
 
-const STORAGE_PREFIX = resolveStoragePrefix();
-
 const required = (name: string, value: string | undefined) => {
   if (!value) throw new Error(`Missing required env: ${name}`);
   return value;
 };
 
-const buildKey = (filename: string) => {
+const buildKey = (filename: string, storagePrefix: string) => {
   const safeName = sanitizeFilename(filename || "file");
   const id = generateUUID();
-  const prefix = STORAGE_PREFIX ? `${STORAGE_PREFIX}/` : "";
+  const prefix = storagePrefix ? `${storagePrefix}/` : "";
   return path.posix.join(prefix, `${id}-${safeName}`);
 };
 
@@ -65,6 +63,7 @@ const buildPublicUrl = (
 };
 
 export const createS3FileStorage = (): FileStorage => {
+  const storagePrefix = resolveStoragePrefix();
   const bucket = required(
     "FILE_STORAGE_S3_BUCKET",
     process.env.FILE_STORAGE_S3_BUCKET,
@@ -90,7 +89,7 @@ export const createS3FileStorage = (): FileStorage => {
     async upload(content, options: UploadOptions = {}) {
       const buffer = await toBuffer(content);
       const filename = options.filename ?? "file";
-      const key = buildKey(filename);
+      const key = buildKey(filename, storagePrefix);
 
       await s3.send(
         new PutObjectCommand({
@@ -125,7 +124,7 @@ export const createS3FileStorage = (): FileStorage => {
     async createUploadUrl(
       options: UploadUrlOptions,
     ): Promise<UploadUrl | null> {
-      const key = buildKey(options.filename);
+      const key = buildKey(options.filename, storagePrefix);
       const command = new PutObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -163,7 +162,7 @@ export const createS3FileStorage = (): FileStorage => {
         });
         return Buffer.concat(chunks);
       } catch (error: unknown) {
-        if ((error as any)?.$metadata?.httpStatusCode === 404) {
+        if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) {
           throw new FileNotFoundError(key, error);
         }
         throw error;
@@ -179,7 +178,7 @@ export const createS3FileStorage = (): FileStorage => {
         await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
         return true;
       } catch (error: unknown) {
-        if ((error as any)?.$metadata?.httpStatusCode === 404) return false;
+        if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) return false;
         return false;
       }
     },
@@ -197,7 +196,7 @@ export const createS3FileStorage = (): FileStorage => {
           uploadedAt: res.LastModified ?? undefined,
         } satisfies FileMetadata;
       } catch (error: unknown) {
-        if ((error as any)?.$metadata?.httpStatusCode === 404) return null;
+        if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode === 404) return null;
         throw error;
       }
     },

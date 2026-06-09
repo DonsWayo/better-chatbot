@@ -21,7 +21,7 @@ describe("MemoryMCPConfigStorage", () => {
 
   describe("init", () => {
     it("should initialize without errors", async () => {
-      await expect(storage.init({} as any)).resolves.not.toThrow();
+      await expect(storage.init({} as unknown as import("./create-mcp-clients-manager").MCPClientsManager)).resolves.not.toThrow();
     });
   });
 
