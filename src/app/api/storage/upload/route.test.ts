@@ -1,0 +1,66 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const { getSessionMock, checkStorageActionMock, uploadMock } = vi.hoisted(() => ({
+  getSessionMock: vi.fn(),
+  checkStorageActionMock: vi.fn(),
+  uploadMock: vi.fn(),
+}));
+
+vi.mock("auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("../actions", () => ({ checkStorageAction: checkStorageActionMock }));
+vi.mock("lib/file-storage", () => ({
+  serverFileStorage: { upload: uploadMock },
+  storageDriver: "local",
+}));
+
+function makeRequest(file?: File): Request {
+  const formData = new FormData();
+  if (file) formData.append("file", file);
+  return { formData: () => Promise.resolve(formData) } as unknown as Request;
+}
+
+describe("POST /api/storage/upload", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 500 when storage is misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({
+      isValid: false,
+      error: "No storage configured",
+      solution: "Set STORAGE_DRIVER env var",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(500);
+  });
+
+  it("returns 400 when no file provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/file/i);
+  });
+
+  it("uploads file and returns key + url", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    uploadMock.mockResolvedValueOnce({ key: "uploads/test.png", sourceUrl: "http://cdn/test.png" });
+    const file = new File(["hello"], "test.png", { type: "image/png" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(file));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.key).toBe("uploads/test.png");
+    expect(body.url).toBe("http://cdn/test.png");
+  });
+});
