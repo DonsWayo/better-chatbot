@@ -181,3 +181,32 @@ describe("DELETE /api/export/[id]/comments/[commentId] — additional", () => {
     expect(checkCommentAccessMock).not.toHaveBeenCalled();
   });
 });
+
+describe("DELETE /api/export/[id]/comments/[commentId] — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("checkCommentAccess called with commentId before deleteComment", async () => {
+    const callOrder: string[] = [];
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockImplementationOnce(async () => { callOrder.push("check"); return true; });
+    deleteCommentMock.mockImplementationOnce(async () => { callOrder.push("delete"); });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(callOrder[0]).toBe("check");
+    expect(callOrder[1]).toBe("delete");
+  });
+
+  it("returns 401 when session has no user object", async () => {
+    getSessionMock.mockResolvedValue({ user: null });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res.status).toBe(401);
+  });
+});
