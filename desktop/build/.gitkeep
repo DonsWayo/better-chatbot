@@ -1,0 +1,6 @@
+# Icon placeholders — replace before shipping (Wave 10 / IT)
+# Required files:
+#   icon.icns  — macOS, 512×512
+#   icon.ico   — Windows, 256×256
+#   icon.png   — Linux, 512×512
+#   dmg-background.png — macOS DMG installer background (optional)

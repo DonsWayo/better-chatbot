@@ -1,0 +1,27 @@
+{
+  "name": "@asafe-ai/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Asafe AI desktop client — Electron thin client + local-system MCP bridge (Wave 10)",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder",
+    "compile": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "electron-window-state": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.5.4"
+  },
+  "build": {
+    "extends": "./electron-builder.yml"
+  }
+}
