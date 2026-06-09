@@ -126,4 +126,18 @@ describe("POST /api/chat/title", () => {
     await POST(makeRequest({ message: "hello", threadId: "t1" }));
     expect(streamTextMock).toHaveBeenCalledTimes(1);
   });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi", threadId: "t1" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls upsertThread when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi", threadId: "t1" }));
+    expect(upsertThreadMock).not.toHaveBeenCalled();
+  });
 });

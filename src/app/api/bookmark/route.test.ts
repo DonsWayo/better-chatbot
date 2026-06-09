@@ -154,3 +154,65 @@ describe("POST /api/bookmark — guard chains", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("DELETE /api/bookmark — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls removeBookmark when invalid itemType", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest({ itemId: "x-1", itemType: "invalid" }));
+    expect(removeBookmarkMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls removeBookmark when itemId is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest({ itemType: "agent" }));
+    expect(removeBookmarkMock).not.toHaveBeenCalled();
+  });
+
+  it("removeBookmark called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    removeBookmarkMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest({ itemId: "wf-1", itemType: "workflow" }));
+    expect(removeBookmarkMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest({ itemId: "wf-1", itemType: "workflow" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/bookmark — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "a-1", itemType: "agent" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("createBookmark called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkItemAccessMock.mockResolvedValueOnce(true);
+    createBookmarkMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "agent-1", itemType: "agent" }));
+    expect(createBookmarkMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkItemAccess called exactly once per valid POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkItemAccessMock.mockResolvedValueOnce(true);
+    createBookmarkMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "agent-1", itemType: "agent" }));
+    expect(checkItemAccessMock).toHaveBeenCalledTimes(1);
+  });
+});
