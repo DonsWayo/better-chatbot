@@ -125,3 +125,44 @@ describe("GET /api/user/export", () => {
     expect(res.headers.get("content-disposition")).toContain("attachment");
   });
 });
+
+describe("GET /api/user/export — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    pgDbSelectMock.mockReturnValue(makeChain());
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls pgDbSelect when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(pgDbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body has conversations array even with no data", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-5", name: "Hank", email: "h@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body.conversations)).toBe(true);
+  });
+
+  it("profile.id matches the session user id", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "uid-match-test", name: "Iris", email: "i@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.profile.id).toBe("uid-match-test");
+  });
+});

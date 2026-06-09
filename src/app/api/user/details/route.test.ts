@@ -117,3 +117,31 @@ describe("GET /api/user/details", () => {
     expect(body.error).toContain("specific db failure");
   });
 });
+
+describe("GET /api/user/details — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getUser never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("response body is an object on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockResolvedValueOnce({ id: "u1", name: "Charlie" });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(typeof body).toBe("object");
+    expect(body).not.toBeNull();
+  });
+});

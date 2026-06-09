@@ -128,3 +128,35 @@ describe("DELETE /api/admin/users/[id]/reset-rate-limit", () => {
     expect(body.deleted).toBe(3);
   });
 });
+
+describe("DELETE /api/admin/users/[id]/reset-rate-limit — additional", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("getSession called exactly once per DELETE", async () => {
+    mockSession.mockResolvedValue(null);
+    await DELETE({} as never, { params: makeParams("u1") });
+    expect(mockSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("db.delete called exactly once on valid admin request", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockDelete.mockReturnValue(makeChain([]));
+    await DELETE({} as never, { params: makeParams("u1") });
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("success is true in 200 response body", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockDelete.mockReturnValue(makeChain([]));
+    const res = await DELETE({} as never, { params: makeParams("u1") });
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  it("403 body has error field for editor role", async () => {
+    mockSession.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const res = await DELETE({} as never, { params: makeParams("u1") });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});

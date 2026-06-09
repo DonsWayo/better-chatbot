@@ -117,3 +117,30 @@ describe("DELETE /api/admin/users/[id]/model-grants/[grantId]", () => {
     expect(revokeUserModelGrantMock).not.toHaveBeenCalled();
   });
 });
+
+describe("DELETE /api/admin/users/[id]/model-grants/[grantId] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "u-1", grantId: "g-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("revokeUserModelGrant receives grantId as first arg and userId as second", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    revokeUserModelGrantMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "the-user", grantId: "the-grant" }) });
+    expect(revokeUserModelGrantMock).toHaveBeenCalledWith("the-grant", "the-user");
+  });
+
+  it("200 status on admin success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    revokeUserModelGrantMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "u-5", grantId: "g-5" }) });
+    expect(res.status).toBe(200);
+  });
+});
