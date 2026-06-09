@@ -122,3 +122,38 @@ describe("GET /api/admin/users/[id]/data-export", () => {
     expect(exportUserDataMock).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/admin/users/[id]/data-export — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("403 body has error field for editor", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 response body includes exportedAt field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    exportUserDataMock.mockResolvedValueOnce({ exportedAt: "2026-06-01T00:00:00Z", userId: "u10", profile: null, chatThreads: [] });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u10" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("exportedAt");
+  });
+
+  it("exportUserData never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(exportUserDataMock).not.toHaveBeenCalled();
+  });
+});

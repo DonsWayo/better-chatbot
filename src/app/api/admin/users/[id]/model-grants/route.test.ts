@@ -143,3 +143,79 @@ describe("POST /api/admin/users/[id]/model-grants — guard chains", () => {
     expect(mockGrantModel).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/admin/users/[id]/model-grants — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListGrants.mockResolvedValue([]);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 body has error field", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeGetRequest(), makeParams("u1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeGetRequest(), makeParams("u1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("listGrants called exactly once on success", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    mockListGrants.mockResolvedValueOnce([fakeGrant]);
+    const { GET } = await import("./route");
+    await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(mockListGrants).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/admin/users/[id]/model-grants — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGrantModel.mockResolvedValue(undefined);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 body has error field", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("400 body has error field for unknown model", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    const res = await POST(makePostRequest({ modelId: "invalid-model" }), makeParams("u1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("grantModel called exactly once on valid request", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    mockGrantModel.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u2") as any);
+    expect(mockGrantModel).toHaveBeenCalledTimes(1);
+  });
+});

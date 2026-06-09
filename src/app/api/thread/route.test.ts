@@ -112,3 +112,41 @@ describe("GET /api/thread", () => {
     expect(text).toBe("Unauthorized");
   });
 });
+
+describe("GET /api/thread — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("repository called with the session user id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "uid-42" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectThreadsByUserIdMock).toHaveBeenCalledWith("uid-42");
+  });
+
+  it("200 response is JSON array even for different users", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "uid-99" } });
+    const threads = [{ id: "t-99", title: "Test" }];
+    selectThreadsByUserIdMock.mockResolvedValueOnce(threads);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body[0].id).toBe("t-99");
+  });
+
+  it("never calls repository more than once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadsByUserIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectThreadsByUserIdMock).toHaveBeenCalledTimes(1);
+  });
+});

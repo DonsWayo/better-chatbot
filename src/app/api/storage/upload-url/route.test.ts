@@ -125,3 +125,51 @@ describe("POST /api/storage/upload-url", () => {
     expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/storage/upload-url — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 body has error field when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "Driver not set", solution: "Set STORAGE_DRIVER" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls createUploadUrl when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "secret.pdf" }));
+    expect(createUploadUrlMock).not.toHaveBeenCalled();
+  });
+
+  it("fallback response has directUploadSupported false", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "x.pdf" }));
+    const body = await res.json();
+    expect(body.directUploadSupported).toBe(false);
+  });
+
+  it("success response has directUploadSupported true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/file.pdf", uploadUrl: "https://signed" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/k/file.pdf");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "file.pdf" }));
+    const body = await res.json();
+    expect(body.directUploadSupported).toBe(true);
+  });
+});

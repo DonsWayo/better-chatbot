@@ -121,3 +121,40 @@ describe("POST /api/admin/users/[id]/erasure", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("POST /api/admin/users/[id]/erasure — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has userId matching the target", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    eraseUserDataMock.mockResolvedValue({ tablesCleared: [] });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "tgt-user" }) });
+    const body = await res.json();
+    expect(body.userId).toBe("tgt-user");
+  });
+
+  it("200 body has tablesCleared array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    eraseUserDataMock.mockResolvedValue({ tablesCleared: ["user", "thread"] });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "u-some" }) });
+    const body = await res.json();
+    expect(Array.isArray(body.tablesCleared)).toBe(true);
+    expect(body.tablesCleared).toContain("user");
+  });
+
+  it("never calls eraseUserData when admin tries to erase themselves", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "admin1" }) });
+    expect(eraseUserDataMock).not.toHaveBeenCalled();
+  });
+});

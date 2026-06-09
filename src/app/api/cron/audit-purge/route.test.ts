@@ -122,3 +122,56 @@ describe("POST /api/cron/audit-purge", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("POST /api/cron/audit-purge — additional", () => {
+  const OLD_ENV = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env = { ...OLD_ENV, CRON_SECRET: "test-secret" };
+
+    const returningMock = vi.fn().mockResolvedValue([]);
+    const whereMock = vi.fn().mockReturnValue({ returning: returningMock });
+    mockDelete.mockReturnValue({ where: whereMock });
+  });
+
+  it("deleted property is a number in 200 response", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(typeof body.deleted).toBe("number");
+  });
+
+  it("db.delete called exactly once on valid request", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest("test-secret"));
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 body has error field for wrong secret", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("bad-secret"));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("deleted count matches number of deleted rows", async () => {
+    const returningMock = vi.fn().mockResolvedValue([{ id: "r1" }, { id: "r2" }, { id: "r3" }]);
+    const whereMock = vi.fn().mockReturnValue({ returning: returningMock });
+    mockDelete.mockReturnValue({ where: whereMock });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(body.deleted).toBe(3);
+  });
+
+  it("cutoff date is in the past", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    const cutoff = new Date(body.cutoff);
+    expect(cutoff.getTime()).toBeLessThan(Date.now());
+  });
+});
