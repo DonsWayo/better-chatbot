@@ -240,3 +240,37 @@ describe("DELETE /api/admin/mcp/servers/[id] — additional", () => {
     expect(body.id).toBe("srv-check");
   });
 });
+
+describe("PATCH and DELETE /api/admin/mcp/servers/[id] — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+
+  it("PATCH returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ enabled: false }), { params: Promise.resolve({ id: "s1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("DELETE returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "s1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("dbUpdate never called when PATCH unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ enabled: false }), { params: Promise.resolve({ id: "s1" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("dbDelete never called when DELETE unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "s1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+});

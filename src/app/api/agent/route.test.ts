@@ -227,3 +227,36 @@ describe("GET /api/agent — response shape", () => {
     expect(canCreateAgentMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET and POST /api/agent — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("GET returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("POST returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "X" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("insertAgent never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "X" }));
+    expect(insertAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("selectAgents never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(selectAgentsMock).not.toHaveBeenCalled();
+  });
+});
