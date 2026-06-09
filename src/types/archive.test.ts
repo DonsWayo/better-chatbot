@@ -93,4 +93,36 @@ describe("ArchiveUpdateSchema", () => {
     const r = ArchiveUpdateSchema.safeParse({ description: "x".repeat(501) });
     expect(r.success).toBe(false);
   });
+
+  it("accepts name at exactly 100 characters in update", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "a".repeat(100) });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts description at exactly 500 characters in update", () => {
+    const r = ArchiveUpdateSchema.safeParse({ description: "x".repeat(500) });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts single character name", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "X" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("ArchiveCreateSchema — additional boundaries", () => {
+  it("accepts single character name", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "X" });
+    expect(r.success).toBe(true);
+  });
+
+  it("parsed data contains no extra fields when only name given", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "Archive" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects number as name", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: 42 });
+    expect(r.success).toBe(false);
+  });
 });

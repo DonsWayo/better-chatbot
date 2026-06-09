@@ -93,4 +93,39 @@ describe("VisibilitySchema", () => {
   it("has exactly 3 options", () => {
     expect(VisibilitySchema.options).toHaveLength(3);
   });
+
+  it("rejects uppercase PUBLIC", () => {
+    expect(VisibilitySchema.safeParse("PUBLIC").success).toBe(false);
+  });
+
+  it("rejects undefined", () => {
+    expect(VisibilitySchema.safeParse(undefined).success).toBe(false);
+  });
+});
+
+describe("envBooleanSchema — falsy string values", () => {
+  it('"no" → false', () => {
+    const r = envBooleanSchema.safeParse("no");
+    expect(r.success && r.data).toBe(false);
+  });
+
+  it('"off" → false (not in truthy list)', () => {
+    const r = envBooleanSchema.safeParse("off");
+    expect(r.success && r.data).toBe(false);
+  });
+
+  it('"yes" → false (not in truthy list)', () => {
+    const r = envBooleanSchema.safeParse("yes");
+    expect(r.success && r.data).toBe(false);
+  });
+
+  it('"2" → false (only "1" is truthy)', () => {
+    const r = envBooleanSchema.safeParse("2");
+    expect(r.success && r.data).toBe(false);
+  });
+
+  it("empty string → false", () => {
+    const r = envBooleanSchema.safeParse("");
+    expect(r.success && r.data).toBe(false);
+  });
 });
