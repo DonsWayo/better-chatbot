@@ -129,3 +129,31 @@ describe("POST /api/storage/upload", () => {
     expect(body).toHaveProperty("url");
   });
 });
+
+describe("POST /api/storage/upload — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkStorageAction called exactly once when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "No driver", solution: "" });
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error field when no file", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});

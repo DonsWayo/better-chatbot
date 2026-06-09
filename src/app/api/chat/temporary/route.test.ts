@@ -136,3 +136,32 @@ describe("POST /api/chat/temporary", () => {
     expect(streamTextMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/chat/temporary — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getUserPreferences never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(getUserPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a 200 Response on authenticated success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-test" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [], chatModel: { provider: "openrouter", model: "gpt-5.1" } }));
+    expect(res.status).toBe(200);
+    expect(res).toBeInstanceOf(Response);
+  });
+});

@@ -133,3 +133,35 @@ describe("POST /api/mcp", () => {
     expect(saveMcpClientActionMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/mcp — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("canCreateMCP called exactly once when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(canCreateMCPMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has success:true and id on creation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "mcp-success" }) },
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "test-mcp" }));
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.id).toBe("mcp-success");
+  });
+});

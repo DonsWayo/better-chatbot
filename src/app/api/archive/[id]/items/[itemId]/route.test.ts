@@ -132,3 +132,42 @@ describe("DELETE /api/archive/[id]/items/[itemId]", () => {
     expect(removeItemFromArchiveMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("DELETE /api/archive/[id]/items/[itemId] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls getArchiveById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body has success:true on valid removal", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-x" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-x" }) });
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  it("removeItemFromArchive called with archiveId and itemId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-del" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-del" }) });
+    expect(removeItemFromArchiveMock).toHaveBeenCalledWith("a-1", "item-del");
+  });
+});
