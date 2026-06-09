@@ -189,3 +189,55 @@ describe("checkConditionBranch — logical operators (AND/OR)", () => {
     expect(checkConditionBranch(b, getOutput)).toBe(true);
   });
 });
+
+describe("checkConditionBranch — edge cases", () => {
+  it("string Equals: false for case mismatch", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [{ source, operator: StringConditionOperator.Equals, value: "Hello" }],
+      logicalOperator: "AND",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.v": "hello" }))).toBe(false);
+  });
+
+  it("string Contains: false when substring absent", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [{ source, operator: StringConditionOperator.Contains, value: "xyz" }],
+      logicalOperator: "AND",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.v": "hello world" }))).toBe(false);
+  });
+
+  it("IsNotEmpty: false for empty string", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [{ source, operator: StringConditionOperator.IsNotEmpty }],
+      logicalOperator: "AND",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.v": "" }))).toBe(false);
+  });
+
+  it("IsEmpty: false for non-empty string", () => {
+    const source = src("n1", ["v"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [{ source, operator: StringConditionOperator.IsEmpty }],
+      logicalOperator: "AND",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.v": "nonempty" }))).toBe(false);
+  });
+
+  it("LessThan: false when source equals target (strict)", () => {
+    const source = src("n1", ["count"]);
+    const b: ConditionBranch = {
+      id: "if", type: "if",
+      conditions: [{ source, operator: NumberConditionOperator.LessThan, value: 5 }],
+      logicalOperator: "AND",
+    };
+    expect(checkConditionBranch(b, makeSourceFn({ "n1.count": 5 }))).toBe(false);
+  });
+});
