@@ -255,3 +255,33 @@ describe("POST /api/storage/ingest — edge cases", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("POST /api/storage/ingest — response type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("400 response is a Response instance", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ type: "csv" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(400);
+  });
+
+  it("content-type is application/json for 400", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ type: "csv" }));
+    expect(res.headers.get("content-type")).toContain("application/json");
+  });
+
+  it("400 body has error property", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ type: "csv" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("download not called for unsupported type with no key or url", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ type: "xml" }));
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+});
