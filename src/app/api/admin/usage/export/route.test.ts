@@ -163,3 +163,53 @@ describe("GET /api/admin/usage/export", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("GET /api/admin/usage/export — guard chains", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("never calls mockSelect when unauthenticated", async () => {
+    mockSession.mockResolvedValue(null);
+    await GET(makeRequest());
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("never calls mockSelect for non-admin user", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    await GET(makeRequest());
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    mockSession.mockResolvedValue(null);
+    await GET(makeRequest());
+    expect(mockSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 body has error field when unauthenticated", async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field for non-admin", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("400 body has error field for invalid days param", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    const res = await GET(makeRequest({ days: "not-a-number" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("mockSelect called exactly once on valid admin request", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    await GET(makeRequest());
+    expect(mockSelect).toHaveBeenCalledTimes(1);
+  });
+});

@@ -173,3 +173,42 @@ describe("DELETE /api/knowledge/collections/[id]/documents/[docId]", () => {
     expect(typeof body.deletedChunks).toBe("number");
   });
 });
+
+describe("DELETE /api/knowledge/collections/[id]/documents/[docId] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("dbSelect never called when non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("dbDelete never called for unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+});

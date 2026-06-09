@@ -4,10 +4,15 @@ const {
   getSessionMock,
   checkAccessMock,
   selectStructureByIdMock,
+  createWorkflowExecutorMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   checkAccessMock: vi.fn(),
   selectStructureByIdMock: vi.fn(),
+  createWorkflowExecutorMock: vi.fn(() => ({
+    subscribe: vi.fn(),
+    run: vi.fn(),
+  })),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
@@ -18,10 +23,7 @@ vi.mock("lib/db/repository", () => ({
   },
 }));
 vi.mock("lib/ai/workflow/executor/workflow-executor", () => ({
-  createWorkflowExecutor: vi.fn(() => ({
-    subscribe: vi.fn(),
-    run: vi.fn(),
-  })),
+  createWorkflowExecutor: createWorkflowExecutorMock,
 }));
 vi.mock("lib/ai/workflow/shared.workflow", () => ({
   encodeWorkflowEvent: vi.fn(() => "data"),
@@ -166,5 +168,40 @@ describe("POST /api/workflow/[id]/execute", () => {
     const { POST } = await import("./route");
     await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/workflow/[id]/execute — executor guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never creates executor when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("never creates executor when access is denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("never creates executor when structure not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-missing" }) });
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("checkAccess not called for unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-99" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
   });
 });

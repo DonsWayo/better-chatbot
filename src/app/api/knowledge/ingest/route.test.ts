@@ -162,3 +162,59 @@ describe("POST /api/knowledge/ingest", () => {
     expect(body.collectionId).toBe("col-xyz");
   });
 });
+
+describe("POST /api/knowledge/ingest — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "hi" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls ingestDocument when no text or key provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1" }));
+    expect(ingestDocumentMock).not.toHaveBeenCalled();
+  });
+
+  it("400 body has error when no text or key provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("404 body has error field when collection not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "missing", text: "hello" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 body has ok:true on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    ingestDocumentMock.mockResolvedValueOnce(4);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "content" }));
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(typeof body.chunks).toBe("number");
+  });
+
+  it("dbSelect called exactly once for admin request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "hello" }));
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+});

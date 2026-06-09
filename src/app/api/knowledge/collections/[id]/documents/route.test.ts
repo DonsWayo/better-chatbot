@@ -162,3 +162,58 @@ describe("GET /api/knowledge/collections/[id]/documents", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/knowledge/collections/[id]/documents — additional guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("dbSelect called at least once for authenticated admin request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    let callCount = 0;
+    dbSelectMock.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return { from: () => ({ where: () => Promise.resolve([{ id: "col-1" }]) }) };
+      }
+      return { from: () => ({ where: () => ({ groupBy: () => ({ orderBy: () => Promise.resolve([]) }) }) }) };
+    });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(dbSelectMock).toHaveBeenCalled();
+  });
+
+  it("returns 404 body has error field when collection missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectMock.mockReturnValueOnce({
+      from: () => ({ where: () => Promise.resolve([]) }),
+    });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "gone" }) });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls dbSelect when unauthenticated (guard chain)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body documents array can be empty", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    let callCount = 0;
+    dbSelectMock.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return { from: () => ({ where: () => Promise.resolve([{ id: "col-1" }]) }) };
+      }
+      return { from: () => ({ where: () => ({ groupBy: () => ({ orderBy: () => Promise.resolve([]) }) }) }) };
+    });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.documents).toHaveLength(0);
+  });
+});
