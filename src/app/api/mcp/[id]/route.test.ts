@@ -121,4 +121,47 @@ describe("DELETE /api/mcp/[id]", () => {
     const body = await res.json();
     expect(body.error).toBe("DB fail");
   });
+
+  it("calls selectById with the correct mcp id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    pgMcpRepositoryMock.selectById.mockResolvedValue(null);
+    await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-target"),
+    );
+    expect(pgMcpRepositoryMock.selectById).toHaveBeenCalledWith("mcp-target");
+  });
+
+  it("does not call canManageMCPServer when server not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    pgMcpRepositoryMock.selectById.mockResolvedValue(null);
+    await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-1"),
+    );
+    expect(canManageMCPServerMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call removeMcpClientAction when not authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    pgMcpRepositoryMock.selectById.mockResolvedValue(MCP_SERVER);
+    canManageMCPServerMock.mockResolvedValue(false);
+    await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-1"),
+    );
+    expect(removeMcpClientActionMock).not.toHaveBeenCalled();
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    pgMcpRepositoryMock.selectById.mockResolvedValue(MCP_SERVER);
+    canManageMCPServerMock.mockResolvedValue(true);
+    removeMcpClientActionMock.mockResolvedValue(undefined);
+    const res = await DELETE(
+      new Request("http://x") as Parameters<typeof DELETE>[0],
+      makeContext("mcp-1"),
+    );
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
 });

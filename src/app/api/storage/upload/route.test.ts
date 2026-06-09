@@ -116,4 +116,32 @@ describe("POST /api/storage/upload", () => {
     const body = await res.json();
     expect(body.error).toMatch(/failed to upload/i);
   });
+
+  it("does not call upload when session is missing", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const file = new File(["content"], "test.txt", { type: "text/plain" });
+    await POST(makeFileRequest(file));
+    expect(serverFileStorageMock.upload).not.toHaveBeenCalled();
+  });
+
+  it("does not call upload when storage is not configured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    checkStorageActionMock.mockResolvedValue({ isValid: false, error: "Not configured", solution: "" });
+    const file = new File(["content"], "test.txt", { type: "text/plain" });
+    await POST(makeFileRequest(file));
+    expect(serverFileStorageMock.upload).not.toHaveBeenCalled();
+  });
+
+  it("success body includes metadata", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.upload.mockResolvedValue({
+      key: "uploads/file.pdf",
+      sourceUrl: "http://cdn/file.pdf",
+      metadata: { size: 512, contentType: "application/pdf" },
+    });
+    const file = new File(["pdf"], "file.pdf", { type: "application/pdf" });
+    const res = await POST(makeFileRequest(file));
+    const body = await res.json();
+    expect(body.metadata).toBeDefined();
+  });
 });

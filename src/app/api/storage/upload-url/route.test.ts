@@ -122,4 +122,29 @@ describe("POST /api/storage/upload-url", () => {
     const body = await res.json();
     expect(body.directUploadSupported).toBe(false);
   });
+
+  it("does not call checkStorage when session is missing", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ filename: "test.csv" }));
+    expect(checkStorageActionMock).not.toHaveBeenCalled();
+  });
+
+  it("calls checkStorageAction exactly once per request when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.createUploadUrl = undefined as unknown as typeof serverFileStorageMock.createUploadUrl;
+    await POST(makeRequest({ filename: "test.csv" }));
+    expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 body includes solution when storage not configured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    checkStorageActionMock.mockResolvedValue({
+      isValid: false,
+      error: "S3 not configured",
+      solution: "Set AWS_BUCKET env var",
+    });
+    const res = await POST(makeRequest({ filename: "test.csv" }));
+    const body = await res.json();
+    expect(body.solution).toBe("Set AWS_BUCKET env var");
+  });
 });

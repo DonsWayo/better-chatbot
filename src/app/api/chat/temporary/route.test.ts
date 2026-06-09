@@ -104,4 +104,31 @@ describe("POST /api/chat/temporary", () => {
     await POST(makeRequest({ messages: MESSAGES }));
     expect(getUserPreferencesMock).toHaveBeenCalledWith("user-42");
   });
+
+  it("calls getUserPreferences exactly once", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ messages: MESSAGES }));
+    expect(getUserPreferencesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls streamText exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ messages: MESSAGES }));
+    expect(streamTextMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call streamText when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ messages: MESSAGES }));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("passes chatModel to streamText when provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const chatModel = { provider: "openrouter", name: "gpt-4", id: "gpt-4" };
+    await POST(makeRequest({ messages: MESSAGES, chatModel }));
+    expect(streamTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: expect.anything() }),
+    );
+  });
 });
