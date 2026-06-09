@@ -111,3 +111,32 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("selectExecuteAbilityWorkflowsAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("result preserves all fields from repository items", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const item = { id: "wf-full", name: "Full", description: "desc", enabled: true, createdAt: "2026-01-01" };
+    selectExecuteAbilityMock.mockResolvedValueOnce([item]);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    const result = await selectExecuteAbilityWorkflowsAction();
+    expect(result[0]).toEqual(item);
+  });
+
+  it("repository never called when unauthenticated (guard chain)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    await selectExecuteAbilityWorkflowsAction();
+    expect(selectExecuteAbilityMock).not.toHaveBeenCalled();
+  });
+
+  it("returns array with single item when repository returns one workflow", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([{ id: "single-wf", name: "Solo" }]);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    const result = await selectExecuteAbilityWorkflowsAction();
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("single-wf");
+  });
+});

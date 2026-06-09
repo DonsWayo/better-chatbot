@@ -94,3 +94,31 @@ describe("createTeamAction", () => {
     expect(createTeamMock).toHaveBeenCalledWith("Alpha", "Alpha team description");
   });
 });
+
+describe("createTeamAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("propagates error from createTeam to caller", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockRejectedValueOnce(new Error("unique constraint violation"));
+    const { createTeamAction } = await import("./actions");
+    await expect(createTeamAction("DupTeam")).rejects.toThrow("unique constraint violation");
+  });
+
+  it("requireAdminPermission is called before createTeam", async () => {
+    const callOrder: string[] = [];
+    requireAdminPermissionMock.mockImplementation(async () => { callOrder.push("permission"); });
+    createTeamMock.mockImplementation(async () => { callOrder.push("create"); });
+    const { createTeamAction } = await import("./actions");
+    await createTeamAction("OrderedTeam");
+    expect(callOrder).toEqual(["permission", "create"]);
+  });
+
+  it("empty string name is passed as-is", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockResolvedValue(undefined);
+    const { createTeamAction } = await import("./actions");
+    await createTeamAction("");
+    expect(createTeamMock).toHaveBeenCalledWith("", undefined);
+  });
+});
