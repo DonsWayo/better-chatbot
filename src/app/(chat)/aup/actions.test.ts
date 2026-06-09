@@ -16,7 +16,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("acceptAupAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redirectMock.mockImplementation((url: string) => {
+      throw Object.assign(new Error(`NEXT_REDIRECT: ${url}`), { digest: `NEXT_REDIRECT;${url}` });
+    });
+  });
 
   it("redirects to signin when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -33,5 +38,43 @@ describe("acceptAupAction", () => {
     await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT/);
     expect(recordAupAcceptanceMock).toHaveBeenCalledWith("u1");
     expect(redirectMock).toHaveBeenCalledWith("/");
+  });
+
+  it("passes exact userId to recordAupAcceptance", async () => {
+    const userId = "user-xyz-456";
+    getSessionMock.mockResolvedValue({ user: { id: userId } });
+    recordAupAcceptanceMock.mockResolvedValue(undefined);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(recordAupAcceptanceMock).toHaveBeenCalledWith(userId);
+    expect(recordAupAcceptanceMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("redirect to signin is called exactly once when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow();
+    expect(redirectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls recordAupAcceptance before redirect to home", async () => {
+    const callOrder: string[] = [];
+    recordAupAcceptanceMock.mockImplementation(async () => { callOrder.push("record"); });
+    redirectMock.mockImplementation((url: string) => {
+      callOrder.push(`redirect:${url}`);
+      throw Object.assign(new Error(`NEXT_REDIRECT: ${url}`), { digest: `NEXT_REDIRECT;${url}` });
+    });
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(callOrder).toEqual(["record", "redirect:/"]);
+  });
+
+  it("propagates error when recordAupAcceptance throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    recordAupAcceptanceMock.mockRejectedValue(new Error("DB failure"));
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow("DB failure");
+    expect(redirectMock).not.toHaveBeenCalledWith("/");
   });
 });

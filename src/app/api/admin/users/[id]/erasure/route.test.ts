@@ -60,4 +60,41 @@ describe("POST /api/admin/users/[id]/erasure", () => {
     await POST(makeRequest(), { params: Promise.resolve({ id: "victim-user" }) });
     expect(eraseUserDataMock).toHaveBeenCalledWith("victim-user");
   });
+
+  it("never calls eraseUserData when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(eraseUserDataMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls eraseUserData for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    expect(eraseUserDataMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("400 body has error field when admin erases themselves", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "admin1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

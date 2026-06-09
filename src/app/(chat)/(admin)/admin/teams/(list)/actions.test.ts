@@ -36,4 +36,36 @@ describe("createTeamAction", () => {
     await createTeamAction("Sales");
     expect(createTeamMock).toHaveBeenCalledWith("Sales", undefined);
   });
+
+  it("revalidatePath is not called when requireAdminPermission throws", async () => {
+    requireAdminPermissionMock.mockRejectedValue(new Error("Forbidden"));
+    const { createTeamAction } = await import("./actions");
+    await expect(createTeamAction("Ops")).rejects.toThrow();
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("revalidatePath is not called when createTeam throws", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockRejectedValue(new Error("DB error"));
+    const { createTeamAction } = await import("./actions");
+    await expect(createTeamAction("Dev")).rejects.toThrow("DB error");
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("revalidates exactly /admin/teams path", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockResolvedValue(undefined);
+    const { createTeamAction } = await import("./actions");
+    await createTeamAction("Marketing");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams");
+    expect(revalidatePathMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls requireAdminPermission exactly once", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockResolvedValue(undefined);
+    const { createTeamAction } = await import("./actions");
+    await createTeamAction("Finance");
+    expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
+  });
 });

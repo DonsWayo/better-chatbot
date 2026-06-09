@@ -63,4 +63,40 @@ describe("POST /api/storage/upload", () => {
     expect(body.key).toBe("uploads/test.png");
     expect(body.url).toBe("http://cdn/test.png");
   });
+
+  it("never calls upload when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(uploadMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls upload when storage is misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "No storage", solution: "" });
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(uploadMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("500 body has error field for misconfigured storage", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({
+      isValid: false,
+      error: "No storage configured",
+      solution: "Set env var",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

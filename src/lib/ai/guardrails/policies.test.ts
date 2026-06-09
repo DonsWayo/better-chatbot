@@ -44,4 +44,44 @@ describe("resolvePolicy", () => {
     expect(standard.pii).toBe("redact");
     expect(standard.secrets).toBe("block");
   });
+
+  it("standard blocks injection", () => {
+    expect(resolvePolicy("standard").injection).toBe("block");
+  });
+
+  it("standard has outputLeakProtection enabled", () => {
+    expect(resolvePolicy("standard").outputLeakProtection).toBe(true);
+  });
+
+  it("permissive warns on injection rather than blocking", () => {
+    expect(resolvePolicy("permissive").injection).toBe("warn");
+  });
+
+  it("permissive redacts secrets rather than blocking", () => {
+    expect(resolvePolicy("permissive").secrets).toBe("redact");
+  });
+
+  it("strict has maxInputChars of 20000", () => {
+    expect(resolvePolicy("strict").maxInputChars).toBe(20_000);
+  });
+
+  it("standard has maxInputChars of 50000", () => {
+    expect(resolvePolicy("standard").maxInputChars).toBe(50_000);
+  });
+
+  it("permissive has maxInputChars of 100000", () => {
+    expect(resolvePolicy("permissive").maxInputChars).toBe(100_000);
+  });
+
+  it("posture field matches the requested posture for each valid value", () => {
+    expect(resolvePolicy("strict").posture).toBe("strict");
+    expect(resolvePolicy("standard").posture).toBe("standard");
+    expect(resolvePolicy("permissive").posture).toBe("permissive");
+  });
+
+  it("strict has the smallest maxInputChars of all postures", () => {
+    const { maxInputChars: strictChars } = resolvePolicy("strict");
+    expect(strictChars).toBeLessThan(resolvePolicy("standard").maxInputChars);
+    expect(strictChars).toBeLessThan(resolvePolicy("permissive").maxInputChars);
+  });
 });

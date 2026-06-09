@@ -40,4 +40,36 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
     const result = await selectExecuteAbilityWorkflowsAction();
     expect(result).toEqual([]);
   });
+
+  it("passes exact userId to selectExecuteAbility", async () => {
+    const userId = "user-specific-id-123";
+    getSessionMock.mockResolvedValue({ user: { id: userId } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    await selectExecuteAbilityWorkflowsAction();
+    expect(selectExecuteAbilityMock).toHaveBeenCalledWith(userId);
+  });
+
+  it("calls selectExecuteAbility exactly once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u3" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    await selectExecuteAbilityWorkflowsAction();
+    expect(selectExecuteAbilityMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns all workflows returned by repository", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u4" } });
+    const workflows = [
+      { id: "wf-1", name: "Deploy" },
+      { id: "wf-2", name: "Review" },
+      { id: "wf-3", name: "Notify" },
+    ];
+    selectExecuteAbilityMock.mockResolvedValueOnce(workflows);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    const result = await selectExecuteAbilityWorkflowsAction();
+    expect(result).toHaveLength(3);
+    expect(result[0].id).toBe("wf-1");
+    expect(result[2].name).toBe("Notify");
+  });
 });

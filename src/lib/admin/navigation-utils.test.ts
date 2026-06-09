@@ -47,4 +47,26 @@ describe("buildReturnUrl", () => {
     const url = buildReturnUrl("/admin/users", "%ZZinvalid");
     expect(url).toBe("/admin/users");
   });
+
+  it("preserves multiple query params through encode/decode roundtrip", () => {
+    const params = "page=5&q=test+user&sort=asc";
+    const encoded = encodeURIComponent(params);
+    const url = buildReturnUrl("/admin/users", encoded);
+    expect(url).toBe(`/admin/users?${params}`);
+  });
+
+  it("works with non-admin base URLs", () => {
+    const encoded = encodeURIComponent("filter=active");
+    expect(buildReturnUrl("/some/other/path", encoded)).toBe("/some/other/path?filter=active");
+  });
+});
+
+describe("buildUserDetailUrl — roundtrip with buildReturnUrl", () => {
+  it("params survive encode/decode roundtrip via both functions", () => {
+    const originalParams = "page=2&q=john&sort=desc";
+    const detailUrl = buildUserDetailUrl("u-99", originalParams);
+    const encoded = new URL(detailUrl, "http://localhost").searchParams.get("searchPageParams")!;
+    const returnUrl = buildReturnUrl("/admin/users", encoded);
+    expect(returnUrl).toBe(`/admin/users?${originalParams}`);
+  });
 });

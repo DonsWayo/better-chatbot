@@ -52,4 +52,45 @@ describe("DEFAULT_COMPRESSION_CONFIG", () => {
     expect(DEFAULT_COMPRESSION_CONFIG.maxToolOutputChars).toBeGreaterThan(0);
     expect(DEFAULT_COMPRESSION_CONFIG.maxToolOutputChars).not.toBe(Infinity);
   });
+
+  it("has all required fields defined", () => {
+    expect(DEFAULT_COMPRESSION_CONFIG.recentMessageWindow).toBeDefined();
+    expect(DEFAULT_COMPRESSION_CONFIG.maxOldAssistantMsgChars).toBeDefined();
+    expect(DEFAULT_COMPRESSION_CONFIG.historyCompressionThreshold).toBeDefined();
+  });
+});
+
+describe("buildCompressionConfig — ordering", () => {
+  it("light has looser limits than standard", () => {
+    const standard = buildCompressionConfig("standard");
+    const light = buildCompressionConfig("light");
+    expect(light.maxToolOutputChars).toBeGreaterThan(standard.maxToolOutputChars);
+    expect(light.recentMessageWindow).toBeGreaterThan(standard.recentMessageWindow);
+  });
+
+  it("all four levels produce distinct maxToolOutputChars", () => {
+    const values = (["off", "light", "standard", "aggressive"] as const).map(
+      (l) => buildCompressionConfig(l).maxToolOutputChars,
+    );
+    const unique = new Set(values);
+    expect(unique.size).toBe(4);
+  });
+
+  it("level field matches the argument passed", () => {
+    for (const level of ["off", "light", "standard", "aggressive"] as const) {
+      expect(buildCompressionConfig(level).level).toBe(level);
+    }
+  });
+
+  it("override of recentMessageWindow is respected", () => {
+    const config = buildCompressionConfig("aggressive", { recentMessageWindow: 20 });
+    expect(config.recentMessageWindow).toBe(20);
+    expect(config.level).toBe("aggressive");
+  });
+
+  it("aggressive historyCompressionThreshold is tighter than light", () => {
+    const light = buildCompressionConfig("light");
+    const aggressive = buildCompressionConfig("aggressive");
+    expect(aggressive.historyCompressionThreshold).toBeLessThan(light.historyCompressionThreshold);
+  });
 });
