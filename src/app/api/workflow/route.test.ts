@@ -155,3 +155,95 @@ describe("POST /api/workflow (edit existing)", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("GET /api/workflow — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAll called exactly once when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body is an array when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+});
+
+describe("POST /api/workflow (create) — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls canCreateWorkflow when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(canCreateWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("save called exactly once on successful create", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(true);
+    saveMock.mockResolvedValueOnce({ id: "wf-new", name: "New Workflow" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/workflow (edit existing) — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls save when user lacks edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("403 body has error field when lacking edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls checkAccess when user lacks edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+});

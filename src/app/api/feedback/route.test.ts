@@ -154,3 +154,55 @@ describe("DELETE /api/feedback", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("POST /api/feedback — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messageId: "m-1", rating: "up" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error when messageId is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ rating: "up" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("dbInsert called exactly once on valid POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messageId: "m-1", rating: "up" }));
+    expect(dbInsertMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DELETE /api/feedback — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error when messageId param is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(undefined, "http://localhost/api/feedback"));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("dbDelete called exactly once on successful delete", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(undefined, "http://localhost/api/feedback?messageId=m-1"));
+    expect(dbDeleteMock).toHaveBeenCalledTimes(1);
+  });
+});
