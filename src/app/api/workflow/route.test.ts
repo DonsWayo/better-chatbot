@@ -283,3 +283,37 @@ describe("GET /api/workflow — response shape", () => {
     expect(selectAllMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-abc" }));
   });
 });
+
+describe("GET and POST /api/workflow — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAll not called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).not.toHaveBeenCalled();
+  });
+
+  it("save not called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const req = { json: () => Promise.resolve({ name: "w", nodes: [], edges: [] }) } as unknown as Request;
+    await POST(req);
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});

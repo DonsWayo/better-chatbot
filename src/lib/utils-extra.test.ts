@@ -286,3 +286,28 @@ describe("PromiseChain", () => {
     expect(results).toEqual([1, 2]);
   });
 });
+
+describe("createIncrement and PromiseChain — additional invariants", () => {
+  it("createIncrement increments by 1 each call", () => {
+    const inc = createIncrement(10);
+    expect(inc()).toBe(10);
+    expect(inc()).toBe(11);
+    expect(inc()).toBe(12);
+  });
+
+  it("createIncrement with default start returns 0 first", () => {
+    const inc = createIncrement();
+    expect(inc()).toBe(0);
+  });
+
+  it("PromiseChain returns the resolved value of the function", async () => {
+    const chain = PromiseChain();
+    const result = await chain(async () => 42);
+    expect(result).toBe(42);
+  });
+
+  it("PromiseChain rejects when the function throws", async () => {
+    const chain = PromiseChain();
+    await expect(chain(async () => { throw new Error("fail"); })).rejects.toThrow("fail");
+  });
+});
