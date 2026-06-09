@@ -164,3 +164,38 @@ describe("GET /api/export — additional", () => {
     expect(selectSummaryByExporterIdMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/export — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectSummaryByExporterId not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("200 body is an array for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+});

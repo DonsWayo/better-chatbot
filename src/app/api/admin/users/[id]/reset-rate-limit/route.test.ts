@@ -160,3 +160,32 @@ describe("DELETE /api/admin/users/[id]/reset-rate-limit — additional", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("DELETE /api/admin/users/[id]/reset-rate-limit — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("mockSession called exactly once per DELETE", async () => {
+    mockSession.mockResolvedValue(null);
+    await DELETE({} as never, { params: makeParams("u1") });
+    expect(mockSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("mockDelete not called when unauthenticated", async () => {
+    mockSession.mockResolvedValue(null);
+    await DELETE({} as never, { params: makeParams("u1") });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("DELETE returns 401 Response when session is null", async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await DELETE({} as never, { params: makeParams("u1") });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("mockDelete not called for non-admin user", async () => {
+    mockSession.mockResolvedValue({ user: { id: "u-2", role: "user" } });
+    await DELETE({} as never, { params: makeParams("u-3") });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+});
