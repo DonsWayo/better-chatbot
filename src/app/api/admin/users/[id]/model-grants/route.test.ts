@@ -219,3 +219,41 @@ describe("POST /api/admin/users/[id]/model-grants — additional", () => {
     expect(mockGrantModel).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/admin/users/[id]/model-grants — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListGrants.mockResolvedValue([]);
+  });
+
+  it("response is always a Response instance for 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    mockListGrants.mockResolvedValue([fakeGrant]);
+    const { GET } = await import("./route");
+    const res = await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST response is always a Response instance for 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 grants items have modelId field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    mockListGrants.mockResolvedValue([fakeGrant]);
+    const { GET } = await import("./route");
+    const res = await GET(makeGetRequest(), makeParams("u1") as any);
+    const body = await res.json();
+    expect(body.grants[0]).toHaveProperty("modelId");
+  });
+});

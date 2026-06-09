@@ -218,3 +218,21 @@ describe("canViewResource — additional", () => {
     expect(canViewResource(undefined, "mcp")).toBe(false);
   });
 });
+
+describe("canCreateAgent — additional", () => {
+  it("empty string role cannot create agents", () => {
+    expect(canCreateAgent("")).toBe(false);
+  });
+
+  it("unknown role cannot create agents", () => {
+    expect(canCreateAgent("superuser")).toBe(false);
+  });
+
+  it("canDeleteAgent returns true for editor", () => {
+    expect(canDeleteAgent("editor")).toBe(true);
+  });
+
+  it("canEditAgent returns false for null", () => {
+    expect(canEditAgent(null)).toBe(false);
+  });
+});
