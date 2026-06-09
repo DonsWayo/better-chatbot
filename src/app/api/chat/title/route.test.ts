@@ -159,4 +159,26 @@ describe("POST /api/chat/title", () => {
     await POST(makeRequest({ message: "Hello", threadId: "my-thread" }));
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
+
+  it("calls streamText even when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: () => new Response("ok") });
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(streamTextMock).toHaveBeenCalled();
+  });
+
+  it("does not call upsertThread when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(chatRepositoryMock.upsertThread).not.toHaveBeenCalled();
+  });
+
+  it("passes model argument to streamText", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: () => new Response("ok") });
+    await POST(makeRequest({ message: "Hi", threadId: "t-1" }));
+    expect(streamTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: expect.anything() }),
+    );
+  });
 });

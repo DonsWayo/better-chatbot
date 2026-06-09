@@ -119,4 +119,25 @@ describe("GET /api/chat/models", () => {
     const gemini = body.find((m) => m.id === "gemini");
     expect(gemini?.hasAPIKey).toBe(false);
   });
+
+  it("response length equals modelsInfo length", async () => {
+    const res = await GET();
+    const body = await res.json() as unknown[];
+    expect(body).toHaveLength(customModelProviderMock.modelsInfo.length);
+  });
+
+  it("response body is not wrapped in an object (direct array, not {data:[...]})", async () => {
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(typeof (body as { data?: unknown }).data).toBe("undefined");
+  });
+
+  it("GET can be called twice with stable results", async () => {
+    const res1 = await GET();
+    const res2 = await GET();
+    const body1 = await res1.json() as { id: string }[];
+    const body2 = await res2.json() as { id: string }[];
+    expect(body1.map((m) => m.id)).toEqual(body2.map((m) => m.id));
+  });
 });

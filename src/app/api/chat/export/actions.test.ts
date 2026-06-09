@@ -170,4 +170,36 @@ describe("addExportChatCommentAction", () => {
     });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
+
+  it("does not call insertComment when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await expect(
+      addExportChatCommentAction({
+        exportId: "exp-1",
+        content: { type: "doc", content: [] },
+      }),
+    ).rejects.toThrow();
+    expect(chatExportRepositoryMock.insertComment).not.toHaveBeenCalled();
+  });
+
+  it("passes content with nested nodes to repository", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+    const rich = { type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text: "hello" }] }] };
+    await addExportChatCommentAction({ exportId: "exp-1", content: rich });
+    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
+      expect.objectContaining({ content: rich }),
+    );
+  });
+
+  it("action result equals whatever insertComment resolves to", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const returned = { id: "new-comment-1" };
+    chatExportRepositoryMock.insertComment.mockResolvedValue(returned);
+    const result = await addExportChatCommentAction({
+      exportId: "exp-1",
+      content: { type: "doc", content: [] },
+    });
+    expect(result).toBe(returned);
+  });
 });

@@ -93,4 +93,20 @@ describe("Admin Actions - Business Logic", () => {
       expect(resolved).toBe("Violation of terms");
     });
   });
+
+  describe("USER_ROLES constants", () => {
+    it("USER and ADMIN roles are different values", () => {
+      expect(USER_ROLES.USER).not.toBe(USER_ROLES.ADMIN);
+    });
+
+    it("USER role is a non-empty string", () => {
+      expect(typeof USER_ROLES.USER).toBe("string");
+      expect(USER_ROLES.USER.length).toBeGreaterThan(0);
+    });
+
+    it("ADMIN role is a non-empty string", () => {
+      expect(typeof USER_ROLES.ADMIN).toBe("string");
+      expect(USER_ROLES.ADMIN.length).toBeGreaterThan(0);
+    });
+  });
 });

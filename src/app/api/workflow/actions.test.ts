@@ -148,4 +148,28 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
 
     expect(mockGetSession).toHaveBeenCalledTimes(1);
   });
+
+  it("each returned workflow has userId field", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([mockWorkflow]);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result[0]).toHaveProperty("userId");
+  });
+
+  it("each returned workflow has isPublished field", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([mockWorkflow]);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result[0]).toHaveProperty("isPublished");
+  });
+
+  it("throws when session user is null (accessing id on null)", async () => {
+    mockGetSession.mockResolvedValue({ user: null, session: {} } as unknown as MockSession);
+
+    await expect(selectExecuteAbilityWorkflowsAction()).rejects.toThrow();
+  });
 });

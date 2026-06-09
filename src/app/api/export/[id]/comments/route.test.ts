@@ -163,3 +163,40 @@ describe("POST /api/export/[id]/comments", () => {
     expect(res.status).toBe(500);
   });
 });
+
+describe("GET /api/export/[id]/comments — extra coverage", () => {
+  it("calls selectCommentsByExportId exactly once per request", async () => {
+    getUserIdMock.mockResolvedValue("user-1");
+    chatExportRepositoryMock.selectCommentsByExportId.mockResolvedValue([]);
+    await GET(makeRequest(), makeContext("exp-1"));
+    expect(chatExportRepositoryMock.selectCommentsByExportId).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getUserIdMock.mockResolvedValue("user-1");
+    chatExportRepositoryMock.selectCommentsByExportId.mockResolvedValue([]);
+    const res = await GET(makeRequest(), makeContext("exp-1"));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+});
+
+describe("POST /api/export/[id]/comments — extra coverage", () => {
+  it("calls insertComment exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+    await POST(
+      makeRequest({ content: { type: "doc", content: [] } }),
+      makeContext("exp-1"),
+    );
+    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call insertComment when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(
+      makeRequest({ content: { type: "doc", content: [] } }),
+      makeContext("exp-1"),
+    );
+    expect(chatExportRepositoryMock.insertComment).not.toHaveBeenCalled();
+  });
+});
