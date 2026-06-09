@@ -258,3 +258,40 @@ describe("GET /api/workflow/[id] — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("PUT /api/workflow/[id] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 403 (no edit permission)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("canEditWorkflow not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(canEditWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it("saveMock called exactly once on successful PUT", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectByIdMock.mockResolvedValueOnce(WORKFLOW);
+    saveMock.mockResolvedValueOnce(WORKFLOW);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "Updated" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+});

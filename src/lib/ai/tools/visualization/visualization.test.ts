@@ -256,3 +256,27 @@ describe("createTableTool", () => {
     expect(result).toBe("Success");
   });
 });
+
+describe("visualization tools — execute invariants", () => {
+  it("createBarChartTool.execute always returns 'Success'", async () => {
+    const result = await createBarChartTool.execute!({} as any, {} as any);
+    expect(result).toBe("Success");
+  });
+
+  it("createLineChartTool.execute always returns 'Success'", async () => {
+    const result = await createLineChartTool.execute!({} as any, {} as any);
+    expect(result).toBe("Success");
+  });
+
+  it("createPieChartTool.execute always returns 'Success'", async () => {
+    const result = await createPieChartTool.execute!({} as any, {} as any);
+    expect(result).toBe("Success");
+  });
+
+  it("all four tools have a non-empty description string", () => {
+    for (const tool of [createBarChartTool, createLineChartTool, createPieChartTool, createTableTool]) {
+      expect(typeof tool.description).toBe("string");
+      expect(tool.description.length).toBeGreaterThan(0);
+    }
+  });
+});

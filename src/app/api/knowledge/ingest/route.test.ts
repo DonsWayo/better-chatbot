@@ -258,3 +258,39 @@ describe("POST /api/knowledge/ingest — response shape", () => {
     expect(body).toHaveProperty("collectionId");
   });
 });
+
+describe("POST /api/knowledge/ingest — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValue([{ id: "col-1" }]);
+    ingestDocumentMock.mockResolvedValue(0);
+  });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("ingestDocument called exactly once per valid POST", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ collectionId: "col-1", text: "hello world" }));
+    expect(ingestDocumentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 404 when collection not found", async () => {
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "missing-col", text: "data" }));
+    expect(res.status).toBe(404);
+  });
+});
