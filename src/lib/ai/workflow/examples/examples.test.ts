@@ -91,3 +91,38 @@ describe("BabyResearch example", () => {
     expect(nodes.some((n) => n.kind === "output")).toBe(true);
   });
 });
+
+describe("GetWeather and BabyResearch — shared invariants", () => {
+  it("both workflows are published", () => {
+    expect(GetWeather().workflow.isPublished).toBe(true);
+    expect(BabyResearch().workflow.isPublished).toBe(true);
+  });
+
+  it("both have non-empty workflow names", () => {
+    expect(typeof GetWeather().workflow.name).toBe("string");
+    expect(GetWeather().workflow.name.length).toBeGreaterThan(0);
+    expect(typeof BabyResearch().workflow.name).toBe("string");
+    expect(BabyResearch().workflow.name.length).toBeGreaterThan(0);
+  });
+
+  it("both have at least 2 nodes", () => {
+    expect(GetWeather().nodes.length).toBeGreaterThanOrEqual(2);
+    expect(BabyResearch().nodes.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("every node id is unique within each workflow", () => {
+    for (const fn of [GetWeather, BabyResearch]) {
+      const { nodes } = fn();
+      const ids = nodes.map((n) => n.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it("every edge id is unique within each workflow", () => {
+    for (const fn of [GetWeather, BabyResearch]) {
+      const { edges } = fn();
+      const ids = edges.map((e) => e.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+});

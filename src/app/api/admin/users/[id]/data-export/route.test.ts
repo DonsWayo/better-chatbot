@@ -90,4 +90,20 @@ describe("GET /api/admin/users/[id]/data-export", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("calls exportUserData exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    exportUserDataMock.mockResolvedValue({ exportedAt: "2026-01-01", userId: "u9" });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u9" }) });
+    expect(exportUserDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("content-disposition header contains the target user id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    exportUserDataMock.mockResolvedValue({ exportedAt: "2026-01-01", userId: "target-user-x" });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "target-user-x" }) });
+    expect(res.headers.get("content-disposition")).toContain("target-user-x");
+  });
 });
