@@ -145,4 +145,72 @@ describe("POST /api/admin/feature-flags", () => {
     const body = await res.json();
     expect(body.enabled).toBe(false);
   });
+
+  it("POST 401 body has error field", async () => {
+    mockSession = null;
+    const res = await POST(makeRequest({ name: "kill_switch", enabled: true }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("POST 403 body has error field", async () => {
+    mockSession = { user: { role: "user" } };
+    const res = await POST(makeRequest({ name: "kill_switch", enabled: true }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("POST 400 body has error field", async () => {
+    const res = await POST(makeRequest({ enabled: true }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("mockInsert never called when not admin", async () => {
+    mockSession = { user: { role: "user" } };
+    await POST(makeRequest({ name: "kill_switch", enabled: true }));
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("mockInsert never called when unauthenticated", async () => {
+    mockSession = null;
+    await POST(makeRequest({ name: "kill_switch", enabled: true }));
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/admin/feature-flags — additional", () => {
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockInsert.mockClear();
+    mockResetCache.mockClear();
+  });
+
+  it("GET 401 body has error field", async () => {
+    mockSession = null;
+    const res = await GET({} as Request);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("GET 403 body has error field", async () => {
+    mockSession = { user: { role: "user" } };
+    const res = await GET({} as Request);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("mockSelect never called when not admin", async () => {
+    mockSession = { user: { role: "user" } };
+    await GET({} as Request);
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("200 body flags is an array", async () => {
+    mockSession = { user: { role: "admin" } };
+    mockSelect.mockResolvedValue([]);
+    const res = await GET({} as Request);
+    const body = await res.json();
+    expect(Array.isArray(body.flags)).toBe(true);
+  });
 });

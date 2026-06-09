@@ -138,4 +138,53 @@ describe("GET /api/agent — guard chains", () => {
     const body = await res.json();
     expect(body).toEqual([]);
   });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("selectAgents called exactly once for authenticated GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAgentsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(selectAgentsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once for GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/agent — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once for POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
