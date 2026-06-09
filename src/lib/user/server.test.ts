@@ -249,3 +249,32 @@ describe("User Server", () => {
     });
   });
 });
+
+describe("updateUserDetails — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+  });
+
+  it("does not call repository when all fields are undefined", async () => {
+    await updateUserDetails("user-1", undefined, undefined, undefined);
+    expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+  });
+
+  it("calls repository with name when only name provided", async () => {
+    await updateUserDetails("user-1", "Alice");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Alice" }),
+    );
+  });
+
+  it("does not call repository with a userId of empty string when no fields", async () => {
+    await updateUserDetails("user-x");
+    expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+  });
+
+  it("repository called exactly once when name is provided", async () => {
+    await updateUserDetails("user-1", "Bob");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledTimes(1);
+  });
+});

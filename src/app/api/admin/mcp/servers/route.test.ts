@@ -254,3 +254,39 @@ describe("POST /api/admin/mcp/servers — additional", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("GET /api/admin/mcp/servers — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValue([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValue([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("dbSelectMock called once for GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValue([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+});
