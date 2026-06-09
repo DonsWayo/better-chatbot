@@ -183,4 +183,20 @@ describe("POST /api/workflow/[id]/execute", () => {
     await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
     expect(workflowRepositoryMock.selectStructureById).not.toHaveBeenCalled();
   });
+
+  it("checkAccess is called exactly once per request when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
+    createWorkflowExecutorMock.mockReturnValue(makeExecutorMock());
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(workflowRepositoryMock.checkAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call createWorkflowExecutor when access denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
 });

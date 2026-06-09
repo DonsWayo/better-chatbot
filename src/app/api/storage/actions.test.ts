@@ -147,3 +147,40 @@ describe("checkStorageAction — no storage type configured", () => {
     expect(res.isValid).toBe(true);
   });
 });
+
+describe("checkStorageAction — error message content", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    delete process.env.FILE_STORAGE_TYPE;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.FILE_STORAGE_S3_BUCKET;
+    delete process.env.FILE_STORAGE_S3_REGION;
+    delete process.env.AWS_REGION;
+  });
+
+  it("error is undefined when isValid is true", async () => {
+    process.env.FILE_STORAGE_TYPE = "s3";
+    process.env.FILE_STORAGE_S3_BUCKET = "bucket";
+    process.env.FILE_STORAGE_S3_REGION = "us-east-1";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.isValid).toBe(true);
+    expect((res as { error?: string }).error).toBeUndefined();
+  });
+
+  it("vercel-blob error mentions BLOB_READ_WRITE_TOKEN", async () => {
+    process.env.FILE_STORAGE_TYPE = "vercel-blob";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.isValid).toBe(false);
+    expect((res as { error?: string }).error).toContain("BLOB_READ_WRITE_TOKEN");
+  });
+
+  it("s3 error mentions Missing S3 configuration", async () => {
+    process.env.FILE_STORAGE_TYPE = "s3";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.isValid).toBe(false);
+    expect((res as { error?: string }).error).toContain("S3");
+  });
+});

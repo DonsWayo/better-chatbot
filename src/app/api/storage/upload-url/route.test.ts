@@ -171,4 +171,21 @@ describe("POST /api/storage/upload-url", () => {
     const body = await res.json();
     expect(body.directUploadSupported).toBe(true);
   });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.createUploadUrl = undefined as unknown as typeof serverFileStorageMock.createUploadUrl;
+    const res = await POST(makeRequest({ filename: "test.csv" }));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("passes filename to createUploadUrl when supported", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.createUploadUrl = vi.fn().mockResolvedValue({ key: "k", url: "u" });
+    serverFileStorageMock.getSourceUrl.mockResolvedValue("s");
+    await POST(makeRequest({ filename: "my-doc.pdf" }));
+    expect(serverFileStorageMock.createUploadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ filename: "my-doc.pdf" }),
+    );
+  });
 });

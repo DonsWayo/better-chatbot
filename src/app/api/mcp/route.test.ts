@@ -159,4 +159,30 @@ describe("POST /api/mcp", () => {
     await POST(makeRequest(MCP_BODY));
     expect(saveMcpClientActionMock).toHaveBeenCalledTimes(1);
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(true);
+    saveMcpClientActionMock.mockResolvedValue({
+      client: { getInfo: () => ({ id: "x" }) },
+    });
+    await POST(makeRequest(MCP_BODY));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateMCPMock.mockResolvedValue(true);
+    saveMcpClientActionMock.mockResolvedValue({
+      client: { getInfo: () => ({ id: "x" }) },
+    });
+    const res = await POST(makeRequest(MCP_BODY));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("does not call saveMcpClientAction when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await POST(makeRequest(MCP_BODY));
+    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
 });

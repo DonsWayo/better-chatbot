@@ -269,4 +269,22 @@ describe("POST /api/chat", () => {
     await POST(makeRequest(makeRequestBody()));
     expect(streamTextMock).not.toHaveBeenCalled();
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest(makeRequestBody()));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectThreadDetails is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest(makeRequestBody()));
+    expect(chatRepositoryMock.selectThreadDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectThreadDetails when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest(makeRequestBody()));
+    expect(chatRepositoryMock.selectThreadDetails).not.toHaveBeenCalled();
+  });
 });

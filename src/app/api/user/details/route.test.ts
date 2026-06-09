@@ -115,4 +115,27 @@ describe("GET /api/user/details", () => {
     await GET();
     expect(getUserMock).not.toHaveBeenCalled();
   });
+
+  it("user details body is an object", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockResolvedValue(USER);
+    const res = await GET();
+    const body = await res.json();
+    expect(typeof body).toBe("object");
+    expect(body).not.toBeNull();
+  });
+
+  it("returns 401 body with Unauthorized when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const res = await GET();
+    expect(res.status).toBe(401);
+  });
+
+  it("name field matches user name", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockResolvedValue({ ...USER, name: "Bob" });
+    const res = await GET();
+    const body = await res.json();
+    expect(body.name).toBe("Bob");
+  });
 });

@@ -164,4 +164,18 @@ describe("POST /api/workflow/[id]/structure", () => {
     await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
     expect(workflowRepositoryMock.saveStructure).toHaveBeenCalledTimes(1);
   });
+
+  it("returns JSON content-type on POST success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
+    const res = await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("does not call saveStructure when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+    expect(workflowRepositoryMock.saveStructure).not.toHaveBeenCalled();
+  });
 });

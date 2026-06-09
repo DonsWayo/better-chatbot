@@ -176,4 +176,33 @@ describe("POST /api/storage/upload", () => {
     expect(body.key).toBe("uploads/img.png");
     expect(body.url).toBe("http://cdn/img.png");
   });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.upload.mockResolvedValue({
+      key: "uploads/f.bin",
+      sourceUrl: "http://cdn/f.bin",
+      metadata: {},
+    });
+    const file = new File(["x"], "f.bin", { type: "application/octet-stream" });
+    const res = await POST(makeFileRequest(file));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("does not call upload when session has no user id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    const file = new File(["content"], "test.txt", { type: "text/plain" });
+    await POST(makeFileRequest(file));
+    expect(serverFileStorageMock.upload).not.toHaveBeenCalled();
+  });
+
+  it("500 body has error field when upload throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.upload.mockRejectedValue(new Error("disk full"));
+    const file = new File(["x"], "f.txt", { type: "text/plain" });
+    const res = await POST(makeFileRequest(file));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

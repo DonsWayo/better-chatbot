@@ -208,4 +208,33 @@ describe("createAzureOpenAICompatible — fetch intercept", () => {
     createAzureOpenAICompatible(config);
     expect(mockCreateOpenAICompatible).not.toHaveBeenCalled();
   });
+
+  it("different apiKeys produce different createOpenAICompatible calls", () => {
+    const config1 = { name: "Az", apiKey: "key-a", baseURL: "https://x.com/deployments/" };
+    const config2 = { name: "Az", apiKey: "key-b", baseURL: "https://x.com/deployments/" };
+    createAzureOpenAICompatible(config1)("model", "v");
+    createAzureOpenAICompatible(config2)("model", "v");
+    const calls = mockCreateOpenAICompatible.mock.calls;
+    expect(calls[0][0].apiKey).toBe("key-a");
+    expect(calls[1][0].apiKey).toBe("key-b");
+  });
+
+  it("api-version is appended as query param via custom fetch", async () => {
+    const config = { name: "Az", apiKey: "k", baseURL: "https://x.com/deployments/" };
+    let capturedFetch: ((url: string | Request, init?: RequestInit) => Promise<Response>) | undefined;
+    mockCreateOpenAICompatible.mockImplementation((opts) => {
+      capturedFetch = opts.fetch as typeof capturedFetch;
+      return vi.fn();
+    });
+    createAzureOpenAICompatible(config)("m", "2024-09-01");
+    expect(capturedFetch).toBeDefined();
+    if (capturedFetch) {
+      const globalFetchMock = vi.fn().mockResolvedValue(new Response("{}"));
+      vi.stubGlobal("fetch", globalFetchMock);
+      await capturedFetch("https://example.com/chat", {});
+      const calledUrl = String(globalFetchMock.mock.calls[0][0]);
+      expect(calledUrl).toContain("api-version=2024-09-01");
+      vi.unstubAllGlobals();
+    }
+  });
 });
