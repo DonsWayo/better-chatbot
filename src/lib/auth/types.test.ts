@@ -53,6 +53,22 @@ describe("parseRoleString", () => {
   it("trims whitespace around role", () => {
     expect(parseRoleString("  admin  ")).toBe("admin");
   });
+
+  it("normalizes uppercase EDITOR to editor", () => {
+    expect(parseRoleString("EDITOR")).toBe("editor");
+  });
+
+  it("normalizes uppercase USER to user", () => {
+    expect(parseRoleString("USER")).toBe("user");
+  });
+
+  it("handles colon with no prefix (leading colon) → takes segment after last colon", () => {
+    expect(parseRoleString(":admin")).toBe("admin");
+  });
+
+  it("handles mixed-case prefixed role (Google:Admin → admin)", () => {
+    expect(parseRoleString("google:Admin")).toBe("admin");
+  });
 });
 
 describe("isBetterAuthRole", () => {
@@ -86,5 +102,17 @@ describe("isBetterAuthRole", () => {
 
   it("returns false when statements is not an object", () => {
     expect(isBetterAuthRole({ statements: "all" })).toBe(false);
+  });
+
+  it("returns false for an array (no statements property)", () => {
+    expect(isBetterAuthRole([])).toBe(false);
+  });
+
+  it("returns false for a number", () => {
+    expect(isBetterAuthRole(42)).toBe(false);
+  });
+
+  it("returns false for a boolean", () => {
+    expect(isBetterAuthRole(true)).toBe(false);
   });
 });
