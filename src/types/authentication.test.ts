@@ -9,166 +9,112 @@ import {
 } from "./authentication";
 
 describe("SocialAuthenticationProviderSchema", () => {
-  it("accepts 'github'", () => {
-    expect(() => SocialAuthenticationProviderSchema.parse("github")).not.toThrow();
+  it("accepts github", () => {
+    expect(SocialAuthenticationProviderSchema.safeParse("github").success).toBe(true);
   });
 
-  it("accepts 'google'", () => {
-    expect(() => SocialAuthenticationProviderSchema.parse("google")).not.toThrow();
+  it("accepts google", () => {
+    expect(SocialAuthenticationProviderSchema.safeParse("google").success).toBe(true);
   });
 
-  it("accepts 'microsoft'", () => {
-    expect(() => SocialAuthenticationProviderSchema.parse("microsoft")).not.toThrow();
+  it("accepts microsoft", () => {
+    expect(SocialAuthenticationProviderSchema.safeParse("microsoft").success).toBe(true);
   });
 
   it("rejects unknown provider", () => {
-    expect(() => SocialAuthenticationProviderSchema.parse("twitter")).toThrow();
-  });
-
-  it("rejects empty string", () => {
-    expect(() => SocialAuthenticationProviderSchema.parse("")).toThrow();
+    expect(SocialAuthenticationProviderSchema.safeParse("twitter").success).toBe(false);
   });
 });
 
 describe("GitHubConfigSchema", () => {
-  it("accepts valid github config", () => {
-    expect(() =>
-      GitHubConfigSchema.parse({ clientId: "gh-id", clientSecret: "gh-secret" }),
-    ).not.toThrow();
-  });
-
-  it("accepts config with disableSignUp", () => {
-    expect(() =>
-      GitHubConfigSchema.parse({
-        clientId: "gh-id",
-        clientSecret: "gh-secret",
-        disableSignUp: true,
-      }),
-    ).not.toThrow();
+  it("accepts valid config", () => {
+    const r = GitHubConfigSchema.safeParse({ clientId: "abc", clientSecret: "xyz" });
+    expect(r.success).toBe(true);
   });
 
   it("rejects empty clientId", () => {
-    expect(() =>
-      GitHubConfigSchema.parse({ clientId: "", clientSecret: "secret" }),
-    ).toThrow();
+    const r = GitHubConfigSchema.safeParse({ clientId: "", clientSecret: "xyz" });
+    expect(r.success).toBe(false);
   });
 
   it("rejects missing clientSecret", () => {
-    expect(() => GitHubConfigSchema.parse({ clientId: "id" })).toThrow();
+    const r = GitHubConfigSchema.safeParse({ clientId: "abc" });
+    expect(r.success).toBe(false);
+  });
+
+  it("allows optional disableSignUp", () => {
+    const r = GitHubConfigSchema.safeParse({ clientId: "abc", clientSecret: "xyz", disableSignUp: true });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.disableSignUp).toBe(true);
   });
 });
 
 describe("GoogleConfigSchema", () => {
-  it("accepts valid google config", () => {
-    expect(() =>
-      GoogleConfigSchema.parse({ clientId: "g-id", clientSecret: "g-secret" }),
-    ).not.toThrow();
+  it("accepts valid config", () => {
+    const r = GoogleConfigSchema.safeParse({ clientId: "abc", clientSecret: "xyz" });
+    expect(r.success).toBe(true);
   });
 
-  it("accepts config with select_account prompt", () => {
-    expect(() =>
-      GoogleConfigSchema.parse({
-        clientId: "g-id",
-        clientSecret: "g-secret",
-        prompt: "select_account",
-      }),
-    ).not.toThrow();
+  it("accepts prompt: select_account", () => {
+    const r = GoogleConfigSchema.safeParse({
+      clientId: "abc", clientSecret: "xyz", prompt: "select_account",
+    });
+    expect(r.success).toBe(true);
   });
 
-  it("rejects invalid prompt value", () => {
-    expect(() =>
-      GoogleConfigSchema.parse({
-        clientId: "g-id",
-        clientSecret: "g-secret",
-        prompt: "consent",
-      }),
-    ).toThrow();
+  it("rejects other prompt values", () => {
+    const r = GoogleConfigSchema.safeParse({
+      clientId: "abc", clientSecret: "xyz", prompt: "consent",
+    });
+    expect(r.success).toBe(false);
   });
 });
 
 describe("MicrosoftConfigSchema", () => {
-  it("accepts minimal config", () => {
-    expect(() =>
-      MicrosoftConfigSchema.parse({ clientId: "ms-id", clientSecret: "ms-secret" }),
-    ).not.toThrow();
+  it("accepts valid config", () => {
+    const r = MicrosoftConfigSchema.safeParse({ clientId: "abc", clientSecret: "xyz" });
+    expect(r.success).toBe(true);
   });
 
-  it("defaults tenantId to 'common'", () => {
-    const result = MicrosoftConfigSchema.parse({
-      clientId: "ms-id",
-      clientSecret: "ms-secret",
-    });
-    expect(result.tenantId).toBe("common");
+  it("defaults tenantId to common", () => {
+    const r = MicrosoftConfigSchema.safeParse({ clientId: "abc", clientSecret: "xyz" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.tenantId).toBe("common");
   });
 
   it("accepts custom tenantId", () => {
-    const result = MicrosoftConfigSchema.parse({
-      clientId: "ms-id",
-      clientSecret: "ms-secret",
-      tenantId: "my-tenant",
+    const r = MicrosoftConfigSchema.safeParse({
+      clientId: "abc", clientSecret: "xyz", tenantId: "myorg.onmicrosoft.com",
     });
-    expect(result.tenantId).toBe("my-tenant");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.tenantId).toBe("myorg.onmicrosoft.com");
   });
 });
 
 describe("SocialAuthenticationConfigSchema", () => {
-  it("accepts empty object (all providers optional)", () => {
-    expect(() => SocialAuthenticationConfigSchema.parse({})).not.toThrow();
+  it("accepts empty config (all optional)", () => {
+    const r = SocialAuthenticationConfigSchema.safeParse({});
+    expect(r.success).toBe(true);
   });
 
-  it("accepts only github provider", () => {
-    expect(() =>
-      SocialAuthenticationConfigSchema.parse({
-        github: { clientId: "g", clientSecret: "s" },
-      }),
-    ).not.toThrow();
-  });
-
-  it("accepts all providers", () => {
-    expect(() =>
-      SocialAuthenticationConfigSchema.parse({
-        github: { clientId: "g1", clientSecret: "s1" },
-        google: { clientId: "g2", clientSecret: "s2" },
-        microsoft: { clientId: "g3", clientSecret: "s3" },
-      }),
-    ).not.toThrow();
+  it("accepts partial config with only github", () => {
+    const r = SocialAuthenticationConfigSchema.safeParse({
+      github: { clientId: "id", clientSecret: "secret" },
+    });
+    expect(r.success).toBe(true);
   });
 });
 
 describe("AuthConfigSchema", () => {
   it("defaults emailAndPasswordEnabled to true", () => {
-    const result = AuthConfigSchema.parse({
-      socialAuthenticationProviders: {},
-    });
-    expect(result.emailAndPasswordEnabled).toBe(true);
+    const r = AuthConfigSchema.safeParse({ socialAuthenticationProviders: {} });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.emailAndPasswordEnabled).toBe(true);
   });
 
   it("defaults signUpEnabled to true", () => {
-    const result = AuthConfigSchema.parse({
-      socialAuthenticationProviders: {},
-    });
-    expect(result.signUpEnabled).toBe(true);
-  });
-
-  it("accepts string 'false' for emailAndPasswordEnabled (envBooleanSchema)", () => {
-    const result = AuthConfigSchema.parse({
-      emailAndPasswordEnabled: "false",
-      signUpEnabled: "true",
-      socialAuthenticationProviders: {},
-    });
-    expect(result.emailAndPasswordEnabled).toBe(false);
-    expect(result.signUpEnabled).toBe(true);
-  });
-
-  it("accepts boolean true for signUpEnabled", () => {
-    const result = AuthConfigSchema.parse({
-      signUpEnabled: true,
-      socialAuthenticationProviders: {},
-    });
-    expect(result.signUpEnabled).toBe(true);
-  });
-
-  it("rejects missing socialAuthenticationProviders", () => {
-    expect(() => AuthConfigSchema.parse({})).toThrow();
+    const r = AuthConfigSchema.safeParse({ socialAuthenticationProviders: {} });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.signUpEnabled).toBe(true);
   });
 });

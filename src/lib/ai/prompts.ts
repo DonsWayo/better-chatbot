@@ -1,10 +1,10 @@
-import { McpServerCustomizationsPrompt, MCPToolInfo } from "app-types/mcp";
+import { MCPToolInfo, McpServerCustomizationsPrompt } from "app-types/mcp";
 
+import { Agent } from "app-types/agent";
 import { UserPreferences } from "app-types/user";
 import { User } from "better-auth";
-import { createMCPToolId } from "./mcp/mcp-tool-id";
 import { format } from "date-fns";
-import { Agent } from "app-types/agent";
+import { createMCPToolId } from "./mcp/mcp-tool-id";
 
 export const CREATE_THREAD_TITLE_PROMPT = `
 You are a chat title generation expert.
@@ -53,8 +53,7 @@ export const buildUserSystemPrompt = (
   userPreferences?: UserPreferences,
   agent?: Agent,
 ) => {
-  const assistantName =
-    agent?.name || userPreferences?.botName || "better-chatbot";
+  const assistantName = agent?.name || userPreferences?.botName || "Asafe AI";
   const currentTime = format(new Date(), "EEEE, MMMM d, yyyy 'at' h:mm:ss a");
 
   let prompt = `You are ${assistantName}`;
@@ -97,7 +96,14 @@ You can assist with:
 - Analysis and problem-solving across various domains
 - Using available tools and resources to complete tasks
 - Adapting communication to user preferences and context
-</general_capabilities>`;
+</general_capabilities>
+
+<tool_usage_policy>
+- Only call a tool when it is genuinely needed AND it exists in the tools provided to you.
+- If no suitable tool is available, or the request can be answered directly, just answer using your own knowledge.
+- Never refuse or apologize merely because a tool is unavailable — give the best direct answer instead.
+- Do not invent or guess tool names; use only the tools explicitly provided this turn.
+</tool_usage_policy>`;
 
   // Communication preferences
   const displayName = userPreferences?.displayName || user?.name;

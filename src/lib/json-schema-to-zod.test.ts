@@ -382,3 +382,26 @@ describe("jsonSchemaStringToZod", () => {
     expect(() => jsonSchemaStringToZod("invalid json")).toThrow();
   });
 });
+
+describe("jsonSchemaToZod — additional invariants", () => {
+  it("returns a ZodType instance for a string schema", () => {
+    const schema = jsonSchemaToZod({ type: "string" });
+    expect(schema).toBeDefined();
+    expect(typeof schema.parse).toBe("function");
+  });
+
+  it("returned schema accepts valid string value", () => {
+    const schema = jsonSchemaToZod({ type: "string" });
+    expect(schema.parse("hello")).toBe("hello");
+  });
+
+  it("returned schema accepts valid number value", () => {
+    const schema = jsonSchemaToZod({ type: "number" });
+    expect(schema.parse(42)).toBe(42);
+  });
+
+  it("returned schema accepts valid boolean value", () => {
+    const schema = jsonSchemaToZod({ type: "boolean" });
+    expect(schema.parse(true)).toBe(true);
+  });
+});

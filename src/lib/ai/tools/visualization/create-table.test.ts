@@ -1,112 +1,110 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createTableTool } from "./create-table";
 
-const validInput = {
-  title: "Users",
-  description: null,
-  columns: [{ key: "name", label: "Name", type: "string" }],
-  data: [{ name: "Alice" }],
-};
-
 describe("createTableTool", () => {
-  it("is defined", () => {
-    expect(createTableTool).toBeDefined();
+  it("has a non-empty description", () => {
+    expect(createTableTool.description!.length).toBeGreaterThan(0);
   });
 
-  it("inputSchema accepts valid data", () => {
-    expect(createTableTool.inputSchema.safeParse(validInput).success).toBe(true);
-  });
-
-  it("inputSchema rejects missing title", () => {
-    const { title: _, ...rest } = validInput;
-    expect(createTableTool.inputSchema.safeParse(rest).success).toBe(false);
-  });
-
-  it("inputSchema requires columns array", () => {
-    const result = createTableTool.inputSchema.safeParse({ ...validInput, columns: undefined });
-    expect(result.success).toBe(false);
-  });
-
-  it("column type defaults to 'string'", () => {
-    const input = {
-      ...validInput,
-      columns: [{ key: "age", label: "Age" }],
-    };
-    const result = createTableTool.inputSchema.safeParse(input);
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts valid column types: number, date, boolean", () => {
-    for (const type of ["number", "date", "boolean"]) {
-      const input = {
-        ...validInput,
-        columns: [{ key: "x", label: "X", type }],
-      };
-      expect(createTableTool.inputSchema.safeParse(input).success).toBe(true);
-    }
-  });
-
-  it("rejects invalid column type", () => {
-    const input = {
-      ...validInput,
-      columns: [{ key: "x", label: "X", type: "timestamp" }],
-    };
-    expect(createTableTool.inputSchema.safeParse(input).success).toBe(false);
-  });
-
-  it("accepts empty data array", () => {
-    expect(createTableTool.inputSchema.safeParse({ ...validInput, data: [] }).success).toBe(true);
-  });
-});
-
-describe("createTableTool — shape invariants", () => {
-  it("has inputSchema", () => {
+  it("has an inputSchema", () => {
     expect(createTableTool.inputSchema).toBeDefined();
-  });
-
-  it("has description", () => {
-    expect(typeof createTableTool.description).toBe("string");
-    expect(createTableTool.description.length).toBeGreaterThan(0);
-  });
-
-  it("description mentions 'table'", () => {
-    expect(createTableTool.description.toLowerCase()).toContain("table");
   });
 
   it("has an execute function", () => {
     expect(typeof createTableTool.execute).toBe("function");
   });
 
-  it("execute resolves to 'Success'", async () => {
-    const result = await createTableTool.execute(
-      { title: "T", description: null, columns: [], data: [] },
-      { messages: [], toolCallId: "t1" },
-    );
+  it("execute returns 'Success'", async () => {
+    const result = await createTableTool.execute!({} as any, {} as any);
     expect(result).toBe("Success");
   });
+});
 
-  it("accepts multiple columns with different types", () => {
-    const input = {
-      ...validInput,
-      columns: [
-        { key: "name", label: "Name", type: "string" },
-        { key: "age", label: "Age", type: "number" },
-        { key: "active", label: "Active", type: "boolean" },
-        { key: "joined", label: "Joined", type: "date" },
-      ],
-    };
-    expect(createTableTool.inputSchema.safeParse(input).success).toBe(true);
+describe("createTableTool inputSchema validation", () => {
+  const schema = createTableTool.inputSchema;
+
+  const validInput = {
+    title: "User List",
+    description: "All registered users",
+    columns: [
+      { key: "name", label: "Name", type: "string" },
+      { key: "age", label: "Age", type: "number" },
+      { key: "active", label: "Active", type: "boolean" },
+    ],
+    data: [
+      { name: "Alice", age: 30, active: true },
+      { name: "Bob", age: 25, active: false },
+    ],
+  };
+
+  it("accepts valid table data", () => {
+    expect(schema.safeParse(validInput).success).toBe(true);
   });
 
   it("accepts null description", () => {
-    expect(createTableTool.inputSchema.safeParse({ ...validInput, description: null }).success).toBe(true);
+    expect(schema.safeParse({ ...validInput, description: null }).success).toBe(true);
   });
 
-  it("accepts multiple data rows", () => {
-    const input = {
+  it("rejects when title is missing", () => {
+    const { title: _t, ...rest } = validInput;
+    expect(schema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects when columns is missing", () => {
+    const { columns: _c, ...rest } = validInput;
+    expect(schema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects when data is missing", () => {
+    const { data: _d, ...rest } = validInput;
+    expect(schema.safeParse(rest).success).toBe(false);
+  });
+
+  it("rejects when column is missing key", () => {
+    const bad = {
       ...validInput,
-      data: [{ name: "Alice" }, { name: "Bob" }, { name: "Carol" }],
+      columns: [{ label: "Name", type: "string" }],
     };
-    expect(createTableTool.inputSchema.safeParse(input).success).toBe(true);
+    expect(schema.safeParse(bad).success).toBe(false);
+  });
+
+  it("rejects when column is missing label", () => {
+    const bad = {
+      ...validInput,
+      columns: [{ key: "name", type: "string" }],
+    };
+    expect(schema.safeParse(bad).success).toBe(false);
+  });
+
+  it("accepts null column type", () => {
+    const withNullType = {
+      ...validInput,
+      columns: [{ key: "name", label: "Name", type: null }],
+    };
+    expect(schema.safeParse(withNullType).success).toBe(true);
+  });
+
+  it("accepts column type 'date'", () => {
+    const withDate = {
+      ...validInput,
+      columns: [{ key: "created", label: "Created At", type: "date" }],
+    };
+    expect(schema.safeParse(withDate).success).toBe(true);
+  });
+
+  it("accepts empty data array", () => {
+    expect(schema.safeParse({ ...validInput, data: [] }).success).toBe(true);
+  });
+
+  it("accepts empty columns array", () => {
+    expect(schema.safeParse({ ...validInput, columns: [] }).success).toBe(true);
+  });
+
+  it("data rows can have any extra keys", () => {
+    const withExtra = {
+      ...validInput,
+      data: [{ name: "Alice", arbitrary: true, nested: { x: 1 } }],
+    };
+    expect(schema.safeParse(withExtra).success).toBe(true);
   });
 });

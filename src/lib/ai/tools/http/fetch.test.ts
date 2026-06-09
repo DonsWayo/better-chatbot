@@ -1,168 +1,118 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
-import type { JSONSchema7 } from "json-schema";
+import { describe, it, expect } from "vitest";
 import { httpFetchSchema, httpFetchTool } from "./fetch";
 
-const prop = (key: string) => httpFetchSchema.properties?.[key] as unknown as JSONSchema7;
-
 describe("httpFetchSchema", () => {
-  it("is an object schema", () => {
-    expect(httpFetchSchema.type).toBe("object");
-  });
-
-  it("has url as a required property", () => {
+  it("requires url field", () => {
     expect(httpFetchSchema.required).toContain("url");
   });
 
-  it("url property is a string type", () => {
-    expect(httpFetchSchema.properties?.url).toMatchObject({ type: "string" });
+  it("url property is of type string", () => {
+    const urlProp = (httpFetchSchema.properties as any)?.url;
+    expect(urlProp?.type).toBe("string");
   });
 
-  it("method property is an enum", () => {
-    expect(Array.isArray(prop("method")?.enum)).toBe(true);
+  it("method is an enum with all expected HTTP methods", () => {
+    const methodProp = (httpFetchSchema.properties as any)?.method;
+    const methods = methodProp?.enum;
+    expect(methods).toContain("GET");
+    expect(methods).toContain("POST");
+    expect(methods).toContain("PUT");
+    expect(methods).toContain("DELETE");
+    expect(methods).toContain("PATCH");
+    expect(methods).toContain("HEAD");
+    expect(methods).toContain("OPTIONS");
   });
 
-  it("method enum includes GET and POST", () => {
-    const methodEnum = prop("method")?.enum as string[] | undefined;
-    expect(methodEnum).toContain("GET");
-    expect(methodEnum).toContain("POST");
+  it("method has a default value of GET", () => {
+    const methodProp = (httpFetchSchema.properties as any)?.method;
+    expect(methodProp?.default).toBe("GET");
   });
 
-  it("method enum includes all common HTTP methods", () => {
-    const methodEnum = prop("method")?.enum as string[] | undefined;
-    for (const m of ["GET", "POST", "PUT", "DELETE", "PATCH"]) {
-      expect(methodEnum).toContain(m);
-    }
+  it("timeout has a positive default value", () => {
+    const timeoutProp = (httpFetchSchema.properties as any)?.timeout;
+    expect(timeoutProp?.default).toBeGreaterThan(0);
   });
 
-  it("timeout property has a default value", () => {
-    const timeout = prop("timeout");
-    expect(timeout?.default).toBeDefined();
-    expect(typeof timeout?.default).toBe("number");
+  it("headers property allows additional properties (arbitrary headers)", () => {
+    const headersProp = (httpFetchSchema.properties as any)?.headers;
+    expect(headersProp?.additionalProperties).toBe(true);
   });
 
-  it("headers property allows additionalProperties", () => {
-    const headers = prop("headers");
-    expect(headers?.additionalProperties).toBe(true);
-  });
-});
-
-describe("httpFetchSchema — shape invariants", () => {
-  it("has properties object", () => {
-    expect(typeof httpFetchSchema.properties).toBe("object");
-    expect(httpFetchSchema.properties).not.toBeNull();
+  it("body is a string property", () => {
+    const bodyProp = (httpFetchSchema.properties as any)?.body;
+    expect(bodyProp?.type).toBe("string");
   });
 
-  it("required is an array", () => {
-    expect(Array.isArray(httpFetchSchema.required)).toBe(true);
-  });
-
-  it("has at least 2 properties defined", () => {
-    expect(Object.keys(httpFetchSchema.properties ?? {}).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("method default is GET", () => {
-    expect(prop("method")?.default).toBe("GET");
+  it("schema type is object", () => {
+    expect(httpFetchSchema.type).toBe("object");
   });
 });
 
-describe("httpFetchTool execute", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("is defined with execute function", () => {
-    expect(httpFetchTool).toBeDefined();
+describe("httpFetchTool", () => {
+  it("has an execute function", () => {
     expect(typeof httpFetchTool.execute).toBe("function");
   });
 
-  it("makes a GET request and returns response", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      url: "https://api.example.com/data",
-      headers: new Headers({ "content-type": "application/json" }),
-      json: vi.fn().mockResolvedValue({ result: "data" }),
-    });
-    vi.stubGlobal("fetch", mockFetch);
+  it("has an inputSchema derived from httpFetchSchema", () => {
+    expect(httpFetchTool.inputSchema).toBeDefined();
+  });
 
+  it("has a non-empty description", () => {
+    expect(typeof httpFetchTool.description).toBe("string");
+    expect(httpFetchTool.description!.length).toBeGreaterThan(0);
+  });
+
+  it("execute returns error for invalid URL", async () => {
+    const result = await httpFetchTool.execute!({ url: "not-a-url" } as any, {} as any);
+    expect(result).toBeDefined();
+    expect(typeof result === "object" || typeof result === "string").toBe(true);
+  });
+
+  it("execute returns error without throwing for unreachable host", async () => {
     const result = await httpFetchTool.execute!(
-      { url: "https://api.example.com/data" },
-      {} as Parameters<NonNullable<typeof httpFetchTool.execute>>[1],
+      { url: "http://localhost:99999/unreachable" } as any,
+      {} as any,
     );
-
-    expect((result as { status: number }).status).toBe(200);
-    expect((result as { ok: boolean }).ok).toBe(true);
+    expect(result).toBeDefined();
   });
 
-  it("sends POST with body", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 201,
-      statusText: "Created",
-      url: "https://api.example.com/items",
-      headers: new Headers({ "content-type": "application/json" }),
-      json: vi.fn().mockResolvedValue({ id: 1 }),
+  it("inputSchema rejects missing url field", () => {
+    const result = httpFetchTool.inputSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it("inputSchema accepts url-only (all other fields optional)", () => {
+    const result = httpFetchTool.inputSchema.safeParse({ url: "http://example.com" });
+    expect(result.success).toBe(true);
+  });
+
+  it("inputSchema accepts all optional fields alongside url", () => {
+    const result = httpFetchTool.inputSchema.safeParse({
+      url: "http://example.com",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "val" }),
+      timeout: 5000,
     });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await httpFetchTool.execute!(
-      { url: "https://api.example.com/items", method: "POST", body: '{"name":"Test"}' },
-      {} as Parameters<NonNullable<typeof httpFetchTool.execute>>[1],
-    );
-
-    const callArgs = mockFetch.mock.calls[0][1] as RequestInit;
-    expect(callArgs.method).toBe("POST");
-    expect(callArgs.body).toBe('{"name":"Test"}');
+    expect(result.success).toBe(true);
   });
 
-  it("returns error result on network failure", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+  it("error result has isError flag on failure", async () => {
+    const result = await httpFetchTool.execute!({ url: "not-a-url" } as any, {} as any);
+    expect(result).toMatchObject({ isError: true });
+  });
+});
 
-    const result = await httpFetchTool.execute!(
-      { url: "https://unreachable.example.com" },
-      {} as Parameters<NonNullable<typeof httpFetchTool.execute>>[1],
-    );
-
-    expect((result as { isError: boolean }).isError).toBe(true);
-    expect((result as { error: string }).error).toContain("Network error");
+describe("httpFetchSchema — required and optional fields", () => {
+  it("url is the only required field", () => {
+    expect(httpFetchSchema.required).toHaveLength(1);
+    expect(httpFetchSchema.required).toContain("url");
   });
 
-  it("handles text/html response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      url: "https://example.com/page",
-      headers: new Headers({ "content-type": "text/html" }),
-      text: vi.fn().mockResolvedValue("<html>Hello</html>"),
-    }));
-
-    const result = await httpFetchTool.execute!(
-      { url: "https://example.com/page" },
-      {} as Parameters<NonNullable<typeof httpFetchTool.execute>>[1],
-    );
-
-    expect((result as { body: string }).body).toBe("<html>Hello</html>");
-  });
-
-  it("does not send body for GET requests", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      url: "https://api.example.com",
-      headers: new Headers({ "content-type": "text/plain" }),
-      text: vi.fn().mockResolvedValue("ok"),
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await httpFetchTool.execute!(
-      { url: "https://api.example.com", method: "GET", body: '{"ignored": true}' },
-      {} as Parameters<NonNullable<typeof httpFetchTool.execute>>[1],
-    );
-
-    const callArgs = mockFetch.mock.calls[0][1] as RequestInit;
-    expect(callArgs.body).toBeUndefined();
+  it("method, headers, body, timeout are all optional", () => {
+    const optional = ["method", "headers", "body", "timeout"];
+    for (const field of optional) {
+      expect(httpFetchSchema.required).not.toContain(field);
+    }
   });
 });

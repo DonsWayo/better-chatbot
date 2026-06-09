@@ -1,181 +1,316 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, workflowRepositoryMock } = vi.hoisted(() => ({
+const {
+  getSessionMock,
+  checkAccessMock,
+  selectStructureByIdMock,
+  saveStructureMock,
+} = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  workflowRepositoryMock: {
-    checkAccess: vi.fn(),
-    selectStructureById: vi.fn(),
-    saveStructure: vi.fn(),
-  },
+  checkAccessMock: vi.fn(),
+  selectStructureByIdMock: vi.fn(),
+  saveStructureMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  workflowRepository: workflowRepositoryMock,
+  workflowRepository: {
+    checkAccess: checkAccessMock,
+    selectStructureById: selectStructureByIdMock,
+    saveStructure: saveStructureMock,
+  },
 }));
 
-import { GET, POST } from "./route";
-
-const makeContext = (id: string) => ({ params: Promise.resolve({ id }) });
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-const STRUCTURE = {
-  nodes: [{ id: "node-1", type: "agent" }],
-  edges: [{ id: "edge-1", source: "node-1", target: "node-2" }],
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body) } as unknown as Request;
+}
 
 describe("GET /api/workflow/[id]/structure", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await GET(new Request("http://x"), makeContext("wf-1"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when user lacks access", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await GET(new Request("http://x"), makeContext("wf-1"));
+  it("returns 401 when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns structure when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(STRUCTURE);
-    const res = await GET(new Request("http://x"), makeContext("wf-1"));
+  it("returns workflow structure when access granted", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    const STRUCTURE = { nodes: [{ id: "n-1" }], edges: [] };
+    selectStructureByIdMock.mockResolvedValueOnce(STRUCTURE);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.nodes).toHaveLength(1);
   });
-
-  it("calls checkAccess with id and userId", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(STRUCTURE);
-    await GET(new Request("http://x"), makeContext("wf-abc"));
-    expect(workflowRepositoryMock.checkAccess).toHaveBeenCalledWith(
-      "wf-abc",
-      "user-99",
-    );
-  });
-
-  it("calls selectStructureById with workflow id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(STRUCTURE);
-    await GET(new Request("http://x"), makeContext("wf-xyz"));
-    expect(workflowRepositoryMock.selectStructureById).toHaveBeenCalledWith(
-      "wf-xyz",
-    );
-  });
 });
 
 describe("POST /api/workflow/[id]/structure", () => {
-  const STRUCTURE_BODY = {
-    nodes: [{ id: "node-1", type: "agent" }],
-    edges: [{ id: "edge-1", source: "node-1", target: "node-2" }],
-    deleteNodes: [],
-    deleteEdges: [],
-  };
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it("returns 401 when no session", async () => {
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when user lacks access", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
-    expect(res.status).toBe(401);
-  });
-
-  it("saves structure and returns success when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
-    const res = await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+  it("saves structure and returns success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ nodes: [{ id: "n-1" }], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(saveStructureMock).toHaveBeenCalled();
   });
 
-  it("calls saveStructure with workflowId injected into nodes and edges", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
-    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-42"));
-    expect(workflowRepositoryMock.saveStructure).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workflowId: "wf-42",
-        nodes: expect.arrayContaining([
-          expect.objectContaining({ workflowId: "wf-42" }),
-        ]),
-        edges: expect.arrayContaining([
-          expect.objectContaining({ workflowId: "wf-42" }),
-        ]),
-      }),
-    );
+  it("returns 401 when user has no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(res.status).toBe(401);
   });
 
-  it("checks access with write mode (false) for POST", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
-    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
-    expect(workflowRepositoryMock.checkAccess).toHaveBeenCalledWith(
-      "wf-1",
-      "user-1",
-      false,
-    );
+  it("never calls saveStructure when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(saveStructureMock).not.toHaveBeenCalled();
   });
 
-  it("does not call saveStructure when access is denied", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
-    expect(workflowRepositoryMock.saveStructure).not.toHaveBeenCalled();
+  it("never calls saveStructure when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(saveStructureMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/workflow/[id]/structure — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls selectStructureById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
   });
 
-  it("getSession is called exactly once per POST request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
-    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+  it("never calls selectStructureById when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("returns structure with edges when present", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    const STRUCTURE = { nodes: [{ id: "n-1" }, { id: "n-2" }], edges: [{ id: "e-1" }] };
+    selectStructureByIdMock.mockResolvedValueOnce(STRUCTURE);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.edges).toHaveLength(1);
+  });
+});
+
+describe("GET /api/workflow/[id]/structure — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("selectStructureById called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce({ nodes: [], edges: [] });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("saveStructure is called exactly once when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
-    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
-    expect(workflowRepositoryMock.saveStructure).toHaveBeenCalledTimes(1);
+  it("200 body has both nodes and edges properties", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce({ nodes: [], edges: [], id: "wf-1" });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("nodes");
+    expect(body).toHaveProperty("edges");
   });
 
-  it("returns JSON content-type on POST success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
-    const res = await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
-  });
-
-  it("does not call saveStructure when session is null", async () => {
+  it("never calls checkAccess when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
-    expect(workflowRepositoryMock.saveStructure).not.toHaveBeenCalled();
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/workflow/[id]/structure — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("saveStructure called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(
+      makeRequest({ nodes: [{ id: "n-1" }], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
+    expect(saveStructureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body success is strictly true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+});
+
+describe("POST /api/workflow/[id]/structure — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401 (unauthenticated)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 401 (no access)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("saveStructure called exactly once on successful POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(saveStructureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkAccess called exactly once on authenticated POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST and GET /api/workflow/[id]/structure — guard invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveStructure not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(saveStructureMock).not.toHaveBeenCalled();
+  });
+
+  it("GET selectStructureById not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

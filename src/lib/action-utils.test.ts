@@ -2,20 +2,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
 import { USER_ROLES } from "app-types/roles";
 
+// Mock server-only module
 vi.mock("server-only", () => ({}));
 
+// Mock the auth modules
 vi.mock("auth/server", () => ({
   getSession: vi.fn(),
 }));
 
-import { validatedAction, validatedActionWithUser } from "./action-utils";
+vi.mock("lib/auth/permissions", () => ({
+  requireAdminPermission: vi.fn(),
+  requireUserManagePermissionFor: vi.fn(),
+}));
+
+// Import after mocks
+import { validatedAction, validatedActionWithUser, validatedActionWithAdminPermission } from "./action-utils";
 
 const { getSession } = await import("auth/server");
-
-type MockSession = Awaited<ReturnType<typeof getSession>>;
-
-const mockSession = (user: Record<string, unknown>): MockSession =>
-  ({ user, session: {} }) as unknown as MockSession;
+const { requireAdminPermission } = await import("lib/auth/permissions");
 
 describe("action-utils", () => {
   beforeEach(() => {
@@ -60,7 +64,7 @@ describe("action-utils", () => {
 
       expect(mockAction).not.toHaveBeenCalled();
       expect(result).toHaveProperty("error");
-      expect((result as { error: string }).error).toContain("Invalid email");
+      expect((result as any).error).toContain("Invalid email");
     });
   });
 
@@ -73,7 +77,10 @@ describe("action-utils", () => {
         role: USER_ROLES.USER,
       };
 
-      vi.mocked(getSession).mockResolvedValue(mockSession(mockUser));
+      vi.mocked(getSession).mockResolvedValue({
+        user: mockUser,
+        session: {} as any,
+      } as any);
 
       const schema = z.object({ data: z.string() });
       const mockAction = vi.fn().mockResolvedValue({ success: true });
@@ -111,133 +118,142 @@ describe("action-utils", () => {
       });
     });
   });
+
+  describe("validatedActionWithAdminPermission", () => {
+    it("calls action when authenticated and admin permission passes", async () => {
+      const mockUser = { id: "admin-1", role: "admin" };
+      vi.mocked(getSession).mockResolvedValue({ user: mockUser, session: {} as any } as any);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+
+      const schema = z.object({ name: z.string() });
+      const mockAction = vi.fn().mockResolvedValue({ success: true });
+      const wrapped = validatedActionWithAdminPermission(schema, mockAction);
+
+      const formData = new FormData();
+      formData.set("name", "test");
+
+      const result = await wrapped({}, formData);
+      expect(mockAction).toHaveBeenCalled();
+      expect(result).toEqual({ success: true });
+    });
+
+    it("returns error when unauthenticated (session null)", async () => {
+      vi.mocked(getSession).mockResolvedValue(null as any);
+
+      const schema = z.object({ name: z.string() });
+      const mockAction = vi.fn();
+      const wrapped = validatedActionWithAdminPermission(schema, mockAction);
+
+      const formData = new FormData();
+      formData.set("name", "test");
+
+      const result = await wrapped({}, formData);
+      expect(mockAction).not.toHaveBeenCalled();
+      expect((result as any).success).toBe(false);
+      expect((result as any).message).toContain("authenticated");
+    });
+
+    it("returns error when requireAdminPermission throws (non-admin user)", async () => {
+      const mockUser = { id: "user-1", role: "user" };
+      vi.mocked(getSession).mockResolvedValue({ user: mockUser, session: {} as any } as any);
+      vi.mocked(requireAdminPermission).mockRejectedValue(new Error("Unauthorized: Admin access required"));
+
+      const schema = z.object({ name: z.string() });
+      const mockAction = vi.fn();
+      const wrapped = validatedActionWithAdminPermission(schema, mockAction);
+
+      const formData = new FormData();
+      formData.set("name", "test");
+
+      const result = await wrapped({}, formData);
+      expect(mockAction).not.toHaveBeenCalled();
+      expect((result as any).success).toBe(false);
+      expect((result as any).message).toContain("Unauthorized");
+    });
+
+    it("validates schema before calling action", async () => {
+      const mockUser = { id: "admin-1", role: "admin" };
+      vi.mocked(getSession).mockResolvedValue({ user: mockUser, session: {} as any } as any);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+
+      const schema = z.object({ email: z.string().email("Invalid email") });
+      const mockAction = vi.fn();
+      const wrapped = validatedActionWithAdminPermission(schema, mockAction);
+
+      const formData = new FormData();
+      formData.set("email", "not-an-email");
+
+      const result = await wrapped({}, formData);
+      expect(mockAction).not.toHaveBeenCalled();
+      expect((result as any).success).toBe(false);
+      expect((result as any).message).toContain("Invalid email");
+    });
+
+    it("passes session to action", async () => {
+      const mockUser = { id: "admin-1", role: "admin", name: "Admin" };
+      const session = { user: mockUser, session: {} as any };
+      vi.mocked(getSession).mockResolvedValue(session as any);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+
+      const schema = z.object({ data: z.string() });
+      const mockAction = vi.fn().mockResolvedValue({ success: true });
+      const wrapped = validatedActionWithAdminPermission(schema, mockAction);
+
+      const formData = new FormData();
+      formData.set("data", "value");
+
+      await wrapped({}, formData);
+      expect(mockAction).toHaveBeenCalledWith(
+        { data: "value" },
+        expect.any(FormData),
+        session,
+      );
+    });
+  });
 });
 
-describe("action-utils — additional invariants", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+describe("validatedAction and validatedActionWithUser — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it("validatedAction passes prevState to the action", async () => {
+  it("validatedAction returns action result for valid input", async () => {
     const schema = z.object({ val: z.string() });
-    const mockAction = vi.fn().mockResolvedValue({});
-    const wrapped = validatedAction(schema, mockAction);
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const wrapped = validatedAction(schema, action);
     const fd = new FormData();
-    fd.set("val", "x");
-    await wrapped({}, fd);
-    expect(mockAction).toHaveBeenCalledWith({ val: "x" }, fd);
-  });
-
-  it("validatedAction returns action result on success", async () => {
-    const schema = z.object({ n: z.string().transform(Number) });
-    const wrapped = validatedAction(schema, async (data) => ({
-      doubled: data.n * 2,
-    }));
-    const fd = new FormData();
-    fd.set("n", "7");
+    fd.set("val", "test");
     const result = await wrapped({}, fd);
-    expect(result).toEqual({ doubled: 14 });
+    expect(result).toEqual({ ok: true });
   });
 
-  it("validatedAction error result has error property", async () => {
-    const schema = z.object({ url: z.string().url() });
-    const wrapped = validatedAction(schema, vi.fn());
+  it("validatedAction returns error (not throws) on schema failure", async () => {
+    const schema = z.object({ num: z.string().regex(/^\d+$/, "digits only") });
+    const action = vi.fn();
+    const wrapped = validatedAction(schema, action);
     const fd = new FormData();
-    fd.set("url", "not-a-url");
+    fd.set("num", "abc");
     const result = await wrapped({}, fd);
     expect(result).toHaveProperty("error");
+    expect(action).not.toHaveBeenCalled();
   });
 
-  it("validatedActionWithUser passes correct user shape to action", async () => {
-    const user = { id: "u1", name: "Alice", email: "a@b.com", role: "user" };
-    vi.mocked(getSession).mockResolvedValue(mockSession(user));
-    const schema = z.object({ msg: z.string() });
-    const mockAction = vi.fn().mockResolvedValue({ ok: true });
-    const wrapped = validatedActionWithUser(schema, mockAction);
+  it("validatedAction passes parsed data as first argument to action", async () => {
+    const schema = z.object({ name: z.string() });
+    const action = vi.fn().mockResolvedValue({});
+    const wrapped = validatedAction(schema, action);
     const fd = new FormData();
-    fd.set("msg", "hello");
+    fd.set("name", "Alice");
     await wrapped({}, fd);
-    const callArgs = mockAction.mock.calls[0] as unknown[];
-    expect(callArgs[2]).toMatchObject({ id: "u1", name: "Alice" });
+    expect(action).toHaveBeenCalledWith({ name: "Alice" }, fd);
   });
 
-  it("validatedActionWithUser calls action exactly once on success", async () => {
-    const user = { id: "u2", name: "Bob", email: "b@c.com", role: "admin" };
-    vi.mocked(getSession).mockResolvedValue(mockSession(user));
-    const schema = z.object({ x: z.string() });
-    const mockAction = vi.fn().mockResolvedValue({});
-    const wrapped = validatedActionWithUser(schema, mockAction);
+  it("validatedActionWithUser never calls action when session throws", async () => {
+    vi.mocked(getSession).mockRejectedValue(new Error("Auth error"));
+    const schema = z.object({ data: z.string() });
+    const action = vi.fn();
+    const wrapped = validatedActionWithUser(schema, action);
     const fd = new FormData();
-    fd.set("x", "y");
+    fd.set("data", "x");
     await wrapped({}, fd);
-    expect(mockAction).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("action-utils — guard invariants", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("validatedAction does not call action when required field is missing", async () => {
-    const schema = z.object({ required: z.string() });
-    const mockAction = vi.fn();
-    const wrapped = validatedAction(schema, mockAction);
-    const fd = new FormData();
-    await wrapped({}, fd);
-    expect(mockAction).not.toHaveBeenCalled();
-  });
-
-  it("validatedActionWithUser does not call action when session is null", async () => {
-    vi.mocked(getSession).mockResolvedValue(null);
-    const schema = z.object({ d: z.string() });
-    const mockAction = vi.fn();
-    const wrapped = validatedActionWithUser(schema, mockAction);
-    const fd = new FormData();
-    fd.set("d", "val");
-    const result = await wrapped({}, fd);
-    expect(mockAction).not.toHaveBeenCalled();
-    expect(result).toHaveProperty("success", false);
-  });
-});
-
-describe("action-utils — schema coercion", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("validatedAction coerces multiple fields correctly", async () => {
-    const schema = z.object({
-      count: z.string().transform(Number),
-      label: z.string(),
-    });
-    const mockAction = vi.fn().mockResolvedValue({ ok: true });
-    const wrapped = validatedAction(schema, mockAction);
-    const fd = new FormData();
-    fd.set("count", "5");
-    fd.set("label", "hello");
-    await wrapped({}, fd);
-    expect(mockAction).toHaveBeenCalledWith({ count: 5, label: "hello" }, fd);
-  });
-
-  it("validatedActionWithUser returns action result on success", async () => {
-    const user = { id: "u3", name: "Carol", email: "c@d.com", role: "user" };
-    vi.mocked(getSession).mockResolvedValue(mockSession(user));
-    const schema = z.object({ x: z.string() });
-    const wrapped = validatedActionWithUser(schema, async () => ({ answer: 42 }));
-    const fd = new FormData();
-    fd.set("x", "v");
-    const result = await wrapped({}, fd);
-    expect(result).toEqual({ answer: 42 });
-  });
-
-  it("validatedAction returns result immediately without extra processing", async () => {
-    const schema = z.object({ n: z.string() });
-    const sentinel = { unique: "sentinel-value-12345" };
-    const wrapped = validatedAction(schema, async () => sentinel);
-    const fd = new FormData();
-    fd.set("n", "test");
-    const result = await wrapped({}, fd);
-    expect(result).toBe(sentinel);
+    expect(action).not.toHaveBeenCalled();
   });
 });

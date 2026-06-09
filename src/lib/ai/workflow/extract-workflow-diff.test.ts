@@ -91,6 +91,111 @@ describe("extractWorkflowDiff", () => {
     expect(result.updateEdges).toHaveLength(1);
     expect(result.updateEdges[0].id).toBe("edge1");
   });
+
+  it("returns empty diff when inputs are identical", () => {
+    const data = {
+      nodes: [createTestNode("n1", "Node 1"), createTestNode("n2", "Node 2")],
+      edges: [createTestEdge("e1", "n1", "n2")],
+    };
+    const result = extractWorkflowDiff(data, data);
+    expect(result.deleteNodes).toHaveLength(0);
+    expect(result.deleteEdges).toHaveLength(0);
+    expect(result.updateNodes).toHaveLength(0);
+    expect(result.updateEdges).toHaveLength(0);
+  });
+
+  it("all nodes become deleteNodes when new has no nodes", () => {
+    const oldData = {
+      nodes: [createTestNode("n1", "A"), createTestNode("n2", "B")],
+      edges: [],
+    };
+    const result = extractWorkflowDiff(oldData, { nodes: [], edges: [] });
+    expect(result.deleteNodes).toHaveLength(2);
+    expect(result.updateNodes).toHaveLength(0);
+  });
+
+  it("all nodes become updateNodes when old is empty", () => {
+    const newData = {
+      nodes: [createTestNode("n1", "A"), createTestNode("n2", "B")],
+      edges: [createTestEdge("e1", "n1", "n2")],
+    };
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, newData);
+    expect(result.updateNodes).toHaveLength(2);
+    expect(result.updateEdges).toHaveLength(1);
+    expect(result.deleteNodes).toHaveLength(0);
+    expect(result.deleteEdges).toHaveLength(0);
+  });
+
+  it("unchanged nodes are not in update or delete lists", () => {
+    const node = createTestNode("stable", "Stable Node");
+    const data = { nodes: [node], edges: [] };
+    const result = extractWorkflowDiff(data, data);
+    expect(result.updateNodes.map((n) => n.id)).not.toContain("stable");
+    expect(result.deleteNodes.map((n) => n.id)).not.toContain("stable");
+  });
+
+  it("result always has all four diff arrays", () => {
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes: [], edges: [] });
+    expect(Array.isArray(result.deleteNodes)).toBe(true);
+    expect(Array.isArray(result.deleteEdges)).toBe(true);
+    expect(Array.isArray(result.updateNodes)).toBe(true);
+    expect(Array.isArray(result.updateEdges)).toBe(true);
+  });
+
+  it("node name change is detected as an update", () => {
+    const oldData = { nodes: [createTestNode("n1", "Old Name")], edges: [] };
+    const newData = { nodes: [createTestNode("n1", "New Name")], edges: [] };
+    const result = extractWorkflowDiff(oldData, newData);
+    expect(result.updateNodes.map((n) => n.id)).toContain("n1");
+    expect(result.deleteNodes).toHaveLength(0);
+  });
+});
+
+describe("extractWorkflowDiff — additional", () => {
+  const makeNode = (id: string, name: string): UINode => ({
+    id,
+    type: "default",
+    position: { x: 0, y: 0 },
+    data: {
+      id,
+      name,
+      kind: NodeKind.Input,
+      outputSchema: { type: "object", properties: {} },
+      runtime: {},
+    },
+  } as unknown as UINode);
+
+  it("adding a node appears in updateNodes when base is empty", () => {
+    const result = extractWorkflowDiff(
+      { nodes: [], edges: [] },
+      { nodes: [makeNode("new-1", "New")], edges: [] },
+    );
+    expect(result.updateNodes.map((n) => n.id)).toContain("new-1");
+  });
+
+  it("removing a node appears in deleteNodes", () => {
+    const result = extractWorkflowDiff(
+      { nodes: [makeNode("del-1", "Old")], edges: [] },
+      { nodes: [], edges: [] },
+    );
+    expect(result.deleteNodes.map((n) => n.id)).toContain("del-1");
+  });
+
+  it("unchanged node does not appear in deleteNodes or updateNodes when unchanged", () => {
+    const node = makeNode("stable", "Stable");
+    const result = extractWorkflowDiff(
+      { nodes: [node], edges: [] },
+      { nodes: [node], edges: [] },
+    );
+    expect(result.deleteNodes.map((n) => n.id)).not.toContain("stable");
+    expect(result.updateNodes.map((n) => n.id)).not.toContain("stable");
+  });
+
+  it("result keys are exactly deleteNodes, deleteEdges, updateNodes, updateEdges", () => {
+    const result = extractWorkflowDiff({ nodes: [], edges: [] }, { nodes: [], edges: [] });
+    const keys = Object.keys(result).sort();
+    expect(keys).toEqual(["deleteEdges", "deleteNodes", "updateEdges", "updateNodes"]);
+  });
 });
 
 describe("extractWorkflowDiff — return type invariants", () => {

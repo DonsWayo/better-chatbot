@@ -1,96 +1,111 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { RESOURCES, PERMISSION_TYPES } from "./permissions";
 
 describe("RESOURCES", () => {
-  it("has WORKFLOW, AGENT, MCP, CHAT, TEMPORARY_CHAT", () => {
-    expect(RESOURCES).toHaveProperty("WORKFLOW");
-    expect(RESOURCES).toHaveProperty("AGENT");
-    expect(RESOURCES).toHaveProperty("MCP");
-    expect(RESOURCES).toHaveProperty("CHAT");
-    expect(RESOURCES).toHaveProperty("TEMPORARY_CHAT");
+  it("has WORKFLOW resource", () => {
+    expect(RESOURCES.WORKFLOW).toBe("workflow");
   });
 
-  it("all values are non-empty strings", () => {
+  it("has AGENT resource", () => {
+    expect(RESOURCES.AGENT).toBe("agent");
+  });
+
+  it("has MCP resource", () => {
+    expect(RESOURCES.MCP).toBe("mcp");
+  });
+
+  it("has CHAT resource", () => {
+    expect(RESOURCES.CHAT).toBe("chat");
+  });
+
+  it("has TEMPORARY_CHAT resource", () => {
+    expect(RESOURCES.TEMPORARY_CHAT).toBe("temporaryChat");
+  });
+
+  it("has exactly 5 resources", () => {
+    expect(Object.keys(RESOURCES)).toHaveLength(5);
+  });
+
+  it("all resource values are strings", () => {
     for (const v of Object.values(RESOURCES)) {
       expect(typeof v).toBe("string");
       expect(v.length).toBeGreaterThan(0);
     }
   });
+});
 
-  it("all values are unique", () => {
+describe("PERMISSION_TYPES", () => {
+  it("has CREATE permission", () => {
+    expect(PERMISSION_TYPES.CREATE).toBe("create");
+  });
+
+  it("has VIEW permission", () => {
+    expect(PERMISSION_TYPES.VIEW).toBe("view");
+  });
+
+  it("has UPDATE permission", () => {
+    expect(PERMISSION_TYPES.UPDATE).toBe("update");
+  });
+
+  it("has DELETE permission", () => {
+    expect(PERMISSION_TYPES.DELETE).toBe("delete");
+  });
+
+  it("has USE permission", () => {
+    expect(PERMISSION_TYPES.USE).toBe("use");
+  });
+
+  it("has LIST permission", () => {
+    expect(PERMISSION_TYPES.LIST).toBe("list");
+  });
+
+  it("has SHARE permission", () => {
+    expect(PERMISSION_TYPES.SHARE).toBe("share");
+  });
+
+  it("has exactly 7 permissions", () => {
+    expect(Object.keys(PERMISSION_TYPES)).toHaveLength(7);
+  });
+
+  it("all permission values are lowercase strings", () => {
+    for (const v of Object.values(PERMISSION_TYPES)) {
+      expect(typeof v).toBe("string");
+      expect(v).toBe(v.toLowerCase());
+    }
+  });
+});
+
+describe("RESOURCES — uniqueness and format", () => {
+  it("has no duplicate values", () => {
     const values = Object.values(RESOURCES);
     expect(new Set(values).size).toBe(values.length);
   });
 
-  it("has at least 4 resources", () => {
-    expect(Object.keys(RESOURCES).length).toBeGreaterThanOrEqual(4);
+  it("all keys are uppercase strings", () => {
+    for (const k of Object.keys(RESOURCES)) {
+      expect(k).toBe(k.toUpperCase());
+    }
   });
 });
 
-describe("PERMISSION_TYPES", () => {
-  it("has CREATE, VIEW, UPDATE, DELETE, SHARE, USE, LIST", () => {
-    expect(PERMISSION_TYPES).toHaveProperty("CREATE");
-    expect(PERMISSION_TYPES).toHaveProperty("VIEW");
-    expect(PERMISSION_TYPES).toHaveProperty("UPDATE");
-    expect(PERMISSION_TYPES).toHaveProperty("DELETE");
-    expect(PERMISSION_TYPES).toHaveProperty("SHARE");
-    expect(PERMISSION_TYPES).toHaveProperty("USE");
-    expect(PERMISSION_TYPES).toHaveProperty("LIST");
-  });
-
-  it("all values are non-empty strings", () => {
-    for (const v of Object.values(PERMISSION_TYPES)) {
-      expect(typeof v).toBe("string");
-      expect(v.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("all values are lowercase", () => {
-    for (const v of Object.values(PERMISSION_TYPES)) {
-      expect(v).toBe(v.toLowerCase());
-    }
-  });
-
-  it("all values are unique", () => {
+describe("PERMISSION_TYPES — uniqueness and format", () => {
+  it("has no duplicate values", () => {
     const values = Object.values(PERMISSION_TYPES);
     expect(new Set(values).size).toBe(values.length);
   });
 
-  it("has at least 5 permission types", () => {
-    expect(Object.keys(PERMISSION_TYPES).length).toBeGreaterThanOrEqual(5);
+  it("all keys are uppercase strings", () => {
+    for (const k of Object.keys(PERMISSION_TYPES)) {
+      expect(k).toBe(k.toUpperCase());
+    }
   });
 });
 
-describe("permissions — shape invariants", () => {
-  it("RESOURCES is a plain object", () => {
-    expect(typeof RESOURCES).toBe("object");
-    expect(RESOURCES).not.toBeNull();
-    expect(Array.isArray(RESOURCES)).toBe(false);
-  });
-
-  it("PERMISSION_TYPES is a plain object", () => {
-    expect(typeof PERMISSION_TYPES).toBe("object");
-    expect(PERMISSION_TYPES).not.toBeNull();
-    expect(Array.isArray(PERMISSION_TYPES)).toBe(false);
-  });
-
-  it("WORKFLOW resource value is 'workflow'", () => {
-    expect(RESOURCES.WORKFLOW).toBe("workflow");
-  });
-
-  it("AGENT resource value is 'agent'", () => {
-    expect(RESOURCES.AGENT).toBe("agent");
-  });
-
-  it("MCP resource value is 'mcp'", () => {
-    expect(RESOURCES.MCP).toBe("mcp");
-  });
-
-  it("CREATE permission value is 'create'", () => {
-    expect(PERMISSION_TYPES.CREATE).toBe("create");
-  });
-
-  it("DELETE permission value is 'delete'", () => {
-    expect(PERMISSION_TYPES.DELETE).toBe("delete");
+describe("RESOURCES and PERMISSION_TYPES — cross-property", () => {
+  it("no overlapping values between RESOURCES and PERMISSION_TYPES", () => {
+    const resourceValues = new Set(Object.values(RESOURCES));
+    for (const v of Object.values(PERMISSION_TYPES)) {
+      expect(resourceValues.has(v)).toBe(false);
+    }
   });
 });

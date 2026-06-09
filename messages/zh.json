@@ -52,7 +52,10 @@
       "noAccount": "没有账户？",
       "signUp": "注册",
       "signIn": "登录",
-      "orContinueWith": "或继续使用"
+      "orContinueWith": "或继续使用",
+      "continueWithMicrosoft": "使用 Microsoft 继续",
+      "administratorSignIn": "管理员登录",
+      "backToMicrosoftSignIn": "← 返回 Microsoft 登录"
     },
     "SignUp": {
       "title": "创建账户",
@@ -509,6 +512,29 @@
         "imageSizeMustBeLessThan": "图像大小必须小于5MB",
         "select": "选择"
       }
+    }
+  },
+  "Admin": {
+    "FeatureFlags": {
+      "title": "功能标志",
+      "flagName": "标志",
+      "flagEnabled": "已启用",
+      "killSwitch": "终止开关",
+      "killSwitchDescription": "立即阻止所有AI推理。事件解决后立即停用。",
+      "activate": "激活",
+      "deactivate": "停用",
+      "activated": "终止开关已激活 — 所有推理已被阻止",
+      "deactivated": "终止开关已停用 — 推理正常运行",
+      "flagUpdated": "标志已更新"
+    },
+    "Guardrails": {
+      "title": "护栏",
+      "blockedCount": "已阻止",
+      "warnedCount": "已警告",
+      "noEvents": "尚未记录任何护栏事件。"
+    },
+    "Quality": {
+      "title": "质量"
     }
   }
 }

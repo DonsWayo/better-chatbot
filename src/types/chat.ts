@@ -1,8 +1,8 @@
 import type { LanguageModelUsage, UIMessage } from "ai";
+import { tag } from "lib/tag";
 import { z } from "zod";
 import { AllowedMCPServerZodSchema } from "./mcp";
 import { UserPreferences } from "./user";
-import { tag } from "lib/tag";
 
 export type ChatMetadata = {
   usage?: LanguageModelUsage;
@@ -10,6 +10,10 @@ export type ChatMetadata = {
   toolChoice?: "auto" | "none" | "manual";
   toolCount?: number;
   agentId?: string;
+  /** asafe-ai (ADR-0004): why the router chose this model, when Auto routing was used. */
+  routingReason?: string;
+  /** asafe-ai (ADR-0007): knowledge collection ID used for RAG retrieval in this message. */
+  ragCollectionId?: string;
 };
 
 export type ChatModel = {
@@ -108,6 +112,7 @@ export const chatApiSchemaRequestBodySchema = z.object({
   allowedMcpServers: z.record(z.string(), AllowedMCPServerZodSchema).optional(),
   allowedAppDefaultToolkit: z.array(z.string()).optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
+  ragCollectionId: z.string().optional(),
 });
 
 export type ChatApiSchemaRequestBody = z.infer<

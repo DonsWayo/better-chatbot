@@ -2,85 +2,208 @@ import { describe, it, expect } from "vitest";
 import { ArchiveCreateSchema, ArchiveUpdateSchema } from "./archive";
 
 describe("ArchiveCreateSchema", () => {
-  describe("valid inputs", () => {
-    it("accepts name only", () => {
-      expect(() => ArchiveCreateSchema.parse({ name: "My Archive" })).not.toThrow();
-    });
-
-    it("accepts name and description", () => {
-      expect(() =>
-        ArchiveCreateSchema.parse({ name: "Archive", description: "Some description." }),
-      ).not.toThrow();
-    });
-
-    it("accepts name of exactly 100 characters", () => {
-      expect(() =>
-        ArchiveCreateSchema.parse({ name: "a".repeat(100) }),
-      ).not.toThrow();
-    });
-
-    it("accepts description of exactly 500 characters", () => {
-      expect(() =>
-        ArchiveCreateSchema.parse({ name: "x", description: "d".repeat(500) }),
-      ).not.toThrow();
-    });
+  it("accepts valid name", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "My Archive" });
+    expect(r.success).toBe(true);
   });
 
-  describe("invalid inputs", () => {
-    it("rejects empty name", () => {
-      expect(() => ArchiveCreateSchema.parse({ name: "" })).toThrow();
+  it("accepts name with optional description", () => {
+    const r = ArchiveCreateSchema.safeParse({
+      name: "My Archive",
+      description: "A description",
     });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.description).toBe("A description");
+  });
 
-    it("rejects name longer than 100 characters", () => {
-      expect(() => ArchiveCreateSchema.parse({ name: "a".repeat(101) })).toThrow();
-    });
+  it("rejects empty name", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "" });
+    expect(r.success).toBe(false);
+  });
 
-    it("rejects description longer than 500 characters", () => {
-      expect(() =>
-        ArchiveCreateSchema.parse({ name: "x", description: "d".repeat(501) }),
-      ).toThrow();
-    });
+  it("rejects name over 100 characters", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "a".repeat(101) });
+    expect(r.success).toBe(false);
+  });
 
-    it("rejects missing name", () => {
-      expect(() => ArchiveCreateSchema.parse({})).toThrow();
+  it("accepts name at max 100 characters", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "a".repeat(100) });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects description over 500 characters", () => {
+    const r = ArchiveCreateSchema.safeParse({
+      name: "Archive",
+      description: "x".repeat(501),
     });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts description at max 500 characters", () => {
+    const r = ArchiveCreateSchema.safeParse({
+      name: "Archive",
+      description: "x".repeat(500),
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects missing name", () => {
+    const r = ArchiveCreateSchema.safeParse({});
+    expect(r.success).toBe(false);
   });
 });
 
 describe("ArchiveUpdateSchema", () => {
-  describe("valid inputs", () => {
-    it("accepts empty object (all fields optional)", () => {
-      expect(() => ArchiveUpdateSchema.parse({})).not.toThrow();
-    });
-
-    it("accepts name only", () => {
-      expect(() => ArchiveUpdateSchema.parse({ name: "New Name" })).not.toThrow();
-    });
-
-    it("accepts description only", () => {
-      expect(() => ArchiveUpdateSchema.parse({ description: "Updated" })).not.toThrow();
-    });
-
-    it("accepts both name and description", () => {
-      expect(() =>
-        ArchiveUpdateSchema.parse({ name: "New Name", description: "New Description" }),
-      ).not.toThrow();
-    });
+  it("accepts empty object (all optional)", () => {
+    const r = ArchiveUpdateSchema.safeParse({});
+    expect(r.success).toBe(true);
   });
 
-  describe("invalid inputs", () => {
-    it("rejects empty name string (min 1)", () => {
-      expect(() => ArchiveUpdateSchema.parse({ name: "" })).toThrow();
-    });
+  it("accepts partial update with name only", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Updated Name" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Updated Name");
+  });
 
-    it("rejects name longer than 100 characters", () => {
-      expect(() => ArchiveUpdateSchema.parse({ name: "a".repeat(101) })).toThrow();
-    });
+  it("accepts partial update with description only", () => {
+    const r = ArchiveUpdateSchema.safeParse({ description: "New desc" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.description).toBe("New desc");
+  });
 
-    it("rejects description longer than 500 characters", () => {
-      expect(() =>
-        ArchiveUpdateSchema.parse({ description: "d".repeat(501) }),
-      ).toThrow();
+  it("accepts full update", () => {
+    const r = ArchiveUpdateSchema.safeParse({
+      name: "New Name",
+      description: "New Description",
     });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects empty name when provided", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "" });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects name over 100 characters", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "a".repeat(101) });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects description over 500 characters", () => {
+    const r = ArchiveUpdateSchema.safeParse({ description: "x".repeat(501) });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts name at exactly 100 characters in update", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "a".repeat(100) });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts description at exactly 500 characters in update", () => {
+    const r = ArchiveUpdateSchema.safeParse({ description: "x".repeat(500) });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts single character name", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "X" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("ArchiveCreateSchema — additional boundaries", () => {
+  it("accepts single character name", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "X" });
+    expect(r.success).toBe(true);
+  });
+
+  it("parsed data contains no extra fields when only name given", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "Archive" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects number as name", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: 42 });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("ArchiveUpdateSchema — additional boundaries", () => {
+  it("rejects number as name", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: 99 });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts description at exactly 1 character", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Valid", description: "x" });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts undefined description (optional)", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Name" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("ArchiveCreateSchema and ArchiveUpdateSchema — type checks", () => {
+  it("name in ArchiveCreateSchema must be a string", () => {
+    expect(ArchiveCreateSchema.safeParse({ name: true }).success).toBe(false);
+    expect(ArchiveCreateSchema.safeParse({ name: null }).success).toBe(false);
+  });
+
+  it("name in ArchiveUpdateSchema must be a string when provided", () => {
+    expect(ArchiveUpdateSchema.safeParse({ name: false }).success).toBe(false);
+    expect(ArchiveUpdateSchema.safeParse({ name: [] }).success).toBe(false);
+  });
+
+  it("ArchiveCreateSchema returns name in data on success", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "Test" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Test");
+  });
+});
+
+describe("ArchiveCreateSchema and ArchiveUpdateSchema — data shape", () => {
+  it("ArchiveCreateSchema result.data.name matches input exactly", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "My Archive" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("My Archive");
+  });
+
+  it("ArchiveUpdateSchema result.data.name matches input exactly", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Updated Name" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Updated Name");
+  });
+
+  it("ArchiveUpdateSchema rejects number as description", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Valid", description: 42 });
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveCreateSchema rejects number as description", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "Valid", description: 123 });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("ArchiveCreateSchema and ArchiveUpdateSchema — null/undefined invariants", () => {
+  it("ArchiveCreateSchema rejects null input", () => {
+    const r = ArchiveCreateSchema.safeParse(null);
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveUpdateSchema rejects null input", () => {
+    const r = ArchiveUpdateSchema.safeParse(null);
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveCreateSchema rejects undefined input", () => {
+    const r = ArchiveCreateSchema.safeParse(undefined);
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveUpdateSchema accepts empty object (all optional)", () => {
+    const r = ArchiveUpdateSchema.safeParse({});
+    expect(r.success).toBe(true);
   });
 });

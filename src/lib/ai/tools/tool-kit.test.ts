@@ -3,89 +3,127 @@ import { APP_DEFAULT_TOOL_KIT } from "./tool-kit";
 import { AppDefaultToolkit, DefaultToolName } from "./index";
 
 describe("APP_DEFAULT_TOOL_KIT", () => {
-  it("has all four toolkit entries", () => {
-    expect(APP_DEFAULT_TOOL_KIT).toHaveProperty(AppDefaultToolkit.Visualization);
-    expect(APP_DEFAULT_TOOL_KIT).toHaveProperty(AppDefaultToolkit.WebSearch);
-    expect(APP_DEFAULT_TOOL_KIT).toHaveProperty(AppDefaultToolkit.Http);
-    expect(APP_DEFAULT_TOOL_KIT).toHaveProperty(AppDefaultToolkit.Code);
+  it("has all four toolkit categories", () => {
+    expect(APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Visualization]).toBeDefined();
+    expect(APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.WebSearch]).toBeDefined();
+    expect(APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Http]).toBeDefined();
+    expect(APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Code]).toBeDefined();
   });
 
-  describe("Visualization toolkit", () => {
+  it("Visualization toolkit has all 4 chart tools", () => {
     const viz = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Visualization];
-
-    it("has CreatePieChart tool", () => {
-      expect(viz[DefaultToolName.CreatePieChart]).toBeDefined();
-    });
-
-    it("has CreateBarChart tool", () => {
-      expect(viz[DefaultToolName.CreateBarChart]).toBeDefined();
-    });
-
-    it("has CreateLineChart tool", () => {
-      expect(viz[DefaultToolName.CreateLineChart]).toBeDefined();
-    });
-
-    it("has CreateTable tool", () => {
-      expect(viz[DefaultToolName.CreateTable]).toBeDefined();
-    });
-
-    it("all visualization tools have execute functions", () => {
-      for (const tool of Object.values(viz)) {
-        expect(typeof tool.execute).toBe("function");
-      }
-    });
+    expect(viz[DefaultToolName.CreatePieChart]).toBeDefined();
+    expect(viz[DefaultToolName.CreateBarChart]).toBeDefined();
+    expect(viz[DefaultToolName.CreateLineChart]).toBeDefined();
+    expect(viz[DefaultToolName.CreateTable]).toBeDefined();
   });
 
-  describe("WebSearch toolkit", () => {
-    const web = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.WebSearch];
-
-    it("has WebSearch tool", () => {
-      expect(web[DefaultToolName.WebSearch]).toBeDefined();
-    });
-
-    it("has WebContent tool", () => {
-      expect(web[DefaultToolName.WebContent]).toBeDefined();
-    });
-
-    it("all web tools have execute functions", () => {
-      for (const tool of Object.values(web)) {
-        expect(typeof tool.execute).toBe("function");
-      }
-    });
+  it("WebSearch toolkit has search and contents tools", () => {
+    const ws = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.WebSearch];
+    expect(ws[DefaultToolName.WebSearch]).toBeDefined();
+    expect(ws[DefaultToolName.WebContent]).toBeDefined();
   });
 
-  describe("Http toolkit", () => {
+  it("Http toolkit has http tool", () => {
     const http = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Http];
-
-    it("has Http tool", () => {
-      expect(http[DefaultToolName.Http]).toBeDefined();
-    });
-
-    it("http tool has execute function", () => {
-      expect(typeof http[DefaultToolName.Http].execute).toBe("function");
-    });
+    expect(http[DefaultToolName.Http]).toBeDefined();
   });
 
-  describe("Code toolkit", () => {
+  it("Code toolkit has JS and Python execution tools", () => {
     const code = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Code];
+    expect(code[DefaultToolName.JavascriptExecution]).toBeDefined();
+    expect(code[DefaultToolName.PythonExecution]).toBeDefined();
+  });
 
-    it("has JavascriptExecution tool", () => {
-      expect(code[DefaultToolName.JavascriptExecution]).toBeDefined();
-    });
-
-    it("has PythonExecution tool", () => {
-      expect(code[DefaultToolName.PythonExecution]).toBeDefined();
-    });
-
-    it("all code tools have inputSchema", () => {
-      for (const tool of Object.values(code)) {
-        expect(tool.inputSchema).toBeDefined();
+  it("each tool has an inputSchema", () => {
+    for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
+      for (const [toolName, tool] of Object.entries(kit)) {
+        expect(tool.inputSchema, `${kitName}/${toolName} missing inputSchema`).toBeDefined();
       }
-    });
+    }
+  });
 
-    it("code tools are client-side (no server execute)", () => {
-      expect(code[DefaultToolName.JavascriptExecution].execute).toBeUndefined();
-      expect(code[DefaultToolName.PythonExecution].execute).toBeUndefined();
-    });
+  it("server-side tools (viz, http, web search) have execute functions", () => {
+    const serverToolkits = [
+      AppDefaultToolkit.Visualization,
+      AppDefaultToolkit.Http,
+      AppDefaultToolkit.WebSearch,
+    ];
+    for (const kitKey of serverToolkits) {
+      const kit = APP_DEFAULT_TOOL_KIT[kitKey];
+      for (const [toolName, tool] of Object.entries(kit)) {
+        expect(typeof tool.execute, `${kitKey}/${toolName} missing execute`).toBe("function");
+      }
+    }
+  });
+
+  it("code tools are client-side (no server execute)", () => {
+    const code = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Code];
+    for (const [, tool] of Object.entries(code)) {
+      expect(tool.execute).toBeUndefined();
+    }
+  });
+
+  it("Visualization toolkit has exactly 4 tools", () => {
+    const viz = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Visualization];
+    expect(Object.keys(viz)).toHaveLength(4);
+  });
+
+  it("WebSearch toolkit has exactly 2 tools", () => {
+    const ws = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.WebSearch];
+    expect(Object.keys(ws)).toHaveLength(2);
+  });
+
+  it("Http toolkit has exactly 1 tool", () => {
+    const http = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Http];
+    expect(Object.keys(http)).toHaveLength(1);
+  });
+
+  it("Code toolkit has exactly 2 tools", () => {
+    const code = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Code];
+    expect(Object.keys(code)).toHaveLength(2);
+  });
+
+  it("each tool has a non-empty description", () => {
+    for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
+      for (const [toolName, tool] of Object.entries(kit)) {
+        expect(
+          typeof (tool as any).description,
+          `${kitName}/${toolName} should have string description`,
+        ).toBe("string");
+        expect((tool as any).description.length, `${kitName}/${toolName} description empty`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("total tool count across all kits is 9", () => {
+    const total = Object.values(APP_DEFAULT_TOOL_KIT).reduce(
+      (sum, kit) => sum + Object.keys(kit).length,
+      0,
+    );
+    expect(total).toBe(9);
+  });
+
+  it("no toolkit category key is duplicated", () => {
+    const keys = Object.keys(APP_DEFAULT_TOOL_KIT);
+    const unique = new Set(keys);
+    expect(unique.size).toBe(keys.length);
+  });
+
+  it("each tool inputSchema is an object with properties or type field", () => {
+    for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
+      for (const [toolName, tool] of Object.entries(kit)) {
+        expect(typeof tool.inputSchema).toBe("object");
+        expect(tool.inputSchema).not.toBeNull();
+      }
+    }
+  });
+
+  it("all 4 toolkit categories are present as keys", () => {
+    const keys = Object.keys(APP_DEFAULT_TOOL_KIT);
+    expect(keys).toContain(AppDefaultToolkit.Visualization);
+    expect(keys).toContain(AppDefaultToolkit.WebSearch);
+    expect(keys).toContain(AppDefaultToolkit.Http);
+    expect(keys).toContain(AppDefaultToolkit.Code);
   });
 });

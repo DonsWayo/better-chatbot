@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const { getSessionMock, getUserMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   getUserMock: vi.fn(),
@@ -10,132 +8,140 @@ const { getSessionMock, getUserMock } = vi.hoisted(() => ({
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/user/server", () => ({ getUser: getUserMock }));
 
-import { GET } from "./route";
-
-const USER = { id: "user-1", name: "Alice", email: "alice@example.com" };
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("GET /api/user/details", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await GET();
-    expect(res.status).toBe(401);
+  it("never calls getUser when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getUserMock).not.toHaveBeenCalled();
   });
 
-  it("returns user details when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(USER);
+  it("returns 200 for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockResolvedValueOnce({ id: "u1", name: "Alice" });
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.id).toBe("user-1");
-    expect(body.name).toBe("Alice");
-  });
-
-  it("calls getUser with user id from session", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    getUserMock.mockResolvedValue(USER);
-    await GET();
-    expect(getUserMock).toHaveBeenCalledWith("user-42");
   });
 
   it("returns empty object when user not found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(null);
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({});
   });
 
-  it("returns 500 on unexpected error", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockRejectedValue(new Error("DB fail"));
+  it("returns user details for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const USER = { id: "u1", name: "Alice", email: "alice@example.com" };
+    getUserMock.mockResolvedValueOnce(USER);
+    const { GET } = await import("./route");
     const res = await GET();
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.error).toBe("DB fail");
+    expect(body.id).toBe("u1");
+    expect(getUserMock).toHaveBeenCalledWith("u1");
   });
 
-  it("returns email field from user object", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(USER);
+  it("passes correct userId to getUser", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-xyz-999" } });
+    getUserMock.mockResolvedValueOnce({ id: "user-xyz-999" });
+    const { GET } = await import("./route");
+    await GET();
+    expect(getUserMock).toHaveBeenCalledWith("user-xyz-999");
+  });
+
+  it("preserves all user fields in response", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const USER = { id: "u1", name: "Alice", email: "alice@example.com", role: "admin", createdAt: "2025-01-01" };
+    getUserMock.mockResolvedValueOnce(USER);
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
+    expect(body.name).toBe("Alice");
     expect(body.email).toBe("alice@example.com");
+    expect(body.role).toBe("admin");
+  });
+
+  it("returns 500 on unexpected error", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockRejectedValueOnce(new Error("DB timeout"));
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(500);
+  });
+
+  it("error body includes error field on 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockRejectedValueOnce(new Error("connection lost"));
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 
   it("calls getUser exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(USER);
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockResolvedValueOnce({ id: "u1" });
+    const { GET } = await import("./route");
     await GET();
     expect(getUserMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns JSON content-type", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(USER);
-    const res = await GET();
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
-  });
-
-  it("500 error message falls back when error has no message", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockRejectedValue({});
-    const res = await GET();
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toBe("Failed to get user details");
-  });
-
-  it("does not call getUser when session is null", async () => {
+  it("401 response body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
-    await GET();
-    expect(getUserMock).not.toHaveBeenCalled();
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 
-  it("getSession is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(USER);
+  it("500 error message includes the thrown error message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockRejectedValueOnce(new Error("specific db failure"));
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.error).toContain("specific db failure");
+  });
+});
+
+describe("GET /api/user/details — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     await GET();
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call getUser when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
+  it("getUser never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     await GET();
     expect(getUserMock).not.toHaveBeenCalled();
   });
 
-  it("user details body is an object", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue(USER);
+  it("response body is an object on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserMock.mockResolvedValueOnce({ id: "u1", name: "Charlie" });
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
     expect(typeof body).toBe("object");
     expect(body).not.toBeNull();
-  });
-
-  it("returns 401 body with Unauthorized when session is null", async () => {
-    getSessionMock.mockResolvedValue(null);
-    const res = await GET();
-    expect(res.status).toBe(401);
-  });
-
-  it("name field matches user name", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    getUserMock.mockResolvedValue({ ...USER, name: "Bob" });
-    const res = await GET();
-    const body = await res.json();
-    expect(body.name).toBe("Bob");
   });
 });

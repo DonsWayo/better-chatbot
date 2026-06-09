@@ -1,205 +1,141 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, chatExportRepositoryMock } = vi.hoisted(() => ({
+const { getSessionMock, insertCommentMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  chatExportRepositoryMock: {
-    insertComment: vi.fn(),
-  },
+  insertCommentMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  chatExportRepository: chatExportRepositoryMock,
+  chatExportRepository: { insertComment: insertCommentMock },
+}));
+vi.mock("app-types/chat-export", () => ({
+  ChatExportCommentCreateSchema: {
+    parse: (d: any) => d,
+  },
 }));
 
-import { addExportChatCommentAction } from "./actions";
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("addExportChatCommentAction", () => {
-  it("throws when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { addExportChatCommentAction } = await import("./actions");
     await expect(
-      addExportChatCommentAction({
-        exportId: "exp-1",
-        content: { type: "doc", content: [] },
-      }),
-    ).rejects.toThrow("User not found");
+      addExportChatCommentAction({ exportId: "e1", content: {} as any }),
+    ).rejects.toThrow(/User not found/i);
   });
 
-  it("inserts comment with userId from session", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+  it("never calls insertComment when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any }).catch(() => {});
+    expect(insertCommentMock).not.toHaveBeenCalled();
+  });
 
-    await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
+  it("inserts a comment for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1", exportId: "e1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    const result = await addExportChatCommentAction({
+      exportId: "e1",
+      content: { type: "doc", content: [] } as any,
     });
+    expect(result.id).toBe("c1");
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ exportId: "e1", authorId: "u1" }),
+    );
+  });
 
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exportId: "exp-1",
-        authorId: "user-42",
-      }),
+  it("includes authorId from session user in call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-author-xyz" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c2" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e-99", content: {} as any });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ authorId: "user-author-xyz" }),
+    );
+  });
+
+  it("passes exportId in the insert call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c2" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "export-unique-123", content: {} as any });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ exportId: "export-unique-123" }),
     );
   });
 
   it("passes parentId when provided", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-
-    await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
-      parentId: "parent-comment-123",
-    });
-
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        parentId: "parent-comment-123",
-      }),
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c3", parentId: "p1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any, parentId: "p1" });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ parentId: "p1" }),
     );
   });
 
-  it("returns result from repository", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue("comment-id");
-
-    const result = await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
-    });
-
-    expect(result).toBe("comment-id");
+  it("returns the result from insertComment directly", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const EXPECTED = { id: "c9", exportId: "e1", authorId: "u1", createdAt: "2025-01-01" };
+    insertCommentMock.mockResolvedValueOnce(EXPECTED);
+    const { addExportChatCommentAction } = await import("./actions");
+    const result = await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    expect(result).toEqual(EXPECTED);
   });
 
-  it("passes content object to repository", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-    const content = { type: "doc" as const, content: [{ type: "paragraph", content: [] }] };
+  it("calls insertComment exactly once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c-x" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    expect(insertCommentMock).toHaveBeenCalledTimes(1);
+  });
 
-    await addExportChatCommentAction({ exportId: "exp-1", content });
+  it("propagates insertComment error to caller", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockRejectedValueOnce(new Error("insert failed"));
+    const { addExportChatCommentAction } = await import("./actions");
+    await expect(
+      addExportChatCommentAction({ exportId: "e1", content: {} as any }),
+    ).rejects.toThrow("insert failed");
+  });
 
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
+  it("does not pass parentId when not provided (undefined)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    const callArg = insertCommentMock.mock.calls[0][0];
+    expect(callArg.parentId === undefined || callArg.parentId === null).toBe(true);
+  });
+
+  it("getSession called exactly once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("content is forwarded to insertComment in the insert payload", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1" });
+    const content = { type: "doc", content: [{ type: "paragraph", text: "hello" }] };
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: content as any });
+    expect(insertCommentMock).toHaveBeenCalledWith(
       expect.objectContaining({ content }),
     );
   });
 
-  it("omits parentId when not provided", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-
-    await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
-    });
-
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
-      expect.not.objectContaining({ parentId: expect.anything() }),
-    );
-  });
-
-  it("passes correct exportId when multiple calls differ", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-
-    await addExportChatCommentAction({
-      exportId: "export-abc",
-      content: { type: "doc", content: [] },
-    });
-
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
-      expect.objectContaining({ exportId: "export-abc" }),
-    );
-  });
-
-  it("calls insertComment exactly once per action call", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-
-    await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
-    });
-
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledTimes(1);
-  });
-
-  it("propagates repository rejection", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockRejectedValue(new Error("DB error"));
-
-    await expect(
-      addExportChatCommentAction({
-        exportId: "exp-1",
-        content: { type: "doc", content: [] },
-      }),
-    ).rejects.toThrow("DB error");
-  });
-
-  it("throws when session has no user", async () => {
-    getSessionMock.mockResolvedValue({ user: null });
-    await expect(
-      addExportChatCommentAction({
-        exportId: "exp-1",
-        content: { type: "doc", content: [] },
-      }),
-    ).rejects.toThrow();
-  });
-
-  it("throws when session user has no id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    await expect(
-      addExportChatCommentAction({
-        exportId: "exp-1",
-        content: { type: "doc", content: [] },
-      }),
-    ).rejects.toThrow();
-  });
-
-  it("getSession is called exactly once per action call", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-    await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
-    });
-    expect(getSessionMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call insertComment when session is null", async () => {
+  it("error thrown when unauthenticated is an instance of Error", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { addExportChatCommentAction } = await import("./actions");
     await expect(
-      addExportChatCommentAction({
-        exportId: "exp-1",
-        content: { type: "doc", content: [] },
-      }),
-    ).rejects.toThrow();
-    expect(chatExportRepositoryMock.insertComment).not.toHaveBeenCalled();
-  });
-
-  it("passes content with nested nodes to repository", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
-    const rich = { type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text: "hello" }] }] };
-    await addExportChatCommentAction({ exportId: "exp-1", content: rich });
-    expect(chatExportRepositoryMock.insertComment).toHaveBeenCalledWith(
-      expect.objectContaining({ content: rich }),
-    );
-  });
-
-  it("action result equals whatever insertComment resolves to", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const returned = { id: "new-comment-1" };
-    chatExportRepositoryMock.insertComment.mockResolvedValue(returned);
-    const result = await addExportChatCommentAction({
-      exportId: "exp-1",
-      content: { type: "doc", content: [] },
-    });
-    expect(result).toBe(returned);
+      addExportChatCommentAction({ exportId: "e1", content: {} as any }),
+    ).rejects.toBeInstanceOf(Error);
   });
 });

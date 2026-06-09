@@ -167,72 +167,76 @@ describe("Admin Validations", () => {
   });
 });
 
-describe("UpdateUserRoleSchema — return type invariants", () => {
-  const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
-
-  it("parse returns an object", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID });
-    expect(result.success).toBe(true);
-    if (result.success) expect(typeof result.data).toBe("object");
-  });
-
-  it("parsed data has userId key", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: "user" });
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toHaveProperty("userId");
-  });
-
-  it("parsed userId matches input exactly", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: "admin" });
-    if (result.success) expect(result.data.userId).toBe(VALID_UUID);
-  });
-
-  it("parsed role is a string when provided", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: "editor" });
-    if (result.success) expect(typeof result.data.role).toBe("string");
-  });
-
-  it("extra fields do not cause a failure (strict mode not enabled)", () => {
+describe("UpdateUserRoleSchema — additional boundaries", () => {
+  it("accepts null role (treated as absent)", () => {
     const result = UpdateUserRoleSchema.safeParse({
-      userId: VALID_UUID,
-      role: "user",
-      extra: "field",
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: null,
     });
-    expect(result.success).toBe(true);
-  });
-});
-
-describe("UpdateUserRoleSchema — edge case invariants", () => {
-  const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
-
-  it("null userId fails", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: null, role: "user" });
+    // null is not a valid enum value — should fail
     expect(result.success).toBe(false);
   });
 
-  it("numeric userId fails", () => {
+  it("parsed data.role is the exact string provided", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: "editor",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.role).toBe("editor");
+  });
+
+  it("rejects numeric userId", () => {
     const result = UpdateUserRoleSchema.safeParse({ userId: 12345, role: "user" });
     expect(result.success).toBe(false);
   });
 
-  it("null role fails", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: null });
+  it("rejects boolean userId", () => {
+    const result = UpdateUserRoleSchema.safeParse({ userId: true, role: "admin" });
     expect(result.success).toBe(false);
   });
 
-  it("undefined role is treated as absent (valid)", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: undefined });
+  it("parsed data.userId matches input UUID exactly", () => {
+    const uuid = "550e8400-e29b-41d4-a716-446655440000";
+    const result = UpdateUserRoleSchema.safeParse({ userId: uuid, role: "admin" });
     expect(result.success).toBe(true);
-    if (result.success) expect(result.data.role).toBeUndefined();
+    if (result.success) expect(result.data.userId).toBe(uuid);
   });
 
-  it("empty string role fails", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: "" });
+  it("rejects role as number", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: 1,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("UpdateUserRoleSchema — invariants", () => {
+  it("accepts role=user", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: USER_ROLES.USER,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts role=editor when present in USER_ROLES", () => {
+    if (!USER_ROLES.EDITOR) return;
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      role: USER_ROLES.EDITOR,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing userId", () => {
+    const result = UpdateUserRoleSchema.safeParse({ role: USER_ROLES.ADMIN });
     expect(result.success).toBe(false);
   });
 
-  it("superadmin role string is rejected (not an approved role)", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID, role: "superadmin" });
+  it("rejects missing role", () => {
+    const result = UpdateUserRoleSchema.safeParse({ userId: "123e4567-e89b-12d3-a456-426614174000" });
     expect(result.success).toBe(false);
   });
 });

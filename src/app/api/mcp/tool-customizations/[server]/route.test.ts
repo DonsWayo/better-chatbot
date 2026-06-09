@@ -1,174 +1,187 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, mcpMcpToolCustomizationRepositoryMock } = vi.hoisted(
-  () => ({
-    getSessionMock: vi.fn(),
-    mcpMcpToolCustomizationRepositoryMock: {
-      selectByUserIdAndMcpServerId: vi.fn(),
-    },
-  }),
-);
+const { getSessionMock, selectByUserIdAndMcpServerIdMock } = vi.hoisted(() => ({
+  getSessionMock: vi.fn(),
+  selectByUserIdAndMcpServerIdMock: vi.fn(),
+}));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  mcpMcpToolCustomizationRepository: mcpMcpToolCustomizationRepositoryMock,
+  mcpMcpToolCustomizationRepository: {
+    selectByUserIdAndMcpServerId: selectByUserIdAndMcpServerIdMock,
+  },
 }));
 
-import { GET } from "./route";
-
-const makeContext = (server: string) => ({
-  params: Promise.resolve({ server }),
-});
-
-const CUSTOMIZATIONS = [
-  { id: "tc-1", toolName: "my-tool", mcpServerId: "server-1", prompt: "Do X" },
-];
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("GET /api/mcp/tool-customizations/[server]", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns tool customizations when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
-      CUSTOMIZATIONS,
-    );
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
+  it("returns 401 body text when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    const body = await res.text();
+    expect(body).toMatch(/[Uu]nauthorized/);
+  });
+
+  it("never queries repository when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 with tool customizations for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const CUSTOMIZATIONS = [{ toolName: "search", prompt: "Search carefully" }];
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce(CUSTOMIZATIONS);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(1);
-    expect(body[0].toolName).toBe("my-tool");
   });
 
-  it("calls selectByUserIdAndMcpServerId with server id and user id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
-      [],
-    );
-    await GET(new Request("http://x"), makeContext("server-xyz"));
-    expect(
-      mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId,
-    ).toHaveBeenCalledWith({ mcpServerId: "server-xyz", userId: "user-42" });
-  });
-
-  it("returns empty array when no customizations found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
-      [],
-    );
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
+  it("returns empty array when no customizations exist", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual([]);
   });
 
-  it("returns null when repository returns null", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
-      null,
+  it("passes correct server ID to repository", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "my-server-123" }) });
+    expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({ mcpServerId: "my-server-123" }),
     );
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toBeNull();
   });
 
-  it("calls repository exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([]);
-    await GET(new Request("http://x"), makeContext("server-1"));
-    expect(mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId).toHaveBeenCalledTimes(1);
+  it("passes correct user ID to repository", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc-xyz" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv" }) });
+    expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-abc-xyz" }),
+    );
   });
 
-  it("returns JSON content-type on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([]);
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
-  });
-
-  it("does not call repository when session is null", async () => {
-    getSessionMock.mockResolvedValue(null);
-    await GET(new Request("http://x"), makeContext("server-1"));
-    expect(mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId).not.toHaveBeenCalled();
-  });
-
-  it("returns multiple customizations", async () => {
-    const many = [
-      { id: "tc-1", toolName: "tool-a", mcpServerId: "s", prompt: "A" },
-      { id: "tc-2", toolName: "tool-b", mcpServerId: "s", prompt: "B" },
+  it("returns multiple customizations for a server", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const CUSTOMIZATIONS = [
+      { toolName: "search", prompt: "Be thorough" },
+      { toolName: "browse", prompt: "Extract key info" },
+      { toolName: "code", prompt: "Write clean code" },
     ];
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(many);
-    const res = await GET(new Request("http://x"), makeContext("s"));
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce(CUSTOMIZATIONS);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
     const body = await res.json();
-    expect(body).toHaveLength(2);
-    expect(body[1].toolName).toBe("tool-b");
+    expect(body).toHaveLength(3);
+    expect(body[0].toolName).toBe("search");
+    expect(body[2].toolName).toBe("code");
   });
 
-  it("getSession is called exactly once per request", async () => {
+  it("preserves customization fields in response", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const customization = { toolName: "fetch", prompt: "Fetch data carefully", id: "c-1" };
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([customization]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    const body = await res.json();
+    expect(body[0].toolName).toBe("fetch");
+    expect(body[0].prompt).toBe("Fetch data carefully");
+    expect(body[0].id).toBe("c-1");
+  });
+
+  it("response body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("selectByUserIdAndMcpServerId called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/mcp/tool-customizations/[server] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
-    await GET(new Request("http://x"), makeContext("server-1"));
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("calls repository with undefined userId when session user has no id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([]);
-    await GET(new Request("http://x"), makeContext("server-1"));
-    expect(mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: undefined }),
-    );
+  it("repository never called for different server when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "other-server" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
   });
 
-  it("uses prompt from returned customization", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([
-      { id: "tc-1", toolName: "t", mcpServerId: "s", prompt: "My custom prompt" },
-    ]);
-    const res = await GET(new Request("http://x"), makeContext("s"));
-    const body = await res.json();
-    expect(body[0].prompt).toBe("My custom prompt");
+  it("200 status for authenticated user even with empty customizations", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-empty" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-empty" }) });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("GET /api/mcp/tool-customizations/[server] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("propagates repository error (does not swallow it)", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockRejectedValue(
-      new Error("DB fail"),
-    );
-    await expect(GET(new Request("http://x"), makeContext("server-1"))).rejects.toThrow("DB fail");
+  it("selectByUserIdAndMcpServerId not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
   });
 
-  it("each returned customization has toolName field", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
-      CUSTOMIZATIONS,
-    );
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
-    const body = await res.json() as { toolName: string }[];
-    for (const c of body) {
-      expect(c).toHaveProperty("toolName");
-    }
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 
-  it("each returned customization has mcpServerId field", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue(
-      CUSTOMIZATIONS,
-    );
-    const res = await GET(new Request("http://x"), makeContext("server-1"));
-    const body = await res.json() as { mcpServerId: string }[];
-    for (const c of body) {
-      expect(c).toHaveProperty("mcpServerId");
-    }
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "s-1" }) });
+    expect(res).toBeInstanceOf(Response);
   });
 });

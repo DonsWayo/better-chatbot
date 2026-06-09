@@ -273,3 +273,60 @@ describe("Admin Server - Business Logic", () => {
     });
   });
 });
+
+describe("getAdminUsers — response invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+  });
+
+  it("returns an array", async () => {
+    const result = await getAdminUsers();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("calls pgAdminRepository.getUsers exactly once", async () => {
+    await getAdminUsers();
+    expect(pgAdminRepository.getUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls requireUserListPermission before listing users", async () => {
+    await getAdminUsers();
+    expect(requireUserListPermission).toHaveBeenCalled();
+  });
+
+  it("returns empty array when repository returns no users", async () => {
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+    const result = await getAdminUsers();
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe("getAdminUsers — constants and pagination invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+  });
+
+  it("ADMIN_USER_LIST_LIMIT is a positive number", () => {
+    expect(typeof ADMIN_USER_LIST_LIMIT).toBe("number");
+    expect(ADMIN_USER_LIST_LIMIT).toBeGreaterThan(0);
+  });
+
+  it("DEFAULT_SORT_BY is a non-empty string", () => {
+    expect(typeof DEFAULT_SORT_BY).toBe("string");
+    expect(DEFAULT_SORT_BY.length).toBeGreaterThan(0);
+  });
+
+  it("DEFAULT_SORT_DIRECTION is either 'asc' or 'desc'", () => {
+    expect(["asc", "desc"]).toContain(DEFAULT_SORT_DIRECTION);
+  });
+
+  it("getAdminUsers throws when requireUserListPermission rejects", async () => {
+    vi.mocked(requireUserListPermission).mockRejectedValueOnce(new Error("Forbidden"));
+    await expect(getAdminUsers()).rejects.toThrow("Forbidden");
+    expect(pgAdminRepository.getUsers).not.toHaveBeenCalled();
+  });
+});

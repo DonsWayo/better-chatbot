@@ -113,6 +113,48 @@
       "when": 1771595097815,
       "tag": "0015_yummy_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1749715200000,
+      "tag": "0016_asafe_teams",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1749801600000,
+      "tag": "0017_asafe_mcp_rag",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1749888000000,
+      "tag": "0018_asafe_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1749974400000,
+      "tag": "0019_asafe_prompt_library",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1749974401000,
+      "tag": "0020_asafe_rate_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1749974402000,
+      "tag": "0021_asafe_cache",
+      "breakpoints": true
     }
   ]
 }

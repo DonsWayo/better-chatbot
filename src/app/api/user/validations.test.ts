@@ -325,3 +325,29 @@ describe("User Validations", () => {
     });
   });
 });
+
+describe("User Validations — schema invariants", () => {
+  it("UpdateUserDetailsSchema rejects missing userId", () => {
+    const result = UpdateUserDetailsSchema.safeParse({ name: "x", email: "x@y.com" });
+    expect(result.success).toBe(false);
+  });
+
+  it("UpdateUserRoleSchema rejects invalid role", () => {
+    const result = UpdateUserRoleSchema.safeParse({ userId: "123e4567-e89b-12d3-a456-426614174000", role: "superadmin" });
+    expect(result.success).toBe(false);
+  });
+
+  it("DeleteUserSchema rejects missing userId", () => {
+    const result = DeleteUserSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it("UpdateUserPasswordSchema rejects when passwords do not match", () => {
+    const result = UpdateUserPasswordSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+      newPassword: "Password1!",
+      confirmPassword: "DifferentPass1!",
+    });
+    expect(result.success).toBe(false);
+  });
+});

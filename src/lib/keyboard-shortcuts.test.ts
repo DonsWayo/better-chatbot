@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   Shortcuts,
   isShortcutEvent,
@@ -6,7 +6,7 @@ import {
   type Shortcut,
 } from "./keyboard-shortcuts";
 
-const makeEvent = (overrides: Partial<KeyboardEvent>): KeyboardEvent =>
+const makeKeyboardEvent = (overrides: Partial<KeyboardEvent>): KeyboardEvent =>
   ({
     key: "",
     metaKey: false,
@@ -15,120 +15,121 @@ const makeEvent = (overrides: Partial<KeyboardEvent>): KeyboardEvent =>
     ...overrides,
   }) as KeyboardEvent;
 
-describe("Shortcuts registry", () => {
-  it("is an object", () => {
-    expect(typeof Shortcuts).toBe("object");
-    expect(Shortcuts).not.toBeNull();
-  });
-
-  it("openNewChat shortcut exists", () => {
+describe("Shortcuts", () => {
+  it("has openNewChat shortcut defined", () => {
     expect(Shortcuts.openNewChat).toBeDefined();
+    expect(Shortcuts.openNewChat.shortcut.command).toBe(true);
+    expect(Shortcuts.openNewChat.shortcut.shift).toBe(true);
+    expect(Shortcuts.openNewChat.shortcut.key).toBe("O");
   });
 
-  it("toggleSidebar shortcut exists", () => {
-    expect(Shortcuts.toggleSidebar).toBeDefined();
+  it("has toggleTemporaryChat shortcut", () => {
+    expect(Shortcuts.toggleTemporaryChat.shortcut.command).toBe(true);
+    expect(Shortcuts.toggleTemporaryChat.shortcut.key).toBe("K");
   });
 
-  it("each shortcut has a shortcut property", () => {
-    for (const key of Object.keys(Shortcuts)) {
-      const s = Shortcuts[key as keyof typeof Shortcuts];
-      expect(s).toHaveProperty("shortcut");
-    }
+  it("has deleteThread shortcut (backspace based)", () => {
+    expect(Shortcuts.deleteThread.shortcut.backspace).toBe(true);
+    expect(Shortcuts.deleteThread.shortcut.shift).toBe(true);
   });
 
-  it("at least 5 shortcuts are registered", () => {
-    expect(Object.keys(Shortcuts).length).toBeGreaterThanOrEqual(5);
-  });
-});
-
-describe("isShortcutEvent — matching", () => {
-  it("matches Cmd+O (openNewChat) on macOS metaKey", () => {
-    const event = makeEvent({ key: "O", metaKey: true, shiftKey: true });
-    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(true);
+  it("has 9 shortcuts defined", () => {
+    expect(Object.keys(Shortcuts)).toHaveLength(9);
   });
 
-  it("matches Ctrl+O (openNewChat) on Windows ctrlKey", () => {
-    const event = makeEvent({ key: "O", ctrlKey: true, shiftKey: true });
-    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(true);
-  });
-
-  it("rejects when command modifier is missing", () => {
-    const event = makeEvent({ key: "O", shiftKey: true });
-    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(false);
-  });
-
-  it("rejects when shift is missing but required", () => {
-    const event = makeEvent({ key: "O", metaKey: true });
-    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(false);
-  });
-
-  it("is case-insensitive for key matching", () => {
-    const event = makeEvent({ key: "o", metaKey: true, shiftKey: true });
-    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(true);
-  });
-
-  it("matches deleteThread with shift+backspace", () => {
-    const event = makeEvent({ key: "Backspace", shiftKey: true });
-    expect(isShortcutEvent(event, Shortcuts.deleteThread)).toBe(true);
-  });
-
-  it("rejects deleteThread without shift", () => {
-    const event = makeEvent({ key: "Backspace" });
-    expect(isShortcutEvent(event, Shortcuts.deleteThread)).toBe(false);
-  });
-});
-
-describe("isShortcutEvent — return type invariants", () => {
-  it("always returns a boolean", () => {
-    const event = makeEvent({ key: "X" });
+  it("all shortcuts have description", () => {
     for (const s of Object.values(Shortcuts)) {
-      expect(typeof isShortcutEvent(event, s)).toBe("boolean");
+      expect(s.description).toBeDefined();
+      expect(s.description!.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("isShortcutEvent", () => {
+  it("returns true when command key matches (metaKey)", () => {
+    const event = makeKeyboardEvent({ metaKey: true, key: "o" });
+    const shortcut: Shortcut = { shortcut: { command: true, key: "O" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(true);
+  });
+
+  it("returns true when command key matches (ctrlKey)", () => {
+    const event = makeKeyboardEvent({ ctrlKey: true, key: "o" });
+    const shortcut: Shortcut = { shortcut: { command: true, key: "O" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(true);
+  });
+
+  it("returns false when command is required but not held", () => {
+    const event = makeKeyboardEvent({ key: "o" });
+    const shortcut: Shortcut = { shortcut: { command: true, key: "O" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(false);
+  });
+
+  it("returns false when shift is required but not held", () => {
+    const event = makeKeyboardEvent({ metaKey: true, key: "o" });
+    const shortcut: Shortcut = { shortcut: { command: true, shift: true, key: "O" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(false);
+  });
+
+  it("returns true when both command and shift are held", () => {
+    const event = makeKeyboardEvent({ metaKey: true, shiftKey: true, key: "o" });
+    const shortcut: Shortcut = { shortcut: { command: true, shift: true, key: "O" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(true);
+  });
+
+  it("returns true for backspace shortcut", () => {
+    const event = makeKeyboardEvent({ shiftKey: true, key: "Backspace" });
+    const shortcut: Shortcut = { shortcut: { backspace: true, shift: true } };
+    expect(isShortcutEvent(event, shortcut)).toBe(true);
+  });
+
+  it("returns false when key does not match", () => {
+    const event = makeKeyboardEvent({ metaKey: true, key: "x" });
+    const shortcut: Shortcut = { shortcut: { command: true, key: "O" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(false);
+  });
+
+  it("key comparison is case-insensitive", () => {
+    const event = makeKeyboardEvent({ metaKey: true, key: "O" });
+    const shortcut: Shortcut = { shortcut: { command: true, key: "o" } };
+    expect(isShortcutEvent(event, shortcut)).toBe(true);
+  });
+
+  it("openNewChat triggers on Cmd+Shift+O", () => {
+    const event = makeKeyboardEvent({ metaKey: true, shiftKey: true, key: "o" });
+    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(true);
+  });
+
+  it("openNewChat does not trigger on Cmd+O alone", () => {
+    const event = makeKeyboardEvent({ metaKey: true, key: "o" });
+    expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(false);
   });
 });
 
 describe("getShortcutKeyList", () => {
-  it("returns an array", () => {
-    expect(Array.isArray(getShortcutKeyList(Shortcuts.openNewChat))).toBe(true);
+  it("returns ⌘ for command shortcuts", () => {
+    const list = getShortcutKeyList({ shortcut: { command: true, key: "O" } });
+    expect(list).toContain("⌘");
   });
 
-  it("includes ⌘ for command shortcuts", () => {
-    expect(getShortcutKeyList(Shortcuts.openNewChat)).toContain("⌘");
+  it("returns ⇧ for shift shortcuts", () => {
+    const list = getShortcutKeyList({ shortcut: { shift: true, key: "S" } });
+    expect(list).toContain("⇧");
   });
 
-  it("includes ⇧ for shift shortcuts", () => {
-    expect(getShortcutKeyList(Shortcuts.openNewChat)).toContain("⇧");
+  it("returns ⌫ for backspace shortcuts", () => {
+    const list = getShortcutKeyList({ shortcut: { backspace: true } });
+    expect(list).toContain("⌫");
   });
 
-  it("includes ⌫ for backspace shortcuts", () => {
-    expect(getShortcutKeyList(Shortcuts.deleteThread)).toContain("⌫");
+  it("returns all modifiers for openNewChat (⌘ ⇧ O)", () => {
+    const list = getShortcutKeyList(Shortcuts.openNewChat);
+    expect(list).toContain("⌘");
+    expect(list).toContain("⇧");
+    expect(list).toContain("O");
   });
 
-  it("does not include ⌘ for non-command shortcut", () => {
-    const backspaceOnly: Shortcut = { shortcut: { backspace: true } };
-    expect(getShortcutKeyList(backspaceOnly)).not.toContain("⌘");
-  });
-
-  it("all entries are non-empty strings", () => {
-    for (const s of Object.values(Shortcuts)) {
-      const keys = getShortcutKeyList(s);
-      for (const k of keys) {
-        expect(typeof k).toBe("string");
-        expect(k.length).toBeGreaterThan(0);
-      }
-    }
-  });
-});
-
-describe("getShortcutKeyList — return type invariants", () => {
-  it("always returns an array", () => {
-    for (const s of Object.values(Shortcuts)) {
-      expect(Array.isArray(getShortcutKeyList(s))).toBe(true);
-    }
-  });
-
-  it("returns empty array for empty shortcut", () => {
-    const empty: Shortcut = { shortcut: {} };
-    expect(getShortcutKeyList(empty)).toEqual([]);
+  it("returns empty array for shortcut with no keys", () => {
+    const list = getShortcutKeyList({ shortcut: {} });
+    expect(list).toEqual([]);
   });
 });

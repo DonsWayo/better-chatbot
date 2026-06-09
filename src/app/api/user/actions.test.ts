@@ -180,72 +180,91 @@ describe("User Actions - Business Logic", () => {
 });
 
 describe("User Actions — response shape invariants", () => {
-  it("success response always has success: true", () => {
-    const r = { success: true, message: "ok" };
-    expect(r.success).toBe(true);
-    expect(r).toHaveProperty("message");
+  it("success response always has success:true", () => {
+    const result = { success: true, message: "Done" };
+    expect(result.success).toBe(true);
   });
 
-  it("failure response always has success: false", () => {
-    const r = { success: false, message: "err" };
-    expect(r.success).toBe(false);
-    expect(r).toHaveProperty("message");
+  it("failure response always has success:false", () => {
+    const result = { success: false, message: "Error" };
+    expect(result.success).toBe(false);
   });
 
-  it("success message is a non-empty string", () => {
-    const r = { success: true, message: "User details updated successfully" };
-    expect(typeof r.message).toBe("string");
-    expect(r.message.length).toBeGreaterThan(0);
+  it("failure response has message string", () => {
+    const result = { success: false, message: "Failed to delete user" };
+    expect(typeof result.message).toBe("string");
+    expect(result.message.length).toBeGreaterThan(0);
   });
 
-  it("failure message is a non-empty string", () => {
-    const r = { success: false, message: "User not found" };
-    expect(typeof r.message).toBe("string");
-    expect(r.message.length).toBeGreaterThan(0);
+  it("success response has message string", () => {
+    const result = { success: true, message: "User deleted successfully" };
+    expect(typeof result.message).toBe("string");
+    expect(result.message.length).toBeGreaterThan(0);
   });
 
-  it("delete success response includes redirect field", () => {
-    const r = { success: true, message: "User deleted successfully", redirect: "/admin" };
-    expect(r).toHaveProperty("redirect");
-    expect(typeof r.redirect).toBe("string");
+  it("delete user response includes redirect when success", () => {
+    const result = { success: true, message: "User deleted successfully", redirect: "/admin" };
+    expect(result.redirect).toBe("/admin");
+  });
+
+  it("update user response never includes extra fields", () => {
+    const data = { userId: "u1", name: "Alice", email: "a@b.com", extraField: "x" };
+    const { userId, name, email } = data;
+    const payload = { userId, name, email };
+    expect(Object.keys(payload)).toHaveLength(3);
+    expect(payload).not.toHaveProperty("extraField");
   });
 });
 
 describe("User Actions — password validation logic", () => {
-  it("passwords that match pass equality check", () => {
-    const pass1 = "SecurePass!1";
-    const pass2 = "SecurePass!1";
-    expect(pass1 === pass2).toBe(true);
+  it("passwordless user cannot update password", () => {
+    const hasPassword = false;
+    const canUpdate = hasPassword;
+    expect(canUpdate).toBe(false);
   });
 
-  it("passwords that differ fail equality check", () => {
-    const pass1 = "SecurePass!1";
-    const pass2 = "DifferentPass!2";
-    expect(pass1 === pass2).toBe(false);
+  it("user with credential account can update password", () => {
+    const hasPassword = true;
+    const canUpdate = hasPassword;
+    expect(canUpdate).toBe(true);
   });
 
-  it("empty string password fails min-length check", () => {
-    const password = "";
-    expect(password.length).toBe(0);
-    expect(password.length >= 8).toBe(false);
+  it("empty new password is rejected by non-empty check", () => {
+    const newPassword = "";
+    const isValid = newPassword.length > 0;
+    expect(isValid).toBe(false);
   });
 
-  it("password with 8 chars passes min-length check", () => {
-    const password = "Abcdef1!";
-    expect(password.length >= 8).toBe(true);
+  it("non-empty new password passes length check", () => {
+    const newPassword = "SecurePass123!";
+    const isValid = newPassword.length > 0;
+    expect(isValid).toBe(true);
   });
 });
 
-describe("User Actions — user not found guard", () => {
-  it("null user triggers not-found path", () => {
-    const user: null | { id: string } = null;
-    const handled = user ? "found" : "not-found";
-    expect(handled).toBe("not-found");
+describe("User Actions — update response shape invariants", () => {
+  it("success response has success:true and message and user properties", () => {
+    const user = { id: "u1", name: "Alice", email: "alice@example.com" };
+    const result = { success: true, message: "User details updated successfully", user };
+    expect(result).toHaveProperty("success", true);
+    expect(result).toHaveProperty("message");
+    expect(result).toHaveProperty("user");
   });
 
-  it("defined user bypasses not-found guard", () => {
-    const user: null | { id: string } = { id: "u1" };
-    const handled = user ? "found" : "not-found";
-    expect(handled).toBe("found");
+  it("failure response has success:false and message", () => {
+    const result = { success: false, message: "User not found" };
+    expect(result.success).toBe(false);
+    expect(typeof result.message).toBe("string");
+    expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it("user object in success response contains id field", () => {
+    const user = { id: "u99", name: "Test", email: "t@t.com" };
+    expect(user).toHaveProperty("id");
+  });
+
+  it("password validation: minimum length 8 chars is sufficient", () => {
+    const password = "Abc12345";
+    expect(password.length).toBeGreaterThanOrEqual(8);
   });
 });

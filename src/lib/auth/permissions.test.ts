@@ -84,6 +84,85 @@ describe("auth/permissions", () => {
       permissions.requireUserManagePermissionFor("u2", "manage this user"),
     ).rejects.toThrow(/Permission required/);
   });
+
+  it("canManageUser returns false when not admin and different user", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({
+      user: { id: "u1", role: "user" },
+    } as any);
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+
+    await expect(permissions.canManageUser("u2")).resolves.toBe(false);
+  });
+
+  it("requireAdminPermission resolves when admin", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({
+      user: { id: "u1", role: "admin" },
+    } as any);
+    vi.mocked(getIsUserAdmin).mockReturnValue(true);
+
+    await expect(permissions.requireAdminPermission("do it")).resolves.toBeUndefined();
+  });
+
+  it("hasEditorPermission returns true for editor role", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({
+      user: { id: "u1", role: "editor" },
+    } as any);
+
+    await expect(permissions.hasEditorPermission()).resolves.toBe(true);
+  });
+
+  it("hasEditorPermission returns false for user role", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({
+      user: { id: "u1", role: "user" },
+    } as any);
+
+    await expect(permissions.hasEditorPermission()).resolves.toBe(false);
+  });
+
+  it("hasEditorPermission returns true for admin role", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({
+      user: { id: "u1", role: "admin" },
+    } as any);
+
+    await expect(permissions.hasEditorPermission()).resolves.toBe(true);
+  });
+});
+
+describe("auth/permissions — edge cases", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("hasAdminPermission returns false when user role is 'user'", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({ user: { id: "u1", role: "user" } } as any);
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+    await expect(permissions.hasAdminPermission()).resolves.toBe(false);
+  });
+
+  it("requireAdminPermission throws when session is null", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(null as any);
+    await expect(permissions.requireAdminPermission("action")).rejects.toThrow();
+  });
+
+  it("hasEditorPermission returns false when session is null", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(null as any);
+    await expect(permissions.hasEditorPermission()).resolves.toBe(false);
+  });
+
+  it("requireUserManagePermissionFor resolves when managing self", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({ user: { id: "u1", role: "user" } } as any);
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+    await expect(permissions.requireUserManagePermissionFor("u1", "self manage")).resolves.toBeUndefined();
+  });
 });
 
 describe("auth/permissions — return type invariants", () => {

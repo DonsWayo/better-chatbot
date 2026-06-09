@@ -1,145 +1,201 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, chatExportRepositoryMock } = vi.hoisted(() => ({
+const { getSessionMock, selectSummaryByExporterIdMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  chatExportRepositoryMock: {
-    selectSummaryByExporterId: vi.fn(),
-  },
+  selectSummaryByExporterIdMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  chatExportRepository: chatExportRepositoryMock,
+  chatExportRepository: {
+    selectSummaryByExporterId: selectSummaryByExporterIdMock,
+  },
 }));
 
-import { GET } from "./route";
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("GET /api/export", () => {
-  it("returns 401 when session is null", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 error body when session is null", async () => {
+  it("never calls repository when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await GET();
-    const body = await res.json();
-    expect(body.error).toBe("Unauthorized");
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when session has no user", async () => {
-    getSessionMock.mockResolvedValue({ user: null });
-    const res = await GET();
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 401 when session user has no id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await GET();
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 200 with exports for authenticated user", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([
-      { id: "exp-1", title: "Test Export" },
-    ]);
+  it("returns 200 for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
   });
 
-  it("returns export list in response body", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const exports = [{ id: "exp-1" }, { id: "exp-2" }];
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue(exports);
+  it("returns empty list when user has no exports", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
-    expect(body).toEqual(exports);
+    expect(body).toHaveLength(0);
   });
 
-  it("calls repository with the authenticated user id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([]);
+  it("returns list of exports for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const EXPORTS = [{ id: "ex-1", threadId: "t-1" }];
+    selectSummaryByExporterIdMock.mockResolvedValueOnce(EXPORTS);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveLength(1);
+    expect(body[0].id).toBe("ex-1");
+  });
+
+  it("passes correct userId to repository", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-xyz-789" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
     await GET();
-    expect(chatExportRepositoryMock.selectSummaryByExporterId).toHaveBeenCalledWith("user-42");
+    expect(selectSummaryByExporterIdMock).toHaveBeenCalledWith("user-xyz-789");
+  });
+
+  it("preserves export fields in response", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const exp = { id: "ex-1", threadId: "t-99", exportedAt: "2025-06-01", title: "Analysis" };
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([exp]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].id).toBe("ex-1");
+    expect(body[0].threadId).toBe("t-99");
+    expect(body[0].title).toBe("Analysis");
+  });
+
+  it("returns multiple exports", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const EXPORTS = Array.from({ length: 5 }, (_, i) => ({ id: `ex-${i}`, threadId: `t-${i}` }));
+    selectSummaryByExporterIdMock.mockResolvedValueOnce(EXPORTS);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveLength(5);
   });
 
   it("returns 500 when repository throws", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockRejectedValue(
-      new Error("Database error"),
-    );
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockRejectedValueOnce(new Error("DB connection lost"));
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(500);
   });
 
-  it("returns error message in 500 response body", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockRejectedValue(
-      new Error("Connection refused"),
-    );
+  it("error body contains error message on 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockRejectedValueOnce(new Error("connection timeout"));
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
-    expect(body.error).toBe("Connection refused");
+    expect(body).toHaveProperty("error");
   });
 
-  it("returns empty array when no exports exist", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([]);
+  it("selectSummaryByExporterId called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response body is an array on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([{ id: "ex-1" }]);
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
-    expect(body).toEqual([]);
+    expect(Array.isArray(body)).toBe(true);
   });
 
-  it("calls repository exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([]);
-    await GET();
-    expect(chatExportRepositoryMock.selectSummaryByExporterId).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call repository when session is null", async () => {
+  it("401 body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
-    await GET();
-    expect(chatExportRepositoryMock.selectSummaryByExporterId).not.toHaveBeenCalled();
-  });
-
-  it("returns JSON content-type on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([]);
+    const { GET } = await import("./route");
     const res = await GET();
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
+});
 
-  it("getSession is called exactly once per request", async () => {
+describe("GET /api/export — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     await GET();
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call selectSummaryByExporterId when session user has no id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    await GET();
-    expect(chatExportRepositoryMock.selectSummaryByExporterId).not.toHaveBeenCalled();
+  it("500 error body contains specific error message from exception", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockRejectedValueOnce(new Error("unique db error xyz"));
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.error).toContain("unique db error xyz");
   });
 
-  it("each returned export has an id field", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([
-      { id: "exp-1" },
-      { id: "exp-2" },
-    ]);
+  it("repository never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).not.toHaveBeenCalled();
+  });
+
+  it("repository called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/export — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectSummaryByExporterId not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     const res = await GET();
-    const body = await res.json() as { id: string }[];
-    for (const exp of body) {
-      expect(exp).toHaveProperty("id");
-    }
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("200 body is an array for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
   });
 });

@@ -1,82 +1,105 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { sanitizeCssVariableName } from "./shared.tool-invocation";
 
 describe("sanitizeCssVariableName", () => {
-  it("lowercases the input", () => {
-    expect(sanitizeCssVariableName("HELLO")).toBe("hello");
-  });
-
   it("removes spaces", () => {
-    expect(sanitizeCssVariableName("hello world")).toBe("helloworld");
+    expect(sanitizeCssVariableName("my label")).toBe("mylabel");
   });
 
-  it("replaces special chars with underscore", () => {
-    expect(sanitizeCssVariableName("foo.bar")).toBe("foo_bar");
-    expect(sanitizeCssVariableName("foo@bar")).toBe("foo_bar");
+  it("lowercases the result", () => {
+    expect(sanitizeCssVariableName("MyLabel")).toBe("mylabel");
   });
 
-  it("preserves hyphens", () => {
-    expect(sanitizeCssVariableName("my-label")).toBe("my-label");
+  it("replaces special characters with underscore", () => {
+    expect(sanitizeCssVariableName("foo!bar@baz")).toBe("foo_bar_baz");
   });
 
-  it("preserves underscores", () => {
-    expect(sanitizeCssVariableName("my_label")).toBe("my_label");
+  it("keeps hyphens", () => {
+    expect(sanitizeCssVariableName("foo-bar")).toBe("foo-bar");
   });
 
-  it("preserves numbers", () => {
-    expect(sanitizeCssVariableName("tool42")).toBe("tool42");
+  it("keeps underscores", () => {
+    expect(sanitizeCssVariableName("foo_bar")).toBe("foo_bar");
   });
 
-  it("returns empty string for empty input", () => {
+  it("handles empty string", () => {
     expect(sanitizeCssVariableName("")).toBe("");
   });
 
+  it("handles already valid CSS variable name", () => {
+    expect(sanitizeCssVariableName("color-primary")).toBe("color-primary");
+  });
+
+  it("handles numbers in string", () => {
+    expect(sanitizeCssVariableName("step 1 color")).toBe("step1color");
+  });
+
   it("handles mixed case with spaces and special chars", () => {
-    // "My Tool (Beta)" → strip spaces → "MyTool(Beta)" → lowercase → "mytool(beta)" → replace non-[a-z0-9-_] → "mytool_beta_"
-    const result = sanitizeCssVariableName("My Tool (Beta)");
-    expect(result).toBe("mytool_beta_");
+    const result = sanitizeCssVariableName("My Component (Active)");
+    expect(result).toBe("mycomponent_active_");
   });
 
-  it("replaces parentheses with underscores", () => {
-    expect(sanitizeCssVariableName("tool(arg)")).toBe("tool_arg_");
+  it("handles string with only special chars", () => {
+    const result = sanitizeCssVariableName("!@#$");
+    expect(result).toBe("____");
   });
 
-  it("consecutive spaces become empty (spaces stripped)", () => {
-    const result = sanitizeCssVariableName("a  b");
-    expect(result).toBe("ab");
-  });
-});
-
-describe("sanitizeCssVariableName — return type invariants", () => {
-  it("always returns a string", () => {
-    for (const input of ["hello", "HELLO", "h-e-l", "1 2 3", ""]) {
-      expect(typeof sanitizeCssVariableName(input)).toBe("string");
-    }
+  it("handles string with only spaces", () => {
+    const result = sanitizeCssVariableName("    ");
+    expect(result).toBe("");
   });
 
-  it("result contains only [a-z0-9\\-_] characters", () => {
-    const inputs = ["Hello World", "foo.bar", "test@123", "my-label_ok", "ABC"];
-    for (const input of inputs) {
-      const result = sanitizeCssVariableName(input);
-      expect(result).toMatch(/^[a-z0-9\-_]*$/);
-    }
+  it("handles numbers only", () => {
+    expect(sanitizeCssVariableName("12345")).toBe("12345");
   });
 
-  it("length is at most the original (no chars added)", () => {
-    const input = "Hello World!";
-    expect(sanitizeCssVariableName(input).length).toBeLessThanOrEqual(input.length);
+  it("handles consecutive special chars become consecutive underscores", () => {
+    expect(sanitizeCssVariableName("a!!b")).toBe("a__b");
   });
 
-  it("slash character is replaced with underscore", () => {
-    expect(sanitizeCssVariableName("foo/bar")).toBe("foo_bar");
+  it("does not strip leading or trailing hyphens", () => {
+    expect(sanitizeCssVariableName("-var-")).toBe("-var-");
   });
 
-  it("result does not contain uppercase letters", () => {
-    const result = sanitizeCssVariableName("AbCdEfG");
-    expect(result).toBe(result.toLowerCase());
+  it("dot becomes underscore", () => {
+    expect(sanitizeCssVariableName("v1.2.3")).toBe("v1_2_3");
   });
 
-  it("numbers at start are preserved", () => {
-    expect(sanitizeCssVariableName("123abc")).toBe("123abc");
+  it("slash becomes underscore", () => {
+    expect(sanitizeCssVariableName("a/b")).toBe("a_b");
+  });
+
+  it("handles mixed hyphen underscore and letters", () => {
+    expect(sanitizeCssVariableName("bg_color-main")).toBe("bg_color-main");
+  });
+
+  it("uppercase letters with numbers are normalized", () => {
+    expect(sanitizeCssVariableName("Color123")).toBe("color123");
+  });
+
+  it("tab character becomes underscore (not removed like space)", () => {
+    expect(sanitizeCssVariableName("a\tb")).toBe("a_b");
+  });
+
+  it("colon becomes underscore", () => {
+    expect(sanitizeCssVariableName("key:value")).toBe("key_value");
+  });
+
+  it("spaces are removed, not replaced with underscore", () => {
+    expect(sanitizeCssVariableName("a b")).toBe("ab");
+    expect(sanitizeCssVariableName("a b")).not.toBe("a_b");
+  });
+
+  it("parentheses become underscores", () => {
+    expect(sanitizeCssVariableName("(foo)")).toBe("_foo_");
+  });
+
+  it("plus sign becomes underscore", () => {
+    expect(sanitizeCssVariableName("a+b")).toBe("a_b");
+  });
+
+  it("result is deterministic (same input → same output)", () => {
+    const input = "My Component [Active] v2.0";
+    expect(sanitizeCssVariableName(input)).toBe(sanitizeCssVariableName(input));
   });
 });

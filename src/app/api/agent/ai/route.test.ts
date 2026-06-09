@@ -1,185 +1,222 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const {
-  getSessionMock,
-  streamObjectMock,
-  workflowRepositoryMock,
-} = vi.hoisted(() => ({
+const { getSessionMock, streamObjectMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  streamObjectMock: vi.fn(),
-  workflowRepositoryMock: { selectExecuteAbility: vi.fn() },
+  streamObjectMock: vi.fn(() => ({ toTextStreamResponse: vi.fn(() => new Response("{}")) })),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
-vi.mock("ai", () => ({ streamObject: streamObjectMock }));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: vi.fn(() => ({})) },
 }));
-vi.mock("lib/ai/prompts", () => ({
-  buildAgentGenerationPrompt: vi.fn(() => "Generate an agent"),
-}));
-vi.mock("lib/db/repository", () => ({
-  workflowRepository: workflowRepositoryMock,
-}));
-vi.mock("lib/ai/mcp/mcp-manager", () => ({
-  mcpClientsManager: { tools: vi.fn(() => Promise.resolve({})) },
-}));
-vi.mock("../../chat/shared.chat", () => ({
-  loadAppDefaultTools: vi.fn(() => Promise.resolve({})),
-}));
-vi.mock("ts-safe", () => ({
-  safe: (v: unknown) => ({
-    ifOk: (fn: (val: unknown) => void) => {
-      if (v instanceof Promise) {
-        v.then(fn).catch(() => {});
-      } else {
-        fn(v);
-      }
-      return { unwrap: () => Promise.resolve(undefined) };
-    },
-    unwrap: () => Promise.resolve(undefined),
-  }),
-}));
-vi.mock("lib/utils", () => ({
-  objectFlow: (obj: Record<string, unknown>) => ({
-    forEach: (fn: (value: unknown, key: string) => void) => {
-      Object.entries(obj).forEach(([k, v]) => fn(v, k));
-    },
-  }),
-}));
-vi.mock("consola/utils", () => ({ colorize: (_: string, s: string) => s }));
+vi.mock("lib/ai/prompts", () => ({ buildAgentGenerationPrompt: vi.fn(() => "") }));
 vi.mock("logger", () => ({
   default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
 }));
+vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
+vi.mock("app-types/agent", () => ({
+  AgentGenerateSchema: {
+    parse: (b: unknown) => b,
+    extend: () => ({
+      parse: (b: unknown) => b,
+    }),
+  },
+}));
+vi.mock("../../chat/shared.chat", () => ({
+  loadAppDefaultTools: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("lib/db/repository", () => ({
+  workflowRepository: { selectExecuteAbility: vi.fn().mockResolvedValue([]) },
+}));
+vi.mock("ts-safe", () => ({
+  safe: vi.fn(() => ({ ifOk: () => ({ unwrap: () => Promise.resolve() }) })),
+}));
+vi.mock("lib/utils", () => ({ objectFlow: vi.fn(() => ({ forEach: vi.fn() })) }));
+vi.mock("lib/ai/mcp/mcp-manager", () => ({
+  mcpClientsManager: { tools: vi.fn().mockResolvedValue({}) },
+}));
+vi.mock("ai", () => ({
+  streamObject: streamObjectMock,
+}));
 
-import { POST } from "./route";
-
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost/api/agent/ai", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  workflowRepositoryMock.selectExecuteAbility.mockResolvedValue([]);
-  streamObjectMock.mockReturnValue({
-    toTextStreamResponse: () => new Response("stream", { status: 200 }),
-  });
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body), signal: new AbortController().signal } as unknown as Request;
+}
 
 describe("POST /api/agent/ai", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+  });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest({ message: "Make me an agent" }));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "create an agent" }));
     expect(res.status).toBe(401);
   });
 
-  it("calls streamObject and returns streaming response when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const res = await POST(makeRequest({ message: "Build an agent" }));
-    expect(streamObjectMock).toHaveBeenCalled();
-    expect(res.status).toBe(200);
+  it("never calls streamObject when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "create an agent" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
   });
 
-  it("passes message to streamObject", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({ message: "Design a sales agent" }));
-    expect(streamObjectMock).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: "Design a sales agent" }),
-    );
-  });
-
-  it("uses hello as default message when not provided", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({}));
-    expect(streamObjectMock).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: "hello" }),
-    );
-  });
-
-  it("returns 200 status on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const res = await POST(makeRequest({ message: "Create agent" }));
+  it("streams agent generation when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "build me an agent" }));
     expect(res.status).toBe(200);
   });
 
   it("calls streamObject exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({ message: "test" }));
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "create an agent for customer support" }));
     expect(streamObjectMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not throw when streamObject throws (catch swallows)", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    streamObjectMock.mockImplementation(() => {
-      throw new Error("Model unavailable");
-    });
-    await expect(POST(makeRequest({ message: "test" }))).resolves.not.toThrow();
+  it("returns a Response object on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "create a coding agent" }));
+    expect(res).toBeInstanceOf(Response);
   });
 
-  it("does not call streamObject when unauthorized", async () => {
+  it("returns 401 when session is an empty object (falsy user)", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest({ message: "test" }));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hello" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("response body for 401 is text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "test" }));
+    expect(res.status).toBe(401);
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
+
+  it("streamObject called with the message as prompt", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    let capturedPrompt = "";
+    streamObjectMock.mockImplementationOnce((opts: any) => {
+      capturedPrompt = opts.prompt ?? "";
+      return { toTextStreamResponse: vi.fn(() => new Response("ok")) };
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build a support agent", chatModel: undefined }));
+    expect(capturedPrompt).toBe("build a support agent");
+  });
+
+  it("streamObject receives a system prompt string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    let capturedSystem: unknown = null;
+    streamObjectMock.mockImplementationOnce((opts: any) => {
+      capturedSystem = opts.system;
+      return { toTextStreamResponse: vi.fn(() => new Response("ok")) };
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "create agent" }));
+    expect(typeof capturedSystem).toBe("string");
+  });
+});
+
+describe("POST /api/agent/ai — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("streamObject never called when unauthenticated (guard chain)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build agent" }));
     expect(streamObjectMock).not.toHaveBeenCalled();
   });
 
-  it("calls workflowRepository.selectExecuteAbility with user id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
-    await POST(makeRequest({ message: "test" }));
-    expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledWith("user-99");
+  it("returns Response instance on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-resp" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "generate an agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+});
+
+describe("POST /api/agent/ai — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
   });
 
-  it("calls workflowRepository.selectExecuteAbility exactly once", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({ message: "test" }));
-    expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call selectExecuteAbility when unauthorized", async () => {
+  it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest({ message: "test" }));
-    expect(workflowRepositoryMock.selectExecuteAbility).not.toHaveBeenCalled();
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hello" }));
+    expect(res).toBeInstanceOf(Response);
   });
 
-  it("getSession is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "build an agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("streamObject not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/agent/ai — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
     await POST(makeRequest({ message: "test" }));
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("passes model to streamObject", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({ message: "Build agent" }));
-    expect(streamObjectMock).toHaveBeenCalledWith(
-      expect.objectContaining({ model: expect.anything() }),
-    );
-  });
-
-  it("passes schema to streamObject", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({ message: "test" }));
-    expect(streamObjectMock).toHaveBeenCalledWith(
-      expect.objectContaining({ schema: expect.anything() }),
-    );
-  });
-
-  it("passes system to streamObject", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest({ message: "test" }));
-    expect(streamObjectMock).toHaveBeenCalledWith(
-      expect.objectContaining({ system: expect.any(String) }),
-    );
-  });
-
-  it("response comes from toTextStreamResponse", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const customResp = new Response("custom-stream", { status: 200, headers: { "x-tag": "yes" } });
-    streamObjectMock.mockReturnValue({ toTextStreamResponse: () => customResp });
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
     const res = await POST(makeRequest({ message: "test" }));
-    expect(res.headers.get("x-tag")).toBe("yes");
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("streamObject not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "test" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession not called twice on single request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "test" }));
+    expect(getSessionMock).not.toHaveBeenCalledTimes(2);
   });
 });

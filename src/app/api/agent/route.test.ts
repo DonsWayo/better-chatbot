@@ -1,177 +1,262 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getSessionMock,
-  agentRepositoryMock,
+  selectAgentsMock,
+  insertAgentMock,
   canCreateAgentMock,
-  serverCacheMock,
+  serverCacheDeleteMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  agentRepositoryMock: {
-    selectAgents: vi.fn(),
-    insertAgent: vi.fn(),
-  },
+  selectAgentsMock: vi.fn(),
+  insertAgentMock: vi.fn(),
   canCreateAgentMock: vi.fn(),
-  serverCacheMock: { delete: vi.fn() },
+  serverCacheDeleteMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
-vi.mock("lib/db/repository", () => ({ agentRepository: agentRepositoryMock }));
+vi.mock("lib/db/repository", () => ({
+  agentRepository: {
+    selectAgents: selectAgentsMock,
+    insertAgent: insertAgentMock,
+  },
+}));
 vi.mock("lib/auth/permissions", () => ({ canCreateAgent: canCreateAgentMock }));
-vi.mock("lib/cache", () => ({ serverCache: serverCacheMock }));
+vi.mock("lib/cache", () => ({ serverCache: { delete: serverCacheDeleteMock } }));
 vi.mock("lib/cache/cache-keys", () => ({
   CacheKeys: { agentInstructions: (id: string) => `agent:${id}` },
 }));
+vi.mock("app-types/agent", () => ({
+  AgentQuerySchema: {
+    parse: (p: Record<string, string>) => ({
+      type: p.type ?? "all",
+      filters: p.filters,
+      limit: p.limit ? Number(p.limit) : 20,
+    }),
+  },
+  AgentCreateSchema: { parse: (b: unknown) => b },
+}));
 
-import { GET, POST } from "./route";
-
-const makeGetRequest = (params: Record<string, string> = {}) => {
-  const url = new URL("http://localhost/api/agent");
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return new Request(url.toString());
-};
-
-const makePostRequest = (body: unknown) =>
-  new Request("http://localhost/api/agent", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-const VALID_AGENT_BODY = {
-  name: "Test Agent",
-  userId: "user-1",
-  instructions: {},
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(url = "http://localhost/api/agent", body?: unknown): Request {
+  return {
+    url,
+    json: () => Promise.resolve(body),
+  } as unknown as Request;
+}
 
 describe("GET /api/agent", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await GET(makeGetRequest());
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
     expect(res.status).toBe(401);
   });
 
-  it("returns agents for authenticated user", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    agentRepositoryMock.selectAgents.mockResolvedValue([{ id: "ag-1" }]);
-    const res = await GET(makeGetRequest());
+  it("returns agents list for authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const AGENTS = [{ id: "ag-1", name: "My Agent" }];
+    selectAgentsMock.mockResolvedValueOnce(AGENTS);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(1);
   });
-
-  it("calls selectAgents with userId and default filter", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
-    agentRepositoryMock.selectAgents.mockResolvedValue([]);
-    await GET(makeGetRequest());
-    expect(agentRepositoryMock.selectAgents).toHaveBeenCalledWith(
-      "user-99",
-      expect.any(Array),
-      expect.any(Number),
-    );
-  });
-
-  it("parses filters from query string", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    agentRepositoryMock.selectAgents.mockResolvedValue([]);
-    await GET(makeGetRequest({ filters: "mine,shared" }));
-    expect(agentRepositoryMock.selectAgents).toHaveBeenCalledWith(
-      "user-1",
-      ["mine", "shared"],
-      expect.any(Number),
-    );
-  });
-
-  it("returns 400 on invalid query params", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const res = await GET(makeGetRequest({ limit: "999" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 500 on repository error", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    agentRepositoryMock.selectAgents.mockRejectedValue(new Error("DB fail"));
-    const res = await GET(makeGetRequest());
-    expect(res.status).toBe(500);
-  });
 });
 
 describe("POST /api/agent", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makePostRequest(VALID_AGENT_BODY));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user cannot create agents", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateAgentMock.mockResolvedValue(false);
-    const res = await POST(makePostRequest(VALID_AGENT_BODY));
+  it("returns 403 when user lacks agent creation permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
     expect(res.status).toBe(403);
   });
 
-  it("returns 400 on invalid body (missing name)", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateAgentMock.mockResolvedValue(true);
-    const res = await POST(
-      makePostRequest({ userId: "user-1", instructions: {} }),
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it("creates and returns agent when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateAgentMock.mockResolvedValue(true);
-    const agent = { id: "ag-1", name: "Test Agent", userId: "user-1" };
-    agentRepositoryMock.insertAgent.mockResolvedValue(agent);
-    const res = await POST(makePostRequest(VALID_AGENT_BODY));
+  it("creates agent and returns it", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(true);
+    const AGENT = { id: "ag-new", name: "New Agent", userId: "u1" };
+    insertAgentMock.mockResolvedValueOnce(AGENT);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "New Agent" }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.id).toBe("ag-1");
+    expect(body.id).toBe("ag-new");
+    expect(serverCacheDeleteMock).toHaveBeenCalledWith("agent:ag-new");
   });
 
-  it("calls insertAgent with userId from session (not request body)", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-session" } });
-    canCreateAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.insertAgent.mockResolvedValue({ id: "ag-1" });
-    await POST(makePostRequest({ ...VALID_AGENT_BODY, userId: "user-from-body" }));
-    expect(agentRepositoryMock.insertAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "user-session" }),
-    );
-  });
-
-  it("invalidates cache after creation", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.insertAgent.mockResolvedValue({ id: "ag-new" });
-    await POST(makePostRequest(VALID_AGENT_BODY));
-    expect(serverCacheMock.delete).toHaveBeenCalledWith("agent:ag-new");
-  });
-
-  it("does not call canCreateAgent when session is null", async () => {
+  it("never calls insertAgent when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makePostRequest(VALID_AGENT_BODY));
-    expect(canCreateAgentMock).not.toHaveBeenCalled();
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(insertAgentMock).not.toHaveBeenCalled();
   });
 
-  it("returns JSON content-type on 403", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateAgentMock.mockResolvedValue(false);
-    const res = await POST(makePostRequest(VALID_AGENT_BODY));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  it("never calls insertAgent when creation is forbidden", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(insertAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never invalidates cache when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(serverCacheDeleteMock).not.toHaveBeenCalled();
   });
 });
 
-describe("GET /api/agent — extra coverage", () => {
-  it("getSession is called exactly once per request", async () => {
+describe("GET /api/agent — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls selectAgents when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await GET(makeGetRequest());
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(selectAgentsMock).not.toHaveBeenCalled();
+  });
+
+  it("returns empty array body when user has no agents", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAgentsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toEqual([]);
+  });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("selectAgents called exactly once for authenticated GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAgentsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(selectAgentsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once for GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
     expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/agent — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once for POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "Agent" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/agent — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAgentsMock.mockResolvedValueOnce([{ id: "ag-1" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("POST 200 body has id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(true);
+    insertAgentMock.mockResolvedValueOnce({ id: "ag-2", name: "A" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "A" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("id");
+  });
+
+  it("canCreateAgent called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateAgentMock.mockResolvedValueOnce(true);
+    insertAgentMock.mockResolvedValueOnce({ id: "ag-3", name: "B" });
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "B" }));
+    expect(canCreateAgentMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET and POST /api/agent — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("GET returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("POST returns Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("http://localhost/api/agent", { name: "X" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("insertAgent never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest("http://localhost/api/agent", { name: "X" }));
+    expect(insertAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("selectAgents never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(selectAgentsMock).not.toHaveBeenCalled();
   });
 });

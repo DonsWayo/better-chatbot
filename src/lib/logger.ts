@@ -1,10 +1,10 @@
-import { createConsola, LogLevels } from "consola";
+import { LogLevels, createConsola } from "consola";
 import { IS_DEV } from "./const";
 
 const logger = createConsola({
   level: IS_DEV ? LogLevels.debug : LogLevels.info,
   defaults: {
-    tag: "better-chatbot",
+    tag: "asafe-ai",
   },
 });
 

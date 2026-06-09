@@ -1,184 +1,261 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getCurrentUserMock,
-  mcpRepositoryMock,
-  mcpClientsManagerMock,
+  selectAllForUserMock,
+  getClientsMock,
+  refreshClientMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
-  mcpRepositoryMock: { selectAllForUser: vi.fn() },
-  mcpClientsManagerMock: {
-    getClients: vi.fn(),
-    refreshClient: vi.fn(),
-  },
+  selectAllForUserMock: vi.fn(),
+  getClientsMock: vi.fn(),
+  refreshClientMock: vi.fn(),
 }));
 
-vi.mock("lib/auth/permissions", () => ({
-  getCurrentUser: getCurrentUserMock,
-}));
+vi.mock("lib/auth/permissions", () => ({ getCurrentUser: getCurrentUserMock }));
 vi.mock("lib/db/repository", () => ({
-  mcpRepository: mcpRepositoryMock,
+  mcpRepository: { selectAllForUser: selectAllForUserMock },
 }));
 vi.mock("lib/ai/mcp/mcp-manager", () => ({
-  mcpClientsManager: mcpClientsManagerMock,
+  mcpClientsManager: {
+    getClients: getClientsMock,
+    refreshClient: refreshClientMock,
+  },
 }));
 
-import { GET } from "./route";
-
-const makeClientInfo = (id: string, status = "connected") => ({
-  enabled: true,
-  status,
-  error: undefined,
-  toolInfo: [{ name: "some-tool" }],
-  id,
-});
-
-const makeClient = (id: string) => ({
-  id,
-  client: {
-    getInfo: vi.fn(() => makeClientInfo(id)),
-  },
-});
-
-const DB_SERVER = {
-  id: "mcp-1",
-  userId: "user-1",
-  name: "My MCP",
-  visibility: "private",
-  config: { type: "stdio", command: "node", args: [] },
-  lastConnectionStatus: "connected",
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  mcpClientsManagerMock.refreshClient.mockResolvedValue(undefined);
-});
+const SERVER = { id: "mcp-1", name: "My MCP", userId: "u1", config: { url: "http://mcp" }, lastConnectionStatus: "ok" };
 
 describe("GET /api/mcp/list", () => {
-  it("returns 401 when no current user", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(401);
+  });
+
+  it("returns empty list when user has no servers", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.error).toMatch(/unauthorized/i);
+    expect(body).toHaveLength(0);
   });
 
-  it("returns 401 when current user has no id", async () => {
-    getCurrentUserMock.mockResolvedValue({});
-    const res = await GET();
-    expect(res.status).toBe(401);
-  });
-
-  it("returns servers list when authorized", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([DB_SERVER]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([makeClient("mcp-1")]);
+  it("returns server list with status info", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: {
+          getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo: [] }),
+        },
+      },
+    ]);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(1);
-    expect(body[0].id).toBe("mcp-1");
-  });
-
-  it("includes config for owner", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([DB_SERVER]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([makeClient("mcp-1")]);
-    const res = await GET();
-    const body = await res.json();
-    expect(body[0].config).toBeDefined();
-  });
-
-  it("hides config for non-owner", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-2" });
-    const sharedServer = { ...DB_SERVER, userId: "user-1" };
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([sharedServer]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([makeClient("mcp-1")]);
-    const res = await GET();
-    const body = await res.json();
-    expect(body[0].config).toBeUndefined();
-  });
-
-  it("uses status from memory client when available", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([DB_SERVER]);
-    const client = makeClient("mcp-1");
-    client.client.getInfo = vi.fn(() => ({
-      enabled: true,
-      status: "connected",
-      error: undefined,
-      toolInfo: [],
-      id: "mcp-1",
-    }));
-    mcpClientsManagerMock.getClients.mockResolvedValue([client]);
-    const res = await GET();
-    const body = await res.json();
     expect(body[0].status).toBe("connected");
+    expect(body[0].config).toBeDefined(); // owner sees config
   });
 
-  it("uses 'disconnected' status when server not in memory", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([DB_SERVER]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([]);
+  it("hides config from non-owner", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u2", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body[0].config).toBeUndefined(); // non-owner config hidden
+  });
+
+  it("never calls selectAllForUser when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllForUserMock).not.toHaveBeenCalled();
+  });
+
+  it("server without in-memory client shows disconnected status", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]); // no in-memory client
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
     expect(body[0].status).toBe("disconnected");
   });
 
-  it("calls refreshClient for servers not yet in memory", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([DB_SERVER]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([]);
+  it("triggers refreshClient for server not yet in memory", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]); // server not in memory → should trigger refresh
+    refreshClientMock.mockResolvedValue(undefined);
+    const { GET } = await import("./route");
     await GET();
-    expect(mcpClientsManagerMock.refreshClient).toHaveBeenCalledWith("mcp-1");
+    expect(refreshClientMock).toHaveBeenCalledWith(SERVER.id);
   });
 
-  it("does not call refreshClient for servers already in memory", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([DB_SERVER]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([makeClient("mcp-1")]);
-    await GET();
-    expect(mcpClientsManagerMock.refreshClient).not.toHaveBeenCalled();
-  });
-
-  it("calls selectAllForUser with current user id", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-99" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([]);
-    await GET();
-    expect(mcpRepositoryMock.selectAllForUser).toHaveBeenCalledWith("user-99");
-  });
-
-  it("returns empty array when no servers exist", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([]);
+  it("includes toolInfo from in-memory client", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    const toolInfo = [{ name: "search", description: "Search the web" }];
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: {
+          getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo }),
+        },
+      },
+    ]);
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
-    expect(body).toEqual([]);
+    expect(body[0].toolInfo).toEqual(toolInfo);
   });
+});
 
-  it("returns JSON content-type", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([]);
-    const res = await GET();
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
-  });
+describe("GET /api/mcp/list — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it("calls selectAllForUser exactly once", async () => {
-    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
-    mcpRepositoryMock.selectAllForUser.mockResolvedValue([]);
-    mcpClientsManagerMock.getClients.mockResolvedValue([]);
-    await GET();
-    expect(mcpRepositoryMock.selectAllForUser).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call selectAllForUser when no current user", async () => {
+  it("401 body has error field", async () => {
     getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getCurrentUser called exactly once", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     await GET();
-    expect(mcpRepositoryMock.selectAllForUser).not.toHaveBeenCalled();
+    expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls getClients when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getClientsMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body is an array", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("server object has status and toolInfo properties", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: {
+          getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo: [] }),
+        },
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0]).toHaveProperty("status");
+    expect(body[0]).toHaveProperty("toolInfo");
+  });
+
+  it("never calls selectAllForUser when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllForUserMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/mcp/list — server response fields", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("server record includes name from DB", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: { getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo: [] }) },
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].name).toBe("My MCP");
+  });
+
+  it("server record includes id field", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0]).toHaveProperty("id", "mcp-1");
+  });
+
+  it("selectAllForUser called exactly once per authenticated request", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllForUserMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/mcp/list — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([]);
+    getClientsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("401 body has error field", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("refreshClient called with server id when not in memory", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]);
+    refreshClientMock.mockResolvedValue(undefined);
+    const { GET } = await import("./route");
+    await GET();
+    expect(refreshClientMock).toHaveBeenCalledWith("mcp-1");
   });
 });

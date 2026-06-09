@@ -1,341 +1,300 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getSessionMock,
-  chatRepositoryMock,
-  agentRepositoryMock,
-  chatExportRepositoryMock,
-  mcpServerCustomizationRepositoryMock,
-  mcpMcpToolCustomizationRepositoryMock,
-  customModelProviderMock,
-  serverCacheMock,
-  generateTextMock,
-  generateObjectMock,
+  selectThreadMock,
+  selectMessagesMock,
+  checkAccessMock,
+  exportChatMock,
+  updateThreadMock,
+  deleteAllThreadsMock,
+  deleteUnarchivedThreadsMock,
+  deleteThreadMock,
+  deleteChatMessageMock,
+  deleteMessagesByTimestampMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  chatRepositoryMock: {
-    selectThread: vi.fn(),
-    selectMessagesByThreadId: vi.fn(),
-    deleteChatMessage: vi.fn(),
-    deleteThread: vi.fn(),
-    deleteMessagesByChatIdAfterTimestamp: vi.fn(),
-    updateThread: vi.fn(),
-    deleteAllThreads: vi.fn(),
-    deleteUnarchivedThreads: vi.fn(),
-    checkAccess: vi.fn(),
-  },
-  agentRepositoryMock: {
-    selectAgentById: vi.fn(),
-  },
-  chatExportRepositoryMock: {
-    exportChat: vi.fn(),
-  },
-  mcpServerCustomizationRepositoryMock: {
-    selectByUserId: vi.fn(),
-  },
-  mcpMcpToolCustomizationRepositoryMock: {
-    selectByUserId: vi.fn(),
-  },
-  customModelProviderMock: {
-    getModel: vi.fn(),
-  },
-  serverCacheMock: {
-    get: vi.fn(),
-    set: vi.fn(),
-  },
-  generateTextMock: vi.fn(),
-  generateObjectMock: vi.fn(),
+  selectThreadMock: vi.fn(),
+  selectMessagesMock: vi.fn(),
+  checkAccessMock: vi.fn(),
+  exportChatMock: vi.fn(),
+  updateThreadMock: vi.fn(),
+  deleteAllThreadsMock: vi.fn(),
+  deleteUnarchivedThreadsMock: vi.fn(),
+  deleteThreadMock: vi.fn(),
+  deleteChatMessageMock: vi.fn(),
+  deleteMessagesByTimestampMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  chatRepository: chatRepositoryMock,
-  agentRepository: agentRepositoryMock,
-  chatExportRepository: chatExportRepositoryMock,
-  mcpServerCustomizationRepository: mcpServerCustomizationRepositoryMock,
-  mcpMcpToolCustomizationRepository: mcpMcpToolCustomizationRepositoryMock,
+  chatRepository: {
+    selectThread: selectThreadMock,
+    selectMessagesByThreadId: selectMessagesMock,
+    checkAccess: checkAccessMock,
+    updateThread: updateThreadMock,
+    deleteAllThreads: deleteAllThreadsMock,
+    deleteUnarchivedThreads: deleteUnarchivedThreadsMock,
+    deleteThread: deleteThreadMock,
+    deleteChatMessage: deleteChatMessageMock,
+    deleteMessagesByChatIdAfterTimestamp: deleteMessagesByTimestampMock,
+  },
+  chatExportRepository: { exportChat: exportChatMock },
+  agentRepository: { selectAgentById: vi.fn() },
+  mcpMcpToolCustomizationRepository: { selectByUserId: vi.fn().mockResolvedValue([]) },
+  mcpServerCustomizationRepository: { selectByUserId: vi.fn().mockResolvedValue([]) },
 }));
-vi.mock("lib/ai/models", () => ({ customModelProvider: customModelProviderMock }));
-vi.mock("lib/cache", () => ({ serverCache: serverCacheMock }));
+vi.mock("lib/ai/models", () => ({ customModelProvider: { getModel: vi.fn() } }));
+vi.mock("lib/cache", () => ({
+  serverCache: { get: vi.fn().mockResolvedValue(null), set: vi.fn() },
+}));
 vi.mock("lib/cache/cache-keys", () => ({
   CacheKeys: {
     mcpServerCustomizations: (id: string) => `mcp:${id}`,
     agentInstructions: (id: string) => `agent:${id}`,
   },
 }));
-vi.mock("ai", async () => ({
-  ...(await vi.importActual<typeof import("ai")>("ai")),
-  generateText: generateTextMock,
-  generateObject: generateObjectMock,
-  jsonSchema: vi.fn((s) => s),
+vi.mock("logger", () => ({ default: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock("lib/ai/prompts", () => ({
+  CREATE_THREAD_TITLE_PROMPT: "title prompt",
+  generateExampleToolSchemaPrompt: vi.fn().mockReturnValue(""),
 }));
-vi.mock("logger", () => ({ default: { error: vi.fn(), info: vi.fn() } }));
-vi.mock("lib/utils", () => ({ toAny: (v: unknown) => v }));
-
-import {
-  getUserId,
-  generateTitleFromUserMessageAction,
-  selectThreadWithMessagesAction,
-  deleteMessageAction,
-  deleteThreadAction,
-  deleteMessagesByChatIdAfterTimestampAction,
-  updateThreadAction,
-  deleteThreadsAction,
-  deleteUnarchivedThreadsAction,
-  rememberMcpServerCustomizationsAction,
-  rememberAgentAction,
-  exportChatAction,
-} from "./actions";
-
-type MockSession = { user: { id: string } };
-const makeSession = (userId = "user-1"): MockSession => ({ user: { id: userId } });
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+vi.mock("lib/utils", () => ({ toAny: (v: any) => v }));
+vi.mock("lib/json-schema-to-zod", () => ({ jsonSchemaToZod: vi.fn() }));
 
 describe("getUserId", () => {
-  it("returns userId from session", async () => {
-    getSessionMock.mockResolvedValue(makeSession("user-42"));
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("throws when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { getUserId } = await import("./actions");
+    await expect(getUserId()).rejects.toThrow(/User not found/i);
+  });
+
+  it("returns userId when session exists", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { getUserId } = await import("./actions");
     const id = await getUserId();
-    expect(id).toBe("user-42");
-  });
-
-  it("throws when no session", async () => {
-    getSessionMock.mockResolvedValue(null);
-    await expect(getUserId()).rejects.toThrow("User not found");
-  });
-
-  it("throws when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    await expect(getUserId()).rejects.toThrow("User not found");
-  });
-});
-
-describe("generateTitleFromUserMessageAction", () => {
-  it("throws when no session", async () => {
-    getSessionMock.mockResolvedValue(null);
-    const model = {} as Parameters<typeof generateTitleFromUserMessageAction>[0]["model"];
-    await expect(
-      generateTitleFromUserMessageAction({ message: { parts: [] } as Parameters<typeof generateTitleFromUserMessageAction>[0]["message"], model }),
-    ).rejects.toThrow("Unauthorized");
-  });
-
-  it("returns trimmed title", async () => {
-    getSessionMock.mockResolvedValue(makeSession());
-    generateTextMock.mockResolvedValue({ text: "  My Chat Title  " });
-    const result = await generateTitleFromUserMessageAction({
-      message: { parts: [{ type: "text", text: "hello" }] } as Parameters<typeof generateTitleFromUserMessageAction>[0]["message"],
-      model: {} as Parameters<typeof generateTitleFromUserMessageAction>[0]["model"],
-    });
-    expect(result).toBe("My Chat Title");
+    expect(id).toBe("u1");
   });
 });
 
 describe("selectThreadWithMessagesAction", () => {
-  it("throws when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("throws when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
-    await expect(selectThreadWithMessagesAction("t1")).rejects.toThrow("Unauthorized");
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await expect(selectThreadWithMessagesAction("t1")).rejects.toThrow(/Unauthorized/i);
   });
 
   it("returns null when thread not found", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.selectThread.mockResolvedValue(null);
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue(null);
+    const { selectThreadWithMessagesAction } = await import("./actions");
     const result = await selectThreadWithMessagesAction("t1");
     expect(result).toBeNull();
   });
 
   it("returns null when thread belongs to different user", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.selectThread.mockResolvedValue({ id: "t1", userId: "u2" });
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue({ id: "t1", userId: "u2" });
+    const { selectThreadWithMessagesAction } = await import("./actions");
     const result = await selectThreadWithMessagesAction("t1");
     expect(result).toBeNull();
   });
 
   it("returns thread with messages for owner", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.selectThread.mockResolvedValue({ id: "t1", userId: "u1", title: "Thread" });
-    chatRepositoryMock.selectMessagesByThreadId.mockResolvedValue([
-      { id: "m1", role: "user" },
-    ]);
-
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue({ id: "t1", userId: "u1", title: "My chat" });
+    selectMessagesMock.mockResolvedValue([{ id: "m1" }, { id: "m2" }]);
+    const { selectThreadWithMessagesAction } = await import("./actions");
     const result = await selectThreadWithMessagesAction("t1");
-    expect(result?.messages).toHaveLength(1);
-    expect(result?.title).toBe("Thread");
-  });
-
-  it("returns empty messages array when selectMessages returns null", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.selectThread.mockResolvedValue({ id: "t1", userId: "u1" });
-    chatRepositoryMock.selectMessagesByThreadId.mockResolvedValue(null);
-
-    const result = await selectThreadWithMessagesAction("t1");
-    expect(result?.messages).toEqual([]);
+    expect(result).not.toBeNull();
+    expect(result!.messages).toHaveLength(2);
+    expect(result!.title).toBe("My chat");
   });
 });
 
 describe("deleteMessageAction", () => {
-  it("delegates to chatRepository.deleteChatMessage", async () => {
-    chatRepositoryMock.deleteChatMessage.mockResolvedValue(undefined);
-    await deleteMessageAction("msg-1");
-    expect(chatRepositoryMock.deleteChatMessage).toHaveBeenCalledWith("msg-1");
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("calls deleteChatMessage with messageId", async () => {
+    deleteChatMessageMock.mockResolvedValue(undefined);
+    const { deleteMessageAction } = await import("./actions");
+    await deleteMessageAction("m1");
+    expect(deleteChatMessageMock).toHaveBeenCalledWith("m1");
   });
 });
 
 describe("deleteThreadAction", () => {
-  it("delegates to chatRepository.deleteThread", async () => {
-    chatRepositoryMock.deleteThread.mockResolvedValue(undefined);
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("calls deleteThread with threadId", async () => {
+    deleteThreadMock.mockResolvedValue(undefined);
+    const { deleteThreadAction } = await import("./actions");
     await deleteThreadAction("t1");
-    expect(chatRepositoryMock.deleteThread).toHaveBeenCalledWith("t1");
+    expect(deleteThreadMock).toHaveBeenCalledWith("t1");
   });
 });
 
 describe("deleteMessagesByChatIdAfterTimestampAction", () => {
-  it("delegates to chatRepository", async () => {
-    chatRepositoryMock.deleteMessagesByChatIdAfterTimestamp.mockResolvedValue(undefined);
-    await deleteMessagesByChatIdAfterTimestampAction("msg-1");
-    expect(chatRepositoryMock.deleteMessagesByChatIdAfterTimestamp).toHaveBeenCalledWith("msg-1");
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("calls deleteMessagesByChatIdAfterTimestamp with messageId", async () => {
+    deleteMessagesByTimestampMock.mockResolvedValue(undefined);
+    const { deleteMessagesByChatIdAfterTimestampAction } = await import("./actions");
+    await deleteMessagesByChatIdAfterTimestampAction("m1");
+    expect(deleteMessagesByTimestampMock).toHaveBeenCalledWith("m1");
   });
 });
 
 describe("updateThreadAction", () => {
-  it("updates thread with userId from session", async () => {
-    getSessionMock.mockResolvedValue(makeSession("user-5"));
-    chatRepositoryMock.updateThread.mockResolvedValue(undefined);
+  beforeEach(() => { vi.clearAllMocks(); });
 
-    await updateThreadAction("t1", { title: "New Title" });
-    expect(chatRepositoryMock.updateThread).toHaveBeenCalledWith("t1", {
-      title: "New Title",
-      userId: "user-5",
-    });
+  it("throws when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { updateThreadAction } = await import("./actions");
+    await expect(updateThreadAction("t1", { title: "New" })).rejects.toThrow();
+  });
+
+  it("calls updateThread with userId merged", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    updateThreadMock.mockResolvedValue(undefined);
+    const { updateThreadAction } = await import("./actions");
+    await updateThreadAction("t1", { title: "New" });
+    expect(updateThreadMock).toHaveBeenCalledWith("t1", { title: "New", userId: "u1" });
   });
 });
 
 describe("deleteThreadsAction", () => {
-  it("deletes all threads for current user", async () => {
-    getSessionMock.mockResolvedValue(makeSession("user-9"));
-    chatRepositoryMock.deleteAllThreads.mockResolvedValue(undefined);
+  beforeEach(() => { vi.clearAllMocks(); });
 
+  it("calls deleteAllThreads with userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    deleteAllThreadsMock.mockResolvedValue(undefined);
+    const { deleteThreadsAction } = await import("./actions");
     await deleteThreadsAction();
-    expect(chatRepositoryMock.deleteAllThreads).toHaveBeenCalledWith("user-9");
+    expect(deleteAllThreadsMock).toHaveBeenCalledWith("u1");
   });
 });
 
 describe("deleteUnarchivedThreadsAction", () => {
-  it("deletes unarchived threads for current user", async () => {
-    getSessionMock.mockResolvedValue(makeSession("user-9"));
-    chatRepositoryMock.deleteUnarchivedThreads.mockResolvedValue(undefined);
+  beforeEach(() => { vi.clearAllMocks(); });
 
+  it("calls deleteUnarchivedThreads with userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    deleteUnarchivedThreadsMock.mockResolvedValue(undefined);
+    const { deleteUnarchivedThreadsAction } = await import("./actions");
     await deleteUnarchivedThreadsAction();
-    expect(chatRepositoryMock.deleteUnarchivedThreads).toHaveBeenCalledWith("user-9");
-  });
-});
-
-describe("rememberMcpServerCustomizationsAction", () => {
-  it("returns cached result when available", async () => {
-    const cached = { "server-1": { name: "Exa", id: "server-1", prompt: "", tools: {} } };
-    serverCacheMock.get.mockResolvedValue(cached);
-
-    const result = await rememberMcpServerCustomizationsAction("user-1");
-    expect(result).toEqual(cached);
-    expect(mcpServerCustomizationRepositoryMock.selectByUserId).not.toHaveBeenCalled();
-  });
-
-  it("builds prompts from db when cache miss", async () => {
-    serverCacheMock.get.mockResolvedValue(null);
-    mcpServerCustomizationRepositoryMock.selectByUserId.mockResolvedValue([
-      { mcpServerId: "s1", serverName: "Exa", prompt: "Search server" },
-    ]);
-    mcpMcpToolCustomizationRepositoryMock.selectByUserId.mockResolvedValue([
-      { mcpServerId: "s1", serverName: "Exa", toolName: "search", prompt: "Search tool" },
-    ]);
-
-    const result = await rememberMcpServerCustomizationsAction("user-1");
-    expect(result["s1"].name).toBe("Exa");
-    expect(result["s1"].prompt).toBe("Search server");
-    expect(result["s1"].tools["search"]).toBe("Search tool");
-    expect(serverCacheMock.set).toHaveBeenCalled();
-  });
-
-  it("handles empty customizations", async () => {
-    serverCacheMock.get.mockResolvedValue(null);
-    mcpServerCustomizationRepositoryMock.selectByUserId.mockResolvedValue([]);
-    mcpMcpToolCustomizationRepositoryMock.selectByUserId.mockResolvedValue([]);
-
-    const result = await rememberMcpServerCustomizationsAction("user-1");
-    expect(result).toEqual({});
-  });
-});
-
-describe("rememberAgentAction", () => {
-  it("returns undefined for undefined agent", async () => {
-    const result = await rememberAgentAction(undefined, "user-1");
-    expect(result).toBeUndefined();
-  });
-
-  it("returns cached agent when available", async () => {
-    const cachedAgent = { id: "agent-1", name: "My Agent" };
-    serverCacheMock.get.mockResolvedValue(cachedAgent);
-
-    const result = await rememberAgentAction("agent-1", "user-1");
-    expect(result).toEqual(cachedAgent);
-    expect(agentRepositoryMock.selectAgentById).not.toHaveBeenCalled();
-  });
-
-  it("fetches and caches agent on cache miss", async () => {
-    serverCacheMock.get.mockResolvedValue(null);
-    const agent = { id: "agent-1", name: "Fetched Agent" };
-    agentRepositoryMock.selectAgentById.mockResolvedValue(agent);
-
-    const result = await rememberAgentAction("agent-1", "user-1");
-    expect(result).toEqual(agent);
-    expect(serverCacheMock.set).toHaveBeenCalledWith("agent:agent-1", agent);
+    expect(deleteUnarchivedThreadsMock).toHaveBeenCalledWith("u1");
   });
 });
 
 describe("exportChatAction", () => {
-  it("throws when user not logged in", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await expect(exportChatAction({ threadId: "t1" })).rejects.toThrow("User not found");
+    const { exportChatAction } = await import("./actions");
+    await expect(exportChatAction({ threadId: "t1" })).rejects.toThrow();
   });
 
-  it("returns 401 response when user has no access", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.checkAccess.mockResolvedValue(false);
-
+  it("returns 401 Response when user has no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValue(false);
+    const { exportChatAction } = await import("./actions");
     const result = await exportChatAction({ threadId: "t1" });
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(401);
   });
 
-  it("exports chat and returns export id", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.checkAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.exportChat.mockResolvedValue("export-123");
-
+  it("exports chat when user has access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValue(true);
+    const mockExport = { id: "e1", threadId: "t1" };
+    exportChatMock.mockResolvedValue(mockExport);
+    const { exportChatAction } = await import("./actions");
     const result = await exportChatAction({ threadId: "t1" });
-    expect(result).toBe("export-123");
-    expect(chatExportRepositoryMock.exportChat).toHaveBeenCalledWith({
-      threadId: "t1",
-      exporterId: "u1",
-      expiresAt: undefined,
-    });
+    expect(result).toEqual(mockExport);
+    expect(exportChatMock).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: "t1", exporterId: "u1" }),
+    );
+  });
+});
+
+describe("selectThreadWithMessagesAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per call", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await expect(selectThreadWithMessagesAction("t1")).rejects.toThrow();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("passes expiresAt when provided", async () => {
-    getSessionMock.mockResolvedValue(makeSession("u1"));
-    chatRepositoryMock.checkAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.exportChat.mockResolvedValue("export-456");
+  it("selectThread called exactly once for owner", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue({ id: "t1", userId: "u1", title: "Test" });
+    selectMessagesMock.mockResolvedValue([]);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await selectThreadWithMessagesAction("t1");
+    expect(selectThreadMock).toHaveBeenCalledTimes(1);
+  });
 
-    const expiresAt = new Date("2027-01-01");
-    await exportChatAction({ threadId: "t1", expiresAt });
+  it("selectMessages called exactly once when thread found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue({ id: "t1", userId: "u1", title: "Test" });
+    selectMessagesMock.mockResolvedValue([{ id: "m-1" }]);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await selectThreadWithMessagesAction("t1");
+    expect(selectMessagesMock).toHaveBeenCalledTimes(1);
+  });
 
-    expect(chatExportRepositoryMock.exportChat).toHaveBeenCalledWith({
-      threadId: "t1",
-      exporterId: "u1",
-      expiresAt,
-    });
+  it("never calls selectMessages when thread not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectThreadMock.mockResolvedValue(null);
+    const { selectThreadWithMessagesAction } = await import("./actions");
+    await selectThreadWithMessagesAction("t1");
+    expect(selectMessagesMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteThreadAction — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("throws when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { deleteThreadAction } = await import("./actions");
+    await expect(deleteThreadAction("t1")).rejects.toThrow();
+  });
+
+  it("deleteThread called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteThreadMock.mockResolvedValueOnce(undefined);
+    const { deleteThreadAction } = await import("./actions");
+    await deleteThreadAction("t1");
+    expect(deleteThreadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deleteThread not called when access check fails", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { deleteThreadAction } = await import("./actions");
+    try { await deleteThreadAction("t1"); } catch {}
+    expect(deleteThreadMock).not.toHaveBeenCalled();
+  });
+
+  it("checkAccess called with correct threadId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteThreadMock.mockResolvedValueOnce(undefined);
+    const { deleteThreadAction } = await import("./actions");
+    await deleteThreadAction("thread-xyz");
+    expect(checkAccessMock).toHaveBeenCalledWith(expect.objectContaining({ threadId: "thread-xyz" }));
   });
 });

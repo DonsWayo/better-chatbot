@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   canCreateAgent,
   canEditAgent,
@@ -8,162 +8,267 @@ import {
   canDeleteWorkflow,
   canCreateMCP,
   canEditMCP,
-  canDeleteMCP,
   canChangeVisibilityMCP,
+  canDeleteMCP,
   canUseResource,
   canViewResource,
 } from "./client-permissions";
 
-describe("client-permissions — admin role", () => {
-  const role = "admin";
-
-  it("admin can create agent", () => {
-    expect(canCreateAgent(role)).toBe(true);
+// Roles map: admin > editor > user
+describe("canCreateAgent", () => {
+  it("admin can create agents", () => {
+    expect(canCreateAgent("admin")).toBe(true);
   });
 
-  it("admin can edit agent", () => {
-    expect(canEditAgent(role)).toBe(true);
+  it("editor can create agents", () => {
+    expect(canCreateAgent("editor")).toBe(true);
   });
 
-  it("admin can delete agent", () => {
-    expect(canDeleteAgent(role)).toBe(true);
+  it("user cannot create agents", () => {
+    expect(canCreateAgent("user")).toBe(false);
   });
 
-  it("admin can create workflow", () => {
-    expect(canCreateWorkflow(role)).toBe(true);
+  it("defaults to user (no permission) when role is undefined", () => {
+    expect(canCreateAgent(undefined)).toBe(false);
   });
 
-  it("admin can edit workflow", () => {
-    expect(canEditWorkflow(role)).toBe(true);
-  });
-
-  it("admin can delete workflow", () => {
-    expect(canDeleteWorkflow(role)).toBe(true);
-  });
-
-  it("admin can create MCP", () => {
-    expect(canCreateMCP(role)).toBe(true);
-  });
-
-  it("admin can edit MCP", () => {
-    expect(canEditMCP(role)).toBe(true);
-  });
-
-  it("admin can delete MCP", () => {
-    expect(canDeleteMCP(role)).toBe(true);
-  });
-
-  it("admin can change visibility MCP", () => {
-    expect(canChangeVisibilityMCP(role)).toBe(true);
-  });
-});
-
-describe("client-permissions — user role", () => {
-  const role = "user";
-
-  it("user cannot create agent", () => {
-    expect(canCreateAgent(role)).toBe(false);
-  });
-
-  it("user cannot delete agent", () => {
-    expect(canDeleteAgent(role)).toBe(false);
-  });
-
-  it("user cannot create workflow", () => {
-    expect(canCreateWorkflow(role)).toBe(false);
-  });
-
-  it("user cannot delete workflow", () => {
-    expect(canDeleteWorkflow(role)).toBe(false);
-  });
-
-  it("user cannot create MCP", () => {
-    expect(canCreateMCP(role)).toBe(false);
-  });
-
-  it("user can use agent resource", () => {
-    expect(canUseResource(role, "agent")).toBe(true);
-  });
-
-  it("user can view agent resource", () => {
-    expect(canViewResource(role, "agent")).toBe(true);
-  });
-});
-
-describe("client-permissions — editor role", () => {
-  const role = "editor";
-
-  it("editor can create agent", () => {
-    expect(canCreateAgent(role)).toBe(true);
-  });
-
-  it("editor can edit agent", () => {
-    expect(canEditAgent(role)).toBe(true);
-  });
-
-  it("editor can delete agent", () => {
-    expect(canDeleteAgent(role)).toBe(true);
-  });
-
-  it("editor can create workflow", () => {
-    expect(canCreateWorkflow(role)).toBe(true);
-  });
-
-  it("editor can create MCP", () => {
-    expect(canCreateMCP(role)).toBe(true);
-  });
-
-  it("editor can edit MCP", () => {
-    expect(canEditMCP(role)).toBe(true);
-  });
-});
-
-describe("client-permissions — null/undefined role defaults to user", () => {
-  it("null role cannot create agent", () => {
+  it("defaults to user (no permission) when role is null", () => {
     expect(canCreateAgent(null)).toBe(false);
   });
+});
 
-  it("undefined role cannot delete agent", () => {
+describe("canEditAgent", () => {
+  it("admin can edit agents", () => {
+    expect(canEditAgent("admin")).toBe(true);
+  });
+
+  it("editor can edit agents", () => {
+    expect(canEditAgent("editor")).toBe(true);
+  });
+
+  it("user cannot edit agents", () => {
+    expect(canEditAgent("user")).toBe(false);
+  });
+});
+
+describe("canDeleteAgent", () => {
+  it("admin can delete agents", () => {
+    expect(canDeleteAgent("admin")).toBe(true);
+  });
+
+  it("editor can delete agents", () => {
+    expect(canDeleteAgent("editor")).toBe(true);
+  });
+
+  it("user cannot delete agents", () => {
+    expect(canDeleteAgent("user")).toBe(false);
+  });
+});
+
+describe("canCreateWorkflow", () => {
+  it("admin can create workflows", () => {
+    expect(canCreateWorkflow("admin")).toBe(true);
+  });
+
+  it("editor can create workflows", () => {
+    expect(canCreateWorkflow("editor")).toBe(true);
+  });
+
+  it("user cannot create workflows", () => {
+    expect(canCreateWorkflow("user")).toBe(false);
+  });
+});
+
+describe("canEditWorkflow / canDeleteWorkflow", () => {
+  it("admin can edit and delete workflows", () => {
+    expect(canEditWorkflow("admin")).toBe(true);
+    expect(canDeleteWorkflow("admin")).toBe(true);
+  });
+
+  it("editor can edit and delete workflows", () => {
+    expect(canEditWorkflow("editor")).toBe(true);
+    expect(canDeleteWorkflow("editor")).toBe(true);
+  });
+
+  it("user cannot edit or delete workflows", () => {
+    expect(canEditWorkflow("user")).toBe(false);
+    expect(canDeleteWorkflow("user")).toBe(false);
+  });
+});
+
+describe("canCreateMCP / canEditMCP / canDeleteMCP", () => {
+  it("admin has full MCP permissions", () => {
+    expect(canCreateMCP("admin")).toBe(true);
+    expect(canEditMCP("admin")).toBe(true);
+    expect(canDeleteMCP("admin")).toBe(true);
+    expect(canChangeVisibilityMCP("admin")).toBe(true);
+  });
+
+  it("editor can create/edit/delete MCP but not share visibility", () => {
+    expect(canCreateMCP("editor")).toBe(true);
+    expect(canEditMCP("editor")).toBe(true);
+    expect(canDeleteMCP("editor")).toBe(true);
+  });
+
+  it("user cannot create/edit/delete MCP", () => {
+    expect(canCreateMCP("user")).toBe(false);
+    expect(canEditMCP("user")).toBe(false);
+    expect(canDeleteMCP("user")).toBe(false);
+  });
+});
+
+describe("canUseResource", () => {
+  it("user can use agent resource", () => {
+    expect(canUseResource("user", "agent")).toBe(true);
+  });
+
+  it("user can use workflow resource", () => {
+    expect(canUseResource("user", "workflow")).toBe(true);
+  });
+
+  it("admin can use all resource types", () => {
+    expect(canUseResource("admin", "agent")).toBe(true);
+    expect(canUseResource("admin", "workflow")).toBe(true);
+    expect(canUseResource("admin", "mcp")).toBe(true);
+  });
+
+  it("defaults resource to agent when not specified", () => {
+    expect(canUseResource("user")).toBe(true);
+  });
+});
+
+describe("canViewResource", () => {
+  it("user can view agent resources", () => {
+    expect(canViewResource("user", "agent")).toBe(true);
+  });
+
+  it("admin can view all resource types", () => {
+    expect(canViewResource("admin", "agent")).toBe(true);
+    expect(canViewResource("admin", "workflow")).toBe(true);
+    expect(canViewResource("admin", "mcp")).toBe(true);
+  });
+
+  it("defaults resource to agent when not specified", () => {
+    expect(canViewResource("user")).toBe(true);
+  });
+});
+
+describe("OAuth-prefixed role strings are parsed correctly", () => {
+  it("google:admin gets admin permissions", () => {
+    expect(canCreateAgent("google:admin")).toBe(true);
+  });
+
+  it("github:editor gets editor permissions", () => {
+    expect(canCreateWorkflow("github:editor")).toBe(true);
+  });
+
+  it("unknown:superuser defaults to user (no create permission)", () => {
+    expect(canCreateAgent("unknown:superuser")).toBe(false);
+  });
+});
+
+describe("canChangeVisibilityMCP — additional", () => {
+  it("editor cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP("editor")).toBe(false);
+  });
+
+  it("user cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP("user")).toBe(false);
+  });
+
+  it("undefined role cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP(undefined)).toBe(false);
+  });
+
+  it("null role cannot change MCP visibility", () => {
+    expect(canChangeVisibilityMCP(null)).toBe(false);
+  });
+});
+
+describe("canUseResource — additional", () => {
+  it("user cannot use mcp resource", () => {
+    expect(canUseResource("user", "mcp")).toBe(false);
+  });
+
+  it("editor can use agent resource", () => {
+    expect(canUseResource("editor", "agent")).toBe(true);
+  });
+
+  it("editor can use workflow resource", () => {
+    expect(canUseResource("editor", "workflow")).toBe(true);
+  });
+
+  it("undefined role cannot use mcp resource", () => {
+    expect(canUseResource(undefined, "mcp")).toBe(false);
+  });
+});
+
+describe("canViewResource — additional", () => {
+  it("editor can view all resource types", () => {
+    expect(canViewResource("editor", "agent")).toBe(true);
+    expect(canViewResource("editor", "workflow")).toBe(true);
+    expect(canViewResource("editor", "mcp")).toBe(true);
+  });
+
+  it("user can view workflow resource", () => {
+    expect(canViewResource("user", "workflow")).toBe(true);
+  });
+
+  it("undefined role returns false for mcp view", () => {
+    expect(canViewResource(undefined, "mcp")).toBe(false);
+  });
+});
+
+describe("canCreateAgent — additional", () => {
+  it("empty string role cannot create agents", () => {
+    expect(canCreateAgent("")).toBe(false);
+  });
+
+  it("unknown role cannot create agents", () => {
+    expect(canCreateAgent("superuser")).toBe(false);
+  });
+
+  it("canDeleteAgent returns true for editor", () => {
+    expect(canDeleteAgent("editor")).toBe(true);
+  });
+
+  it("canEditAgent returns false for null", () => {
+    expect(canEditAgent(null)).toBe(false);
+  });
+});
+
+describe("canDeleteAgent — additional", () => {
+  it("undefined role cannot delete agents", () => {
     expect(canDeleteAgent(undefined)).toBe(false);
   });
 
-  it("null role can use agent", () => {
-    expect(canUseResource(null, "agent")).toBe(true);
+  it("null role cannot delete agents", () => {
+    expect(canDeleteAgent(null)).toBe(false);
   });
 
-  it("undefined role can view workflow", () => {
-    expect(canViewResource(undefined, "workflow")).toBe(true);
+  it("empty string cannot delete agents", () => {
+    expect(canDeleteAgent("")).toBe(false);
+  });
+
+  it("user role cannot delete agents", () => {
+    expect(canDeleteAgent("user")).toBe(false);
   });
 });
 
-describe("client-permissions — return type invariants", () => {
-  const fns = [
-    canCreateAgent, canEditAgent, canDeleteAgent,
-    canCreateWorkflow, canEditWorkflow, canDeleteWorkflow,
-    canCreateMCP, canEditMCP, canDeleteMCP, canChangeVisibilityMCP,
-  ];
-
-  it("all permission functions return boolean for admin", () => {
-    for (const fn of fns) {
-      expect(typeof fn("admin")).toBe("boolean");
-    }
+describe("workflow and MCP permissions — cross-role invariants", () => {
+  it("admin can create workflows", () => {
+    expect(canCreateWorkflow("admin")).toBe(true);
   });
 
-  it("all permission functions return boolean for null", () => {
-    for (const fn of fns) {
-      expect(typeof fn(null)).toBe("boolean");
-    }
+  it("user cannot delete workflows", () => {
+    expect(canDeleteWorkflow("user")).toBe(false);
   });
 
-  it("canUseResource returns boolean", () => {
-    for (const resource of ["agent", "workflow", "mcp"] as const) {
-      expect(typeof canUseResource("admin", resource)).toBe("boolean");
-    }
+  it("admin can delete MCP", () => {
+    expect(canDeleteMCP("admin")).toBe(true);
   });
 
-  it("canViewResource returns boolean", () => {
-    for (const resource of ["agent", "workflow", "mcp"] as const) {
-      expect(typeof canViewResource("user", resource)).toBe("boolean");
-    }
+  it("user cannot create MCP", () => {
+    expect(canCreateMCP("user")).toBe(false);
   });
 });

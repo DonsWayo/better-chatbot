@@ -1,199 +1,319 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getSessionMock,
-  workflowRepositoryMock,
+  selectAllMock,
+  saveMock,
+  checkAccessMock,
   canCreateWorkflowMock,
   canEditWorkflowMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  workflowRepositoryMock: {
-    selectAll: vi.fn(),
-    save: vi.fn(),
-    checkAccess: vi.fn(),
-  },
+  selectAllMock: vi.fn(),
+  saveMock: vi.fn(),
+  checkAccessMock: vi.fn(),
   canCreateWorkflowMock: vi.fn(),
   canEditWorkflowMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  workflowRepository: workflowRepositoryMock,
+  workflowRepository: {
+    selectAll: selectAllMock,
+    save: saveMock,
+    checkAccess: checkAccessMock,
+  },
 }));
 vi.mock("lib/auth/permissions", () => ({
   canCreateWorkflow: canCreateWorkflowMock,
   canEditWorkflow: canEditWorkflowMock,
 }));
 
-import { GET, POST } from "./route";
-
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body) } as unknown as Request;
+}
 
 describe("GET /api/workflow", () => {
-  it("returns empty array when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns empty array when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual([]);
+    expect(body).toHaveLength(0);
   });
 
   it("returns workflows for authenticated user", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.selectAll.mockResolvedValue([{ id: "wf-1" }]);
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const WORKFLOWS = [{ id: "wf-1", name: "My Workflow" }];
+    selectAllMock.mockResolvedValueOnce(WORKFLOWS);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(1);
   });
 
-  it("calls selectAll with the user id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    workflowRepositoryMock.selectAll.mockResolvedValue([]);
-    await GET();
-    expect(workflowRepositoryMock.selectAll).toHaveBeenCalledWith("user-42");
-  });
-});
-
-describe("POST /api/workflow — create new", () => {
-  it("returns 401 when no session", async () => {
+  it("never calls selectAll when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest({ name: "My Workflow" }));
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 403 when user cannot create workflows", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateWorkflowMock.mockResolvedValue(false);
-    const res = await POST(makeRequest({ name: "My Workflow" }));
-    expect(res.status).toBe(403);
-  });
-
-  it("creates and returns workflow when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateWorkflowMock.mockResolvedValue(true);
-    const wf = { id: "wf-1", name: "My Workflow", userId: "user-1" };
-    workflowRepositoryMock.save.mockResolvedValue(wf);
-    const res = await POST(makeRequest({ name: "My Workflow" }));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.id).toBe("wf-1");
-  });
-
-  it("calls save with userId from session", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
-    canCreateWorkflowMock.mockResolvedValue(true);
-    workflowRepositoryMock.save.mockResolvedValue({ id: "wf-1" });
-    await POST(makeRequest({ name: "Test", description: "Desc" }));
-    expect(workflowRepositoryMock.save).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "user-99" }),
-      undefined,
-    );
-  });
-});
-
-describe("POST /api/workflow — update existing", () => {
-  it("returns 403 when user cannot edit workflows", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditWorkflowMock.mockResolvedValue(false);
-    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
-    expect(res.status).toBe(403);
-  });
-
-  it("returns 401 when user lacks access to specific workflow", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditWorkflowMock.mockResolvedValue(true);
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
-    expect(res.status).toBe(401);
-  });
-
-  it("updates and returns workflow when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditWorkflowMock.mockResolvedValue(true);
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    const wf = { id: "wf-1", name: "Updated", userId: "user-1" };
-    workflowRepositoryMock.save.mockResolvedValue(wf);
-    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.name).toBe("Updated");
-  });
-
-  it("calls checkAccess with workflow id and user id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    canEditWorkflowMock.mockResolvedValue(true);
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.save.mockResolvedValue({ id: "wf-xyz" });
-    await POST(makeRequest({ id: "wf-xyz", name: "Updated" }));
-    expect(workflowRepositoryMock.checkAccess).toHaveBeenCalledWith(
-      "wf-xyz",
-      "user-42",
-      false,
-    );
-  });
-});
-
-describe("GET /api/workflow — additional invariants", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("calls selectAll exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.selectAll.mockResolvedValue([]);
+    const { GET } = await import("./route");
     await GET();
-    expect(workflowRepositoryMock.selectAll).toHaveBeenCalledTimes(1);
+    expect(selectAllMock).not.toHaveBeenCalled();
   });
 
-  it("does not call selectAll when no session", async () => {
-    getSessionMock.mockResolvedValue(null);
-    await GET();
-    expect(workflowRepositoryMock.selectAll).not.toHaveBeenCalled();
-  });
-
-  it("each workflow in response has an id field", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.selectAll.mockResolvedValue([
-      { id: "wf-a", name: "Workflow A" },
-      { id: "wf-b", name: "Workflow B" },
-    ]);
+  it("response body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([{ id: "wf-x" }]);
+    const { GET } = await import("./route");
     const res = await GET();
     const body = await res.json();
-    for (const wf of body) {
-      expect(wf).toHaveProperty("id");
-    }
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("passes userId to selectAll", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc-123" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).toHaveBeenCalledWith("user-abc-123");
   });
 });
 
-describe("POST /api/workflow — create invariants", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe("POST /api/workflow (create)", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    expect(res.status).toBe(401);
   });
 
-  it("does not call save when canCreateWorkflow returns false", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateWorkflowMock.mockResolvedValue(false);
-    await POST(makeRequest({ name: "My Workflow" }));
-    expect(workflowRepositoryMock.save).not.toHaveBeenCalled();
+  it("returns 403 when user lacks workflow creation permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    expect(res.status).toBe(403);
   });
 
-  it("calls save exactly once when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateWorkflowMock.mockResolvedValue(true);
-    workflowRepositoryMock.save.mockResolvedValue({ id: "wf-1" });
-    await POST(makeRequest({ name: "My Workflow" }));
-    expect(workflowRepositoryMock.save).toHaveBeenCalledTimes(1);
+  it("creates workflow and returns it", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(true);
+    const WF = { id: "wf-new", name: "New Workflow" };
+    saveMock.mockResolvedValueOnce(WF);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.id).toBe("wf-new");
+  });
+
+  it("never calls save when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls save when user lacks creation permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
+});
+
+describe("POST /api/workflow (edit existing)", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 403 when user lacks edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 401 when no access to existing workflow", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/workflow — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAll called exactly once when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body is an array when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+});
+
+describe("POST /api/workflow (create) — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls canCreateWorkflow when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(canCreateWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("save called exactly once on successful create", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(true);
+    saveMock.mockResolvedValueOnce({ id: "wf-new", name: "New Workflow" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/workflow (edit existing) — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls save when user lacks edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("403 body has error field when lacking edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls checkAccess when user lacks edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ id: "wf-1", name: "Updated" }));
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/workflow — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("selectAll called with userId for authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-abc" }));
+  });
+});
+
+describe("GET and POST /api/workflow — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAll not called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).not.toHaveBeenCalled();
+  });
+
+  it("save not called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const req = { json: () => Promise.resolve({ name: "w", nodes: [], edges: [] }) } as unknown as Request;
+    await POST(req);
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

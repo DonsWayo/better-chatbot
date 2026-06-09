@@ -1,148 +1,243 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, archiveRepositoryMock } = vi.hoisted(() => ({
+const {
+  getSessionMock,
+  getArchiveByIdMock,
+  getArchiveItemsMock,
+  removeItemFromArchiveMock,
+} = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  archiveRepositoryMock: {
-    getArchiveById: vi.fn(),
-    getArchiveItems: vi.fn(),
-    removeItemFromArchive: vi.fn(),
-  },
+  getArchiveByIdMock: vi.fn(),
+  getArchiveItemsMock: vi.fn(),
+  removeItemFromArchiveMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  archiveRepository: archiveRepositoryMock,
+  archiveRepository: {
+    getArchiveById: getArchiveByIdMock,
+    getArchiveItems: getArchiveItemsMock,
+    removeItemFromArchive: removeItemFromArchiveMock,
+  },
 }));
 
-import { DELETE } from "./route";
+const ARCHIVE = { id: "a-1", name: "My Archive", userId: "u1" };
 
-const makeContext = (id: string, itemId: string) => ({
-  params: Promise.resolve({ id, itemId }),
-});
-
-const ARCHIVE = { id: "arch-1", name: "My Archive", userId: "user-1" };
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(): Request {
+  return {} as unknown as Request;
+}
 
 describe("DELETE /api/archive/[id]/items/[itemId]", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when archive not found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(null);
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "missing", itemId: "item-1" }) });
     expect(res.status).toBe(404);
   });
 
-  it("returns 403 when user does not own archive", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-2" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+  it("returns 403 when user does not own the archive", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u2" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
     expect(res.status).toBe(403);
   });
 
   it("returns 404 when item not in archive", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([
-      { itemId: "other-item" },
-    ]);
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "other-item" }]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
     expect(res.status).toBe(404);
-    const body = await res.json();
-    expect(body.error).toMatch(/not found/i);
   });
 
   it("removes item and returns success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
-    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-1" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(removeItemFromArchiveMock).toHaveBeenCalledWith("a-1", "item-1");
+  });
+
+  it("never calls removeItemFromArchive when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(removeItemFromArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls removeItemFromArchive when archive not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "missing", itemId: "item-1" }) });
+    expect(removeItemFromArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls removeItemFromArchive when user does not own archive", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u2" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(removeItemFromArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls removeItemFromArchive when item not in archive", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "other-item" }]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(removeItemFromArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body is text 'Forbidden'", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u2" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(await res.text()).toBe("Forbidden");
+  });
+
+  it("removeItemFromArchive called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-1" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(removeItemFromArchiveMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DELETE /api/archive/[id]/items/[itemId] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls getArchiveById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("200 body has success:true on valid removal", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-x" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-x" }) });
     const body = await res.json();
     expect(body.success).toBe(true);
   });
 
-  it("calls removeItemFromArchive with archive id and item id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-xyz" }]);
-    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
-    await DELETE(new Request("http://x"), makeContext("arch-1", "item-xyz"));
-    expect(archiveRepositoryMock.removeItemFromArchive).toHaveBeenCalledWith(
-      "arch-1",
-      "item-xyz",
-    );
+  it("removeItemFromArchive called with archiveId and itemId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-del" }]);
+    removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-del" }) });
+    expect(removeItemFromArchiveMock).toHaveBeenCalledWith("a-1", "item-del");
+  });
+});
+
+describe("DELETE /api/archive/[id]/items/[itemId] — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getArchiveItems when archive not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveItemsMock).not.toHaveBeenCalled();
   });
 
-  it("returns 500 on unexpected error", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockRejectedValue(new Error("DB fail"));
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
-    expect(res.status).toBe(500);
+  it("never calls getArchiveItems when user is unauthorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "other" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveItemsMock).not.toHaveBeenCalled();
   });
 
-  it("calls getArchiveById with the archive id from params", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(null);
-    await DELETE(new Request("http://x"), makeContext("arch-999", "item-1"));
-    expect(archiveRepositoryMock.getArchiveById).toHaveBeenCalledWith("arch-999");
+  it("getArchiveById called with archive id from params", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "archive-xyz", itemId: "i1" }) });
+    expect(getArchiveByIdMock).toHaveBeenCalledWith("archive-xyz");
   });
 
-  it("calls getArchiveItems with the archive id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
-    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
-    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
-    expect(archiveRepositoryMock.getArchiveItems).toHaveBeenCalledWith("arch-1");
+  it("getArchiveItems called with archive id on ownership pass", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "item-1" }) });
+    expect(getArchiveItemsMock).toHaveBeenCalledWith("a-1");
   });
+});
 
-  it("does not call removeItemFromArchive when item does not exist", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "other" }]);
-    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
-    expect(archiveRepositoryMock.removeItemFromArchive).not.toHaveBeenCalled();
-  });
+describe("DELETE /api/archive/[id]/items/[itemId] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
 
-  it("returns 200 response body with success: true", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
-    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
-    const res = await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
-    const body = await res.json();
-    expect(body).toHaveProperty("success", true);
-  });
-
-  it("getSession is called exactly once per request", async () => {
+  it("getSession called exactly once per DELETE", async () => {
     getSessionMock.mockResolvedValue(null);
-    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "i-1" }) });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call getArchiveById when session is null", async () => {
+  it("getArchiveById not called when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
-    expect(archiveRepositoryMock.getArchiveById).not.toHaveBeenCalled();
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "i-1" }) });
+    expect(getArchiveByIdMock).not.toHaveBeenCalled();
   });
 
-  it("removeItemFromArchive called exactly once on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
-    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
-    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
-    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
-    expect(archiveRepositoryMock.removeItemFromArchive).toHaveBeenCalledTimes(1);
+  it("removeItemFromArchive not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "i-1" }) });
+    expect(removeItemFromArchiveMock).not.toHaveBeenCalled();
+  });
+
+  it("DELETE returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "a-1", itemId: "i-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

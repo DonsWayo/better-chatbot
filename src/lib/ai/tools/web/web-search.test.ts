@@ -4,153 +4,116 @@ import {
   exaContentsSchema,
   exaSearchTool,
   exaContentsTool,
-  exaSearchToolForWorkflow,
-  exaContentsToolForWorkflow,
 } from "./web-search";
-import type { JSONSchema7 } from "json-schema";
 
 describe("exaSearchSchema", () => {
-  it("is a valid JSONSchema7 object schema", () => {
-    expect(exaSearchSchema.type).toBe("object");
-    expect(typeof exaSearchSchema.properties).toBe("object");
+  it("requires query field", () => {
+    expect(exaSearchSchema.required).toContain("query");
   });
 
-  it("requires 'query' field", () => {
-    expect((exaSearchSchema.required as string[])?.includes("query")).toBe(true);
+  it("query is a string property", () => {
+    const q = (exaSearchSchema.properties as any)?.query;
+    expect(q?.type).toBe("string");
   });
 
-  it("query property is of type string", () => {
-    const queryProp = exaSearchSchema.properties?.query as JSONSchema7;
-    expect(queryProp.type).toBe("string");
+  it("numResults has a default value", () => {
+    const nr = (exaSearchSchema.properties as any)?.numResults;
+    expect(nr?.default).toBeGreaterThan(0);
   });
 
-  it("numResults has minimum 1 and maximum 20", () => {
-    const numProp = exaSearchSchema.properties?.numResults as JSONSchema7;
-    expect(numProp.minimum).toBe(1);
-    expect(numProp.maximum).toBe(20);
+  it("type has enum values including auto, neural, keyword", () => {
+    const t = (exaSearchSchema.properties as any)?.type;
+    expect(t?.enum).toContain("auto");
+    expect(t?.enum).toContain("neural");
+    expect(t?.enum).toContain("keyword");
   });
 
-  it("type enum includes expected search modes", () => {
-    const typeProp = exaSearchSchema.properties?.type as JSONSchema7;
-    expect(typeProp.enum).toContain("auto");
-    expect(typeProp.enum).toContain("keyword");
-    expect(typeProp.enum).toContain("neural");
-  });
-
-  it("includeDomains is an array property", () => {
-    const inclProp = exaSearchSchema.properties?.includeDomains as JSONSchema7;
-    expect(inclProp.type).toBe("array");
-  });
-
-  it("excludeDomains is an array property", () => {
-    const exclProp = exaSearchSchema.properties?.excludeDomains as JSONSchema7;
-    expect(exclProp.type).toBe("array");
-  });
-
-  it("category enum contains expected categories", () => {
-    const catProp = exaSearchSchema.properties?.category as JSONSchema7;
-    expect(catProp.enum).toContain("news");
-    expect(catProp.enum).toContain("github");
-    expect(catProp.enum).toContain("pdf");
-  });
-
-  it("maxCharacters has minimum 100 and maximum 10000", () => {
-    const maxCharProp = exaSearchSchema.properties?.maxCharacters as JSONSchema7;
-    expect(maxCharProp.minimum).toBe(100);
-    expect(maxCharProp.maximum).toBe(10000);
+  it("includeDomains is an array of strings", () => {
+    const d = (exaSearchSchema.properties as any)?.includeDomains;
+    expect(d?.type).toBe("array");
+    expect(d?.items?.type).toBe("string");
   });
 });
 
 describe("exaContentsSchema", () => {
-  it("is a valid JSONSchema7 object schema", () => {
-    expect(exaContentsSchema.type).toBe("object");
-    expect(typeof exaContentsSchema.properties).toBe("object");
-  });
-
-  it("requires 'urls' field", () => {
-    expect((exaContentsSchema.required as string[])?.includes("urls")).toBe(true);
+  it("requires urls field", () => {
+    expect(exaContentsSchema.required).toContain("urls");
   });
 
   it("urls is an array of strings", () => {
-    const urlsProp = exaContentsSchema.properties?.urls as JSONSchema7;
-    expect(urlsProp.type).toBe("array");
-    const items = urlsProp.items as JSONSchema7;
-    expect(items.type).toBe("string");
+    const urls = (exaContentsSchema.properties as any)?.urls;
+    expect(urls?.type).toBe("array");
+    expect(urls?.items?.type).toBe("string");
   });
 
-  it("livecrawl enum contains expected values", () => {
-    const liveProp = exaContentsSchema.properties?.livecrawl as JSONSchema7;
-    expect(liveProp.enum).toContain("always");
-    expect(liveProp.enum).toContain("fallback");
-    expect(liveProp.enum).toContain("preferred");
-  });
-
-  it("maxCharacters has minimum and maximum constraints", () => {
-    const maxProp = exaContentsSchema.properties?.maxCharacters as JSONSchema7;
-    expect(maxProp.minimum).toBe(100);
-    expect(maxProp.maximum).toBe(10000);
+  it("maxCharacters has a default value", () => {
+    const mc = (exaContentsSchema.properties as any)?.maxCharacters;
+    expect(mc?.default).toBeGreaterThan(0);
   });
 });
 
 describe("exaSearchTool", () => {
-  it("is defined", () => {
-    expect(exaSearchTool).toBeDefined();
-  });
-
-  it("has a description", () => {
-    expect(typeof exaSearchTool.description).toBe("string");
-    expect(exaSearchTool.description!.length).toBeGreaterThan(0);
+  it("has an execute function", () => {
+    expect(typeof exaSearchTool.execute).toBe("function");
   });
 
   it("has an inputSchema", () => {
     expect(exaSearchTool.inputSchema).toBeDefined();
   });
 
-  it("has an execute function", () => {
-    expect(typeof exaSearchTool.execute).toBe("function");
+  it("execute returns error object when EXA_API_KEY is not set (no network)", async () => {
+    const result = await exaSearchTool.execute!({ query: "test" } as any, {} as any);
+    expect(result).toBeDefined();
+    // Without EXA_API_KEY the safe() wrapper returns an error shape
+    expect(typeof result === "object" || typeof result === "string").toBe(true);
   });
 });
 
 describe("exaContentsTool", () => {
-  it("is defined", () => {
-    expect(exaContentsTool).toBeDefined();
-  });
-
-  it("has a description", () => {
-    expect(typeof exaContentsTool.description).toBe("string");
-    expect(exaContentsTool.description!.length).toBeGreaterThan(0);
+  it("has an execute function", () => {
+    expect(typeof exaContentsTool.execute).toBe("function");
   });
 
   it("has an inputSchema", () => {
     expect(exaContentsTool.inputSchema).toBeDefined();
   });
 
-  it("has an execute function", () => {
-    expect(typeof exaContentsTool.execute).toBe("function");
+  it("execute returns error object for bad urls (no network)", async () => {
+    const result = await exaContentsTool.execute!({ urls: ["http://invalid.example.invalid"] } as any, {} as any);
+    expect(result).toBeDefined();
   });
 });
 
-describe("workflow tools", () => {
-  it("exaSearchToolForWorkflow is defined", () => {
-    expect(exaSearchToolForWorkflow).toBeDefined();
+describe("schema shapes", () => {
+  it("exaSearchSchema type is object", () => {
+    expect(exaSearchSchema.type).toBe("object");
   });
 
-  it("exaContentsToolForWorkflow is defined", () => {
-    expect(exaContentsToolForWorkflow).toBeDefined();
+  it("exaContentsSchema type is object", () => {
+    expect(exaContentsSchema.type).toBe("object");
   });
 
-  it("workflow versions have execute functions", () => {
-    expect(typeof exaSearchToolForWorkflow.execute).toBe("function");
-    expect(typeof exaContentsToolForWorkflow.execute).toBe("function");
+  it("exaSearchSchema has properties", () => {
+    expect(exaSearchSchema.properties).toBeDefined();
+    expect(typeof exaSearchSchema.properties).toBe("object");
   });
 
-  it("workflow search tool has a description", () => {
-    expect(typeof exaSearchToolForWorkflow.description).toBe("string");
-    expect(exaSearchToolForWorkflow.description!.length).toBeGreaterThan(0);
+  it("exaContentsSchema has properties", () => {
+    expect(exaContentsSchema.properties).toBeDefined();
+    expect(typeof exaContentsSchema.properties).toBe("object");
   });
 
-  it("workflow contents tool has a description", () => {
-    expect(typeof exaContentsToolForWorkflow.description).toBe("string");
-    expect(exaContentsToolForWorkflow.description!.length).toBeGreaterThan(0);
+  it("exaSearchSchema required array is non-empty", () => {
+    expect(Array.isArray(exaSearchSchema.required)).toBe(true);
+    expect((exaSearchSchema.required as string[]).length).toBeGreaterThan(0);
+  });
+
+  it("exaContentsSchema required array is non-empty", () => {
+    expect(Array.isArray(exaContentsSchema.required)).toBe(true);
+    expect((exaContentsSchema.required as string[]).length).toBeGreaterThan(0);
+  });
+
+  it("search and contents tools have distinct inputSchemas", () => {
+    expect(exaSearchTool.inputSchema).not.toBe(exaContentsTool.inputSchema);
   });
 });

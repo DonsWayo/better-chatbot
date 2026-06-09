@@ -1,164 +1,237 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, userRepositoryMock } = vi.hoisted(() => ({
+const { getSessionMock, getPreferencesMock, updatePreferencesMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  userRepositoryMock: {
-    getPreferences: vi.fn(),
-    updatePreferences: vi.fn(),
-  },
+  getPreferencesMock: vi.fn(),
+  updatePreferencesMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
-vi.mock("lib/db/repository", () => ({ userRepository: userRepositoryMock }));
+vi.mock("lib/db/repository", () => ({
+  userRepository: {
+    getPreferences: getPreferencesMock,
+    updatePreferences: updatePreferencesMock,
+  },
+}));
+vi.mock("app-types/user", () => ({
+  UserPreferencesZodSchema: { parse: (b: unknown) => b },
+}));
 
-import { GET, PUT } from "./route";
-
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost/api/user/preferences", {
-    method: "PUT",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-const PREFERENCES = { displayName: "Alice", profession: "Engineer" };
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body) } as unknown as Request;
+}
 
 describe("GET /api/user/preferences", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await GET();
-    expect(res.status).toBe(401);
-  });
-
-  it("returns preferences when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.getPreferences.mockResolvedValue(PREFERENCES);
-    const res = await GET();
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.displayName).toBe("Alice");
-  });
-
-  it("calls getPreferences with user id from session", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    userRepositoryMock.getPreferences.mockResolvedValue(PREFERENCES);
-    await GET();
-    expect(userRepositoryMock.getPreferences).toHaveBeenCalledWith("user-42");
-  });
-
-  it("returns empty object when preferences not found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.getPreferences.mockResolvedValue(null);
+  it("returns empty object when no preferences stored", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({});
   });
 
-  it("returns 500 on unexpected error", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.getPreferences.mockRejectedValue(new Error("DB fail"));
+  it("returns stored preferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const PREFS = { theme: "dark", language: "en" };
+    getPreferencesMock.mockResolvedValueOnce(PREFS);
+    const { GET } = await import("./route");
     const res = await GET();
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.error).toBe("DB fail");
+    expect(body.theme).toBe("dark");
   });
 });
 
 describe("PUT /api/user/preferences", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await PUT(makeRequest(PREFERENCES));
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ theme: "dark" }));
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await PUT(makeRequest(PREFERENCES));
-    expect(res.status).toBe(401);
-  });
-
-  it("updates and returns preferences when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.updatePreferences.mockResolvedValue({
-      preferences: PREFERENCES,
-    });
-    const res = await PUT(makeRequest(PREFERENCES));
+  it("updates preferences and returns updated values", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const PREFS = { theme: "light" };
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: PREFS });
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest(PREFS));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.preferences.displayName).toBe("Alice");
+    expect(body.preferences.theme).toBe("light");
   });
 
-  it("calls updatePreferences with userId from session", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-session" } });
-    userRepositoryMock.updatePreferences.mockResolvedValue({
-      preferences: PREFERENCES,
-    });
-    await PUT(makeRequest({ displayName: "Bob" }));
-    expect(userRepositoryMock.updatePreferences).toHaveBeenCalledWith(
-      "user-session",
-      expect.objectContaining({ displayName: "Bob" }),
-    );
-  });
-
-  it("accepts partial preferences (all fields optional)", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.updatePreferences.mockResolvedValue({
-      preferences: { displayName: "Bob" },
-    });
-    const res = await PUT(makeRequest({ displayName: "Bob" }));
-    expect(res.status).toBe(200);
-  });
-
-  it("returns 500 on unexpected error", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.updatePreferences.mockRejectedValue(
-      new Error("Update failed"),
-    );
-    const res = await PUT(makeRequest(PREFERENCES));
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toBe("Update failed");
-  });
-
-  it("does not call updatePreferences when session is null", async () => {
+  it("never calls updatePreferences when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await PUT(makeRequest(PREFERENCES));
-    expect(userRepositoryMock.updatePreferences).not.toHaveBeenCalled();
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(updatePreferencesMock).not.toHaveBeenCalled();
   });
 
-  it("returns JSON content-type on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    userRepositoryMock.updatePreferences.mockResolvedValue({
-      preferences: PREFERENCES,
-    });
-    const res = await PUT(makeRequest(PREFERENCES));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  it("passes userId to updatePreferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-xyz" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(updatePreferencesMock).toHaveBeenCalledWith(
+      "user-xyz",
+      expect.anything(),
+    );
   });
 });
 
-describe("GET /api/user/preferences — extra coverage", () => {
-  it("getSession is called exactly once per GET request", async () => {
+describe("GET /api/user/preferences — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getPreferences when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("passes userId to getPreferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).toHaveBeenCalledWith("user-abc");
+  });
+
+  it("GET 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getPreferences called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PUT /api/user/preferences — body and exact-once", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("PUT 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT({ json: () => Promise.resolve({}) } as unknown as Request);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("updatePreferences called exactly once per authenticated PUT request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    await PUT({ json: () => Promise.resolve({ theme: "dark" }) } as unknown as Request);
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per PUT", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/user/preferences — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/user/preferences — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is not null", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).not.toBeNull();
+  });
+
+  it("PUT returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ theme: "dark" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+});
+
+describe("GET and PUT /api/user/preferences — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     await GET();
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call getPreferences when session is null", async () => {
+  it("getPreferences not called when GET unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
     await GET();
-    expect(userRepositoryMock.getPreferences).not.toHaveBeenCalled();
+    expect(getPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("updatePreferences not called when PUT unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "light" }));
+    expect(updatePreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

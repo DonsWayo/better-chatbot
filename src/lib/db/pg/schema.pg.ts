@@ -1,17 +1,23 @@
 import { Agent } from "app-types/agent";
 import { UserPreferences } from "app-types/user";
 import { MCPServerConfig, MCPToolInfo } from "app-types/mcp";
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
   timestamp,
   json,
+  jsonb,
   uuid,
   boolean,
   unique,
+  uniqueIndex,
   varchar,
   index,
+  numeric,
+  integer,
+  customType,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -97,6 +103,8 @@ export const McpServerTable = pgTable("mcp_server", {
   lastConnectionStatus: varchar("last_connection_status", {
     enum: ["connected", "error"],
   }),
+  scope: varchar("scope", { enum: ["personal", "org", "team"] }).notNull().default("personal"),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -115,6 +123,8 @@ export const UserTable = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
   role: text("role").notNull().default("user"),
+  // W8: GDPR/EU AI Act — acceptable-use acknowledgment
+  acceptedAupAt: timestamp("accepted_aup_at", { withTimezone: true }),
 });
 
 // Role tables removed - using Better Auth's built-in role system
@@ -379,3 +389,362 @@ export const ChatExportCommentTable = pgTable("chat_export_comment", {
 export type ArchiveEntity = typeof ArchiveTable.$inferSelect;
 export type ArchiveItemEntity = typeof ArchiveItemTable.$inferSelect;
 export type BookmarkEntity = typeof BookmarkTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 3 – Team / Budget / Usage tables (ADR-0002, ADR-0003)
+// ---------------------------------------------------------------------------
+
+export const AsafeTeamTable = pgTable(
+  "asafe_team",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 100 }).notNull().unique(),
+    description: text("description"),
+    // W9: per-team guardrail posture and multimodal feature gates
+    guardrailPolicy: varchar("guardrail_policy", { length: 20 }).notNull().default("standard"),
+    allowImageGen: boolean("allow_image_gen").notNull().default(false),
+    allowVision: boolean("allow_vision").notNull().default(false),
+    allowSpeech: boolean("allow_speech").notNull().default(false),
+    // W4: model allow-list — empty array = all approved models allowed
+    modelAllowList: jsonb("model_allow_list").$type<string[]>().notNull().default([]),
+    // W5+: email domain allow-list — empty array = any email domain allowed
+    allowedEmailDomains: jsonb("allowed_email_domains").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+);
+
+export const AsafeTeamMemberTable = pgTable(
+  "asafe_team_member",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 20 }).notNull().default("member"),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [unique().on(table.teamId, table.userId)],
+);
+
+export const AsafeUsageEventTable = pgTable(
+  "asafe_usage_event",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    sessionId: text("session_id"),
+    model: varchar("model", { length: 120 }).notNull(),
+    provider: varchar("provider", { length: 60 }).notNull(),
+    taskClass: varchar("task_class", { length: 30 }),
+    tier: varchar("tier", { length: 20 }),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("asafe_usage_event_user_id_idx").on(table.userId),
+    index("asafe_usage_event_team_id_idx").on(table.teamId),
+    index("asafe_usage_event_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const AsafeTeamBudgetTable = pgTable(
+  "asafe_team_budget",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .unique()
+      .references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+    periodStart: timestamp("period_start").notNull(),
+    periodEnd: timestamp("period_end").notNull(),
+    budgetUsd: numeric("budget_usd", { precision: 12, scale: 2 }).notNull(),
+    usedUsd: numeric("used_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+    alertThresholdPct: integer("alert_threshold_pct").notNull().default(80),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+);
+
+// Relations
+
+export const AsafeTeamRelations = relations(AsafeTeamTable, ({ many, one }) => ({
+  members: many(AsafeTeamMemberTable),
+  usageEvents: many(AsafeUsageEventTable),
+  budget: one(AsafeTeamBudgetTable, {
+    fields: [AsafeTeamTable.id],
+    references: [AsafeTeamBudgetTable.teamId],
+  }),
+}));
+
+export const AsafeTeamMemberRelations = relations(
+  AsafeTeamMemberTable,
+  ({ one }) => ({
+    team: one(AsafeTeamTable, {
+      fields: [AsafeTeamMemberTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+    user: one(UserTable, {
+      fields: [AsafeTeamMemberTable.userId],
+      references: [UserTable.id],
+    }),
+  }),
+);
+
+export const AsafeUsageEventRelations = relations(
+  AsafeUsageEventTable,
+  ({ one }) => ({
+    user: one(UserTable, {
+      fields: [AsafeUsageEventTable.userId],
+      references: [UserTable.id],
+    }),
+    team: one(AsafeTeamTable, {
+      fields: [AsafeUsageEventTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+  }),
+);
+
+export const AsafeTeamBudgetRelations = relations(
+  AsafeTeamBudgetTable,
+  ({ one }) => ({
+    team: one(AsafeTeamTable, {
+      fields: [AsafeTeamBudgetTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+  }),
+);
+
+export type AsafeTeamEntity = typeof AsafeTeamTable.$inferSelect;
+export type AsafeTeamMemberEntity = typeof AsafeTeamMemberTable.$inferSelect;
+export type AsafeUsageEventEntity = typeof AsafeUsageEventTable.$inferSelect;
+export type AsafeTeamBudgetEntity = typeof AsafeTeamBudgetTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 5 – Company MCP audit log
+// Wave 6 – RAG knowledge collections + embeddings (ADR-0007)
+// ---------------------------------------------------------------------------
+
+const vector = (name: string, dimensions: number) =>
+  customType<{ data: number[]; driverData: string }>({
+    dataType() { return `vector(${dimensions})`; },
+    toDriver(value) { return JSON.stringify(value); },
+    fromDriver(value) {
+      if (typeof value === "string") return JSON.parse(value);
+      return value as number[];
+    },
+  })(name);
+
+export const AsafeMcpInvocationLogTable = pgTable("asafe_mcp_invocation_log", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => UserTable.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "set null" }),
+  mcpServerId: uuid("mcp_server_id").references(() => McpServerTable.id, { onDelete: "set null" }),
+  toolName: varchar("tool_name", { length: 200 }).notNull(),
+  outcome: varchar("outcome", { enum: ["success", "error"] }).notNull(),
+  durationMs: integer("duration_ms"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const AsafeKnowledgeCollectionTable = pgTable("asafe_knowledge_collection", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+  visibility: varchar("visibility", { enum: ["team", "org"] }).notNull().default("org"),
+  createdBy: uuid("created_by").references(() => UserTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const EMBEDDING_DIMENSION = 1536; // text-embedding-3-small; pinned — see ADR-0007
+
+export const AsafeDocumentChunkTable = pgTable("asafe_document_chunk", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  collectionId: uuid("collection_id").notNull().references(() => AsafeKnowledgeCollectionTable.id, { onDelete: "cascade" }),
+  sourceRef: text("source_ref").notNull(),        // filename, URL, archive item ID, etc.
+  chunkIndex: integer("chunk_index").notNull(),
+  chunkText: text("chunk_text").notNull(),
+  embedding: vector("embedding", EMBEDDING_DIMENSION).notNull(),
+  metadata: json("metadata").default({}).$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const asafeMcpInvocationLogRelations = relations(AsafeMcpInvocationLogTable, ({ one }) => ({
+  user: one(UserTable, { fields: [AsafeMcpInvocationLogTable.userId], references: [UserTable.id] }),
+  team: one(AsafeTeamTable, { fields: [AsafeMcpInvocationLogTable.teamId], references: [AsafeTeamTable.id] }),
+  mcpServer: one(McpServerTable, { fields: [AsafeMcpInvocationLogTable.mcpServerId], references: [McpServerTable.id] }),
+}));
+
+export const asafeKnowledgeCollectionRelations = relations(AsafeKnowledgeCollectionTable, ({ one, many }) => ({
+  team: one(AsafeTeamTable, { fields: [AsafeKnowledgeCollectionTable.teamId], references: [AsafeTeamTable.id] }),
+  chunks: many(AsafeDocumentChunkTable),
+}));
+
+export const asafeDocumentChunkRelations = relations(AsafeDocumentChunkTable, ({ one }) => ({
+  collection: one(AsafeKnowledgeCollectionTable, { fields: [AsafeDocumentChunkTable.collectionId], references: [AsafeKnowledgeCollectionTable.id] }),
+}));
+
+export type AsafeMcpInvocationLogEntity = typeof AsafeMcpInvocationLogTable.$inferSelect;
+export type AsafeKnowledgeCollectionEntity = typeof AsafeKnowledgeCollectionTable.$inferSelect;
+export type AsafeDocumentChunkEntity = typeof AsafeDocumentChunkTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 9 – Response feedback (ADR-0009 quality loop)
+// ---------------------------------------------------------------------------
+
+export const AsafeMessageFeedbackTable = pgTable("asafe_message_feedback", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  messageId: text("message_id").notNull(),       // ChatMessage id (text, not uuid)
+  threadId: text("thread_id").notNull(),
+  userId: uuid("user_id").notNull().references(() => UserTable.id, { onDelete: "cascade" }),
+  rating: varchar("rating", { enum: ["up", "down"] }).notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (t) => [
+  uniqueIndex("uniq_feedback_user_msg").on(t.userId, t.messageId),
+]);
+
+export const asafeMessageFeedbackRelations = relations(AsafeMessageFeedbackTable, ({ one }) => ({
+  user: one(UserTable, { fields: [AsafeMessageFeedbackTable.userId], references: [UserTable.id] }),
+}));
+
+export type AsafeMessageFeedbackEntity = typeof AsafeMessageFeedbackTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 9 – Shared prompt library (ADR-0009)
+// ---------------------------------------------------------------------------
+
+export const AsafePromptTemplateTable = pgTable("asafe_prompt_template", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 100 }),
+  authorId: uuid("author_id").references(() => UserTable.id, { onDelete: "set null" }),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+  visibility: varchar("visibility", { enum: ["private", "team", "org"] }).notNull().default("private"),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  usageCount: integer("usage_count").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const asafePromptTemplateRelations = relations(AsafePromptTemplateTable, ({ one }) => ({
+  author: one(UserTable, { fields: [AsafePromptTemplateTable.authorId], references: [UserTable.id] }),
+  team: one(AsafeTeamTable, { fields: [AsafePromptTemplateTable.teamId], references: [AsafeTeamTable.id] }),
+}));
+
+export type AsafePromptTemplateEntity = typeof AsafePromptTemplateTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 1 – Postgres-backed KV cache (replaces Redis)
+// ---------------------------------------------------------------------------
+
+export const AsafeKvCacheTable = pgTable("asafe_kv_cache", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+export const AsafeRateLimitBucketTable = pgTable(
+  "asafe_rate_limit_bucket",
+  {
+    userId: text("user_id").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(1),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.windowStart] }),
+  ],
+);
+
+// ── W8 Compliance Audit Log ──────────────────────────────────────────────────
+
+export const AsafeAuditLogTable = pgTable("asafe_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // Who
+  userId: text("user_id").notNull(),
+  teamId: uuid("team_id"),
+  // What type of event
+  eventType: text("event_type").notNull(), // "chat_request"|"admin_action"|"rag_retrieval"|"tool_call"|"guardrail"|"user_erasure"
+  // Serialised details — kept minimal (no raw prompt content; content hash only)
+  details: jsonb("details").notNull().default("{}"),
+  // Immutable timestamp — use now() at DB level so app clock skew can't falsify it
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeAuditLogEntity = typeof AsafeAuditLogTable.$inferSelect;
+
+// ── W7 Guardrail Events ──────────────────────────────────────────────────────
+
+export const AsafeGuardrailEventTable = pgTable("asafe_guardrail_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  blocked: boolean("blocked").notNull().default(false),
+  firings: jsonb("firings").notNull().default("[]"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeGuardrailEventEntity = typeof AsafeGuardrailEventTable.$inferSelect;
+
+// ── W5 Per-user model grants ─────────────────────────────────────────────────
+// Admins can grant a specific user access to a model that their team's
+// allow-list would otherwise block. expiresAt=null means permanent.
+
+export const AsafeUserModelGrantTable = pgTable(
+  "asafe_user_model_grant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    modelId: text("model_id").notNull(),
+    grantedBy: text("granted_by").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_user_model_grant_user_id").on(t.userId),
+    unique("uq_user_model_grant").on(t.userId, t.modelId),
+  ],
+);
+
+export type AsafeUserModelGrantEntity = typeof AsafeUserModelGrantTable.$inferSelect;
+
+// ── W12 Feature Flags (kill switch + future toggles) ─────────────────────────
+
+export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {
+  name: text("name").primaryKey(), // e.g. "kill_switch", "compression_enabled"
+  enabled: boolean("enabled").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeFeatureFlagEntity = typeof AsafeFeatureFlagTable.$inferSelect;
+
+// ── W8 AUP Acceptance (GDPR/EU AI Act: informed consent record) ──────────────
+
+export const AsafeAupAcceptanceTable = pgTable(
+  "asafe_aup_acceptance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    aupVersion: text("aup_version").notNull().default("1.0"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("uq_aup_user_version").on(t.userId, t.aupVersion),
+    index("idx_aup_user_id").on(t.userId),
+  ],
+);
+
+export type AsafeAupAcceptanceEntity = typeof AsafeAupAcceptanceTable.$inferSelect;

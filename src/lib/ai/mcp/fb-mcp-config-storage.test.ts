@@ -381,3 +381,41 @@ describe("File-based MCP Config Storage", () => {
     });
   });
 });
+
+describe("File-based MCP Config Storage — additional invariants", () => {
+  let storage: ReturnType<typeof createFileBasedMCPConfigsStorage>;
+  let mockManager: Partial<MCPClientsManager>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockManager = { restart: vi.fn() };
+    vi.mocked(mkdir).mockResolvedValue(undefined);
+    vi.mocked(readFile).mockResolvedValue("{}");
+    vi.mocked(writeFile).mockResolvedValue(undefined);
+    storage = createFileBasedMCPConfigsStorage({ configDir: "/test-dir", manager: mockManager as MCPClientsManager });
+  });
+
+  it("loadAll returns an array", async () => {
+    vi.mocked(readFile).mockResolvedValue("[]");
+    const result = await storage.loadAll();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("loadAll returns empty array when config is empty object", async () => {
+    vi.mocked(readFile).mockResolvedValue("{}");
+    const result = await storage.loadAll();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("save calls writeFile at least once", async () => {
+    const config: MCPServerConfig = { command: "node", args: ["server.js"] };
+    await storage.save("my-server", config);
+    expect(writeFile).toHaveBeenCalled();
+  });
+
+  it("remove calls writeFile to persist updated config", async () => {
+    vi.mocked(readFile).mockResolvedValue(JSON.stringify({ "srv": { command: "x" } }));
+    await storage.remove("srv");
+    expect(writeFile).toHaveBeenCalled();
+  });
+});

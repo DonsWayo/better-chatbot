@@ -1,121 +1,131 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { envBooleanSchema, VisibilitySchema } from "./util";
 
 describe("envBooleanSchema", () => {
-  it("transforms 'true' to true", () => {
-    expect(envBooleanSchema.parse("true")).toBe(true);
+  it("returns false for undefined", () => {
+    const r = envBooleanSchema.safeParse(undefined);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(false);
   });
 
-  it("transforms 'TRUE' (case-insensitive) to true", () => {
-    expect(envBooleanSchema.parse("TRUE")).toBe(true);
+  it('transforms "true" to true', () => {
+    const r = envBooleanSchema.safeParse("true");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(true);
   });
 
-  it("transforms '1' to true", () => {
-    expect(envBooleanSchema.parse("1")).toBe(true);
+  it('transforms "TRUE" to true (case-insensitive)', () => {
+    const r = envBooleanSchema.safeParse("TRUE");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(true);
   });
 
-  it("transforms 'y' to true", () => {
-    expect(envBooleanSchema.parse("y")).toBe(true);
+  it('transforms "1" to true', () => {
+    const r = envBooleanSchema.safeParse("1");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(true);
   });
 
-  it("transforms 'Y' (case-insensitive) to true", () => {
-    expect(envBooleanSchema.parse("Y")).toBe(true);
+  it('transforms "y" to true', () => {
+    const r = envBooleanSchema.safeParse("y");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(true);
   });
 
-  it("transforms boolean true to true", () => {
-    expect(envBooleanSchema.parse(true)).toBe(true);
+  it('transforms "Y" to true (case-insensitive)', () => {
+    const r = envBooleanSchema.safeParse("Y");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(true);
   });
 
-  it("transforms 'false' to false", () => {
-    expect(envBooleanSchema.parse("false")).toBe(false);
+  it('transforms "false" to false', () => {
+    const r = envBooleanSchema.safeParse("false");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(false);
   });
 
-  it("transforms '0' to false", () => {
-    expect(envBooleanSchema.parse("0")).toBe(false);
+  it('transforms "0" to false', () => {
+    const r = envBooleanSchema.safeParse("0");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(false);
   });
 
-  it("transforms boolean false to false", () => {
-    expect(envBooleanSchema.parse(false)).toBe(false);
+  it('transforms "no" to false', () => {
+    const r = envBooleanSchema.safeParse("no");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(false);
   });
 
-  it("transforms undefined to false", () => {
-    expect(envBooleanSchema.parse(undefined)).toBe(false);
+  it("passes through boolean true", () => {
+    const r = envBooleanSchema.safeParse(true);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(true);
   });
 
-  it("transforms empty string to false", () => {
-    expect(envBooleanSchema.parse("")).toBe(false);
-  });
-
-  it("transforms arbitrary string to false", () => {
-    expect(envBooleanSchema.parse("yes")).toBe(false);
-    expect(envBooleanSchema.parse("on")).toBe(false);
-  });
-});
-
-describe("envBooleanSchema — return type invariants", () => {
-  it("always returns a boolean", () => {
-    for (const input of ["true", "false", "1", "0", "y", "", undefined, true, false]) {
-      expect(typeof envBooleanSchema.parse(input)).toBe("boolean");
-    }
-  });
-
-  it("safeParse always succeeds (schema is optional)", () => {
-    expect(envBooleanSchema.safeParse(undefined).success).toBe(true);
-    expect(envBooleanSchema.safeParse("true").success).toBe(true);
-    expect(envBooleanSchema.safeParse("anything").success).toBe(true);
+  it("passes through boolean false", () => {
+    const r = envBooleanSchema.safeParse(false);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toBe(false);
   });
 });
 
 describe("VisibilitySchema", () => {
-  it("accepts 'public'", () => {
+  it('accepts "public"', () => {
     expect(VisibilitySchema.safeParse("public").success).toBe(true);
   });
 
-  it("accepts 'private'", () => {
+  it('accepts "private"', () => {
     expect(VisibilitySchema.safeParse("private").success).toBe(true);
   });
 
-  it("accepts 'readonly'", () => {
+  it('accepts "readonly"', () => {
     expect(VisibilitySchema.safeParse("readonly").success).toBe(true);
   });
 
-  it("rejects 'shared'", () => {
-    expect(VisibilitySchema.safeParse("shared").success).toBe(false);
+  it("rejects unknown value", () => {
+    expect(VisibilitySchema.safeParse("hidden").success).toBe(false);
   });
 
   it("rejects empty string", () => {
     expect(VisibilitySchema.safeParse("").success).toBe(false);
   });
 
+  it("has exactly 3 options", () => {
+    expect(VisibilitySchema.options).toHaveLength(3);
+  });
+
+  it("rejects uppercase PUBLIC", () => {
+    expect(VisibilitySchema.safeParse("PUBLIC").success).toBe(false);
+  });
+
   it("rejects undefined", () => {
     expect(VisibilitySchema.safeParse(undefined).success).toBe(false);
   });
-
-  it("rejects 'Public' (case-sensitive)", () => {
-    expect(VisibilitySchema.safeParse("Public").success).toBe(false);
-  });
-
-  it("rejects numeric value", () => {
-    expect(VisibilitySchema.safeParse(1).success).toBe(false);
-  });
 });
 
-describe("VisibilitySchema — return type invariants", () => {
-  it("parse returns the exact string passed", () => {
-    expect(VisibilitySchema.parse("public")).toBe("public");
-    expect(VisibilitySchema.parse("private")).toBe("private");
-    expect(VisibilitySchema.parse("readonly")).toBe("readonly");
+describe("envBooleanSchema — falsy string values", () => {
+  it('"no" → false', () => {
+    const r = envBooleanSchema.safeParse("no");
+    expect(r.success && r.data).toBe(false);
   });
 
-  it("enum options are exactly 3", () => {
-    const opts = VisibilitySchema.options;
-    expect(opts.length).toBe(3);
+  it('"off" → false (not in truthy list)', () => {
+    const r = envBooleanSchema.safeParse("off");
+    expect(r.success && r.data).toBe(false);
   });
 
-  it("enum contains public, private, readonly", () => {
-    const opts = VisibilitySchema.options;
-    expect(opts).toContain("public");
-    expect(opts).toContain("private");
-    expect(opts).toContain("readonly");
+  it('"yes" → false (not in truthy list)', () => {
+    const r = envBooleanSchema.safeParse("yes");
+    expect(r.success && r.data).toBe(false);
+  });
+
+  it('"2" → false (only "1" is truthy)', () => {
+    const r = envBooleanSchema.safeParse("2");
+    expect(r.success && r.data).toBe(false);
+  });
+
+  it("empty string → false", () => {
+    const r = envBooleanSchema.safeParse("");
+    expect(r.success && r.data).toBe(false);
   });
 });

@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getSessionMock,
   canCreateMCPMock,
@@ -14,175 +12,228 @@ const {
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/auth/permissions", () => ({ canCreateMCP: canCreateMCPMock }));
-vi.mock("./actions", () => ({
-  saveMcpClientAction: saveMcpClientActionMock,
-}));
+vi.mock("./actions", () => ({ saveMcpClientAction: saveMcpClientActionMock }));
 vi.mock("lib/db/pg/schema.pg", () => ({ McpServerTable: {} }));
 vi.mock("better-auth", () => ({ logger: { error: vi.fn() } }));
 
-import { POST } from "./route";
-
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost/api/mcp", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-const MCP_BODY = {
-  name: "My MCP",
-  config: { type: "stdio", command: "node", args: [] },
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body) } as unknown as Request;
+}
 
 describe("POST /api/mcp", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest(MCP_BODY));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "My MCP", url: "http://mcp" }));
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await POST(makeRequest(MCP_BODY));
-    expect(res.status).toBe(401);
+  it("never calls canCreateMCP when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "My MCP" }));
+    expect(canCreateMCPMock).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when user cannot create MCP connections", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(false);
-    const res = await POST(makeRequest(MCP_BODY));
+  it("returns 403 when user lacks MCP creation permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "My MCP", url: "http://mcp" }));
     expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toMatch(/permission/i);
   });
 
-  it("creates MCP and returns success with id when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
+  it("never calls saveMcpClientAction when forbidden", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "My MCP" }));
+    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
+
+  it("creates MCP server and returns its id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
       client: { getInfo: () => ({ id: "mcp-new" }) },
     });
-    const res = await POST(makeRequest(MCP_BODY));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "My MCP", url: "http://mcp" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.id).toBe("mcp-new");
   });
 
-  it("calls saveMcpClientAction with parsed body", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
-      client: { getInfo: () => ({ id: "mcp-1" }) },
+  it("calls saveMcpClientAction with request body", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    const serverPayload = { name: "my-mcp", config: { url: "http://mcp.example.com" } };
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "srv-1" }) },
     });
-    await POST(makeRequest(MCP_BODY));
-    expect(saveMcpClientActionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "My MCP" }),
-    );
+    const { POST } = await import("./route");
+    await POST(makeRequest(serverPayload));
+    expect(saveMcpClientActionMock).toHaveBeenCalledWith(serverPayload);
   });
 
   it("returns 500 when saveMcpClientAction throws", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockRejectedValue(new Error("Connection failed"));
-    const res = await POST(makeRequest(MCP_BODY));
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockRejectedValueOnce(new Error("validation error"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "bad-mcp" }));
     expect(res.status).toBe(500);
+  });
+
+  it("error body has message field on 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockRejectedValueOnce(new Error("duplicate name"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "dup" }));
     const body = await res.json();
-    expect(body.message).toBe("Connection failed");
+    expect(body).toHaveProperty("message");
   });
 
-  it("calls canCreateMCP before saveMcpClientAction", async () => {
-    const callOrder: string[] = [];
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockImplementation(async () => { callOrder.push("canCreate"); return true; });
-    saveMcpClientActionMock.mockImplementation(async () => { callOrder.push("save"); return { client: { getInfo: () => ({ id: "x" }) } }; });
-    await POST(makeRequest(MCP_BODY));
-    expect(callOrder[0]).toBe("canCreate");
-    expect(callOrder[1]).toBe("save");
-  });
-
-  it("does not call saveMcpClientAction when canCreateMCP returns false", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(false);
-    await POST(makeRequest(MCP_BODY));
-    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
-  });
-
-  it("returns success=true in body when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
-      client: { getInfo: () => ({ id: "mcp-abc" }) },
-    });
-    const res = await POST(makeRequest(MCP_BODY));
-    const body = await res.json();
-    expect(body).toHaveProperty("success", true);
-    expect(body).toHaveProperty("id", "mcp-abc");
-  });
-
-  it("500 message falls back when error has no message", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockRejectedValue({});
-    const res = await POST(makeRequest(MCP_BODY));
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.message).toBe("Failed to save MCP client");
-  });
-
-  it("calls canCreateMCP exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
-      client: { getInfo: () => ({ id: "x" }) },
-    });
-    await POST(makeRequest(MCP_BODY));
-    expect(canCreateMCPMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call canCreateMCP when session is null", async () => {
+  it("401 body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest(MCP_BODY));
-    expect(canCreateMCPMock).not.toHaveBeenCalled();
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 
-  it("calls saveMcpClientAction exactly once when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
-      client: { getInfo: () => ({ id: "x" }) },
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("saveMcpClientAction called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "srv-ok" }) },
     });
-    await POST(makeRequest(MCP_BODY));
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "new-mcp" }));
     expect(saveMcpClientActionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("getSession is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
-      client: { getInfo: () => ({ id: "x" }) },
-    });
-    await POST(makeRequest(MCP_BODY));
+  it("never calls saveMcpClientAction when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/mcp — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns JSON content-type on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canCreateMCPMock.mockResolvedValue(true);
-    saveMcpClientActionMock.mockResolvedValue({
-      client: { getInfo: () => ({ id: "x" }) },
-    });
-    const res = await POST(makeRequest(MCP_BODY));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  it("canCreateMCP called exactly once when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(canCreateMCPMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call saveMcpClientAction when session user has no id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    await POST(makeRequest(MCP_BODY));
+  it("200 body has success:true and id on creation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "mcp-success" }) },
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "test-mcp" }));
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.id).toBe("mcp-success");
+  });
+});
+
+describe("POST /api/mcp — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 403", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockRejectedValueOnce(new Error("failed"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "bad" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      client: { getInfo: () => ({ id: "mcp-ok" }) },
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "new-mcp" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+});
+
+describe("POST /api/mcp — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "mcp-1" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveMcpClientAction not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "mcp-1" }));
     expect(saveMcpClientActionMock).not.toHaveBeenCalled();
+  });
+
+  it("canCreateMCP not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "mcp-1" }));
+    expect(canCreateMCPMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "mcp-1" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

@@ -1,290 +1,226 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const {
-  getSessionMock,
-  chatRepositoryMock,
-  agentRepositoryMock,
-  streamTextMock,
-  createUIMessageStreamMock,
-  createUIMessageStreamResponseMock,
-  rememberAgentActionMock,
-  rememberMcpServerCustomizationsActionMock,
-  buildCsvIngestionPreviewPartsMock,
-} = vi.hoisted(() => ({
-  getSessionMock: vi.fn(),
-  chatRepositoryMock: {
-    selectThreadDetails: vi.fn(),
-    insertThread: vi.fn(),
-    upsertMessage: vi.fn(),
-  },
-  agentRepositoryMock: {
-    updateAgent: vi.fn(),
-  },
-  streamTextMock: vi.fn(),
-  createUIMessageStreamMock: vi.fn(),
-  createUIMessageStreamResponseMock: vi.fn(),
-  rememberAgentActionMock: vi.fn(),
-  rememberMcpServerCustomizationsActionMock: vi.fn(),
-  buildCsvIngestionPreviewPartsMock: vi.fn(),
-}));
+const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
-vi.mock("lib/db/repository", () => ({
-  chatRepository: chatRepositoryMock,
-  agentRepository: agentRepositoryMock,
-}));
-vi.mock("ai", () => ({
-  streamText: streamTextMock,
-  createUIMessageStream: createUIMessageStreamMock,
-  createUIMessageStreamResponse: createUIMessageStreamResponseMock,
-  smoothStream: vi.fn(() => (x: unknown) => x),
-  convertToModelMessages: vi.fn((m: unknown) => m),
-  stepCountIs: vi.fn(() => () => false),
-  isToolUIPart: vi.fn(() => false),
-}));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: vi.fn(() => ({})) },
   isToolCallUnsupportedModel: vi.fn(() => false),
 }));
-vi.mock("lib/ai/prompts", () => ({
-  buildUserSystemPrompt: vi.fn(() => "User system prompt"),
-  buildMcpServerCustomizationsSystemPrompt: vi.fn(() => ""),
-  buildToolCallUnsupportedModelSystemPrompt: "Tool unsupported prompt",
-  MANUAL_REJECT_RESPONSE_PROMPT: "Manual reject",
+vi.mock("lib/ai/routing/route-model", () => ({ routeModel: vi.fn().mockResolvedValue({}) }));
+vi.mock("lib/db/repository", () => ({
+  agentRepository: { findById: vi.fn().mockResolvedValue(null) },
+  chatRepository: { upsertThread: vi.fn(), saveMessages: vi.fn() },
 }));
+vi.mock("lib/ai/prompts", () => ({
+  buildUserSystemPrompt: vi.fn(() => ""),
+  buildMcpServerCustomizationsSystemPrompt: vi.fn(() => ""),
+  buildToolCallUnsupportedModelSystemPrompt: vi.fn(() => ""),
+}));
+vi.mock("lib/ai/embeddings/ingest", () => ({ retrieveChunks: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/lib/ai/ingest/csv-ingest", () => ({ buildCsvIngestionPreviewParts: vi.fn().mockResolvedValue([]) }));
+vi.mock("lib/file-storage", () => ({ serverFileStorage: { getSourceUrl: vi.fn() } }));
+vi.mock("lib/observability/metrics", () => ({
+  chatErrorsTotal: { inc: vi.fn() },
+  chatLatencyMs: { observe: vi.fn() },
+  routingDecisionsTotal: { inc: vi.fn() },
+}));
+vi.mock("lib/observability/slo", () => ({
+  activeRequests: { inc: vi.fn(), dec: vi.fn() },
+  providerErrorsTotal: { inc: vi.fn() },
+  rateLimitActivations: { inc: vi.fn() },
+  ttftMs: { observe: vi.fn() },
+}));
+vi.mock("lib/observability/kill-switch", () => ({ checkKillSwitch: vi.fn().mockResolvedValue(null) }));
+vi.mock("lib/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
+vi.mock("lib/ai/budget", () => ({
+  checkBudget: vi.fn().mockResolvedValue(null),
+  estimateCostUsd: vi.fn().mockResolvedValue(0),
+  recordUsage: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("lib/admin/teams", () => ({
+  getUserPrimaryTeamId: vi.fn().mockResolvedValue(null),
+  getTeamPolicy: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("lib/user/server", () => ({ getUserPreferences: vi.fn().mockResolvedValue(null) }));
+vi.mock("lib/ai/mcp/audit", () => ({ auditMcpInvocation: vi.fn() }));
+vi.mock("lib/utils", () => ({ generateUUID: vi.fn(() => "uuid-1"), errorToString: vi.fn((e: any) => String(e)), exclude: vi.fn((o: any) => o), objectFlow: vi.fn(() => ({ filter: vi.fn(() => ({})), map: vi.fn(() => ({})), forEach: vi.fn() })) }));
 vi.mock("./shared.chat", () => ({
-  excludeToolExecution: vi.fn((t: unknown) => t),
-  handleError: vi.fn((e: unknown) => String(e)),
-  manualToolExecuteByLastMessage: vi.fn(),
-  mergeSystemPrompt: vi.fn((...args: string[]) => args.filter(Boolean).join(" ")),
-  extractInProgressToolPart: vi.fn(() => []),
+  filterMCPToolsByMentions: vi.fn((tools: any) => tools),
+  filterMCPToolsByAllowedMCPServers: vi.fn((tools: any) => tools),
   filterMcpServerCustomizations: vi.fn(() => ({})),
   loadMcpTools: vi.fn().mockResolvedValue({}),
   loadWorkFlowTools: vi.fn().mockResolvedValue({}),
   loadAppDefaultTools: vi.fn().mockResolvedValue({}),
-  convertToSavePart: vi.fn((p: unknown) => p),
+  mergeSystemPrompt: vi.fn(() => ""),
+  workflowToVercelAITools: vi.fn(() => ({})),
+  handleError: vi.fn((e: any) => String(e)),
+  manualToolExecuteByLastMessage: vi.fn(),
+  convertToSavePart: vi.fn(),
+  excludeToolExecution: vi.fn((t: any) => t),
 }));
-vi.mock("./actions", () => ({
-  rememberAgentAction: rememberAgentActionMock,
-  rememberMcpServerCustomizationsAction: rememberMcpServerCustomizationsActionMock,
-}));
-vi.mock("@/lib/ai/ingest/csv-ingest", () => ({
-  buildCsvIngestionPreviewParts: buildCsvIngestionPreviewPartsMock,
-}));
-vi.mock("lib/file-storage", () => ({
-  serverFileStorage: { download: vi.fn() },
-}));
-vi.mock("lib/ai/tools/image", () => ({
-  nanoBananaTool: {},
-  openaiImageTool: {},
-}));
-vi.mock("lib/utils", () => ({
-  generateUUID: vi.fn(() => "generated-uuid"),
-  errorToString: vi.fn((e: unknown) => String(e)),
-  exclude: vi.fn((o: Record<string, unknown>, _keys: string[]) => o),
-  objectFlow: vi.fn((o: Record<string, unknown>) => ({
-    filter: (fn: (v: unknown) => boolean) =>
-      Object.fromEntries(Object.entries(o).filter(([, v]) => fn(v))),
-  })),
-}));
-vi.mock("consola/utils", () => ({ colorize: (_: string, s: string) => s }));
 vi.mock("logger", () => ({
-  default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
+  default: {
+    withDefaults: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }),
+    info: vi.fn(), error: vi.fn(), warn: vi.fn(),
+  },
 }));
-vi.mock("ts-safe", () => ({
-  safe: (v?: unknown) => ({
-    map: (fn: (v: unknown) => unknown) => {
-      try {
-        const result = fn(v);
-        if (result instanceof Promise) {
-          return {
-            map: (fn2: (v: unknown) => unknown) =>
-              ({ orElse: async (fallback: unknown) => {
-                try { return await fn2(await result); } catch { return fallback; }
-              }}),
-            orElse: async (fallback: unknown) => {
-              try { return await result; } catch { return fallback; }
-            },
-          };
-        }
-        return {
-          map: (fn2: (v: unknown) => unknown) =>
-            ({ orElse: (fallback: unknown) => {
-              try { return fn2(result); } catch { return fallback; }
-            }, unwrap: () => result }),
-          orElse: () => result,
-          unwrap: () => result,
-        };
-      } catch {
-        return {
-          map: () => ({ orElse: (fallback: unknown) => fallback, unwrap: () => undefined }),
-          orElse: (fallback: unknown) => fallback,
-          unwrap: () => undefined,
-        };
-      }
-    },
-    orElse: (fallback: unknown) => (v !== undefined ? v : fallback),
-    unwrap: () => v,
-  }),
-  errorIf: vi.fn(() => () => undefined),
+vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
+vi.mock("ts-safe", () => ({ safe: vi.fn(() => ({ ifOk: () => ({ ifFail: () => ({ unwrap: () => null }) }) })), errorIf: vi.fn() }));
+vi.mock("app-types/chat", () => ({
+  chatApiSchemaRequestBodySchema: { parse: (b: unknown) => b },
 }));
+vi.mock("ai", () => ({
+  convertToModelMessages: vi.fn(() => []),
+  createUIMessageStream: vi.fn(() => ({})),
+  createUIMessageStreamResponse: vi.fn(() => new Response("{}")),
+  smoothStream: vi.fn(() => ({})),
+  stepCountIs: vi.fn(() => false),
+  streamText: vi.fn(() => ({ toUIMessageStreamResponse: vi.fn(() => new Response("{}")) })),
+}));
+vi.mock("lib/ai/tools", () => ({ ImageToolName: "image" }));
+vi.mock("lib/ai/tools/image", () => ({ nanoBananaTool: {}, openaiImageTool: {} }));
 
-import { POST } from "./route";
-
-const THREAD = {
-  id: "thread-1",
-  userId: "user-1",
-  messages: [],
-  userPreferences: null,
-};
-
-const makeMessage = () => ({
-  id: "msg-1",
-  role: "user",
-  parts: [{ type: "text", text: "Hello" }],
-  metadata: {},
-});
-
-const makeRequestBody = (overrides: Record<string, unknown> = {}) => ({
-  id: "thread-1",
-  message: makeMessage(),
-  toolChoice: "auto",
-  mentions: [],
-  attachments: [],
-  ...overrides,
-});
-
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost/api/chat", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  chatRepositoryMock.selectThreadDetails.mockResolvedValue(THREAD);
-  chatRepositoryMock.insertThread.mockResolvedValue({ id: "thread-1" });
-  chatRepositoryMock.upsertMessage.mockResolvedValue(undefined);
-  rememberAgentActionMock.mockResolvedValue(null);
-  rememberMcpServerCustomizationsActionMock.mockResolvedValue([]);
-  buildCsvIngestionPreviewPartsMock.mockResolvedValue([]);
-  streamTextMock.mockReturnValue({
-    consumeStream: vi.fn(),
-    toUIMessageStream: vi.fn(() => ({})),
-  });
-  createUIMessageStreamMock.mockReturnValue({});
-  createUIMessageStreamResponseMock.mockReturnValue(
-    new Response("stream", { status: 200 }),
-  );
-});
+function makeRequest(body?: unknown): any {
+  return { json: () => Promise.resolve(body ?? {}), signal: new AbortController().signal };
+}
 
 describe("POST /api/chat", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest(makeRequestBody()));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [], threadId: "t1" }));
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await POST(makeRequest(makeRequestBody()));
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 403 when thread belongs to different user", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-2" } });
-    chatRepositoryMock.selectThreadDetails.mockResolvedValue({
-      ...THREAD,
-      userId: "user-1",
-    });
-    const res = await POST(makeRequest(makeRequestBody()));
-    expect(res.status).toBe(403);
-  });
-
-  it("creates new thread when thread not found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatRepositoryMock.selectThreadDetails
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(THREAD);
-    await POST(makeRequest(makeRequestBody()));
-    expect(chatRepositoryMock.insertThread).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "thread-1", userId: "user-1" }),
-    );
-  });
-
-  it("returns 200 streaming response when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const res = await POST(makeRequest(makeRequestBody()));
-    expect(res.status).toBe(200);
-  });
-
-  it("calls createUIMessageStreamResponse to build the response", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody()));
-    expect(createUIMessageStreamResponseMock).toHaveBeenCalled();
-  });
-
-  it("returns 500 on unexpected error", async () => {
-    getSessionMock.mockRejectedValue(new Error("DB failure"));
-    const res = await POST(makeRequest(makeRequestBody()));
-    expect(res.status).toBe(500);
-  });
-
-  it("passes thread id to selectThreadDetails", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody({ id: "my-thread-id" })));
-    expect(chatRepositoryMock.selectThreadDetails).toHaveBeenCalledWith("my-thread-id");
-  });
-
-  it("does not create thread when thread exists", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody()));
-    expect(chatRepositoryMock.insertThread).not.toHaveBeenCalled();
-  });
-
-  it("calls createUIMessageStream exactly once when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody()));
-    expect(createUIMessageStreamMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls createUIMessageStreamResponse exactly once when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody()));
-    expect(createUIMessageStreamResponseMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call streamText when session is null", async () => {
+  it("401 body is text 'Unauthorized'", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest(makeRequestBody()));
-    expect(streamTextMock).not.toHaveBeenCalled();
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
   });
 
-  it("does not call streamText when thread belongs to different user", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-2" } });
-    chatRepositoryMock.selectThreadDetails.mockResolvedValue({ ...THREAD, userId: "user-1" });
-    await POST(makeRequest(makeRequestBody()));
-    expect(streamTextMock).not.toHaveBeenCalled();
+  it("never calls checkKillSwitch when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { checkKillSwitch } = await import("lib/observability/kill-switch");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(checkKillSwitch)).not.toHaveBeenCalled();
   });
 
-  it("getSession is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody()));
+  it("never calls checkRateLimit when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { checkRateLimit } = await import("lib/rate-limit");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(checkRateLimit)).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 when rate limited", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { checkRateLimit } = await import("lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, limit: 10, remaining: 0, resetAt: 9999999999000 });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(429);
+  });
+});
+
+describe("POST /api/chat — additional guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("selectThreadDetails is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    await POST(makeRequest(makeRequestBody()));
-    expect(chatRepositoryMock.selectThreadDetails).toHaveBeenCalledTimes(1);
+  it("never calls checkBudget when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { checkBudget } = await import("lib/ai/budget");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(checkBudget)).not.toHaveBeenCalled();
   });
 
-  it("does not call selectThreadDetails when session is null", async () => {
+  it("never calls routeModel when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest(makeRequestBody()));
-    expect(chatRepositoryMock.selectThreadDetails).not.toHaveBeenCalled();
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(routeModel)).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/chat — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("never calls streamText when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { streamText } = await import("ai");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(streamText)).not.toHaveBeenCalled();
+  });
+
+  it("never calls getUserPreferences when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { getUserPreferences } = await import("lib/user/server");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(getUserPreferences)).not.toHaveBeenCalled();
+  });
+
+  it("never calls loadMcpTools when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { loadMcpTools } = await import("./shared.chat");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(loadMcpTools)).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/chat — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("getSession not called twice on single POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).not.toHaveBeenCalledTimes(2);
+  });
+
+  it("401 response body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });

@@ -88,6 +88,15 @@ export async function saveMcpClientAction(
         "Connect to a remote MCP server URL instead — local servers are only available in the desktop app.",
     );
   }
+
+  // Org-scope and team-scope MCP servers are admin-only
+  if (server.scope === "org" || server.scope === "team") {
+    if (currentUser.role !== "admin") {
+      throw new Error(
+        "Only administrators can register org-wide or team-scoped MCP servers",
+      );
+    }
+  }
   // Validate name to ensure it only contains alphanumeric characters and hyphens
   const nameSchema = z.string().regex(/^[a-zA-Z0-9\-]+$/, {
     message:

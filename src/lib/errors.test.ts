@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   AppError,
   UnauthorizedError,
@@ -12,191 +12,128 @@ import {
 } from "./errors";
 
 describe("AppError", () => {
-  it("has correct name", () => {
-    const e = new AppError("CODE", "msg");
-    expect(e.name).toBe("AppError");
-  });
-
-  it("message matches constructor arg", () => {
-    const e = new AppError("X", "my message");
-    expect(e.message).toBe("my message");
-  });
-
-  it("code matches constructor arg", () => {
-    const e = new AppError("MY_CODE", "msg");
-    expect(e.code).toBe("MY_CODE");
-  });
-
-  it("is an instance of Error", () => {
-    expect(new AppError("C", "m")).toBeInstanceOf(Error);
+  it("stores code and message", () => {
+    const err = new AppError("MY_CODE", "something went wrong");
+    expect(err.code).toBe("MY_CODE");
+    expect(err.message).toBe("something went wrong");
+    expect(err.name).toBe("AppError");
+    expect(err).toBeInstanceOf(Error);
   });
 });
 
 describe("UnauthorizedError", () => {
-  it("name is UnauthorizedError", () => {
-    expect(new UnauthorizedError().name).toBe("UnauthorizedError");
-  });
-
-  it("code is UNAUTHORIZED", () => {
-    expect(new UnauthorizedError().code).toBe("UNAUTHORIZED");
-  });
-
-  it("has default message", () => {
-    expect(new UnauthorizedError().message).toBeTruthy();
+  it("uses default message and UNAUTHORIZED code", () => {
+    const err = new UnauthorizedError();
+    expect(err.code).toBe("UNAUTHORIZED");
+    expect(err.message).toBe("Authentication required");
+    expect(err.name).toBe("UnauthorizedError");
   });
 
   it("accepts custom message", () => {
-    expect(new UnauthorizedError("custom").message).toBe("custom");
-  });
-
-  it("is an instance of AppError", () => {
-    expect(new UnauthorizedError()).toBeInstanceOf(AppError);
+    const err = new UnauthorizedError("Please log in");
+    expect(err.message).toBe("Please log in");
   });
 });
 
 describe("ForbiddenError", () => {
-  it("name is ForbiddenError", () => {
-    expect(new ForbiddenError().name).toBe("ForbiddenError");
-  });
-
-  it("code is FORBIDDEN", () => {
-    expect(new ForbiddenError().code).toBe("FORBIDDEN");
-  });
-
-  it("accepts custom message", () => {
-    expect(new ForbiddenError("nope").message).toBe("nope");
-  });
-
-  it("is an instance of AppError", () => {
-    expect(new ForbiddenError()).toBeInstanceOf(AppError);
-  });
-});
-
-describe("FileStorageError", () => {
-  it("name is FileStorageError", () => {
-    const e = new FileStorageError("msg", "CODE");
-    expect(e.name).toBe("FileStorageError");
-  });
-
-  it("code is set", () => {
-    const e = new FileStorageError("msg", "MY_CODE");
-    expect(e.code).toBe("MY_CODE");
-  });
-
-  it("cause is stored when provided", () => {
-    const cause = new Error("root");
-    const e = new FileStorageError("msg", "C", cause);
-    expect(e.cause).toBe(cause);
-  });
-
-  it("is an instance of Error", () => {
-    expect(new FileStorageError("m", "c")).toBeInstanceOf(Error);
+  it("uses FORBIDDEN code and default message", () => {
+    const err = new ForbiddenError();
+    expect(err.code).toBe("FORBIDDEN");
+    expect(err.message).toBe("Access forbidden");
+    expect(err.name).toBe("ForbiddenError");
   });
 });
 
 describe("FileNotFoundError", () => {
-  it("name is FileNotFoundError", () => {
-    expect(new FileNotFoundError("file-123").name).toBe("FileNotFoundError");
-  });
-
-  it("code is FILE_NOT_FOUND", () => {
-    expect(new FileNotFoundError("x").code).toBe("FILE_NOT_FOUND");
-  });
-
-  it("message includes the file id", () => {
-    expect(new FileNotFoundError("abc-123").message).toContain("abc-123");
-  });
-
-  it("is a FileStorageError", () => {
-    expect(new FileNotFoundError("x")).toBeInstanceOf(FileStorageError);
+  it("includes fileId in message with FILE_NOT_FOUND code", () => {
+    const err = new FileNotFoundError("file-abc");
+    expect(err.message).toContain("file-abc");
+    expect(err.code).toBe("FILE_NOT_FOUND");
+    expect(err.name).toBe("FileNotFoundError");
+    expect(err).toBeInstanceOf(FileStorageError);
   });
 });
 
 describe("FileTooLargeError", () => {
-  it("name is FileTooLargeError", () => {
-    expect(new FileTooLargeError(100, 50).name).toBe("FileTooLargeError");
-  });
-
-  it("code is FILE_TOO_LARGE", () => {
-    expect(new FileTooLargeError(100, 50).code).toBe("FILE_TOO_LARGE");
-  });
-
-  it("message includes size and max", () => {
-    const e = new FileTooLargeError(1000, 500);
-    expect(e.message).toContain("1000");
-    expect(e.message).toContain("500");
+  it("includes size and maxSize in message", () => {
+    const err = new FileTooLargeError(10_000_000, 5_000_000);
+    expect(err.message).toContain("10000000");
+    expect(err.message).toContain("5000000");
+    expect(err.code).toBe("FILE_TOO_LARGE");
   });
 });
 
 describe("StorageQuotaExceededError", () => {
-  it("name is StorageQuotaExceededError", () => {
-    expect(new StorageQuotaExceededError().name).toBe("StorageQuotaExceededError");
-  });
-
-  it("code is QUOTA_EXCEEDED", () => {
-    expect(new StorageQuotaExceededError().code).toBe("QUOTA_EXCEEDED");
-  });
-
-  it("is a FileStorageError", () => {
-    expect(new StorageQuotaExceededError()).toBeInstanceOf(FileStorageError);
+  it("has QUOTA_EXCEEDED code", () => {
+    const err = new StorageQuotaExceededError();
+    expect(err.code).toBe("QUOTA_EXCEEDED");
+    expect(err.message).toBe("Storage quota exceeded");
   });
 });
 
 describe("UnsupportedFileTypeError", () => {
-  it("name is UnsupportedFileTypeError", () => {
-    expect(new UnsupportedFileTypeError("text/plain").name).toBe("UnsupportedFileTypeError");
-  });
-
-  it("code is UNSUPPORTED_TYPE", () => {
-    expect(new UnsupportedFileTypeError("x/y").code).toBe("UNSUPPORTED_TYPE");
-  });
-
-  it("message includes mime type", () => {
-    expect(new UnsupportedFileTypeError("application/x-custom").message).toContain("application/x-custom");
+  it("includes mimeType in message", () => {
+    const err = new UnsupportedFileTypeError("application/x-evil");
+    expect(err.message).toContain("application/x-evil");
+    expect(err.code).toBe("UNSUPPORTED_TYPE");
   });
 });
 
 describe("NotImplementedError", () => {
-  it("name is NotImplementedError", () => {
-    expect(new NotImplementedError("todo").name).toBe("NotImplementedError");
-  });
-
-  it("message matches arg", () => {
-    expect(new NotImplementedError("not done yet").message).toBe("not done yet");
-  });
-
-  it("is an instance of Error", () => {
-    expect(new NotImplementedError("x")).toBeInstanceOf(Error);
+  it("stores message and correct name", () => {
+    const err = new NotImplementedError("not done yet");
+    expect(err.message).toBe("not done yet");
+    expect(err.name).toBe("NotImplementedError");
+    expect(err).toBeInstanceOf(Error);
   });
 });
 
-describe("error hierarchy invariants", () => {
-  it("UnauthorizedError is an Error", () => {
-    expect(new UnauthorizedError()).toBeInstanceOf(Error);
+describe("FileStorageError subclasses — inheritance", () => {
+  it("FileNotFoundError is instanceof FileStorageError", () => {
+    expect(new FileNotFoundError("f1")).toBeInstanceOf(FileStorageError);
   });
 
-  it("ForbiddenError is an Error", () => {
-    expect(new ForbiddenError()).toBeInstanceOf(Error);
+  it("FileTooLargeError is instanceof FileStorageError", () => {
+    expect(new FileTooLargeError(100, 50)).toBeInstanceOf(FileStorageError);
   });
 
-  it("FileNotFoundError is an Error", () => {
-    expect(new FileNotFoundError("id")).toBeInstanceOf(Error);
+  it("StorageQuotaExceededError is instanceof FileStorageError", () => {
+    expect(new StorageQuotaExceededError()).toBeInstanceOf(FileStorageError);
   });
 
-  it("all error classes produce non-empty messages", () => {
+  it("UnsupportedFileTypeError is instanceof FileStorageError", () => {
+    expect(new UnsupportedFileTypeError("text/plain")).toBeInstanceOf(FileStorageError);
+  });
+});
+
+describe("AppError subclasses — inheritance", () => {
+  it("UnauthorizedError is instanceof AppError", () => {
+    expect(new UnauthorizedError()).toBeInstanceOf(AppError);
+  });
+
+  it("ForbiddenError is instanceof AppError", () => {
+    expect(new ForbiddenError()).toBeInstanceOf(AppError);
+  });
+
+  it("FileStorageError is instanceof Error (not AppError — separate hierarchy)", () => {
+    const err = new FileStorageError("fs error", "FS_ERR");
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(AppError);
+  });
+
+  it("all errors are also instanceof Error", () => {
     const errors = [
-      new AppError("C", "m"),
+      new AppError("X", "x"),
       new UnauthorizedError(),
       new ForbiddenError(),
       new FileNotFoundError("f"),
-      new FileTooLargeError(1, 2),
+      new FileTooLargeError(1, 0),
       new StorageQuotaExceededError(),
-      new UnsupportedFileTypeError("x/y"),
-      new NotImplementedError("todo"),
+      new UnsupportedFileTypeError("t"),
+      new NotImplementedError("ni"),
     ];
     for (const e of errors) {
-      expect(typeof e.message).toBe("string");
-      expect(e.message.length).toBeGreaterThan(0);
+      expect(e).toBeInstanceOf(Error);
     }
   });
 });

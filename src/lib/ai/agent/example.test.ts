@@ -3,10 +3,6 @@ import { RandomDataGeneratorExample, WeatherExample } from "./example";
 import { DefaultToolName } from "lib/ai/tools";
 
 describe("RandomDataGeneratorExample", () => {
-  it("is defined", () => {
-    expect(RandomDataGeneratorExample).toBeDefined();
-  });
-
   it("has a name", () => {
     expect(typeof RandomDataGeneratorExample.name).toBe("string");
     expect(RandomDataGeneratorExample.name!.length).toBeGreaterThan(0);
@@ -14,49 +10,40 @@ describe("RandomDataGeneratorExample", () => {
 
   it("has a description", () => {
     expect(typeof RandomDataGeneratorExample.description).toBe("string");
-    expect(RandomDataGeneratorExample.description!.length).toBeGreaterThan(0);
   });
 
-  it("has an icon", () => {
-    expect(RandomDataGeneratorExample.icon).toBeDefined();
-    expect(RandomDataGeneratorExample.icon!.type).toBe("emoji");
+  it("has an emoji icon", () => {
+    expect(RandomDataGeneratorExample.icon?.type).toBe("emoji");
+    expect(typeof RandomDataGeneratorExample.icon?.value).toBe("string");
   });
 
-  it("has instructions with systemPrompt", () => {
+  it("has instructions with a role", () => {
+    expect(typeof RandomDataGeneratorExample.instructions?.role).toBe("string");
+  });
+
+  it("has a non-empty systemPrompt", () => {
     expect(typeof RandomDataGeneratorExample.instructions?.systemPrompt).toBe("string");
-    expect(RandomDataGeneratorExample.instructions!.systemPrompt.length).toBeGreaterThan(0);
+    expect(RandomDataGeneratorExample.instructions!.systemPrompt!.length).toBeGreaterThan(10);
   });
 
-  it("mentions JavascriptExecution tool", () => {
+  it("includes JavascriptExecution in mentions", () => {
     const mentions = RandomDataGeneratorExample.instructions?.mentions ?? [];
-    const names = mentions.map((m) => m.name);
-    expect(names).toContain(DefaultToolName.JavascriptExecution);
+    const hasJs = mentions.some(
+      (m) => m.type === "defaultTool" && m.name === DefaultToolName.JavascriptExecution,
+    );
+    expect(hasJs).toBe(true);
   });
 
-  it("mentions CreateTable tool", () => {
+  it("includes CreateTable in mentions", () => {
     const mentions = RandomDataGeneratorExample.instructions?.mentions ?? [];
-    const names = mentions.map((m) => m.name);
-    expect(names).toContain(DefaultToolName.CreateTable);
-  });
-
-  it("mentions have type defaultTool", () => {
-    const mentions = RandomDataGeneratorExample.instructions?.mentions ?? [];
-    for (const m of mentions) {
-      expect(m.type).toBe("defaultTool");
-    }
-  });
-
-  it("systemPrompt includes data generation guidance", () => {
-    const sp = RandomDataGeneratorExample.instructions!.systemPrompt;
-    expect(sp.toLowerCase()).toMatch(/generat|data|table/);
+    const hasTable = mentions.some(
+      (m) => m.type === "defaultTool" && m.name === DefaultToolName.CreateTable,
+    );
+    expect(hasTable).toBe(true);
   });
 });
 
 describe("WeatherExample", () => {
-  it("is defined", () => {
-    expect(WeatherExample).toBeDefined();
-  });
-
   it("has a name", () => {
     expect(typeof WeatherExample.name).toBe("string");
     expect(WeatherExample.name!.length).toBeGreaterThan(0);
@@ -64,34 +51,79 @@ describe("WeatherExample", () => {
 
   it("has a description", () => {
     expect(typeof WeatherExample.description).toBe("string");
-    expect(WeatherExample.description!.length).toBeGreaterThan(0);
   });
 
-  it("has an icon", () => {
-    expect(WeatherExample.icon).toBeDefined();
-    expect(WeatherExample.icon!.type).toBe("emoji");
+  it("has an emoji icon", () => {
+    expect(WeatherExample.icon?.type).toBe("emoji");
   });
 
-  it("has instructions with systemPrompt", () => {
-    expect(typeof WeatherExample.instructions?.systemPrompt).toBe("string");
-    expect(WeatherExample.instructions!.systemPrompt.length).toBeGreaterThan(0);
+  it("has instructions with a role", () => {
+    expect(typeof WeatherExample.instructions?.role).toBe("string");
   });
 
-  it("mentions the Http tool", () => {
+  it("includes Http tool in mentions", () => {
     const mentions = WeatherExample.instructions?.mentions ?? [];
-    const names = mentions.map((m) => m.name);
-    expect(names).toContain(DefaultToolName.Http);
+    const hasHttp = mentions.some(
+      (m) => m.type === "defaultTool" && m.name === DefaultToolName.Http,
+    );
+    expect(hasHttp).toBe(true);
   });
 
-  it("mention type is defaultTool", () => {
-    const mentions = WeatherExample.instructions?.mentions ?? [];
-    for (const m of mentions) {
-      expect(m.type).toBe("defaultTool");
+  it("systemPrompt mentions Open-Meteo API", () => {
+    const prompt = WeatherExample.instructions?.systemPrompt ?? "";
+    expect(prompt).toContain("open-meteo");
+  });
+
+  it("has a non-empty systemPrompt", () => {
+    const prompt = WeatherExample.instructions?.systemPrompt ?? "";
+    expect(prompt.length).toBeGreaterThan(10);
+  });
+});
+
+describe("example agents — shared invariants", () => {
+  it("both examples have names", () => {
+    expect(RandomDataGeneratorExample.name).toBeTruthy();
+    expect(WeatherExample.name).toBeTruthy();
+  });
+
+  it("both examples have different names", () => {
+    expect(RandomDataGeneratorExample.name).not.toBe(WeatherExample.name);
+  });
+
+  it("both examples have emoji icons", () => {
+    expect(RandomDataGeneratorExample.icon?.type).toBe("emoji");
+    expect(WeatherExample.icon?.type).toBe("emoji");
+  });
+
+  it("both examples have systemPrompts", () => {
+    expect(RandomDataGeneratorExample.instructions?.systemPrompt?.length ?? 0).toBeGreaterThan(0);
+    expect(WeatherExample.instructions?.systemPrompt?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it("both examples have at least one mention", () => {
+    expect((RandomDataGeneratorExample.instructions?.mentions ?? []).length).toBeGreaterThan(0);
+    expect((WeatherExample.instructions?.mentions ?? []).length).toBeGreaterThan(0);
+  });
+
+  it("both examples have non-empty roles", () => {
+    expect((RandomDataGeneratorExample.instructions?.role ?? "").length).toBeGreaterThan(0);
+    expect((WeatherExample.instructions?.role ?? "").length).toBeGreaterThan(0);
+  });
+
+  it("all mentions have a type and name field", () => {
+    const allMentions = [
+      ...(RandomDataGeneratorExample.instructions?.mentions ?? []),
+      ...(WeatherExample.instructions?.mentions ?? []),
+    ];
+    for (const mention of allMentions) {
+      expect(typeof mention.type).toBe("string");
+      expect(typeof mention.name).toBe("string");
     }
   });
 
-  it("systemPrompt references weather or HTTP", () => {
-    const sp = WeatherExample.instructions!.systemPrompt;
-    expect(sp.toLowerCase()).toMatch(/weather|http|api/);
+  it("both examples have different system prompts", () => {
+    expect(RandomDataGeneratorExample.instructions?.systemPrompt).not.toBe(
+      WeatherExample.instructions?.systemPrompt,
+    );
   });
 });

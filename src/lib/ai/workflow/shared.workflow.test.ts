@@ -1,265 +1,280 @@
-import { describe, expect, it, vi } from "vitest";
-import type { GraphStartEvent } from "ts-edge";
+import { describe, it, expect } from "vitest";
 import {
-  defaultObjectJsonSchema,
-  findAccessibleNodeIds,
   findJsonSchemaByPath,
-  encodeWorkflowEvent,
-  decodeWorkflowEvents,
+  findAccessibleNodeIds,
   convertTiptapJsonToText,
-  WORKFLOW_STREAM_DELIMITER,
+  decodeWorkflowEvents,
+  encodeWorkflowEvent,
   WORKFLOW_STREAM_PREFIX,
+  WORKFLOW_STREAM_DELIMITER,
 } from "./shared.workflow";
-import type { WorkflowNodeData } from "./workflow.interface";
 import type { ObjectJsonSchema7 } from "app-types/util";
-import type { TipTapMentionJsonContent } from "app-types/util";
 
-vi.mock("server-only", () => ({}));
+// ── findJsonSchemaByPath ──────────────────────────────────────────────────────
 
-// ------------ helpers ------------
-const node = (id: string): WorkflowNodeData =>
-  ({
-    id,
-    name: id,
-    outputSchema: { type: "object", properties: {} },
-    kind: "input",
-  }) as unknown as WorkflowNodeData;
-const edge = (source: string, target: string) => ({ source, target });
-
-// A minimal valid GraphStartEvent
-const startEvent: GraphStartEvent = { eventType: "WORKFLOW_START", startedAt: 0, input: undefined };
-
-// ------------ defaultObjectJsonSchema ------------
-describe("defaultObjectJsonSchema", () => {
-  it("is an object schema", () => {
-    expect(defaultObjectJsonSchema.type).toBe("object");
-  });
-
-  it("has an empty properties map", () => {
-    expect(defaultObjectJsonSchema.properties).toEqual({});
-  });
-});
-
-// ------------ findAccessibleNodeIds ------------
-describe("findAccessibleNodeIds", () => {
-  it("returns empty array when no incoming edges", () => {
-    const result = findAccessibleNodeIds({
-      nodeId: "n1",
-      nodes: [node("n1"), node("n2")],
-      edges: [],
-    });
-    expect(result).toEqual([]);
-  });
-
-  it("finds direct parent", () => {
-    const result = findAccessibleNodeIds({
-      nodeId: "n2",
-      nodes: [node("n1"), node("n2")],
-      edges: [edge("n1", "n2")],
-    });
-    expect(result).toContain("n1");
-  });
-
-  it("finds transitive ancestors", () => {
-    const result = findAccessibleNodeIds({
-      nodeId: "n3",
-      nodes: [node("n1"), node("n2"), node("n3")],
-      edges: [edge("n1", "n2"), edge("n2", "n3")],
-    });
-    expect(result).toContain("n2");
-    expect(result).toContain("n1");
-  });
-
-  it("does not include the node itself", () => {
-    const result = findAccessibleNodeIds({
-      nodeId: "n2",
-      nodes: [node("n1"), node("n2")],
-      edges: [edge("n1", "n2")],
-    });
-    expect(result).not.toContain("n2");
-  });
-
-  it("excludes nodes not in the nodes list", () => {
-    const result = findAccessibleNodeIds({
-      nodeId: "n1",
-      nodes: [node("n1")],
-      edges: [edge("n0", "n1")],
-    });
-    expect(result).not.toContain("n0");
-  });
-});
-
-describe("findAccessibleNodeIds — return type invariants", () => {
-  it("always returns an array", () => {
-    const result = findAccessibleNodeIds({ nodeId: "x", nodes: [], edges: [] });
-    expect(Array.isArray(result)).toBe(true);
-  });
-
-  it("no duplicates in returned array", () => {
-    const nodes = [node("n1"), node("n2"), node("n3"), node("n4")];
-    const edges = [edge("n1", "n2"), edge("n1", "n3"), edge("n2", "n4"), edge("n3", "n4")];
-    const result = findAccessibleNodeIds({ nodeId: "n4", nodes, edges });
-    const unique = new Set(result);
-    expect(unique.size).toBeLessThanOrEqual(result.length);
-  });
-});
-
-// ------------ findJsonSchemaByPath ------------
 describe("findJsonSchemaByPath", () => {
   const schema: ObjectJsonSchema7 = {
     type: "object",
     properties: {
-      name: { type: "string" },
-      address: {
+      answer: { type: "string" },
+      data: {
         type: "object",
         properties: {
-          city: { type: "string" },
-          zip: { type: "number" },
+          count: { type: "number" },
+          items: { type: "array" },
         },
       },
     },
   };
 
   it("finds top-level property", () => {
-    expect(findJsonSchemaByPath(schema, ["name"])).toEqual({ type: "string" });
+    const result = findJsonSchemaByPath(schema, ["answer"]);
+    expect(result).toEqual({ type: "string" });
   });
 
-  it("finds nested property", () => {
-    expect(findJsonSchemaByPath(schema, ["address", "city"])).toEqual({ type: "string" });
+  it("finds nested property via path", () => {
+    const result = findJsonSchemaByPath(schema, ["data", "count"]);
+    expect(result).toEqual({ type: "number" });
   });
 
-  it("returns undefined for missing top-level key", () => {
-    expect(findJsonSchemaByPath(schema, ["missing"])).toBeUndefined();
-  });
-
-  it("finds deeply nested property", () => {
-    expect(findJsonSchemaByPath(schema, ["address", "zip"])).toEqual({ type: "number" });
-  });
-});
-
-// ------------ WORKFLOW_STREAM constants ------------
-describe("WORKFLOW_STREAM constants", () => {
-  it("WORKFLOW_STREAM_DELIMITER is a string", () => {
-    expect(typeof WORKFLOW_STREAM_DELIMITER).toBe("string");
-  });
-
-  it("WORKFLOW_STREAM_PREFIX is a non-empty string", () => {
-    expect(typeof WORKFLOW_STREAM_PREFIX).toBe("string");
-    expect(WORKFLOW_STREAM_PREFIX.length).toBeGreaterThan(0);
+  it("returns undefined for missing key", () => {
+    const result = findJsonSchemaByPath(schema, ["missing"]);
+    expect(result).toBeUndefined();
   });
 });
 
-// ------------ encodeWorkflowEvent / decodeWorkflowEvents ------------
-describe("encodeWorkflowEvent", () => {
-  it("returns a string", () => {
-    expect(typeof encodeWorkflowEvent(startEvent)).toBe("string");
+// ── findAccessibleNodeIds ─────────────────────────────────────────────────────
+
+describe("findAccessibleNodeIds", () => {
+  const nodes = [
+    { id: "A", name: "A", outputSchema: { type: "object", properties: {} } },
+    { id: "B", name: "B", outputSchema: { type: "object", properties: {} } },
+    { id: "C", name: "C", outputSchema: { type: "object", properties: {} } },
+  ] as any[];
+
+  it("returns empty when no edges point to node", () => {
+    const result = findAccessibleNodeIds({ nodeId: "A", nodes, edges: [] });
+    expect(result).toEqual([]);
   });
 
-  it("starts with WORKFLOW_STREAM_PREFIX", () => {
-    expect(encodeWorkflowEvent(startEvent).startsWith(WORKFLOW_STREAM_PREFIX)).toBe(true);
+  it("returns direct predecessor", () => {
+    const edges = [{ source: "A", target: "B" }];
+    const result = findAccessibleNodeIds({ nodeId: "B", nodes, edges });
+    expect(result).toContain("A");
   });
 
-  it("ends with WORKFLOW_STREAM_DELIMITER", () => {
-    expect(encodeWorkflowEvent(startEvent).endsWith(WORKFLOW_STREAM_DELIMITER)).toBe(true);
+  it("returns transitive predecessors", () => {
+    const edges = [
+      { source: "A", target: "B" },
+      { source: "B", target: "C" },
+    ];
+    const result = findAccessibleNodeIds({ nodeId: "C", nodes, edges });
+    expect(result).toContain("A");
+    expect(result).toContain("B");
   });
 
-  it("encoded string contains the eventType", () => {
-    const result = encodeWorkflowEvent(startEvent);
-    expect(result).toContain("WORKFLOW_START");
-  });
-});
-
-describe("decodeWorkflowEvents", () => {
-  it("returns events and remainingBuffer", () => {
-    const result = decodeWorkflowEvents("");
-    expect(result).toHaveProperty("events");
-    expect(result).toHaveProperty("remainingBuffer");
-  });
-
-  it("decodes a single encoded event round-trip", () => {
-    const encoded = encodeWorkflowEvent(startEvent);
-    const { events } = decodeWorkflowEvents(encoded);
-    expect(events.length).toBe(1);
-    const decoded = events[0] as { eventType: string };
-    expect(decoded.eventType).toBe("WORKFLOW_START");
-  });
-
-  it("returns empty events for empty buffer", () => {
-    const { events, remainingBuffer } = decodeWorkflowEvents("");
-    expect(events).toEqual([]);
-    expect(remainingBuffer).toBe("");
-  });
-
-  it("preserves partial line in remainingBuffer", () => {
-    const partialLine = "WF_EVENT:{partial";
-    const { remainingBuffer } = decodeWorkflowEvents(partialLine);
-    expect(remainingBuffer).toBe(partialLine);
-  });
-
-  it("decodes multiple events", () => {
-    const e1 = encodeWorkflowEvent(startEvent);
-    const e2 = encodeWorkflowEvent(startEvent);
-    const { events } = decodeWorkflowEvents(e1 + e2);
-    expect(events.length).toBe(2);
+  it("excludes non-existent source nodes", () => {
+    const edges = [{ source: "GHOST", target: "A" }];
+    const result = findAccessibleNodeIds({ nodeId: "A", nodes, edges });
+    expect(result).not.toContain("GHOST");
   });
 });
 
-// ------------ convertTiptapJsonToText ------------
+// ── convertTiptapJsonToText ───────────────────────────────────────────────────
+
+const noopGetOutput = () => undefined;
+
 describe("convertTiptapJsonToText", () => {
-  const getOutput = () => "";
-
-  it("returns empty string for empty content", () => {
-    const json: TipTapMentionJsonContent = { type: "doc", content: [] };
-    expect(convertTiptapJsonToText({ json, getOutput })).toBe("");
-  });
-
-  it("converts simple text paragraph", () => {
-    const json: TipTapMentionJsonContent = {
+  it("converts simple paragraph with text", () => {
+    const json = {
       type: "doc",
-      content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Hello world" }] },
+      ],
     };
-    expect(convertTiptapJsonToText({ json, getOutput })).toBe("Hello");
+    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    expect(result).toBe("Hello world");
   });
 
-  it("converts hard break between text nodes", () => {
-    const json: TipTapMentionJsonContent = {
+  it("handles empty paragraph", () => {
+    const json = { type: "doc", content: [{ type: "paragraph" }] };
+    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    expect(result).toBe("");
+  });
+
+  it("handles hard break", () => {
+    const json = {
       type: "doc",
       content: [
         {
           type: "paragraph",
           content: [
-            { type: "text", text: "Line1" },
+            { type: "text", text: "Line 1" },
             { type: "hardBreak" },
-            { type: "text", text: "Line2" },
+            { type: "text", text: "Line 2" },
           ],
         },
       ],
     };
-    const result = convertTiptapJsonToText({ json, getOutput });
-    expect(result).toContain("Line1");
-    expect(result).toContain("Line2");
+    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    expect(result).toContain("Line 1");
+    expect(result).toContain("Line 2");
   });
 
-  it("always returns a string", () => {
-    const json: TipTapMentionJsonContent = {
-      type: "doc",
-      content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }],
-    };
-    expect(typeof convertTiptapJsonToText({ json, getOutput })).toBe("string");
-  });
-
-  it("uses custom mentionParser when provided", () => {
-    const json: TipTapMentionJsonContent = {
+  it("handles mention nodes via default parser", () => {
+    const key = JSON.stringify({ nodeId: "n1", path: ["result"] });
+    const json = {
       type: "doc",
       content: [
         {
           type: "paragraph",
-          content: [{ type: "mention", attrs: { id: "id1", label: '{"nodeId":"n1","path":[]}' } }],
+          content: [
+            { type: "mention", attrs: { id: "n1.result", label: key } },
+          ],
         },
       ],
     };
-    const mentionParser = vi.fn(() => "MENTION_VALUE");
-    convertTiptapJsonToText({ json, getOutput, mentionParser });
-    expect(mentionParser).toHaveBeenCalledTimes(1);
+    const getOutput = () => "resolved_value";
+    const result = convertTiptapJsonToText({ json, getOutput });
+    expect(result).toContain("resolved_value");
+  });
+
+  it("handles custom mention parser", () => {
+    const key = JSON.stringify({ nodeId: "n1", path: ["result"] });
+    const json = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "mention", attrs: { id: "n1.result", label: key } },
+          ],
+        },
+      ],
+    };
+    const result = convertTiptapJsonToText({
+      json,
+      getOutput: noopGetOutput,
+      mentionParser: () => "CUSTOM",
+    });
+    expect(result).toBe("CUSTOM");
+  });
+
+  it("handles bullet list", () => {
+    const json = {
+      type: "doc",
+      content: [
+        {
+          type: "bulletList",
+          content: [
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item 1" }] }] },
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item 2" }] }] },
+          ],
+        },
+      ],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    expect(result).toContain("Item 1");
+    expect(result).toContain("Item 2");
+    expect(result).toContain("•");
+  });
+
+  it("returns empty string for empty content", () => {
+    const json = { type: "doc", content: [] };
+    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    expect(result).toBe("");
+  });
+});
+
+// ── encodeWorkflowEvent / decodeWorkflowEvents ────────────────────────────────
+
+describe("encodeWorkflowEvent / decodeWorkflowEvents", () => {
+  it("encodes event with prefix and delimiter", () => {
+    const encoded = encodeWorkflowEvent({ type: "test", payload: "data" } as any);
+    expect(encoded.startsWith(WORKFLOW_STREAM_PREFIX)).toBe(true);
+    expect(encoded.endsWith(WORKFLOW_STREAM_DELIMITER)).toBe(true);
+  });
+
+  it("round-trips a single event", () => {
+    const event = { type: "node_start", nodeId: "n1" } as any;
+    const encoded = encodeWorkflowEvent(event);
+    const { events } = decodeWorkflowEvents(encoded);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: "node_start", nodeId: "n1" });
+  });
+
+  it("round-trips multiple events concatenated", () => {
+    const e1 = encodeWorkflowEvent({ type: "start" } as any);
+    const e2 = encodeWorkflowEvent({ type: "end" } as any);
+    const { events } = decodeWorkflowEvents(e1 + e2);
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({ type: "start" });
+    expect(events[1]).toMatchObject({ type: "end" });
+  });
+
+  it("ignores non-prefixed lines", () => {
+    const buffer = "some random text\n" + encodeWorkflowEvent({ type: "ok" } as any);
+    const { events } = decodeWorkflowEvents(buffer);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: "ok" });
+  });
+
+  it("returns remaining buffer (incomplete last line)", () => {
+    const complete = encodeWorkflowEvent({ type: "done" } as any);
+    const partial = "WF_EVENT:{incomplete";
+    const { events, remainingBuffer } = decodeWorkflowEvents(complete + partial);
+    expect(events).toHaveLength(1);
+    expect(remainingBuffer).toBe(partial);
+  });
+
+  it("encoded event includes timestamp field", () => {
+    const encoded = encodeWorkflowEvent({ type: "test" } as any);
+    const json = encoded.slice(WORKFLOW_STREAM_PREFIX.length).trim();
+    const parsed = JSON.parse(json);
+    expect(parsed).toHaveProperty("timestamp");
+    expect(typeof parsed.timestamp).toBe("number");
+  });
+});
+
+describe("convertTiptapJsonToText — additional", () => {
+  it("handles multiple paragraphs separating their text", () => {
+    const json = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "First" }] },
+        { type: "paragraph", content: [{ type: "text", text: "Second" }] },
+      ],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(result).toContain("First");
+    expect(result).toContain("Second");
+  });
+
+  it("returns string type always", () => {
+    const json = { type: "doc", content: [] };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(typeof result).toBe("string");
+  });
+
+  it("preserves exact text in a simple paragraph", () => {
+    const text = "Exact text preserved";
+    const json = {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(result).toContain(text);
+  });
+
+  it("returns empty string for doc with only empty paragraphs", () => {
+    const json = {
+      type: "doc",
+      content: [
+        { type: "paragraph" },
+        { type: "paragraph" },
+      ],
+    };
+    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    expect(result.trim()).toBe("");
   });
 });

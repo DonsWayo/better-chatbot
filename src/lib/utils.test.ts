@@ -212,3 +212,43 @@ describe("parseEnvBoolean", () => {
     expect(parseEnvBoolean("fAlSe")).toBe(false);
   });
 });
+
+describe("errorToString — additional", () => {
+  test("returns a string for a number input", () => {
+    expect(typeof errorToString(42)).toBe("string");
+  });
+
+  test("Error with no message returns empty string", () => {
+    const err = new Error();
+    expect(errorToString(err)).toBe("");
+  });
+
+  test("returns string for array input", () => {
+    const result = errorToString(["a", "b"] as any);
+    expect(typeof result).toBe("string");
+  });
+
+  test("always returns a string for any input type", () => {
+    for (const v of ["text", new Error("x"), null, undefined, { msg: "y" }] as any[]) {
+      expect(typeof errorToString(v)).toBe("string");
+    }
+  });
+});
+
+describe("parseEnvBoolean — additional", () => {
+  test("returns true for '1'", () => {
+    expect(parseEnvBoolean("1")).toBe(true);
+  });
+
+  test("returns false for '0'", () => {
+    expect(parseEnvBoolean("0")).toBe(false);
+  });
+
+  test("returns false for undefined", () => {
+    expect(parseEnvBoolean(undefined)).toBe(false);
+  });
+
+  test("returns true for 'TRUE' (case insensitive)", () => {
+    expect(parseEnvBoolean("TRUE")).toBe(true);
+  });
+});

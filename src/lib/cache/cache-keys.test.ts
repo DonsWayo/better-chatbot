@@ -1,92 +1,120 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { CacheKeys } from "./cache-keys";
 
-describe("CacheKeys", () => {
-  it("is an object", () => {
-    expect(typeof CacheKeys).toBe("object");
-    expect(CacheKeys).not.toBeNull();
+describe("CacheKeys.thread", () => {
+  it("prefixes thread id correctly", () => {
+    expect(CacheKeys.thread("abc123")).toBe("thread-abc123");
   });
 
-  it("thread returns key containing the threadId", () => {
-    expect(CacheKeys.thread("abc-123")).toContain("abc-123");
-  });
-
-  it("user returns key containing the userId", () => {
-    expect(CacheKeys.user("user-456")).toContain("user-456");
-  });
-
-  it("mcpServerCustomizations returns key containing the userId", () => {
-    expect(CacheKeys.mcpServerCustomizations("uid-1")).toContain("uid-1");
-  });
-
-  it("agentInstructions returns key containing the agent", () => {
-    expect(CacheKeys.agentInstructions("agent-007")).toContain("agent-007");
+  it("handles UUID-style thread id", () => {
+    const key = CacheKeys.thread("550e8400-e29b-41d4-a716-446655440000");
+    expect(key).toBe("thread-550e8400-e29b-41d4-a716-446655440000");
   });
 });
 
-describe("CacheKeys — return type invariants", () => {
-  it("all functions return strings", () => {
-    expect(typeof CacheKeys.thread("t")).toBe("string");
-    expect(typeof CacheKeys.user("u")).toBe("string");
-    expect(typeof CacheKeys.mcpServerCustomizations("u")).toBe("string");
-    expect(typeof CacheKeys.agentInstructions("a")).toBe("string");
+describe("CacheKeys.user", () => {
+  it("prefixes user id correctly", () => {
+    expect(CacheKeys.user("user-1")).toBe("user-user-1");
   });
 
-  it("different ids produce different keys", () => {
+  it("handles empty user id", () => {
+    expect(CacheKeys.user("")).toBe("user-");
+  });
+});
+
+describe("CacheKeys.mcpServerCustomizations", () => {
+  it("generates key with user id", () => {
+    expect(CacheKeys.mcpServerCustomizations("team-42")).toBe(
+      "mcp-server-customizations-team-42",
+    );
+  });
+});
+
+describe("CacheKeys.agentInstructions", () => {
+  it("generates key with agent name", () => {
+    expect(CacheKeys.agentInstructions("support-bot")).toBe(
+      "agent-instructions-support-bot",
+    );
+  });
+
+  it("handles UUID agent id", () => {
+    const key = CacheKeys.agentInstructions("agt-001");
+    expect(key).toContain("agent-instructions-agt-001");
+  });
+});
+
+describe("CacheKeys — uniqueness", () => {
+  it("different key types produce different prefixes", () => {
+    const threadKey = CacheKeys.thread("123");
+    const userKey = CacheKeys.user("123");
+    expect(threadKey).not.toBe(userKey);
+  });
+
+  it("same type with different ids produce different keys", () => {
     expect(CacheKeys.thread("a")).not.toBe(CacheKeys.thread("b"));
-    expect(CacheKeys.user("a")).not.toBe(CacheKeys.user("b"));
   });
 
-  it("same id always produces same key (pure/deterministic)", () => {
-    expect(CacheKeys.thread("x")).toBe(CacheKeys.thread("x"));
-    expect(CacheKeys.user("x")).toBe(CacheKeys.user("x"));
-  });
-});
-
-describe("CacheKeys — namespace isolation", () => {
-  it("thread and user keys differ for the same id", () => {
-    expect(CacheKeys.thread("same-id")).not.toBe(CacheKeys.user("same-id"));
-  });
-
-  it("thread and mcpServerCustomizations keys differ", () => {
-    expect(CacheKeys.thread("id")).not.toBe(CacheKeys.mcpServerCustomizations("id"));
-  });
-
-  it("all four keys are unique for the same id", () => {
+  it("all four key types are mutually distinct for same id", () => {
+    const id = "same-id";
     const keys = [
-      CacheKeys.thread("id"),
-      CacheKeys.user("id"),
-      CacheKeys.mcpServerCustomizations("id"),
-      CacheKeys.agentInstructions("id"),
+      CacheKeys.thread(id),
+      CacheKeys.user(id),
+      CacheKeys.mcpServerCustomizations(id),
+      CacheKeys.agentInstructions(id),
     ];
-    expect(new Set(keys).size).toBe(4);
+    const unique = new Set(keys);
+    expect(unique.size).toBe(4);
   });
 });
 
-describe("CacheKeys — edge cases", () => {
-  it("handles empty string id", () => {
-    const key = CacheKeys.thread("");
-    expect(typeof key).toBe("string");
+describe("CacheKeys — key structure", () => {
+  it("all keys are non-empty strings", () => {
+    expect(typeof CacheKeys.thread("x")).toBe("string");
+    expect(CacheKeys.thread("x").length).toBeGreaterThan(0);
+    expect(typeof CacheKeys.user("x")).toBe("string");
+    expect(CacheKeys.user("x").length).toBeGreaterThan(0);
+    expect(typeof CacheKeys.mcpServerCustomizations("x")).toBe("string");
+    expect(CacheKeys.mcpServerCustomizations("x").length).toBeGreaterThan(0);
+    expect(typeof CacheKeys.agentInstructions("x")).toBe("string");
+    expect(CacheKeys.agentInstructions("x").length).toBeGreaterThan(0);
   });
 
-  it("handles special chars in id", () => {
-    const key = CacheKeys.user("user/with/slashes");
-    expect(key).toContain("user/with/slashes");
+  it("each key includes the id as a substring", () => {
+    const id = "test-id-99";
+    expect(CacheKeys.thread(id)).toContain(id);
+    expect(CacheKeys.user(id)).toContain(id);
+    expect(CacheKeys.mcpServerCustomizations(id)).toContain(id);
+    expect(CacheKeys.agentInstructions(id)).toContain(id);
   });
 
-  it("all keys are non-empty strings for any id", () => {
-    for (const fn of [CacheKeys.thread, CacheKeys.user, CacheKeys.mcpServerCustomizations, CacheKeys.agentInstructions]) {
-      const key = fn("test-id");
-      expect(typeof key).toBe("string");
-      expect(key.length).toBeGreaterThan(0);
-    }
+  it("keys are deterministic — same input always returns same key", () => {
+    const id = "stable-id";
+    expect(CacheKeys.thread(id)).toBe(CacheKeys.thread(id));
+    expect(CacheKeys.user(id)).toBe(CacheKeys.user(id));
+    expect(CacheKeys.mcpServerCustomizations(id)).toBe(CacheKeys.mcpServerCustomizations(id));
+    expect(CacheKeys.agentInstructions(id)).toBe(CacheKeys.agentInstructions(id));
+  });
+});
+
+describe("CacheKeys — additional id formats", () => {
+  it("mcpServerCustomizations with UUID-style id", () => {
+    const key = CacheKeys.mcpServerCustomizations("550e8400-e29b-41d4-a716-446655440000");
+    expect(key).toContain("550e8400-e29b-41d4-a716-446655440000");
+    expect(key.startsWith("mcp-server-customizations-")).toBe(true);
   });
 
-  it("mcpServerCustomizations and agentInstructions keys differ for same id", () => {
-    expect(CacheKeys.mcpServerCustomizations("id")).not.toBe(CacheKeys.agentInstructions("id"));
+  it("user key with email-style id", () => {
+    const key = CacheKeys.user("user@example.com");
+    expect(key).toBe("user-user@example.com");
   });
 
-  it("user and agentInstructions keys differ for same id", () => {
-    expect(CacheKeys.user("id")).not.toBe(CacheKeys.agentInstructions("id"));
+  it("thread key with long numeric id", () => {
+    const key = CacheKeys.thread("123456789012345678901234567890");
+    expect(key).toBe("thread-123456789012345678901234567890");
+  });
+
+  it("agentInstructions with hyphenated name", () => {
+    const key = CacheKeys.agentInstructions("my-support-bot");
+    expect(key).toBe("agent-instructions-my-support-bot");
   });
 });

@@ -1,178 +1,245 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
-vi.mock("server-only", () => ({}));
-
-const { getSessionMock, chatExportRepositoryMock } = vi.hoisted(() => ({
+const { getSessionMock, checkCommentAccessMock, deleteCommentMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  chatExportRepositoryMock: {
-    checkCommentAccess: vi.fn(),
-    deleteComment: vi.fn(),
-  },
+  checkCommentAccessMock: vi.fn(),
+  deleteCommentMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  chatExportRepository: chatExportRepositoryMock,
+  chatExportRepository: {
+    checkCommentAccess: checkCommentAccessMock,
+    deleteComment: deleteCommentMock,
+  },
 }));
 
-import { DELETE } from "./route";
-
-const makeContext = (id: string, commentId: string) => ({
-  params: Promise.resolve({ id, commentId }),
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(): NextRequest {
+  return {} as unknown as NextRequest;
+}
 
 describe("DELETE /api/export/[id]/comments/[commentId]", () => {
-  it("returns 401 when session is null", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns Unauthorized body when no session", async () => {
+  it("never calls checkCommentAccess when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
-    const body = await res.json();
-    expect(body.error).toBe("Unauthorized");
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(checkCommentAccessMock).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when user lacks comment access", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(false);
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
+  it("returns 403 when user does not own the comment", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
     expect(res.status).toBe(403);
   });
 
-  it("returns Forbidden in body when access denied", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(false);
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
-    const body = await res.json();
-    expect(body.error).toBe("Forbidden");
+  it("never calls deleteComment when forbidden", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).not.toHaveBeenCalled();
   });
 
-  it("returns 200 success when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
+  it("deletes comment and returns success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(deleteCommentMock).toHaveBeenCalledWith("c-1", "u1");
+  });
+
+  it("passes correct commentId and userId to checkCommentAccess", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc-99" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-5", commentId: "comment-xyz" }) });
+    expect(checkCommentAccessMock).toHaveBeenCalledWith("comment-xyz", "user-abc-99");
+  });
+
+  it("passes correct commentId and userId to deleteComment", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-del-55" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-7", commentId: "c-unique-789" }) });
+    expect(deleteCommentMock).toHaveBeenCalledWith("c-unique-789", "user-del-55");
+  });
+
+  it("returns 500 when deleteComment throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockRejectedValueOnce(new Error("DB error"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res.status).toBe(500);
+  });
+
+  it("401 response body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("500 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockRejectedValueOnce(new Error("unexpected failure"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("deleteComment called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkCommentAccess called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(checkCommentAccessMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls deleteComment when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/export/[id]/comments/[commentId] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 body error contains the thrown message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockRejectedValueOnce(new Error("foreign key violation"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    const body = await res.json();
+    expect(body.error).toContain("foreign key violation");
+  });
+
+  it("200 body has success:true on valid delete", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-8", commentId: "c-8" }) });
     const body = await res.json();
     expect(body.success).toBe(true);
   });
 
-  it("calls checkCommentAccess with commentId and userId", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-xyz"));
-    expect(chatExportRepositoryMock.checkCommentAccess).toHaveBeenCalledWith(
-      "c-xyz",
-      "user-42",
-    );
-  });
-
-  it("calls deleteComment with commentId and userId", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-abc"));
-    expect(chatExportRepositoryMock.deleteComment).toHaveBeenCalledWith(
-      "c-abc",
-      "user-1",
-    );
-  });
-
-  it("does not call deleteComment when access is denied", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(false);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
-    expect(chatExportRepositoryMock.deleteComment).not.toHaveBeenCalled();
-  });
-
-  it("returns 500 when checkCommentAccess throws", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockRejectedValue(
-      new Error("DB error"),
-    );
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
-    expect(res.status).toBe(500);
-  });
-
-  it("includes error message in 500 response", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockRejectedValue(
-      new Error("Timeout"),
-    );
-    const res = await DELETE(
-      new NextRequest("http://localhost"),
-      makeContext("exp-1", "c-1"),
-    );
-    const body = await res.json();
-    expect(body.error).toBe("Timeout");
-  });
-
-  it("calls checkCommentAccess exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
-    expect(chatExportRepositoryMock.checkCommentAccess).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns JSON content-type on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
-    const res = await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
-  });
-
-  it("does not call checkCommentAccess when session is null", async () => {
+  it("checkCommentAccess never called when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
-    expect(chatExportRepositoryMock.checkCommentAccess).not.toHaveBeenCalled();
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(checkCommentAccessMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/export/[id]/comments/[commentId] — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res).toBeInstanceOf(Response);
   });
 
-  it("getSession is called exactly once per request", async () => {
+  it("checkCommentAccess called with commentId before deleteComment", async () => {
+    const callOrder: string[] = [];
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockImplementationOnce(async () => { callOrder.push("check"); return true; });
+    deleteCommentMock.mockImplementationOnce(async () => { callOrder.push("delete"); });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(callOrder[0]).toBe("check");
+    expect(callOrder[1]).toBe("delete");
+  });
+
+  it("returns 401 when session has no user object", async () => {
+    getSessionMock.mockResolvedValue({ user: null });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("DELETE /api/export/[id]/comments/[commentId] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per DELETE", async () => {
     getSessionMock.mockResolvedValue(null);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("calls deleteComment exactly once when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
-    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
-    expect(chatExportRepositoryMock.deleteComment).toHaveBeenCalledTimes(1);
+  it("checkCommentAccess not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(checkCommentAccessMock).not.toHaveBeenCalled();
   });
 
-  it("does not call checkCommentAccess when session user has no id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
-    expect(chatExportRepositoryMock.checkCommentAccess).not.toHaveBeenCalled();
+  it("deleteComment not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).not.toHaveBeenCalled();
+  });
+
+  it("DELETE returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

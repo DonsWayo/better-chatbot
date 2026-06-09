@@ -28,6 +28,8 @@ schema or architecture rewrite in a later one. Each ADR resolves one such choice
 | [0006](0006-hosting-and-data-residency.md) | Hosting & EU data residency — **EKS-first** (docker-compose local) | W1, W8, W12 | IT, Security, Eng | **Accepted** |
 | [0007](0007-rag-pgvector-architecture.md) | RAG / pgvector architecture (embedding model & dimension) | W6 | Eng, Legal | Proposed |
 | [0008](0008-guardrails-and-dlp-placement.md) | Guardrails & DLP placement | W7 (GA gate) | Security, Eng | Proposed |
+| [0009](0009-fine-grained-entitlements.md) | Fine-grained entitlements (capabilities per team & user; default-deny) | W2, W4, W5 | Product, Eng, Security | **Accepted** |
+| [0010](0010-desktop-electron.md) | Desktop — Electron + local-system MCP access (supersedes Tauri) | W10 | Product, Eng, IT, Security | **Accepted** |
 
 ## Decisions deliberately deferred (not yet ADRs)
 

@@ -1,124 +1,172 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   MCPRemoteConfigZodSchema,
   MCPStdioConfigZodSchema,
   AllowedMCPServerZodSchema,
+  McpToolCustomizationZodSchema,
+  McpServerCustomizationZodSchema,
 } from "./mcp";
 
 describe("MCPRemoteConfigZodSchema", () => {
-  it("accepts valid remote config", () => {
-    const result = MCPRemoteConfigZodSchema.safeParse({ url: "https://example.com/sse" });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts optional headers", () => {
-    const result = MCPRemoteConfigZodSchema.safeParse({
-      url: "https://example.com/sse",
-      headers: { Authorization: "Bearer token" },
-    });
-    expect(result.success).toBe(true);
+  it("accepts valid remote URL", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: "https://mcp.example.com/sse" });
+    expect(r.success).toBe(true);
   });
 
   it("rejects non-URL string", () => {
-    expect(MCPRemoteConfigZodSchema.safeParse({ url: "not-a-url" }).success).toBe(false);
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: "not-a-url" });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts optional headers", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({
+      url: "https://mcp.example.com",
+      headers: { Authorization: "Bearer token" },
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.headers?.Authorization).toBe("Bearer token");
   });
 
   it("rejects missing url", () => {
-    expect(MCPRemoteConfigZodSchema.safeParse({}).success).toBe(false);
-  });
-
-  it("rejects numeric url", () => {
-    expect(MCPRemoteConfigZodSchema.safeParse({ url: 42 }).success).toBe(false);
-  });
-
-  it("rejects non-string header values", () => {
-    expect(
-      MCPRemoteConfigZodSchema.safeParse({
-        url: "https://x.com",
-        headers: { key: 123 },
-      }).success,
-    ).toBe(false);
+    const r = MCPRemoteConfigZodSchema.safeParse({});
+    expect(r.success).toBe(false);
   });
 });
 
 describe("MCPStdioConfigZodSchema", () => {
   it("accepts valid stdio config", () => {
-    const result = MCPStdioConfigZodSchema.safeParse({ command: "node" });
-    expect(result.success).toBe(true);
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "npx", args: ["-y", "@some/mcp"] });
+    expect(r.success).toBe(true);
   });
 
-  it("accepts optional args array", () => {
-    const result = MCPStdioConfigZodSchema.safeParse({ command: "python", args: ["-m", "mcp"] });
-    expect(result.success).toBe(true);
+  it("rejects empty command", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "" });
+    expect(r.success).toBe(false);
   });
 
-  it("accepts optional env record", () => {
-    const result = MCPStdioConfigZodSchema.safeParse({
-      command: "node",
-      env: { MCP_DEBUG: "true" },
+  it("accepts config with env vars", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({
+      command: "python",
+      env: { MY_VAR: "value" },
     });
-    expect(result.success).toBe(true);
+    expect(r.success).toBe(true);
   });
 
-  it("rejects empty command string", () => {
-    expect(MCPStdioConfigZodSchema.safeParse({ command: "" }).success).toBe(false);
-  });
-
-  it("rejects missing command", () => {
-    expect(MCPStdioConfigZodSchema.safeParse({}).success).toBe(false);
-  });
-
-  it("rejects non-string command", () => {
-    expect(MCPStdioConfigZodSchema.safeParse({ command: 42 }).success).toBe(false);
-  });
-
-  it("rejects non-array args", () => {
-    expect(MCPStdioConfigZodSchema.safeParse({ command: "node", args: "arg" }).success).toBe(false);
+  it("args is optional", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "node" });
+    expect(r.success).toBe(true);
   });
 });
 
 describe("AllowedMCPServerZodSchema", () => {
   it("accepts valid allowed server config", () => {
-    const result = AllowedMCPServerZodSchema.safeParse({ tools: ["tool1", "tool2"] });
-    expect(result.success).toBe(true);
+    const r = AllowedMCPServerZodSchema.safeParse({ tools: ["search", "fetch"] });
+    expect(r.success).toBe(true);
   });
 
   it("accepts empty tools array", () => {
-    expect(AllowedMCPServerZodSchema.safeParse({ tools: [] }).success).toBe(true);
+    const r = AllowedMCPServerZodSchema.safeParse({ tools: [] });
+    expect(r.success).toBe(true);
   });
 
   it("rejects missing tools", () => {
-    expect(AllowedMCPServerZodSchema.safeParse({}).success).toBe(false);
-  });
-
-  it("rejects non-array tools", () => {
-    expect(AllowedMCPServerZodSchema.safeParse({ tools: "tool" }).success).toBe(false);
-  });
-
-  it("rejects tools containing non-strings", () => {
-    expect(AllowedMCPServerZodSchema.safeParse({ tools: [1, 2] }).success).toBe(false);
+    const r = AllowedMCPServerZodSchema.safeParse({});
+    expect(r.success).toBe(false);
   });
 });
 
-describe("MCP schemas — return type invariants", () => {
-  it("MCPRemoteConfigZodSchema parsed result has url", () => {
-    const result = MCPRemoteConfigZodSchema.safeParse({ url: "http://x.com" });
-    if (result.success) {
-      expect(typeof result.data.url).toBe("string");
-    }
+describe("McpToolCustomizationZodSchema", () => {
+  it("is a defined schema", () => {
+    expect(McpToolCustomizationZodSchema).toBeDefined();
   });
 
-  it("MCPStdioConfigZodSchema parsed result has command", () => {
-    const result = MCPStdioConfigZodSchema.safeParse({ command: "node" });
-    if (result.success) {
-      expect(typeof result.data.command).toBe("string");
-    }
+  it("can be used for safeParse", () => {
+    // Just verify the schema is parseable (structure varies)
+    expect(typeof McpToolCustomizationZodSchema.safeParse).toBe("function");
+  });
+});
+
+describe("McpServerCustomizationZodSchema", () => {
+  it("is a defined schema", () => {
+    expect(McpServerCustomizationZodSchema).toBeDefined();
   });
 
-  it("AllowedMCPServerZodSchema parsed result has tools array", () => {
-    const result = AllowedMCPServerZodSchema.safeParse({ tools: ["x"] });
-    if (result.success) {
-      expect(Array.isArray(result.data.tools)).toBe(true);
-    }
+  it("can be used for safeParse", () => {
+    expect(typeof McpServerCustomizationZodSchema.safeParse).toBe("function");
+  });
+});
+
+describe("MCPRemoteConfigZodSchema — additional cases", () => {
+  it("accepts http:// URL (not only https)", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: "http://mcp.internal/sse" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects null as url", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: null });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("MCPStdioConfigZodSchema — additional cases", () => {
+  it("rejects missing command", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ args: ["--foo"] });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts args as empty array", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "node", args: [] });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("McpToolCustomizationZodSchema — field rules", () => {
+  it("requires toolName (min 1)", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "", mcpServerId: "s1" });
+    expect(r.success).toBe(false);
+  });
+
+  it("requires mcpServerId (min 1)", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "" });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts null prompt", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "s1", prompt: null });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts omitted prompt", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "s1" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects prompt over 1000 characters", () => {
+    const r = McpToolCustomizationZodSchema.safeParse({
+      toolName: "search", mcpServerId: "s1", prompt: "x".repeat(1001),
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("MCP schemas — additional invariants", () => {
+  it("MCPStdioConfigZodSchema rejects empty command string", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "", args: [] });
+    expect(r.success).toBe(false);
+  });
+
+  it("MCPRemoteConfigZodSchema rejects non-http url", () => {
+    const r = MCPRemoteConfigZodSchema.safeParse({ url: "ftp://example.com" });
+    expect(r.success).toBe(false);
+  });
+
+  it("MCPStdioConfigZodSchema accepts valid command with args", () => {
+    const r = MCPStdioConfigZodSchema.safeParse({ command: "node", args: ["server.js"] });
+    expect(r.success).toBe(true);
+  });
+
+  it("McpServerCustomizationZodSchema rejects missing mcpServerId", () => {
+    const r = McpServerCustomizationZodSchema.safeParse({ prompt: "help" });
+    expect(r.success).toBe(false);
   });
 });

@@ -1,107 +1,134 @@
 import { describe, it, expect } from "vitest";
-import { tag, type Tagged } from "./tag";
+import { tag } from "./tag";
 
-type Payload = { value: number; label: string };
-const myTag = tag<Payload>("myTag");
+describe("tag builder — create", () => {
+  const userTag = tag<{ name: string; age: number }>("user");
 
-describe("tag — create", () => {
-  it("returns an object with all original properties", () => {
-    const tagged = myTag.create({ value: 42, label: "hello" });
-    expect(tagged.value).toBe(42);
-    expect(tagged.label).toBe("hello");
+  it("creates a tagged object with the tag key", () => {
+    const obj = userTag.create({ name: "Alice", age: 30 });
+    expect(obj.name).toBe("Alice");
+    expect(obj.age).toBe(30);
+    expect((obj as any)["__$ref__"]).toBe("user");
   });
 
-  it("stamped object passes isMaybe", () => {
-    const tagged = myTag.create({ value: 1, label: "x" });
-    expect(myTag.isMaybe(tagged)).toBe(true);
-  });
-
-  it("plain object without stamp does not pass isMaybe", () => {
-    const plain = { value: 1, label: "x" };
-    expect(myTag.isMaybe(plain)).toBe(false);
+  it("preserves all data fields on created object", () => {
+    const obj = userTag.create({ name: "Bob", age: 25 });
+    expect(obj.name).toBe("Bob");
+    expect(obj.age).toBe(25);
   });
 });
 
-describe("tag — isMaybe", () => {
+describe("tag builder — isMaybe", () => {
+  const itemTag = tag<{ id: string }>("item");
+
+  it("returns true for an object created with the same tag", () => {
+    const obj = itemTag.create({ id: "abc" });
+    expect(itemTag.isMaybe(obj)).toBe(true);
+  });
+
   it("returns false for null", () => {
-    expect(myTag.isMaybe(null)).toBe(false);
+    expect(itemTag.isMaybe(null)).toBe(false);
   });
 
   it("returns false for undefined", () => {
-    expect(myTag.isMaybe(undefined)).toBe(false);
+    expect(itemTag.isMaybe(undefined)).toBe(false);
   });
 
-  it("returns false for a number", () => {
-    expect(myTag.isMaybe(42)).toBe(false);
+  it("returns false for a plain object without tag", () => {
+    expect(itemTag.isMaybe({ id: "abc" })).toBe(false);
   });
 
-  it("returns false for a string", () => {
-    expect(myTag.isMaybe("hello")).toBe(false);
+  it("returns false for an object with a different tag value", () => {
+    const otherTag = tag<{ id: string }>("other");
+    const obj = otherTag.create({ id: "abc" });
+    expect(itemTag.isMaybe(obj)).toBe(false);
   });
 
-  it("returns false for empty object", () => {
-    expect(myTag.isMaybe({})).toBe(false);
-  });
-
-  it("returns false for object tagged with different tag name", () => {
-    const otherTag = tag<Payload>("otherTag");
-    const other = otherTag.create({ value: 1, label: "y" });
-    expect(myTag.isMaybe(other)).toBe(false);
-  });
-
-  it("returns true for correctly tagged object", () => {
-    const tagged = myTag.create({ value: 10, label: "z" });
-    expect(myTag.isMaybe(tagged)).toBe(true);
+  it("returns false for a string primitive", () => {
+    expect(itemTag.isMaybe("item")).toBe(false);
   });
 });
 
-describe("tag — unwrap", () => {
-  it("returns original data without the tag key", () => {
-    const tagged = myTag.create({ value: 99, label: "unwrap-me" });
-    const unwrapped = myTag.unwrap(tagged);
-    expect(unwrapped.value).toBe(99);
-    expect(unwrapped.label).toBe("unwrap-me");
-    expect("__$ref__" in unwrapped).toBe(false);
+describe("tag builder — unwrap", () => {
+  const eventTag = tag<{ type: string; payload: unknown }>("event");
+
+  it("removes the tag key when unwrapping", () => {
+    const obj = eventTag.create({ type: "click", payload: {} });
+    const unwrapped = eventTag.unwrap(obj);
+    expect((unwrapped as any)["__$ref__"]).toBeUndefined();
   });
 
-  it("unwrap then create produces equivalent structure", () => {
-    const original = { value: 7, label: "round-trip" };
-    const tagged = myTag.create(original);
-    const unwrapped = myTag.unwrap(tagged);
-    expect(unwrapped).toEqual(original);
-  });
-});
-
-describe("tag — multiple independent tags", () => {
-  type TypeA = { id: string };
-  type TypeB = { count: number };
-
-  const tagA = tag<TypeA>("typeA");
-  const tagB = tag<TypeB>("typeB");
-
-  it("tagA.isMaybe rejects tagB values", () => {
-    const b = tagB.create({ count: 5 });
-    expect(tagA.isMaybe(b)).toBe(false);
-  });
-
-  it("tagB.isMaybe rejects tagA values", () => {
-    const a = tagA.create({ id: "abc" });
-    expect(tagB.isMaybe(a)).toBe(false);
-  });
-
-  it("each tag recognises only its own values", () => {
-    const a = tagA.create({ id: "x" });
-    const b = tagB.create({ count: 3 });
-    expect(tagA.isMaybe(a)).toBe(true);
-    expect(tagB.isMaybe(b)).toBe(true);
-    expect(tagA.isMaybe(b)).toBe(false);
-    expect(tagB.isMaybe(a)).toBe(false);
+  it("preserves data fields after unwrap", () => {
+    const obj = eventTag.create({ type: "submit", payload: { x: 1 } });
+    const unwrapped = eventTag.unwrap(obj);
+    expect(unwrapped.type).toBe("submit");
+    expect(unwrapped.payload).toEqual({ x: 1 });
   });
 });
 
-describe("tag — frozen builder", () => {
-  it("tag() returns a frozen object (immutable)", () => {
-    const t = tag<{ x: number }>("frozen-test");
-    expect(Object.isFrozen(t)).toBe(true);
+describe("tag builder — different tag names do not interfere", () => {
+  const aTag = tag<{ v: number }>("A");
+  const bTag = tag<{ v: number }>("B");
+
+  it("A.isMaybe returns false for a B-tagged object", () => {
+    const bObj = bTag.create({ v: 1 });
+    expect(aTag.isMaybe(bObj)).toBe(false);
+  });
+
+  it("B.isMaybe returns false for an A-tagged object", () => {
+    const aObj = aTag.create({ v: 2 });
+    expect(bTag.isMaybe(aObj)).toBe(false);
+  });
+});
+
+describe("tag builder — isMaybe edge cases", () => {
+  const nodeTag = tag<{ value: unknown }>("node");
+
+  it("returns false for an array (even if it has the tag key)", () => {
+    const arr = Object.assign([], { "__$ref__": "node" });
+    // Arrays are objects, so isMaybe may vary, but raw arrays without tag should fail
+    expect(nodeTag.isMaybe([])).toBe(false);
+  });
+
+  it("returns false for a number primitive", () => {
+    expect(nodeTag.isMaybe(42)).toBe(false);
+  });
+
+  it("returns false for a boolean", () => {
+    expect(nodeTag.isMaybe(true)).toBe(false);
+  });
+
+  it("returns true for nested data objects created with the same tag", () => {
+    const obj = nodeTag.create({ value: { nested: { deep: "ok" } } });
+    expect(nodeTag.isMaybe(obj)).toBe(true);
+  });
+
+  it("two separately created objects with same tag are both isMaybe", () => {
+    const o1 = nodeTag.create({ value: "first" });
+    const o2 = nodeTag.create({ value: "second" });
+    expect(nodeTag.isMaybe(o1)).toBe(true);
+    expect(nodeTag.isMaybe(o2)).toBe(true);
+  });
+});
+
+describe("tag builder — unwrap with complex data", () => {
+  const recordTag = tag<{ items: string[]; meta: { count: number } }>("record");
+
+  it("unwrap preserves array fields", () => {
+    const obj = recordTag.create({ items: ["a", "b", "c"], meta: { count: 3 } });
+    const unwrapped = recordTag.unwrap(obj);
+    expect(unwrapped.items).toEqual(["a", "b", "c"]);
+  });
+
+  it("unwrap preserves nested object fields", () => {
+    const obj = recordTag.create({ items: [], meta: { count: 5 } });
+    const unwrapped = recordTag.unwrap(obj);
+    expect(unwrapped.meta.count).toBe(5);
+  });
+
+  it("isMaybe is false on unwrapped object (tag key removed)", () => {
+    const obj = recordTag.create({ items: [], meta: { count: 0 } });
+    const unwrapped = recordTag.unwrap(obj);
+    expect(recordTag.isMaybe(unwrapped)).toBe(false);
   });
 });

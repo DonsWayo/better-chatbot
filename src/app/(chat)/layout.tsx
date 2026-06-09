@@ -12,6 +12,7 @@ import { UserDetailContentSkeleton } from "@/components/user/user-detail/user-de
 
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { AupModal } from "@/components/compliance/aup-modal";
 export const experimental_ppr = true;
 
 export default async function ChatLayout({
@@ -35,6 +36,7 @@ export default async function ChatLayout({
           }
         />
         <AppSidebar user={session.user} />
+        <AupModal />
         <main className="relative bg-background  w-full flex flex-col h-screen">
           <AppHeader />
           <div className="flex-1 overflow-y-auto">{children}</div>

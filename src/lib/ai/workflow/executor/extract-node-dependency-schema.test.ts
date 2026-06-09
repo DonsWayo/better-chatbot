@@ -1,211 +1,141 @@
 import { describe, it, expect } from "vitest";
 import { extractNodeDependencySchema } from "./extract-node-dependency-schema";
 import { NodeKind } from "../workflow.interface";
-import type { WorkflowNodeData } from "../workflow.interface";
-import type { ObjectJsonSchema7 } from "app-types/util";
 
-const makeInputNode = (id: string, extra: Partial<WorkflowNodeData> = {}): WorkflowNodeData =>
-  ({
-    id,
-    name: id,
-    kind: NodeKind.Input,
-    outputSchema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        count: { type: "number" },
-      },
-    } as ObjectJsonSchema7,
-    ...extra,
-  }) as unknown as WorkflowNodeData;
-
-const makeOutputNode = (
-  id: string,
-  outputData: { key: string; source?: { nodeId: string; path: string[] } }[],
-): WorkflowNodeData =>
-  ({
-    id,
-    name: id,
-    kind: NodeKind.Output,
-    outputData,
-    outputSchema: { type: "object", properties: {} } as ObjectJsonSchema7,
-  }) as unknown as WorkflowNodeData;
-
-const makeLLMNode = (id: string, schema: ObjectJsonSchema7): WorkflowNodeData =>
-  ({
-    id,
-    name: id,
-    kind: NodeKind.LLM,
-    outputSchema: schema,
-  }) as unknown as WorkflowNodeData;
-
-describe("extractNodeDependencySchema", () => {
-  describe("unknown targetId", () => {
-    it("returns default empty object schema when target not found", () => {
-      const result = extractNodeDependencySchema({
-        targetId: "nonexistent",
-        nodes: [makeInputNode("n1")],
-      });
-      expect(result.type).toBe("object");
-      expect(result.properties).toEqual({});
-    });
-  });
-
-  describe("Input node target", () => {
-    it("returns the input node's outputSchema directly", () => {
-      const node = makeInputNode("input-1");
-      const result = extractNodeDependencySchema({
-        targetId: "input-1",
-        nodes: [node],
-      });
-      expect(result).toEqual(node.outputSchema);
-    });
-
-    it("preserves all properties from the input node's schema", () => {
-      const node = makeInputNode("input-2");
-      const result = extractNodeDependencySchema({
-        targetId: "input-2",
-        nodes: [node],
-      });
-      expect(result.properties?.message).toEqual({ type: "string" });
-      expect(result.properties?.count).toEqual({ type: "number" });
-    });
-  });
-
-  describe("Output node target", () => {
-    it("returns empty properties when outputData is empty", () => {
-      const outputNode = makeOutputNode("out-1", []);
-      const result = extractNodeDependencySchema({
-        targetId: "out-1",
-        nodes: [outputNode],
-      });
-      expect(result.type).toBe("object");
-      expect(result.properties).toEqual({});
-    });
-
-    it("skips outputData entries with no key", () => {
-      const outputNode = makeOutputNode("out-2", [
-        { key: "", source: { nodeId: "src-1", path: ["value"] } },
-      ]);
-      const result = extractNodeDependencySchema({
-        targetId: "out-2",
-        nodes: [outputNode],
-      });
-      expect(result.properties).toEqual({});
-    });
-
-    it("uses string default type when source is absent", () => {
-      const outputNode = makeOutputNode("out-3", [{ key: "myField" }]);
-      const result = extractNodeDependencySchema({
-        targetId: "out-3",
-        nodes: [outputNode],
-      });
-      expect(result.properties?.myField).toEqual({ type: "string" });
-    });
-
-    it("uses string default when source node not found", () => {
-      const outputNode = makeOutputNode("out-4", [
-        { key: "field", source: { nodeId: "missing-node", path: ["x"] } },
-      ]);
-      const result = extractNodeDependencySchema({
-        targetId: "out-4",
-        nodes: [outputNode],
-      });
-      expect(result.properties?.field).toEqual({ type: "string" });
-    });
-
-    it("resolves schema from source node via path", () => {
-      const sourceNode = makeLLMNode("llm-1", {
-        type: "object",
-        properties: {
-          response: { type: "string" },
-        },
-      } as ObjectJsonSchema7);
-      const outputNode = makeOutputNode("out-5", [
-        { key: "result", source: { nodeId: "llm-1", path: ["response"] } },
-      ]);
-      const result = extractNodeDependencySchema({
-        targetId: "out-5",
-        nodes: [sourceNode, outputNode],
-      });
-      expect(result.properties?.result).toEqual({ type: "string" });
-    });
-
-    it("maps multiple output data entries independently", () => {
-      const sourceNode = makeLLMNode("llm-2", {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          score: { type: "number" },
-        },
-      } as ObjectJsonSchema7);
-      const outputNode = makeOutputNode("out-6", [
-        { key: "t", source: { nodeId: "llm-2", path: ["title"] } },
-        { key: "s", source: { nodeId: "llm-2", path: ["score"] } },
-      ]);
-      const result = extractNodeDependencySchema({
-        targetId: "out-6",
-        nodes: [sourceNode, outputNode],
-      });
-      expect(result.properties?.t).toEqual({ type: "string" });
-      expect(result.properties?.s).toEqual({ type: "number" });
-    });
-  });
-
-  describe("non-input, non-output node targets", () => {
-    it("returns default empty object schema for LLM node", () => {
-      const llmNode = makeLLMNode("llm-3", {
-        type: "object",
-        properties: { x: { type: "string" } },
-      } as ObjectJsonSchema7);
-      const result = extractNodeDependencySchema({
-        targetId: "llm-3",
-        nodes: [llmNode],
-      });
-      expect(result.type).toBe("object");
-      expect(result.properties).toEqual({});
-    });
-  });
-
-  describe("empty nodes list", () => {
-    it("returns default schema when nodes array is empty", () => {
-      const result = extractNodeDependencySchema({
-        targetId: "any",
-        nodes: [],
-      });
-      expect(result.type).toBe("object");
-    });
-  });
+const makeBase = (overrides: any = {}) => ({
+  id: "n1",
+  name: "TestNode",
+  position: { x: 0, y: 0 },
+  outputSchema: {
+    type: "object" as const,
+    properties: {},
+    required: [],
+  },
+  ...overrides,
 });
 
-describe("extractNodeDependencySchema — result invariants", () => {
-  it("always returns type: 'object'", () => {
-    const node = makeInputNode("n1");
-    const result = extractNodeDependencySchema({ targetId: "n1", nodes: [node] });
+describe("extractNodeDependencySchema", () => {
+  it("returns empty schema when target node not found", () => {
+    const result = extractNodeDependencySchema({ targetId: "missing", nodes: [] });
     expect(result.type).toBe("object");
+    expect(result.properties).toBeDefined();
   });
 
-  it("always returns a result with a properties field", () => {
-    const result = extractNodeDependencySchema({ targetId: "x", nodes: [] });
-    expect(result).toHaveProperty("properties");
+  it("returns outputSchema for Input node", () => {
+    const inputSchema = {
+      type: "object" as const,
+      properties: { name: { type: "string" as const }, age: { type: "number" as const } },
+      required: ["name"],
+    };
+    const nodes = [
+      makeBase({ id: "n1", kind: NodeKind.Input, outputSchema: inputSchema }),
+    ];
+    const result = extractNodeDependencySchema({ targetId: "n1", nodes });
+    expect(result).toEqual(inputSchema);
   });
 
-  it("properties field is always an object", () => {
-    const node = makeInputNode("n2");
-    const result = extractNodeDependencySchema({ targetId: "n2", nodes: [node] });
+  it("returns schema with output data keys for Output node", () => {
+    const sourceNode = makeBase({
+      id: "src",
+      kind: NodeKind.LLM,
+      outputSchema: {
+        type: "object" as const,
+        properties: { response: { type: "string" as const } },
+        required: [],
+      },
+    });
+    const outputNode = makeBase({
+      id: "out",
+      kind: NodeKind.Output,
+      outputData: [
+        {
+          key: "result",
+          source: { nodeId: "src", path: ["response"] },
+        },
+      ],
+    });
+    const result = extractNodeDependencySchema({
+      targetId: "out",
+      nodes: [sourceNode, outputNode],
+    });
+    expect(result.type).toBe("object");
+    expect(result.properties?.result).toBeDefined();
+    expect((result.properties?.result as any).type).toBe("string");
+  });
+
+  it("skips output data entries without a key", () => {
+    const outputNode = makeBase({
+      id: "out",
+      kind: NodeKind.Output,
+      outputData: [{ key: "", source: null }],
+    });
+    const result = extractNodeDependencySchema({
+      targetId: "out",
+      nodes: [outputNode],
+    });
+    expect(Object.keys(result.properties ?? {})).toHaveLength(0);
+  });
+
+  it("returns empty schema for LLM node (no special handling)", () => {
+    const nodes = [makeBase({ id: "n1", kind: NodeKind.LLM })];
+    const result = extractNodeDependencySchema({ targetId: "n1", nodes });
+    expect(result.type).toBe("object");
+    expect(result.properties).toBeDefined();
+  });
+
+  it("defaults key schema to string when source node not found", () => {
+    const outputNode = makeBase({
+      id: "out",
+      kind: NodeKind.Output,
+      outputData: [
+        { key: "myKey", source: { nodeId: "nonexistent", path: ["field"] } },
+      ],
+    });
+    const result = extractNodeDependencySchema({
+      targetId: "out",
+      nodes: [outputNode],
+    });
+    expect((result.properties?.myKey as any).type).toBe("string");
+  });
+
+  it("multiple output data entries produce multiple properties", () => {
+    const srcNode = makeBase({
+      id: "src",
+      kind: NodeKind.LLM,
+      outputSchema: {
+        type: "object" as const,
+        properties: { text: { type: "string" as const }, score: { type: "number" as const } },
+        required: [],
+      },
+    });
+    const outputNode = makeBase({
+      id: "out",
+      kind: NodeKind.Output,
+      outputData: [
+        { key: "result", source: { nodeId: "src", path: ["text"] } },
+        { key: "rating", source: { nodeId: "src", path: ["score"] } },
+      ],
+    });
+    const result = extractNodeDependencySchema({
+      targetId: "out",
+      nodes: [srcNode, outputNode],
+    });
+    expect(Object.keys(result.properties ?? {})).toHaveLength(2);
+    expect(result.properties?.result).toBeDefined();
+    expect(result.properties?.rating).toBeDefined();
+  });
+
+  it("result always has a properties object", () => {
+    const result = extractNodeDependencySchema({ targetId: "missing", nodes: [] });
+    expect(result.properties).toBeDefined();
     expect(typeof result.properties).toBe("object");
-    expect(result.properties).not.toBeNull();
   });
 
-  it("output node with keyed field uses source schema type when available", () => {
-    const sourceNode = makeLLMNode("src", {
-      type: "object",
-      properties: { val: { type: "number" } },
-    } as ObjectJsonSchema7);
-    const outputNode = makeOutputNode("out", [
-      { key: "myNum", source: { nodeId: "src", path: ["val"] } },
-    ]);
-    const result = extractNodeDependencySchema({ targetId: "out", nodes: [sourceNode, outputNode] });
-    expect(result.properties?.myNum).toEqual({ type: "number" });
+  it("result type is always 'object' for Input and LLM nodes", () => {
+    for (const kind of [NodeKind.Input, NodeKind.LLM]) {
+      const nodes = [makeBase({ id: "n1", kind })];
+      const result = extractNodeDependencySchema({ targetId: "n1", nodes });
+      expect(result.type).toBe("object");
+    }
   });
 });

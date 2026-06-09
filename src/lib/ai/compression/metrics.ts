@@ -1,0 +1,46 @@
+"server-only";
+
+/**
+ * W11 — compression savings metrics.
+ *
+ * Records token-reduction stats to the W3 usage ledger. Uses prom-client
+ * counters for real-time observability.
+ */
+
+import { Counter, Histogram } from "prom-client";
+
+// Prometheus counter for total characters saved across all requests
+export const compressionCharsSaved = new Counter({
+  name: "asafe_compression_chars_saved_total",
+  help: "Total characters removed from prompts by the compression middleware",
+  labelNames: ["team_id", "level"],
+});
+
+// Histogram for compression ratios (charsAfter / charsBefore)
+export const compressionRatio = new Histogram({
+  name: "asafe_compression_ratio",
+  help: "Ratio of chars after compression to chars before (lower = more compression)",
+  labelNames: ["team_id", "level"],
+  buckets: [0.1, 0.2, 0.3, 0.5, 0.7, 0.85, 0.95, 1.0],
+});
+
+export function recordCompressionSavings(opts: {
+  teamId: string | null | undefined;
+  level: string;
+  charsBefore: number;
+  charsAfter: number;
+}): void {
+  if (opts.charsBefore === 0) return;
+
+  const saved = opts.charsBefore - opts.charsAfter;
+  const ratio = opts.charsAfter / opts.charsBefore;
+  const labels = {
+    team_id: opts.teamId ?? "none",
+    level: opts.level,
+  };
+
+  if (saved > 0) {
+    compressionCharsSaved.inc(labels, saved);
+  }
+  compressionRatio.observe(labels, ratio);
+}

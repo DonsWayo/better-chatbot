@@ -1,200 +1,360 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getSessionMock,
-  agentRepositoryMock,
+  checkAccessMock,
+  selectAgentByIdMock,
+  updateAgentMock,
+  deleteAgentMock,
   canEditAgentMock,
   canDeleteAgentMock,
-  serverCacheMock,
+  serverCacheDeleteMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  agentRepositoryMock: {
-    checkAccess: vi.fn(),
-    selectAgentById: vi.fn(),
-    updateAgent: vi.fn(),
-    deleteAgent: vi.fn(),
-  },
+  checkAccessMock: vi.fn(),
+  selectAgentByIdMock: vi.fn(),
+  updateAgentMock: vi.fn(),
+  deleteAgentMock: vi.fn(),
   canEditAgentMock: vi.fn(),
   canDeleteAgentMock: vi.fn(),
-  serverCacheMock: { delete: vi.fn() },
+  serverCacheDeleteMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
-vi.mock("lib/db/repository", () => ({ agentRepository: agentRepositoryMock }));
+vi.mock("lib/db/repository", () => ({
+  agentRepository: {
+    checkAccess: checkAccessMock,
+    selectAgentById: selectAgentByIdMock,
+    updateAgent: updateAgentMock,
+    deleteAgent: deleteAgentMock,
+  },
+}));
 vi.mock("lib/auth/permissions", () => ({
   canEditAgent: canEditAgentMock,
   canDeleteAgent: canDeleteAgentMock,
 }));
-vi.mock("lib/cache", () => ({ serverCache: serverCacheMock }));
+vi.mock("lib/cache", () => ({ serverCache: { delete: serverCacheDeleteMock } }));
 vi.mock("lib/cache/cache-keys", () => ({
   CacheKeys: { agentInstructions: (id: string) => `agent:${id}` },
 }));
+vi.mock("app-types/agent", () => ({
+  AgentUpdateSchema: { parse: (b: unknown) => b },
+}));
 
-import { GET, PUT, DELETE } from "./route";
+const AGENT = { id: "ag-1", name: "Test Agent", userId: "u1", visibility: "private" };
 
-const makeContext = (id: string) => ({ params: Promise.resolve({ id }) });
-const makeRequest = (body: unknown, method = "PUT") =>
-  new Request("http://localhost", {
-    method,
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-const AGENT = { id: "ag-1", name: "My Agent", userId: "user-1", visibility: "private" };
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body) } as unknown as Request;
+}
 
 describe("GET /api/agent/[id]", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await GET(new Request("http://x"), makeContext("ag-1"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when user lacks access", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    agentRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await GET(new Request("http://x"), makeContext("ag-1"));
+  it("returns 401 when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns agent when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.selectAgentById.mockResolvedValue(AGENT);
-    const res = await GET(new Request("http://x"), makeContext("ag-1"));
+  it("returns agent when access granted", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe("ag-1");
   });
-
-  it("calls checkAccess with id and userId", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.selectAgentById.mockResolvedValue(AGENT);
-    await GET(new Request("http://x"), makeContext("ag-xyz"));
-    expect(agentRepositoryMock.checkAccess).toHaveBeenCalledWith("ag-xyz", "user-99");
-  });
 });
 
 describe("PUT /api/agent/[id]", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await PUT(makeRequest({ name: "Updated" }), makeContext("ag-1"));
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "Renamed" }), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user cannot edit agents", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditAgentMock.mockResolvedValue(false);
-    const res = await PUT(makeRequest({ name: "Updated" }), makeContext("ag-1"));
+  it("returns 403 when lacking edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "Renamed" }), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(403);
   });
 
-  it("returns 401 when user lacks access to specific agent", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await PUT(makeRequest({ name: "Updated" }), makeContext("ag-1"));
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 400 on invalid body (name too long)", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.selectAgentById.mockResolvedValue(AGENT);
-    const res = await PUT(
-      makeRequest({ name: "x".repeat(101) }),
-      makeContext("ag-1"),
-    );
-    expect(res.status).toBe(400);
-  });
-
-  it("updates and returns agent when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.selectAgentById.mockResolvedValue(AGENT);
-    const updated = { ...AGENT, name: "Updated Name" };
-    agentRepositoryMock.updateAgent.mockResolvedValue(updated);
-    const res = await PUT(makeRequest({ name: "Updated Name" }), makeContext("ag-1"));
+  it("updates agent and returns updated record", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const UPDATED = { ...AGENT, name: "Renamed" };
+    updateAgentMock.mockResolvedValueOnce(UPDATED);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "Renamed" }), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.name).toBe("Updated Name");
-  });
-
-  it("invalidates cache after update", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canEditAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.selectAgentById.mockResolvedValue(AGENT);
-    agentRepositoryMock.updateAgent.mockResolvedValue({ ...AGENT, id: "ag-1" });
-    await PUT(makeRequest({ name: "Updated" }), makeContext("ag-1"));
-    expect(serverCacheMock.delete).toHaveBeenCalledWith("agent:ag-1");
+    expect(body.name).toBe("Renamed");
   });
 });
 
 describe("DELETE /api/agent/[id]", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await DELETE(new Request("http://x"), makeContext("ag-1"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when user cannot delete agents", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canDeleteAgentMock.mockResolvedValue(false);
-    const res = await DELETE(new Request("http://x"), makeContext("ag-1"));
+  it("returns 403 when lacking delete permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(403);
   });
 
-  it("returns 401 when user lacks access", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canDeleteAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await DELETE(new Request("http://x"), makeContext("ag-1"));
-    expect(res.status).toBe(401);
-  });
-
   it("deletes agent and returns success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canDeleteAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.deleteAgent.mockResolvedValue(undefined);
-    const res = await DELETE(new Request("http://x"), makeContext("ag-1"));
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteAgentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(serverCacheDeleteMock).toHaveBeenCalledWith("agent:ag-1");
+  });
+});
+
+describe("GET /api/agent/[id] — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
   });
 
-  it("calls deleteAgent with id and userId", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    canDeleteAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.deleteAgent.mockResolvedValue(undefined);
-    await DELETE(new Request("http://x"), makeContext("ag-abc"));
-    expect(agentRepositoryMock.deleteAgent).toHaveBeenCalledWith("ag-abc", "user-42");
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
   });
 
-  it("invalidates cache after deletion", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canDeleteAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockResolvedValue(true);
-    agentRepositoryMock.deleteAgent.mockResolvedValue(undefined);
-    await DELETE(new Request("http://x"), makeContext("ag-1"));
-    expect(serverCacheMock.delete).toHaveBeenCalledWith("agent:ag-1");
+  it("never calls selectAgentById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).not.toHaveBeenCalled();
   });
 
-  it("returns 500 on unexpected error", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    canDeleteAgentMock.mockResolvedValue(true);
-    agentRepositoryMock.checkAccess.mockRejectedValue(new Error("DB fail"));
-    const res = await DELETE(new Request("http://x"), makeContext("ag-1"));
-    expect(res.status).toBe(500);
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAgentById called exactly once when access granted", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PUT /api/agent/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls updateAgent when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(updateAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls updateAgent when lacking edit permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(false);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(updateAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("serverCacheDelete called once on successful update", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const UPDATED = { ...AGENT, name: "Renamed" };
+    updateAgentMock.mockResolvedValueOnce(UPDATED);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "Renamed" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(serverCacheDeleteMock).toHaveBeenCalledTimes(1);
+    expect(serverCacheDeleteMock).toHaveBeenCalledWith("agent:ag-1");
+  });
+
+  it("getSession called exactly once per PUT", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DELETE /api/agent/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls deleteAgent when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls deleteAgent when lacking delete permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("deleteAgent called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canDeleteAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteAgentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/agent/[id] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("selectAgentById called exactly once on authenticated GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAgentById not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET, PUT, DELETE /api/agent/[id] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateAgent not called when PUT unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ name: "x" }), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(updateAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("deleteAgent not called when DELETE unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(deleteAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("DELETE returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
   });
 });

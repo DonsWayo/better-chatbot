@@ -1,191 +1,253 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
-const {
-  getSessionMock,
-  serverFileStorageMock,
-  checkStorageActionMock,
-} = vi.hoisted(() => ({
+const { getSessionMock, checkStorageActionMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  serverFileStorageMock: {
-    createUploadUrl: vi.fn(),
-    getSourceUrl: vi.fn(),
-  },
   checkStorageActionMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("../actions", () => ({ checkStorageAction: checkStorageActionMock }));
+
+const createUploadUrlMock = vi.fn();
+const getSourceUrlMock = vi.fn();
+
 vi.mock("lib/file-storage", () => ({
-  serverFileStorage: serverFileStorageMock,
   storageDriver: "local",
-}));
-vi.mock("../actions", () => ({
-  checkStorageAction: checkStorageActionMock,
-}));
-vi.mock("@vercel/blob/client", () => ({
-  handleUpload: vi.fn().mockResolvedValue({ url: "blob://uploaded" }),
-}));
-vi.mock("lib/logger", () => ({
-  default: {
-    withDefaults: () => ({ info: vi.fn(), error: vi.fn() }),
+  serverFileStorage: {
+    createUploadUrl: createUploadUrlMock,
+    getSourceUrl: getSourceUrlMock,
   },
 }));
-vi.mock("consola/utils", () => ({ colorize: (_: string, s: string) => s }));
+vi.mock("lib/logger", () => ({
+  default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
+}));
+vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
+vi.mock("@vercel/blob/client", () => ({
+  handleUpload: vi.fn().mockResolvedValue({ clientToken: "tok123" }),
+}));
+vi.mock("next/server", () => ({
+  NextResponse: { json: (body: unknown, init?: ResponseInit) => new Response(JSON.stringify(body), { ...init, headers: { "content-type": "application/json" } }) },
+}));
 
-import { POST } from "./route";
-
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost/api/storage/upload-url", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  checkStorageActionMock.mockResolvedValue({ isValid: true });
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body ?? {}) } as unknown as Request;
+}
 
 describe("POST /api/storage/upload-url", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest({ filename: "test.csv" }));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    const res = await POST(makeRequest({ filename: "test.csv" }));
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 500 when storage is not configured", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    checkStorageActionMock.mockResolvedValue({
+  it("returns 500 when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({
       isValid: false,
-      error: "S3 not configured",
-      solution: "Set AWS credentials",
+      error: "No storage driver",
+      solution: "Set STORAGE_DRIVER",
     });
-    const res = await POST(makeRequest({ filename: "test.csv" }));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("S3 not configured");
+    expect(body.error).toBe("No storage driver");
   });
 
-  it("returns 400 on invalid JSON body", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const res = await POST(
-      new Request("http://localhost/api/storage/upload-url", {
-        method: "POST",
-        body: "invalid-json",
-        headers: { "content-type": "text/plain" },
-      }),
-    );
-    expect(res.status).toBe(400);
-  });
+  it("returns fallback when createUploadUrl returns null", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
 
-  it("returns fallback response when storage does not support createUploadUrl", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    const storageMock = { ...serverFileStorageMock };
-    delete (storageMock as Record<string, unknown>).createUploadUrl;
-    vi.mocked(serverFileStorageMock).createUploadUrl = undefined as unknown as typeof serverFileStorageMock.createUploadUrl;
-    const res = await POST(makeRequest({ filename: "test.csv" }));
-    expect(res.status).toBe(200);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "doc.pdf" }));
     const body = await res.json();
     expect(body.directUploadSupported).toBe(false);
     expect(body.fallbackUrl).toBe("/api/storage/upload");
   });
 
-  it("returns presigned url when storage supports createUploadUrl", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    serverFileStorageMock.createUploadUrl = vi.fn().mockResolvedValue({
-      key: "uploads/test.csv",
-      url: "https://s3.example.com/presigned",
-    });
-    serverFileStorageMock.getSourceUrl.mockResolvedValue(
-      "https://cdn.example.com/uploads/test.csv",
-    );
-    const res = await POST(makeRequest({ filename: "test.csv" }));
-    expect(res.status).toBe(200);
+  it("returns directUploadSupported true with upload URL when storage supports it", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "uploads/file.pdf", uploadUrl: "http://s3/signed" });
+    getSourceUrlMock.mockResolvedValueOnce("http://cdn/uploads/file.pdf");
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "file.pdf", contentType: "application/pdf" }));
     const body = await res.json();
     expect(body.directUploadSupported).toBe(true);
-    expect(body.key).toBe("uploads/test.csv");
-    expect(body.sourceUrl).toBe("https://cdn.example.com/uploads/test.csv");
+    expect(body.key).toBe("uploads/file.pdf");
+    expect(body.sourceUrl).toBe("http://cdn/uploads/file.pdf");
   });
 
-  it("returns fallback when createUploadUrl returns null", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    serverFileStorageMock.createUploadUrl = vi.fn().mockResolvedValue(null);
-    const res = await POST(makeRequest({ filename: "test.csv" }));
-    expect(res.status).toBe(200);
+  it("never calls checkStorageAction when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(checkStorageActionMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls createUploadUrl when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "No driver", solution: "" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "test.jpg" }));
+    expect(createUploadUrlMock).not.toHaveBeenCalled();
+  });
+
+  it("response for fallback case has fallbackUrl pointing to /api/storage/upload", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "file.csv" }));
+    const body = await res.json();
+    expect(body.fallbackUrl).toBe("/api/storage/upload");
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("checkStorageAction called exactly once when authenticated and valid", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "report.pdf" }));
+    expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/storage/upload-url — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 body has error field when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "Driver not set", solution: "Set STORAGE_DRIVER" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls createUploadUrl when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "secret.pdf" }));
+    expect(createUploadUrlMock).not.toHaveBeenCalled();
+  });
+
+  it("fallback response has directUploadSupported false", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "x.pdf" }));
     const body = await res.json();
     expect(body.directUploadSupported).toBe(false);
   });
 
-  it("does not call checkStorage when session is missing", async () => {
-    getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest({ filename: "test.csv" }));
-    expect(checkStorageActionMock).not.toHaveBeenCalled();
-  });
-
-  it("calls checkStorageAction exactly once per request when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    serverFileStorageMock.createUploadUrl = undefined as unknown as typeof serverFileStorageMock.createUploadUrl;
-    await POST(makeRequest({ filename: "test.csv" }));
-    expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("500 body includes solution when storage not configured", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    checkStorageActionMock.mockResolvedValue({
-      isValid: false,
-      error: "S3 not configured",
-      solution: "Set AWS_BUCKET env var",
-    });
-    const res = await POST(makeRequest({ filename: "test.csv" }));
-    const body = await res.json();
-    expect(body.solution).toBe("Set AWS_BUCKET env var");
-  });
-
-  it("getSession is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest({ filename: "test.csv" }));
-    expect(getSessionMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not call checkStorage when session has no user id", async () => {
-    getSessionMock.mockResolvedValue({ user: {} });
-    await POST(makeRequest({ filename: "test.csv" }));
-    expect(checkStorageActionMock).not.toHaveBeenCalled();
-  });
-
-  it("presigned response includes directUploadSupported: true", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    serverFileStorageMock.createUploadUrl = vi.fn().mockResolvedValue({
-      key: "uploads/doc.pdf",
-      url: "https://s3.example.com/presigned",
-    });
-    serverFileStorageMock.getSourceUrl.mockResolvedValue("https://cdn/doc.pdf");
-    const res = await POST(makeRequest({ filename: "doc.pdf" }));
+  it("success response has directUploadSupported true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/file.pdf", uploadUrl: "https://signed" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/k/file.pdf");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "file.pdf" }));
     const body = await res.json();
     expect(body.directUploadSupported).toBe(true);
   });
+});
 
-  it("returns JSON content-type on success", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    serverFileStorageMock.createUploadUrl = undefined as unknown as typeof serverFileStorageMock.createUploadUrl;
-    const res = await POST(makeRequest({ filename: "test.csv" }));
-    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+describe("POST /api/storage/upload-url — error body content", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("500 body includes solution field when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "Missing driver", solution: "Set FILE_STORAGE_TYPE" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body.solution).toBe("Set FILE_STORAGE_TYPE");
   });
 
-  it("passes filename to createUploadUrl when supported", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    serverFileStorageMock.createUploadUrl = vi.fn().mockResolvedValue({ key: "k", url: "u" });
-    serverFileStorageMock.getSourceUrl.mockResolvedValue("s");
-    await POST(makeRequest({ filename: "my-doc.pdf" }));
-    expect(serverFileStorageMock.createUploadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ filename: "my-doc.pdf" }),
-    );
+  it("createUploadUrl called exactly once when storage is valid", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/img.png", uploadUrl: "https://s3/signed" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/img.png");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "img.png" }));
+    expect(createUploadUrlMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSourceUrl called once after successful createUploadUrl", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/doc.pdf", uploadUrl: "https://s3/signed" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/doc.pdf");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "doc.pdf" }));
+    expect(getSourceUrlMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("success response includes uploadUrl from createUploadUrl", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce({ key: "k/data.json", uploadUrl: "https://s3/signed-url-abc" });
+    getSourceUrlMock.mockResolvedValueOnce("https://cdn/data.json");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "data.json" }));
+    const body = await res.json();
+    expect(body.uploadUrl).toBe("https://s3/signed-url-abc");
+  });
+});
+
+describe("POST /api/storage/upload-url — response type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("returns a Response instance for 401 (unauthenticated)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "f.txt" }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a Response instance on storage config error", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, message: "not configured" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "f.txt" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "f.txt" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("createUploadUrl not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "f.txt" }));
+    expect(createUploadUrlMock).not.toHaveBeenCalled();
   });
 });

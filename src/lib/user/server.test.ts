@@ -234,3 +234,61 @@ describe("User Server", () => {
     });
   });
 });
+
+describe("updateUserDetails — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+  });
+
+  it("does not call repository when all fields are undefined", async () => {
+    await updateUserDetails("user-1", undefined, undefined, undefined);
+    expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+  });
+
+  it("calls repository with name when only name provided", async () => {
+    await updateUserDetails("user-1", "Alice");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Alice" }),
+    );
+  });
+
+  it("does not call repository with a userId of empty string when no fields", async () => {
+    await updateUserDetails("user-x");
+    expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+  });
+
+  it("repository called exactly once when name is provided", async () => {
+    await updateUserDetails("user-1", "Bob");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("updateUserDetails — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("updateUserDetails does not call repository when no update fields are given", async () => {
+    const { updateUserDetails } = await import("./server");
+    await updateUserDetails("user-1");
+    expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+  });
+
+  it("updateUserDetails calls repository exactly once with valid name", async () => {
+    const { updateUserDetails } = await import("./server");
+    await updateUserDetails("user-1", "Eve");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateUserDetails passes userId to repository", async () => {
+    const { updateUserDetails } = await import("./server");
+    await updateUserDetails("user-xyz", "Test");
+    expect(userRepository.updateUserDetails).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "user-xyz" }),
+    );
+  });
+
+  it("updateUserDetails resolves without throwing for valid input", async () => {
+    const { updateUserDetails } = await import("./server");
+    await expect(updateUserDetails("user-1", "Alice")).resolves.not.toThrow();
+  });
+});

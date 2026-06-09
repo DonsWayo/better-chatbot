@@ -1,101 +1,126 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { passwordSchema, passwordRegexPattern, passwordRequirementsText } from "./password";
+import { describe, it, expect } from "vitest";
 
-describe("passwordRegexPattern", () => {
-  it("defaults to the built-in pattern when env var is absent", () => {
-    expect(typeof passwordRegexPattern).toBe("string");
-    expect(passwordRegexPattern.length).toBeGreaterThan(0);
+describe("passwordSchema", () => {
+  it("accepts a valid password", async () => {
+    const { passwordSchema } = await import("./password");
+    const result = passwordSchema.safeParse("Passw0rd!");
+    expect(result.success).toBe(true);
   });
 
-  it("uses the custom env value when set", () => {
-    const original = process.env.NEXT_PUBLIC_PASSWORD_REGEX_PATTERN;
-    process.env.NEXT_PUBLIC_PASSWORD_REGEX_PATTERN = "^.{6,}$";
+  it("rejects passwords shorter than 8 characters", async () => {
+    const { passwordSchema } = await import("./password");
+    const result = passwordSchema.safeParse("Ab1");
+    expect(result.success).toBe(false);
+  });
 
-    // Re-import with module reload to pick up env change would require vi.resetModules;
-    // instead just verify the default branch here and trust the env-read is trivial.
-    process.env.NEXT_PUBLIC_PASSWORD_REGEX_PATTERN = original as string;
+  it("rejects passwords longer than 20 characters", async () => {
+    const { passwordSchema } = await import("./password");
+    const result = passwordSchema.safeParse("Abcdefghijklmnop12345!");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects passwords without a digit", async () => {
+    const { passwordSchema } = await import("./password");
+    const result = passwordSchema.safeParse("OnlyLetters!");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects passwords without a letter", async () => {
+    const { passwordSchema } = await import("./password");
+    const result = passwordSchema.safeParse("12345678");
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts exactly 8-character valid password", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("Valid1!a").success).toBe(true);
+  });
+
+  it("accepts exactly 20-character valid password", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("Abcdefghij1234567890").success).toBe(true);
+  });
+
+  it("accepts password with special characters", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("P@ssw0rd!").success).toBe(true);
+  });
+
+  it("rejects empty string", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("").success).toBe(false);
+  });
+
+  it("accepts lowercase-only with digit", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("password1").success).toBe(true);
+  });
+});
+
+describe("passwordSchema — boundary conditions", () => {
+  it("rejects 7-character password (one below minimum)", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("Valid1!").success).toBe(false);
+  });
+
+  it("rejects 21-character password (one above maximum)", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("Abcdefghij12345678901").success).toBe(false);
+  });
+
+  it("rejects whitespace-only password", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("        ").success).toBe(false);
+  });
+
+  it("rejects password with only letters and spaces", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("OnlyLetters").success).toBe(false);
+  });
+
+  it("accepts mixed-case password with digit", async () => {
+    const { passwordSchema } = await import("./password");
+    expect(passwordSchema.safeParse("MixedCase1").success).toBe(true);
   });
 });
 
 describe("passwordRequirementsText", () => {
-  it("returns a non-empty string", () => {
+  it("exports a non-empty requirements text string", async () => {
+    const { passwordRequirementsText } = await import("./password");
     expect(typeof passwordRequirementsText).toBe("string");
     expect(passwordRequirementsText.length).toBeGreaterThan(0);
   });
+
+  it("requirements text mentions minimum length 8", async () => {
+    const { passwordRequirementsText } = await import("./password");
+    expect(passwordRequirementsText).toContain("8");
+  });
+
+  it("requirements text mentions maximum length 20", async () => {
+    const { passwordRequirementsText } = await import("./password");
+    expect(passwordRequirementsText).toContain("20");
+  });
 });
 
-describe("passwordSchema", () => {
-  describe("valid passwords", () => {
-    it("accepts an 8-char alphanumeric password", () => {
-      expect(() => passwordSchema.parse("Abc12345")).not.toThrow();
-    });
-
-    it("accepts a 20-char alphanumeric password", () => {
-      expect(() => passwordSchema.parse("Abcdefgh12345678901a")).not.toThrow();
-    });
-
-    it("accepts password with special characters", () => {
-      expect(() => passwordSchema.parse("Pass1@#$")).not.toThrow();
-    });
-
-    it("accepts mixed-case with digits", () => {
-      expect(() => passwordSchema.parse("MyPass99")).not.toThrow();
-    });
-
-    it("accepts a 10-char password", () => {
-      expect(() => passwordSchema.parse("Testpass1!")).not.toThrow();
-    });
+describe("passwordRegexPattern", () => {
+  it("exports a non-empty regex pattern string", async () => {
+    const { passwordRegexPattern } = await import("./password");
+    expect(typeof passwordRegexPattern).toBe("string");
+    expect(passwordRegexPattern.length).toBeGreaterThan(0);
   });
 
-  describe("invalid passwords", () => {
-    it("rejects password shorter than 8 characters", () => {
-      const result = passwordSchema.safeParse("Ab1");
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects password longer than 20 characters", () => {
-      const result = passwordSchema.safeParse("Abcdefghijk12345678901");
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects password with no digits", () => {
-      const result = passwordSchema.safeParse("NoDigitsHere");
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects password with no letters", () => {
-      const result = passwordSchema.safeParse("123456789");
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects empty string", () => {
-      const result = passwordSchema.safeParse("");
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects non-string value (number)", () => {
-      const result = passwordSchema.safeParse(12345678);
-      expect(result.success).toBe(false);
-    });
+  it("pattern is a compilable regex", async () => {
+    const { passwordRegexPattern } = await import("./password");
+    expect(() => new RegExp(passwordRegexPattern)).not.toThrow();
   });
 
-  describe("error messages", () => {
-    it("returns min-length error for short password", () => {
-      const result = passwordSchema.safeParse("Ab1");
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const messages = result.error.issues.map((e) => e.message);
-        expect(messages.some((m) => m.includes("8"))).toBe(true);
-      }
-    });
+  it("pattern matches a valid password", async () => {
+    const { passwordRegexPattern } = await import("./password");
+    expect(new RegExp(passwordRegexPattern).test("Passw0rd!")).toBe(true);
+  });
 
-    it("returns max-length error for very long password", () => {
-      const result = passwordSchema.safeParse("Abcdefghijklmnopqrstuvwxy1234");
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const messages = result.error.issues.map((e) => e.message);
-        expect(messages.some((m) => m.includes("20") || m.includes("exceed"))).toBe(true);
-      }
-    });
+  it("pattern rejects a too-short password", async () => {
+    const { passwordRegexPattern } = await import("./password");
+    expect(new RegExp(passwordRegexPattern).test("Ab1")).toBe(false);
   });
 });

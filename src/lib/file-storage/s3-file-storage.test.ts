@@ -92,6 +92,34 @@ describe("s3-file-storage", () => {
     const url = await storage.getSourceUrl("uploads/x.txt");
     expect(url).toBe("https://cdn.example.com/uploads/x.txt");
   });
+
+  it("upload returns key that includes prefix", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createS3FileStorage();
+    const res = await storage.upload(Buffer.from("hello"), {
+      filename: "doc.pdf",
+      contentType: "application/pdf",
+    });
+    expect(res.key.startsWith("uploads/")).toBe(true);
+  });
+
+  it("upload metadata size matches buffer byte length", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const data = Buffer.from("exact-10!!");
+    const storage = createS3FileStorage();
+    const res = await storage.upload(data, {
+      filename: "test.bin",
+      contentType: "application/octet-stream",
+    });
+    expect(res.metadata.size).toBe(10);
+  });
+
+  it("getSourceUrl without PUBLIC_BASE_URL returns S3 HTTPS URL", async () => {
+    const storage = createS3FileStorage();
+    const url = await storage.getSourceUrl("uploads/file.txt");
+    expect(url).toMatch(/^https:\/\//);
+    expect(url).toContain("my-bucket");
+  });
 });
 
 describe("s3-file-storage — return type invariants", () => {

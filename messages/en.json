@@ -164,7 +164,10 @@
       "noAccount": "Don't have an account? ",
       "signUp": "Sign up",
       "signIn": "Sign in",
-      "orContinueWith": "OR CONTINUE WITH"
+      "orContinueWith": "OR CONTINUE WITH",
+      "continueWithMicrosoft": "Continue with Microsoft",
+      "administratorSignIn": "Administrator sign-in",
+      "backToMicrosoftSignIn": "← Back to Microsoft sign-in"
     },
     "SignUp": {
       "title": "Create an account",
@@ -188,7 +191,7 @@
       "createAccount": "Create account"
     },
     "Intro": {
-      "description": "Welcome to better-chatbot. Sign in to experience our AI-powered conversational tools."
+      "description": "Welcome to Asafe AI. Sign in to experience our AI-powered conversational tools."
     }
   },
   "Chat": {
@@ -758,6 +761,86 @@
       "failedToUpdateRole": "Failed to update role",
       "cannotUpdateOwnRole": "You cannot update your own role",
       "roleUpdatedSuccessfullyTo": "User role updated successfully to {role}"
+    },
+    "Teams": {
+      "title": "Teams",
+      "allTeams": "All Teams",
+      "viewAndManageTeams": "View and manage teams",
+      "noTeamsFound": "No teams found",
+      "createTeam": "New Team",
+      "teamName": "Team Name",
+      "teamDescription": "Description (optional)",
+      "slug": "Slug",
+      "members": "Members",
+      "budgetUsed": "Budget Used",
+      "budgetTotal": "Budget",
+      "createTeamSuccess": "Team created successfully",
+      "createTeamError": "Failed to create team",
+      "addMember": "Add Member",
+      "removeMember": "Remove",
+      "memberEmail": "Member email",
+      "memberRole": "Role",
+      "addMemberSuccess": "Member added",
+      "addMemberError": "Failed to add member"
+    },
+    "Knowledge": {
+      "title": "Knowledge Base",
+      "collections": "Collections",
+      "noCollections": "No knowledge collections yet",
+      "createCollection": "New Collection",
+      "collectionName": "Collection Name",
+      "visibility": "Visibility",
+      "visibilityOrg": "Org-wide",
+      "visibilityTeam": "Team only",
+      "ingestDocument": "Ingest Document",
+      "chunksIngested": "chunks ingested"
+    },
+    "Usage": {
+      "title": "Usage",
+      "costDashboard": "Cost Dashboard",
+      "last30Days": "Last 30 days",
+      "last7Days": "Last 7 days",
+      "totalRequests": "Total Requests",
+      "totalCost": "Total Cost",
+      "byModel": "Cost by Model",
+      "byTaskClass": "Cost by Task",
+      "model": "Model",
+      "provider": "Provider",
+      "requests": "Requests",
+      "promptTokens": "Prompt Tokens",
+      "completionTokens": "Completion Tokens",
+      "costUsd": "Cost (USD)",
+      "taskClass": "Task Class"
+    },
+    "MCP": {
+      "adminTitle": "MCP Catalog",
+      "companyScopedServers": "Company MCP Servers",
+      "registerServer": "Register Server",
+      "noServersRegistered": "No company MCP servers registered yet",
+      "scope": "Scope",
+      "scopeOrg": "Org-wide",
+      "scopeTeam": "Team"
+    },
+    "FeatureFlags": {
+      "title": "Feature Flags",
+      "flagName": "Flag",
+      "flagEnabled": "Enabled",
+      "killSwitch": "Kill Switch",
+      "killSwitchDescription": "Block all AI inference instantly. Deactivate as soon as the incident is resolved.",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activated": "Kill switch activated — all inference is blocked",
+      "deactivated": "Kill switch deactivated — inference is running normally",
+      "flagUpdated": "Flag updated"
+    },
+    "Guardrails": {
+      "title": "Guardrails",
+      "blockedCount": "Blocked",
+      "warnedCount": "Warned",
+      "noEvents": "No guardrail events recorded yet."
+    },
+    "Quality": {
+      "title": "Quality"
     }
   },
   "MCP": {

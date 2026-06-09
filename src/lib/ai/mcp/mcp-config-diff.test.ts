@@ -125,74 +125,92 @@ describe("MCP Config Diff", () => {
       expect(() => detectConfigChanges(prev, next)).toThrow();
     });
 
-    it("identical configurations with command produce no changes", () => {
-      const cfg: Record<string, MCPServerConfig> = {
-        srv: { command: "node", args: ["index.js"] },
-      };
-      expect(detectConfigChanges(cfg, { ...cfg })).toHaveLength(0);
-    });
-
-    it("change type is always add, remove, or update", () => {
-      const prev: Record<string, MCPServerConfig> = {
-        a: { url: "https://a.com" },
-        b: { url: "https://b.com" },
-      };
-      const next: Record<string, MCPServerConfig> = {
-        b: { url: "https://b-new.com" },
-        c: { url: "https://c.com" },
-      };
-      const changes = detectConfigChanges(prev, next);
-      for (const c of changes) {
-        expect(["add", "remove", "update"]).toContain(c.type);
-      }
-    });
-
-    it("added entry has correct value", () => {
-      const prev: Record<string, MCPServerConfig> = {};
-      const next: Record<string, MCPServerConfig> = { newKey: { command: "node" } };
-      const changes = detectConfigChanges(prev, next);
-      const add = changes.find((c) => c.type === "add");
-      expect(add?.value).toEqual({ command: "node" });
-    });
-
-    it("removed entry value matches the original config", () => {
-      const prev: Record<string, MCPServerConfig> = { old: { url: "https://old.com" } };
-      const next: Record<string, MCPServerConfig> = {};
-      const changes = detectConfigChanges(prev, next);
-      const rm = changes.find((c) => c.type === "remove");
-      expect(rm?.value).toEqual({ url: "https://old.com" });
-    });
-
-    it("returns an array", () => {
-      const result = detectConfigChanges({}, {});
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it("returns empty array when both configs are empty", () => {
+    it("returns empty array when both prev and next are empty", () => {
       expect(detectConfigChanges({}, {})).toHaveLength(0);
     });
 
-    it("multiple adds are all of type add", () => {
-      const prev: Record<string, MCPServerConfig> = {};
-      const next: Record<string, MCPServerConfig> = {
-        a: { url: "https://a.com" },
-        b: { command: "node" },
-      };
-      const changes = detectConfigChanges(prev, next);
-      expect(changes).toHaveLength(2);
-      for (const c of changes) {
-        expect(c.type).toBe("add");
-      }
+    it("no changes when config url is identical", () => {
+      const cfg = { url: "https://same.com/sse" };
+      expect(detectConfigChanges({ a: cfg }, { a: cfg })).toHaveLength(0);
     });
 
-    it("each change has key and value fields", () => {
-      const prev: Record<string, MCPServerConfig> = { x: { url: "https://x.com" } };
-      const next: Record<string, MCPServerConfig> = { y: { url: "https://y.com" } };
-      const changes = detectConfigChanges(prev, next);
-      for (const c of changes) {
-        expect(c).toHaveProperty("key");
-        expect(c).toHaveProperty("value");
-      }
+    it("add change has correct type and key", () => {
+      const changes = detectConfigChanges({}, { myServer: { url: "https://new.com" } });
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe("add");
+      expect(changes[0].key).toBe("myServer");
     });
+
+    it("remove change has correct type and key", () => {
+      const changes = detectConfigChanges({ myServer: { url: "https://old.com" } }, {});
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe("remove");
+      expect(changes[0].key).toBe("myServer");
+    });
+
+    it("update change contains the new value", () => {
+      const changes = detectConfigChanges(
+        { s: { url: "https://old.com" } },
+        { s: { url: "https://new.com" } },
+      );
+      expect(changes[0].type).toBe("update");
+      expect((changes[0].value as any).url).toBe("https://new.com");
+    });
+  });
+});
+
+describe("detectConfigChanges — additional invariants", () => {
+  it("always returns an array", () => {
+    const changes = detectConfigChanges({}, {});
+    expect(Array.isArray(changes)).toBe(true);
+  });
+
+  it("returns three changes when one added, one removed, one updated", () => {
+    const prev: Record<string, MCPServerConfig> = {
+      a: { url: "https://a.com" },
+      b: { command: "py" },
+    };
+    const next: Record<string, MCPServerConfig> = {
+      a: { url: "https://a-new.com" },
+      c: { url: "https://c.com" },
+    };
+    const changes = detectConfigChanges(prev, next);
+    expect(changes).toHaveLength(3);
+  });
+
+  it("each change object has type, key, and value properties", () => {
+    const changes = detectConfigChanges({}, { s: { url: "https://s.com" } });
+    expect(changes[0]).toHaveProperty("type");
+    expect(changes[0]).toHaveProperty("key");
+    expect(changes[0]).toHaveProperty("value");
+  });
+
+  it("remove change value matches the original config", () => {
+    const cfg: MCPServerConfig = { command: "node" };
+    const changes = detectConfigChanges({ srv: cfg }, {});
+    expect(changes[0].value).toEqual(cfg);
+  });
+});
+
+describe("detectConfigChanges — edge case invariants", () => {
+  it("empty configs produce no changes", () => {
+    const changes = detectConfigChanges({}, {});
+    expect(changes).toHaveLength(0);
+  });
+
+  it("identical configs produce no changes", () => {
+    const cfg = { command: "node", args: ["server.js"] };
+    const changes = detectConfigChanges({ s: cfg }, { s: cfg });
+    expect(changes).toHaveLength(0);
+  });
+
+  it("returns an array for all inputs", () => {
+    const result = detectConfigChanges({ a: { command: "x" } }, { b: { command: "y" } });
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("add and remove detected when configs swap", () => {
+    const changes = detectConfigChanges({ old: { command: "a" } }, { new: { command: "b" } });
+    expect(changes.length).toBeGreaterThanOrEqual(2);
   });
 });

@@ -1,0 +1,129 @@
+name: Desktop Build (Electron)
+
+on:
+  push:
+    branches:
+      - asafe/wave-01-foundation
+      - main
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-build.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-build.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Type-check ──────────────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  # ── macOS build ─────────────────────────────────────────────────────────────
+  build-mac:
+    name: Build macOS
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm compile
+      - name: Build (unsigned smoke — no cert in CI yet)
+        run: pnpm build -- --mac --x64 --arm64
+        env:
+          # Code-signing disabled until IT provides CSC_LINK + CSC_KEY_PASSWORD
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asafe-ai-mac
+          path: desktop/release/*.dmg
+          if-no-files-found: warn
+
+  # ── Windows build ────────────────────────────────────────────────────────────
+  build-win:
+    name: Build Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm compile
+      - name: Build (unsigned smoke — no cert in CI yet)
+        run: pnpm build -- --win --x64
+        env:
+          # Code-signing disabled until IT provides WIN_CSC_LINK + WIN_CSC_KEY_PASSWORD
+          WIN_CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asafe-ai-win
+          path: desktop/release/*.exe
+          if-no-files-found: warn
+
+  # ── Linux build ───────────────────────────────────────────────────────────────
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y rpm libarchive-tools
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm compile
+      - run: pnpm build -- --linux --x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asafe-ai-linux
+          path: desktop/release/*.AppImage
+          if-no-files-found: warn

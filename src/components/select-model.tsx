@@ -5,7 +5,7 @@ import { useChatModels } from "@/hooks/queries/use-chat-models";
 import { ChatModel } from "app-types/chat";
 import { cn } from "lib/utils";
 import { CheckIcon, ChevronDown } from "lucide-react";
-import { Fragment, memo, PropsWithChildren, useEffect, useState } from "react";
+import { Fragment, PropsWithChildren, memo, useEffect, useState } from "react";
 import { Button } from "ui/button";
 
 import {
@@ -21,7 +21,7 @@ import { ModelProviderIcon } from "ui/model-provider-icon";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 
 interface SelectModelProps {
-  onSelect: (model: ChatModel) => void;
+  onSelect: (model: ChatModel | undefined) => void;
   align?: "start" | "end";
   currentModel?: ChatModel;
   showProvider?: boolean;
@@ -30,13 +30,17 @@ interface SelectModelProps {
 export const SelectModel = (props: PropsWithChildren<SelectModelProps>) => {
   const [open, setOpen] = useState(false);
   const { data: providers } = useChatModels();
-  const [model, setModel] = useState(props.currentModel);
+  // undefined means "Auto" (server-side routing)
+  const [model, setModel] = useState<ChatModel | undefined>(props.currentModel);
 
   useEffect(() => {
-    const modelToUse = props.currentModel ?? appStore.getState().chatModel;
-
-    if (modelToUse) {
-      setModel(modelToUse);
+    // Only fall back to store model when currentModel is not explicitly provided
+    if (props.currentModel !== undefined) {
+      setModel(props.currentModel);
+    } else {
+      // currentModel prop is undefined — could be Auto or unset; read from store
+      const storeModel = appStore.getState().chatModel;
+      setModel(storeModel);
     }
   }, [props.currentModel]);
 
@@ -51,13 +55,13 @@ export const SelectModel = (props: PropsWithChildren<SelectModelProps>) => {
             data-testid="model-selector-button"
           >
             <div className="mr-auto flex items-center gap-1">
-              {(props.showProvider ?? true) && (
+              {(props.showProvider ?? true) && model && (
                 <ModelProviderIcon
-                  provider={model?.provider || ""}
+                  provider={model.provider}
                   className="size-2.5 mr-1"
                 />
               )}
-              <p data-testid="selected-model-name">{model?.model || "model"}</p>
+              <p data-testid="selected-model-name">{model?.model ?? "Auto"}</p>
             </div>
             <ChevronDown className="size-3" />
           </Button>
@@ -79,6 +83,32 @@ export const SelectModel = (props: PropsWithChildren<SelectModelProps>) => {
           />
           <CommandList className="p-2">
             <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                className="cursor-pointer"
+                onSelect={() => {
+                  setModel(undefined);
+                  props.onSelect(undefined);
+                  setOpen(false);
+                }}
+                value="Auto"
+                data-testid="model-option-auto"
+              >
+                {model === undefined ? (
+                  <CheckIcon
+                    className="size-3"
+                    data-testid="selected-model-check"
+                  />
+                ) : (
+                  <div className="ml-3" />
+                )}
+                <span className="pr-2">Auto</span>
+                <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                  Server picks best model
+                </div>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
             {providers?.map((provider, i) => (
               <Fragment key={provider.provider}>
                 <CommandGroup

@@ -26,6 +26,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/auth|export|sign-in|sign-up).*)",
+    // asafe-ai: /api/health + /api/metrics must stay public (k8s probes + Prometheus scrape — ADR-0006).
+    // asafe-ai: also exclude static brand/image assets so they load on the unauthenticated sign-in page.
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/auth|api/health|api/metrics|export|sign-in|sign-up|.*\\.(?:png|svg|jpg|jpeg|webp|gif|ico|mp4|webm|ogg)$).*)",
   ],
 };

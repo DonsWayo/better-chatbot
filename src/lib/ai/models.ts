@@ -1,101 +1,53 @@
 import "server-only";
 
-import { createOllama } from "ollama-ai-provider-v2";
-import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
-import { anthropic } from "@ai-sdk/anthropic";
-import { xai } from "@ai-sdk/xai";
-import { LanguageModelV2, openrouter } from "@openrouter/ai-sdk-provider";
-import { createGroq } from "@ai-sdk/groq";
+import { openrouter } from "@openrouter/ai-sdk-provider";
 import { LanguageModel } from "ai";
+import { ChatModel } from "app-types/chat";
 import {
   createOpenAICompatibleModels,
   openaiCompatibleModelsSafeParse,
 } from "./create-openai-compatiable";
-import { ChatModel } from "app-types/chat";
 import {
-  DEFAULT_FILE_PART_MIME_TYPES,
-  OPENAI_FILE_MIME_TYPES,
-  GEMINI_FILE_MIME_TYPES,
   ANTHROPIC_FILE_MIME_TYPES,
-  XAI_FILE_MIME_TYPES,
+  DEFAULT_FILE_PART_MIME_TYPES,
+  GEMINI_FILE_MIME_TYPES,
+  OPENAI_FILE_MIME_TYPES,
 } from "./file-support";
 
-const ollama = createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/api",
-});
-const groq = createGroq({
-  baseURL: process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
-  apiKey: process.env.GROQ_API_KEY,
-});
-
+/**
+ * asafe-ai — inference posture (ADR-0001).
+ *
+ * For the pilot, inference is routed through OpenRouter ONLY. The upstream direct-provider
+ * blocks (openai / google / anthropic / xai / groq / ollama, each with its own API key) are
+ * intentionally removed so that:
+ *   1. no company data can egress outside the single approved OpenRouter path, and
+ *   2. only the approved short list below is selectable in the UI.
+ *
+ * The short list (balanced / frontier / fast / cheapest) is a PROPOSED default — confirm the
+ * exact set with Product/Eng + Security per ADR-0001. All ids are verified against the
+ * OpenRouter models API. To change the list, edit the `openRouter` block only; the Wave 2
+ * routing layer will select among these per task tier. The GA posture (OpenRouter vs direct EU
+ * providers) is re-decided at Wave 4 — keep this seam provider-agnostic.
+ */
 const staticModels = {
-  openai: {
-    "gpt-4.1": openai("gpt-4.1"),
-    "gpt-4.1-mini": openai("gpt-4.1-mini"),
-    "o4-mini": openai("o4-mini"),
-    o3: openai("o3"),
-    "gpt-5.1-chat": openai("gpt-5.1-chat-latest"),
-    "gpt-5.1": openai("gpt-5.1"),
-    "gpt-5.1-codex": openai("gpt-5.1-codex"),
-    "gpt-5.1-codex-mini": openai("gpt-5.1-codex-mini"),
-  },
-  google: {
-    "gemini-2.5-flash-lite": google("gemini-2.5-flash-lite"),
-    "gemini-2.5-flash": google("gemini-2.5-flash"),
-    "gemini-3-pro": google("gemini-3-pro-preview"),
-    "gemini-2.5-pro": google("gemini-2.5-pro"),
-  },
-  anthropic: {
-    "sonnet-4.5": anthropic("claude-sonnet-4-5"),
-    "haiku-4.5": anthropic("claude-haiku-4-5"),
-    "opus-4.5": anthropic("claude-opus-4-5"),
-  },
-  xai: {
-    "grok-4-1-fast": xai("grok-4-1-fast-non-reasoning"),
-    "grok-4-1": xai("grok-4-1"),
-    "grok-3-mini": xai("grok-3-mini"),
-  },
-  ollama: {
-    "gemma3:1b": ollama("gemma3:1b"),
-    "gemma3:4b": ollama("gemma3:4b"),
-    "gemma3:12b": ollama("gemma3:12b"),
-  },
-  groq: {
-    "kimi-k2-instruct": groq("moonshotai/kimi-k2-instruct"),
-    "llama-4-scout-17b": groq("meta-llama/llama-4-scout-17b-16e-instruct"),
-    "gpt-oss-20b": groq("openai/gpt-oss-20b"),
-    "gpt-oss-120b": groq("openai/gpt-oss-120b"),
-    "qwen3-32b": groq("qwen/qwen3-32b"),
-  },
   openRouter: {
-    "gpt-oss-20b:free": openrouter("openai/gpt-oss-20b:free"),
-    "qwen3-8b:free": openrouter("qwen/qwen3-8b:free"),
-    "qwen3-14b:free": openrouter("qwen/qwen3-14b:free"),
-    "qwen3-coder:free": openrouter("qwen/qwen3-coder:free"),
-    "deepseek-r1:free": openrouter("deepseek/deepseek-r1-0528:free"),
-    "deepseek-v3:free": openrouter("deepseek/deepseek-chat-v3-0324:free"),
-    "gemini-2.0-flash-exp:free": openrouter("google/gemini-2.0-flash-exp:free"),
+    // balanced — default selection
+    "gpt-5.1": openrouter("openai/gpt-5.1"),
+    // frontier — quality (code, reasoning), 1M context
+    "claude-opus-4.8": openrouter("anthropic/claude-opus-4.8"),
+    // fast & cheap, strong multilingual (ES/EN), 1M context
+    "gemini-2.5-flash": openrouter("google/gemini-2.5-flash"),
+    // cheapest — trivial / high-volume tasks
+    "gemini-2.5-flash-lite": openrouter("google/gemini-2.5-flash-lite"),
   },
 };
 
-const staticUnsupportedModels = new Set([
-  staticModels.openai["o4-mini"],
-  staticModels.ollama["gemma3:1b"],
-  staticModels.ollama["gemma3:4b"],
-  staticModels.ollama["gemma3:12b"],
-  staticModels.openRouter["gpt-oss-20b:free"],
-  staticModels.openRouter["qwen3-8b:free"],
-  staticModels.openRouter["qwen3-14b:free"],
-  staticModels.openRouter["deepseek-r1:free"],
-  staticModels.openRouter["gemini-2.0-flash-exp:free"],
-]);
+// No tool-call-unsupported models in the approved list. Kept (empty) for the merge below.
+const staticUnsupportedModels = new Set<LanguageModel>([]);
 
+// Every approved model accepts image input.
 const staticSupportImageInputModels = {
-  ...staticModels.google,
-  ...staticModels.xai,
-  ...staticModels.openai,
-  ...staticModels.anthropic,
+  ...staticModels.openRouter,
 };
 
 const staticFilePartSupportByModel = new Map<
@@ -111,43 +63,17 @@ const registerFileSupport = (
   staticFilePartSupportByModel.set(model, Array.from(mimeTypes));
 };
 
-registerFileSupport(staticModels.openai["gpt-4.1"], OPENAI_FILE_MIME_TYPES);
+registerFileSupport(staticModels.openRouter["gpt-5.1"], OPENAI_FILE_MIME_TYPES);
 registerFileSupport(
-  staticModels.openai["gpt-4.1-mini"],
-  OPENAI_FILE_MIME_TYPES,
-);
-registerFileSupport(staticModels.openai["gpt-5"], OPENAI_FILE_MIME_TYPES);
-registerFileSupport(staticModels.openai["gpt-5-mini"], OPENAI_FILE_MIME_TYPES);
-registerFileSupport(staticModels.openai["gpt-5-nano"], OPENAI_FILE_MIME_TYPES);
-
-registerFileSupport(
-  staticModels.google["gemini-2.5-flash-lite"],
-  GEMINI_FILE_MIME_TYPES,
-);
-registerFileSupport(
-  staticModels.google["gemini-2.5-flash"],
-  GEMINI_FILE_MIME_TYPES,
-);
-registerFileSupport(
-  staticModels.google["gemini-2.5-pro"],
-  GEMINI_FILE_MIME_TYPES,
-);
-
-registerFileSupport(
-  staticModels.anthropic["sonnet-4.5"],
+  staticModels.openRouter["claude-opus-4.8"],
   ANTHROPIC_FILE_MIME_TYPES,
 );
 registerFileSupport(
-  staticModels.anthropic["opus-4.1"],
-  ANTHROPIC_FILE_MIME_TYPES,
+  staticModels.openRouter["gemini-2.5-flash"],
+  GEMINI_FILE_MIME_TYPES,
 );
-
-registerFileSupport(staticModels.xai["grok-4-fast"], XAI_FILE_MIME_TYPES);
-registerFileSupport(staticModels.xai["grok-4"], XAI_FILE_MIME_TYPES);
-registerFileSupport(staticModels.xai["grok-3"], XAI_FILE_MIME_TYPES);
-registerFileSupport(staticModels.xai["grok-3-mini"], XAI_FILE_MIME_TYPES);
 registerFileSupport(
-  staticModels.openRouter["gemini-2.0-flash-exp:free"],
+  staticModels.openRouter["gemini-2.5-flash-lite"],
   GEMINI_FILE_MIME_TYPES,
 );
 
@@ -171,15 +97,17 @@ export const isToolCallUnsupportedModel = (model: LanguageModel) => {
   return allUnsupportedModels.has(model);
 };
 
-const isImageInputUnsupportedModel = (model: LanguageModelV2) => {
-  return !Object.values(staticSupportImageInputModels).includes(model);
+const isImageInputUnsupportedModel = (model: LanguageModel) => {
+  return !(
+    Object.values(staticSupportImageInputModels) as LanguageModel[]
+  ).includes(model);
 };
 
 export const getFilePartSupportedMimeTypes = (model: LanguageModel) => {
   return staticFilePartSupportByModel.get(model) ?? [];
 };
 
-const fallbackModel = staticModels.openai["gpt-4.1"];
+const fallbackModel = staticModels.openRouter["gpt-5.1"];
 
 export const customModelProvider = {
   modelsInfo: Object.entries(allModels).map(([provider, models]) => ({
@@ -199,28 +127,10 @@ export const customModelProvider = {
 };
 
 function checkProviderAPIKey(provider: keyof typeof staticModels) {
-  let key: string | undefined;
-  switch (provider) {
-    case "openai":
-      key = process.env.OPENAI_API_KEY;
-      break;
-    case "google":
-      key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-      break;
-    case "anthropic":
-      key = process.env.ANTHROPIC_API_KEY;
-      break;
-    case "xai":
-      key = process.env.XAI_API_KEY;
-      break;
-    case "groq":
-      key = process.env.GROQ_API_KEY;
-      break;
-    case "openRouter":
-      key = process.env.OPENROUTER_API_KEY;
-      break;
-    default:
-      return true; // assume the provider has an API key
+  if (provider === "openRouter") {
+    const key = process.env.OPENROUTER_API_KEY;
+    return !!key && key != "****";
   }
-  return !!key && key != "****";
+  // openai-compatible (dynamic) providers manage their own keys.
+  return true;
 }

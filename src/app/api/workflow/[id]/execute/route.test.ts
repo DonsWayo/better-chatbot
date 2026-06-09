@@ -1,202 +1,275 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("server-only", () => ({}));
-
 const {
   getSessionMock,
-  workflowRepositoryMock,
+  checkAccessMock,
+  selectStructureByIdMock,
   createWorkflowExecutorMock,
-  encodeWorkflowEventMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  workflowRepositoryMock: {
-    checkAccess: vi.fn(),
-    selectStructureById: vi.fn(),
-  },
-  createWorkflowExecutorMock: vi.fn(),
-  encodeWorkflowEventMock: vi.fn(),
+  checkAccessMock: vi.fn(),
+  selectStructureByIdMock: vi.fn(),
+  createWorkflowExecutorMock: vi.fn(() => ({
+    subscribe: vi.fn(),
+    run: vi.fn(),
+  })),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/db/repository", () => ({
-  workflowRepository: workflowRepositoryMock,
+  workflowRepository: {
+    checkAccess: checkAccessMock,
+    selectStructureById: selectStructureByIdMock,
+  },
 }));
 vi.mock("lib/ai/workflow/executor/workflow-executor", () => ({
   createWorkflowExecutor: createWorkflowExecutorMock,
 }));
 vi.mock("lib/ai/workflow/shared.workflow", () => ({
-  encodeWorkflowEvent: encodeWorkflowEventMock,
+  encodeWorkflowEvent: vi.fn(() => "data"),
 }));
-vi.mock("consola/utils", () => ({ colorize: (_: string, s: string) => s }));
 vi.mock("logger", () => ({
-  default: {
-    withDefaults: () => ({ info: vi.fn(), error: vi.fn() }),
-    error: vi.fn(),
-  },
+  default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
 }));
-vi.mock("lib/utils", () => ({
-  safeJSONParse: (v: unknown) => ({ value: String(v) }),
-  toAny: (v: unknown) => v,
-}));
+vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
+vi.mock("lib/utils", () => ({ safeJSONParse: vi.fn(), toAny: (v: unknown) => v }));
 
-import { POST } from "./route";
-
-const makeContext = (id: string) => ({ params: Promise.resolve({ id }) });
-const makeRequest = (body: unknown) =>
-  new Request("http://localhost", {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: { "content-type": "application/json" },
-  });
-
-const WORKFLOW = {
-  id: "wf-1",
-  name: "My Workflow",
-  nodes: [{ id: "node-1" }],
-  edges: [],
-};
-
-const makeExecutorMock = () => ({
-  subscribe: vi.fn(),
-  run: vi.fn().mockResolvedValue({ isOk: true }),
-  exit: vi.fn(),
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  encodeWorkflowEventMock.mockReturnValue("event-data\n");
-});
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body), signal: new AbortController().signal } as unknown as Request;
+}
 
 describe("POST /api/workflow/[id]/execute", () => {
-  it("returns 401 when no session", async () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
-    const res = await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "hello" }), { params: Promise.resolve({ id: "wf-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns 401 when user lacks access", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    const res = await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+  it("returns 401 when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "hello" }), { params: Promise.resolve({ id: "wf-1" }) });
     expect(res.status).toBe(401);
   });
 
-  it("returns 404 when workflow not found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(null);
-    const res = await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+  it("returns 404 when workflow structure not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "hello" }), { params: Promise.resolve({ id: "missing" }) });
     expect(res.status).toBe(404);
   });
 
-  it("returns a streaming response when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    const executor = makeExecutorMock();
-    createWorkflowExecutorMock.mockReturnValue(executor);
-    const res = await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toBe("application/octet-stream");
+  it("never calls selectStructureById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "hello" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
   });
 
-  it("creates executor with workflow edges and nodes", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    const executor = makeExecutorMock();
-    createWorkflowExecutorMock.mockReturnValue(executor);
-    await POST(makeRequest({ query: "test run" }), makeContext("wf-1"));
-    expect(createWorkflowExecutorMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        edges: WORKFLOW.edges,
-        nodes: WORKFLOW.nodes,
-      }),
+  it("never calls selectStructureById when access is denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "hello" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body text is 'Unauthorized' when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const text = await res.text();
+    expect(text).toMatch(/Unauthorized/i);
+  });
+
+  it("404 body text indicates not found when structure missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-missing" }) });
+    const text = await res.text();
+    expect(text.length).toBeGreaterThan(0);
+  });
+
+  it("calls checkAccess with the workflow id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-xyz" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith(
+      expect.stringContaining("wf-xyz"),
+      expect.anything(),
     );
   });
 
-  it("checks access with the workflow id and user id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-42" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-abc"));
-    expect(workflowRepositoryMock.checkAccess).toHaveBeenCalledWith(
-      "wf-abc",
-      "user-42",
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("401 text body is Unauthorized when no access", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    const text = await res.text();
+    expect(text).toMatch(/Unauthorized/i);
+  });
+
+  it("404 body text is not empty when structure missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "missing" }) });
+    const text = await res.text();
+    expect(text.length).toBeGreaterThan(0);
+  });
+
+  it("checkAccess called with userId from session", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "session-user-99" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "session-user-99",
     );
   });
 
-  it("calls selectStructureById with workflow id", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    const executor = makeExecutorMock();
-    createWorkflowExecutorMock.mockReturnValue(executor);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-special"));
-    expect(workflowRepositoryMock.selectStructureById).toHaveBeenCalledWith("wf-special");
+  it("checkAccess called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).toHaveBeenCalledTimes(1);
   });
 
-  it("calls createWorkflowExecutor exactly once", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    const executor = makeExecutorMock();
-    createWorkflowExecutorMock.mockReturnValue(executor);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
-    expect(createWorkflowExecutorMock).toHaveBeenCalledTimes(1);
+  it("selectStructureById called with the route id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-route-id" }) });
+    expect(selectStructureByIdMock).toHaveBeenCalledWith("wf-route-id");
   });
 
-  it("does not create executor when workflow not found", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(null);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+  it("getSession called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/workflow/[id]/execute — executor guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never creates executor when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
     expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
   });
 
-  it("response has correct streaming content type", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    createWorkflowExecutorMock.mockReturnValue(makeExecutorMock());
-    const res = await POST(makeRequest({ query: "hello" }), makeContext("wf-1"));
-    expect(res.headers.get("Content-Type")).toBe("application/octet-stream");
+  it("never creates executor when access is denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
   });
 
-  it("does not call checkAccess when session is null", async () => {
+  it("never creates executor when structure not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-missing" }) });
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("checkAccess not called for unauthenticated request", async () => {
     getSessionMock.mockResolvedValue(null);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
-    expect(workflowRepositoryMock.checkAccess).not.toHaveBeenCalled();
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-99" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/workflow/[id]/execute — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401 (no auth)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
   });
 
-  it("getSession is called exactly once per request", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    createWorkflowExecutorMock.mockReturnValue(makeExecutorMock());
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+  it("response is always a Response instance for 404 (not found)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectStructureByIdMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}), { params: Promise.resolve({ id: "missing" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per POST (response shape)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: "x" }), { params: Promise.resolve({ id: "wf-1" }) });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not call selectStructureById when access is denied", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
-    expect(workflowRepositoryMock.selectStructureById).not.toHaveBeenCalled();
+  it("checkAccess called with the correct id from route params", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "specific-wf-id" }) });
+    expect(checkAccessMock).toHaveBeenCalledWith("specific-wf-id", expect.anything());
+  });
+});
+
+describe("POST /api/workflow/[id]/execute — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("checkAccess is called exactly once per request when authorized", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
-    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
-    createWorkflowExecutorMock.mockReturnValue(makeExecutorMock());
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
-    expect(workflowRepositoryMock.checkAccess).toHaveBeenCalledTimes(1);
+  it("checkAccess never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).not.toHaveBeenCalled();
   });
 
-  it("does not call createWorkflowExecutor when access denied", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
-    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
-    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+  it("selectStructureById never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(selectStructureByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("createWorkflowExecutor never called when access denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
     expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
   });
 });

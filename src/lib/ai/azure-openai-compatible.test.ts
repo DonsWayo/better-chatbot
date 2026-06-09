@@ -88,6 +88,46 @@ describe("createAzureOpenAICompatible", () => {
       }),
     );
   });
+
+  it("createAzureOpenAICompatible returns a function", () => {
+    const config = {
+      name: "Azure OpenAI",
+      apiKey: "key",
+      baseURL: "https://example.azure.com/openai/deployments/",
+    };
+    const result = createAzureOpenAICompatible(config);
+    expect(typeof result).toBe("function");
+  });
+
+  it("two different deployment names produce two different base URLs", () => {
+    const config = {
+      name: "Azure",
+      apiKey: "k",
+      baseURL: "https://base.azure.com/deployments/",
+    };
+    const provider = createAzureOpenAICompatible(config);
+    provider("model-a", "2024-01-01");
+    const firstCall = mockCreateOpenAICompatible.mock.calls[0][0];
+    mockCreateOpenAICompatible.mockClear();
+    provider("model-b", "2024-01-01");
+    const secondCall = mockCreateOpenAICompatible.mock.calls[0][0];
+    expect((firstCall as any).baseURL).toContain("model-a");
+    expect((secondCall as any).baseURL).toContain("model-b");
+    expect((firstCall as any).baseURL).not.toBe((secondCall as any).baseURL);
+  });
+
+  it("passes apiKey unchanged to createOpenAICompatible", () => {
+    const secretKey = "super-secret-key-abc123";
+    const provider = createAzureOpenAICompatible({
+      name: "Azure",
+      apiKey: secretKey,
+      baseURL: "https://base.com/",
+    });
+    provider("model", "2024");
+    expect(mockCreateOpenAICompatible).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: secretKey }),
+    );
+  });
 });
 
 describe("createAzureOpenAICompatible — call count invariants", () => {

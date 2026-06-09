@@ -101,6 +101,44 @@ describe("workflow-store", () => {
       }),
     ).toBe("cgoing");
   });
+
+  it("setOutput overwrites a previously set value", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setOutput({ nodeId: "n1", path: ["score"] }, 10);
+    ctx.setOutput({ nodeId: "n1", path: ["score"] }, 99);
+    expect(ctx.getOutput({ nodeId: "n1", path: ["score"] })).toBe(99);
+  });
+
+  it("setInput / getInput basic roundtrip", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setInput("nodeA", { value: "hello" });
+    expect(ctx.getInput("nodeA")).toEqual({ value: "hello" });
+  });
+
+  it("multiple nodes have independent outputs", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setOutput({ nodeId: "n1", path: ["x"] }, "alpha");
+    ctx.setOutput({ nodeId: "n2", path: ["x"] }, "beta");
+    expect(ctx.getOutput({ nodeId: "n1", path: ["x"] })).toBe("alpha");
+    expect(ctx.getOutput({ nodeId: "n2", path: ["x"] })).toBe("beta");
+  });
+
+  it("getInput for unset node returns undefined", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.getInput("does-not-exist")).toBeUndefined();
+  });
+
+  it("nodes list is accessible from context", () => {
+    const node = { id: "n1" } as unknown as DBNode;
+    const store = createGraphStore({ nodes: [node], edges: [] });
+    const ctx = store();
+    expect(ctx.nodes).toHaveLength(1);
+    expect(ctx.nodes[0].id).toBe("n1");
+  });
 });
 
 describe("createGraphStore — input/output invariants", () => {

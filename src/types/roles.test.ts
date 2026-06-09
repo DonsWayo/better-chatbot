@@ -1,96 +1,123 @@
-import { describe, expect, it } from "vitest";
-import {
-  USER_ROLES,
-  DEFAULT_USER_ROLE,
-  userRolesInfo,
-  type UserRoleNames,
-} from "./roles";
+import { describe, it, expect, vi } from "vitest";
 
-describe("USER_ROLES", () => {
-  it("has ADMIN, EDITOR, USER keys", () => {
-    expect(USER_ROLES).toHaveProperty("ADMIN");
-    expect(USER_ROLES).toHaveProperty("EDITOR");
-    expect(USER_ROLES).toHaveProperty("USER");
-  });
-
-  it("ADMIN value is 'admin'", () => {
+describe("USER_ROLES constants", () => {
+  it("has ADMIN role", async () => {
+    const { USER_ROLES } = await import("./roles");
     expect(USER_ROLES.ADMIN).toBe("admin");
   });
 
-  it("EDITOR value is 'editor'", () => {
+  it("has EDITOR role", async () => {
+    const { USER_ROLES } = await import("./roles");
     expect(USER_ROLES.EDITOR).toBe("editor");
   });
 
-  it("USER value is 'user'", () => {
+  it("has USER role", async () => {
+    const { USER_ROLES } = await import("./roles");
     expect(USER_ROLES.USER).toBe("user");
   });
 
-  it("has exactly 3 roles", () => {
-    expect(Object.keys(USER_ROLES).length).toBe(3);
-  });
-
-  it("all values are non-empty strings", () => {
-    for (const v of Object.values(USER_ROLES)) {
-      expect(typeof v).toBe("string");
-      expect(v.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("all values are lowercase", () => {
-    for (const v of Object.values(USER_ROLES)) {
-      expect(v).toBe(v.toLowerCase());
-    }
-  });
-});
-
-describe("DEFAULT_USER_ROLE", () => {
-  it("is a non-empty string", () => {
-    expect(typeof DEFAULT_USER_ROLE).toBe("string");
-    expect(DEFAULT_USER_ROLE.length).toBeGreaterThan(0);
-  });
-
-  it("is one of the valid roles", () => {
-    expect(Object.values(USER_ROLES)).toContain(DEFAULT_USER_ROLE);
+  it("has exactly three roles", async () => {
+    const { USER_ROLES } = await import("./roles");
+    expect(Object.keys(USER_ROLES)).toHaveLength(3);
   });
 });
 
 describe("userRolesInfo", () => {
-  it("has an entry for every role", () => {
+  it("has label and description for each role", async () => {
+    const { userRolesInfo, USER_ROLES } = await import("./roles");
     for (const role of Object.values(USER_ROLES)) {
-      expect(userRolesInfo).toHaveProperty(role);
+      expect(userRolesInfo[role].label).toBeDefined();
+      expect(userRolesInfo[role].description).toBeDefined();
+      expect(userRolesInfo[role].label.length).toBeGreaterThan(0);
     }
   });
 
-  it("each role info has label and description", () => {
-    for (const [, info] of Object.entries(userRolesInfo)) {
-      expect(typeof info.label).toBe("string");
-      expect(info.label.length).toBeGreaterThan(0);
-      expect(typeof info.description).toBe("string");
-      expect(info.description.length).toBeGreaterThan(0);
-    }
+  it("admin has label Admin", async () => {
+    const { userRolesInfo } = await import("./roles");
+    expect(userRolesInfo.admin.label).toBe("Admin");
   });
 
-  it("labels are unique", () => {
-    const labels = Object.values(userRolesInfo).map((i) => i.label);
-    expect(new Set(labels).size).toBe(labels.length);
+  it("editor has label Editor", async () => {
+    const { userRolesInfo } = await import("./roles");
+    expect(userRolesInfo.editor.label).toBe("Editor");
   });
 });
 
-describe("roles — type invariants", () => {
-  it("USER_ROLES is an object", () => {
-    expect(typeof USER_ROLES).toBe("object");
-    expect(USER_ROLES).not.toBeNull();
+describe("DEFAULT_USER_ROLE", () => {
+  it("defaults to editor when DEFAULT_USER_ROLE env is not set", async () => {
+    delete process.env.DEFAULT_USER_ROLE;
+    const { DEFAULT_USER_ROLE } = await import("./roles");
+    expect(DEFAULT_USER_ROLE).toBe("editor");
   });
 
-  it("userRolesInfo is an object", () => {
-    expect(typeof userRolesInfo).toBe("object");
-    expect(userRolesInfo).not.toBeNull();
+  it("uses env value when it is a valid role", async () => {
+    vi.stubEnv("DEFAULT_USER_ROLE", "user");
+    // Re-import to pick up the new env value
+    vi.resetModules();
+    const { DEFAULT_USER_ROLE } = await import("./roles");
+    expect(DEFAULT_USER_ROLE).toBe("user");
+    vi.unstubAllEnvs();
   });
 
-  it("role values match keys in userRolesInfo", () => {
-    const infoKeys = Object.keys(userRolesInfo);
-    for (const role of Object.values(USER_ROLES)) {
-      expect(infoKeys).toContain(role);
+  it("falls back to editor for invalid env value", async () => {
+    vi.stubEnv("DEFAULT_USER_ROLE", "superuser");
+    vi.resetModules();
+    const { DEFAULT_USER_ROLE } = await import("./roles");
+    expect(DEFAULT_USER_ROLE).toBe("editor");
+    vi.unstubAllEnvs();
+  });
+
+  it("accepts 'admin' env value → admin", async () => {
+    vi.stubEnv("DEFAULT_USER_ROLE", "admin");
+    vi.resetModules();
+    const { DEFAULT_USER_ROLE } = await import("./roles");
+    expect(DEFAULT_USER_ROLE).toBe("admin");
+    vi.unstubAllEnvs();
+  });
+
+  it("result is always one of the known roles", async () => {
+    const { DEFAULT_USER_ROLE, USER_ROLES } = await import("./roles");
+    expect(Object.values(USER_ROLES)).toContain(DEFAULT_USER_ROLE);
+  });
+});
+
+describe("USER_ROLES — value shape", () => {
+  it("all values are lowercase strings", async () => {
+    const { USER_ROLES } = await import("./roles");
+    for (const value of Object.values(USER_ROLES)) {
+      expect(value).toBe(value.toLowerCase());
     }
+  });
+
+  it("no duplicate values", async () => {
+    const { USER_ROLES } = await import("./roles");
+    const values = Object.values(USER_ROLES);
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it("keys are uppercase", async () => {
+    const { USER_ROLES } = await import("./roles");
+    for (const key of Object.keys(USER_ROLES)) {
+      expect(key).toBe(key.toUpperCase());
+    }
+  });
+});
+
+describe("userRolesInfo — completeness", () => {
+  it("user role has label 'User'", async () => {
+    const { userRolesInfo } = await import("./roles");
+    expect(userRolesInfo.user.label).toBe("User");
+  });
+
+  it("all descriptions are non-empty strings", async () => {
+    const { userRolesInfo, USER_ROLES } = await import("./roles");
+    for (const role of Object.values(USER_ROLES)) {
+      expect(userRolesInfo[role].description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("has exactly 3 entries (one per role)", async () => {
+    const { userRolesInfo } = await import("./roles");
+    expect(Object.keys(userRolesInfo)).toHaveLength(3);
   });
 });

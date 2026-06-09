@@ -1,0 +1,92 @@
+# asafe-ai Helm values (ADR-0006: EKS-first).
+# Sensitive values are NOT here — they come from a Secret managed by External Secrets Operator
+# (see existingSecret + deploy/k8s/external-secret.example.yaml). Items marked "# set by IT" must
+# be filled per environment (staging/prod) before `helm upgrade`.
+
+image:
+  # ECR repo, e.g. 123456789012.dkr.ecr.eu-west-1.amazonaws.com/asafe-ai  # set by IT
+  repository: REPLACE_ME.dkr.ecr.eu-west-1.amazonaws.com/asafe-ai
+  tag: "" # defaults to Chart.appVersion if empty; set to the built image tag in CI
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+# IRSA: bind the ServiceAccount to an IAM role for S3 access (ADR-0006).
+serviceAccount:
+  create: true
+  name: asafe-ai
+  annotations: {}
+  # eks.amazonaws.com/role-arn: arn:aws:iam::<acct>:role/asafe-ai  # set by IT (IRSA)
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: "/api/metrics"
+  prometheus.io/port: "3000"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+# AWS ALB Ingress (aws-load-balancer-controller).
+# Joins the shared conek-dev ALB group (internet-facing, *.conek.dev wildcard cert).
+ingress:
+  enabled: true
+  className: alb
+  host: REPLACE_ME.conek.dev # set by IT
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:588738611061:certificate/3793593a-1fde-4850-bf55-edfc7b1a43da
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/backend-protocol-version: HTTP1
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+# Pre-upgrade Helm hook that runs DB migrations once per release (not per replica).
+migrateJob:
+  enabled: true
+  backoffLimit: 1
+
+# Non-sensitive env -> ConfigMap. (APP_VERSION is injected from the image tag automatically.)
+config:
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # EKS pods must NOT migrate on boot — the migrateJob owns migrations (ADR-0006).
+  DISABLE_DB_MIGRATE_ON_BOOT: "true"
+  # Storage: S3 (EU bucket) via the existing file-storage S3 driver (ADR-0006).
+  FILE_STORAGE_TYPE: "s3"
+  FILE_STORAGE_S3_REGION: "eu-west-1"
+  FILE_STORAGE_S3_BUCKET: "REPLACE_ME" # set by IT (EU bucket)
+  # Microsoft Entra ID SSO (ADR-0005). Client id/secret come from the Secret.
+  MICROSOFT_TENANT_ID: "REPLACE_ME" # set by IT (Entra tenant)
+  BETTER_AUTH_URL: "https://REPLACE_ME.internal.asafe.example" # public app URL
+  SENTRY_TRACES_SAMPLE_RATE: "0"
+
+# Sensitive env -> referenced Secret (created by External Secrets Operator from AWS Secrets
+# Manager). Required keys: POSTGRES_URL, BETTER_AUTH_SECRET, OPENROUTER_API_KEY, REDIS_URL,
+# MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET. Optional: SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN,
+# METRICS_AUTH_TOKEN.
+existingSecret: "asafe-ai-secrets"
+
+# Extra raw env vars if ever needed (list of {name, value}).
+extraEnv: []
