@@ -113,4 +113,68 @@ describe("checkRateLimit (Postgres-backed)", () => {
     const result = await checkRateLimit("user-7", 25, 60_000);
     expect(result.limit).toBe(25);
   });
+
+  it("result has all four required fields", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-fields", 10, 60_000);
+    expect(result).toHaveProperty("allowed");
+    expect(result).toHaveProperty("limit");
+    expect(result).toHaveProperty("remaining");
+    expect(result).toHaveProperty("resetAt");
+  });
+
+  it("remaining is clamped to 0 when count greatly exceeds limit", async () => {
+    const { valuesFn } = makeInsertChain(1000);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-over", 5, 60_000);
+    expect(result.remaining).toBe(0);
+    expect(result.allowed).toBe(false);
+  });
+
+  it("fail-open remaining equals the provided limit", async () => {
+    const valuesFn = vi.fn().mockReturnValue({
+      onConflictDoUpdate: vi.fn().mockReturnValue({
+        returning: vi.fn().mockRejectedValue(new Error("fail")),
+      }),
+    });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-fail", 15, 60_000);
+    expect(result.remaining).toBe(15);
+    expect(result.allowed).toBe(true);
+    consoleSpy.mockRestore();
+  });
+
+  it("resetAt is within one windowMs of current time", async () => {
+    const before = Date.now();
+    const windowMs = 30_000;
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-reset", 10, windowMs);
+    // resetAt is the window boundary: floor(now/window)*window + window
+    expect(result.resetAt).toBeGreaterThan(before);
+    expect(result.resetAt).toBeLessThanOrEqual(before + windowMs + 100);
+  });
+
+  it("allowed is strictly boolean type", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-bool", 10, 60_000);
+    expect(typeof result.allowed).toBe("boolean");
+  });
+
+  it("allowed is true when count is much less than limit", async () => {
+    const { valuesFn } = makeInsertChain(2);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-low", 100, 60_000);
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(98);
+  });
 });

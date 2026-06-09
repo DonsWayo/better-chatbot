@@ -118,4 +118,47 @@ describe("GET /api/knowledge/collections/[id]/documents", () => {
     const body = await res.json();
     expect(body.documents).toHaveLength(0);
   });
+
+  it("401 response body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("404 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    // Re-establish chain mock (may be overridden by earlier mockImplementation calls)
+    dbSelectMock.mockReturnValueOnce({
+      from: () => ({ where: () => Promise.resolve([]) }),
+    });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "missing" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 response documents property is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    let callCount = 0;
+    dbSelectMock.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return { from: () => ({ where: () => Promise.resolve([{ id: "col-1" }]) }) };
+      }
+      return { from: () => ({ where: () => ({ groupBy: () => ({ orderBy: () => Promise.resolve([]) }) }) }) };
+    });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body.documents)).toBe(true);
+  });
+
+  it("getSession called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });

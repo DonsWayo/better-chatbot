@@ -118,4 +118,58 @@ describe("DELETE /api/knowledge/collections/[id]/documents/[docId]", () => {
     // When deleting with valid collection but 0 chunks, route may return 404 or 200 with 0
     expect([200, 404]).toContain(res.status);
   });
+
+  it("401 response body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("404 response body has error field when collection not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "missing", docId: GUIDE_DOC_ID }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("dbSelect called exactly once for admin request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbDelete called exactly once on successful delete", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    dbDeleteReturningMock.mockResolvedValueOnce([{ id: "c1" }]);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    expect(dbDeleteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 response body has ok and deletedChunks properties", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    dbDeleteReturningMock.mockResolvedValueOnce([{ id: "c1" }, { id: "c2" }]);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: GUIDE_DOC_ID }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("ok", true);
+    expect(body).toHaveProperty("deletedChunks");
+    expect(typeof body.deletedChunks).toBe("number");
+  });
 });
