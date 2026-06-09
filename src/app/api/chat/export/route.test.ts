@@ -145,4 +145,25 @@ describe("POST /api/chat/export", () => {
     await POST(makeRequest(VALID_BODY));
     expect(chatExportRepositoryMock.exportChat).toHaveBeenCalledTimes(1);
   });
+
+  it("throws ZodError when body is invalid (missing threadId)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await expect(POST(makeRequest({}))).rejects.toThrow();
+  });
+
+  it("response body message is a non-empty string on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.checkAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.exportChat.mockResolvedValue(undefined);
+    const res = await POST(makeRequest(VALID_BODY));
+    const body = await res.json();
+    expect(typeof body.message).toBe("string");
+    expect(body.message.length).toBeGreaterThan(0);
+  });
+
+  it("throws ZodError when expiresAt is an ISO string (z.date() requires Date)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const expiresAt = "2030-01-01T00:00:00.000Z";
+    await expect(POST(makeRequest({ threadId: "thread-1", expiresAt }))).rejects.toThrow();
+  });
 });

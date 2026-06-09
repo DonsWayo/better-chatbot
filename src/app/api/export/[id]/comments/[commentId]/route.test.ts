@@ -155,4 +155,24 @@ describe("DELETE /api/export/[id]/comments/[commentId]", () => {
     await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
     expect(chatExportRepositoryMock.checkCommentAccess).not.toHaveBeenCalled();
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls deleteComment exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.checkCommentAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.deleteComment.mockResolvedValue(undefined);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    expect(chatExportRepositoryMock.deleteComment).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call checkCommentAccess when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1", "c-1"));
+    expect(chatExportRepositoryMock.checkCommentAccess).not.toHaveBeenCalled();
+  });
 });

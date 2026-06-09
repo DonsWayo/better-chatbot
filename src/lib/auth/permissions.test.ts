@@ -137,4 +137,27 @@ describe("auth/permissions — guard invariants", () => {
     vi.mocked(getSession).mockResolvedValue(null);
     expect(await permissions.canManageUser("target")).toBe(false);
   });
+
+  it("hasAdminPermission returns false when user is non-admin", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "u1", role: "user" }));
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+    await expect(permissions.hasAdminPermission()).resolves.toBe(false);
+  });
+
+  it("requireAdminPermission error message includes the action description", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "u1", role: "user" }));
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+    await expect(permissions.requireAdminPermission("delete everything")).rejects.toThrow(
+      /delete everything/,
+    );
+  });
+
+  it("canManageUser returns false for different user when not admin", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "u1", role: "user" }));
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+    expect(await permissions.canManageUser("u2")).toBe(false);
+  });
 });

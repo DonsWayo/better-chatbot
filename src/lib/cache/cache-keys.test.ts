@@ -73,4 +73,20 @@ describe("CacheKeys — edge cases", () => {
     const key = CacheKeys.user("user/with/slashes");
     expect(key).toContain("user/with/slashes");
   });
+
+  it("all keys are non-empty strings for any id", () => {
+    for (const fn of [CacheKeys.thread, CacheKeys.user, CacheKeys.mcpServerCustomizations, CacheKeys.agentInstructions]) {
+      const key = fn("test-id");
+      expect(typeof key).toBe("string");
+      expect(key.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("mcpServerCustomizations and agentInstructions keys differ for same id", () => {
+    expect(CacheKeys.mcpServerCustomizations("id")).not.toBe(CacheKeys.agentInstructions("id"));
+  });
+
+  it("user and agentInstructions keys differ for same id", () => {
+    expect(CacheKeys.user("id")).not.toBe(CacheKeys.agentInstructions("id"));
+  });
 });
