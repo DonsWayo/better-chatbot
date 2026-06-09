@@ -19,30 +19,92 @@ function makeRequest(authHeader?: string): Request {
   } as unknown as Request;
 }
 
-describe("GET /api/metrics", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.unstubAllEnvs(); });
-
-  it("returns metrics when no token is configured", async () => {
+describe("GET /api/metrics — no auth token configured", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
     delete process.env.METRICS_AUTH_TOKEN;
+  });
+
+  it("returns 200 when no token is configured", async () => {
     const { GET } = await import("./route");
     const res = await GET(makeRequest());
     expect(res.status).toBe(200);
+  });
+
+  it("calls ensureMetrics when no token required", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest());
     expect(ensureMetricsMock).toHaveBeenCalled();
   });
 
-  it("returns 401 when token is required but missing", async () => {
+  it("returns metrics body when no token required", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const text = await res.text();
+    expect(text).toContain("process_uptime");
+  });
+
+  it("returns correct content-type header", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res.headers.get("content-type")).toContain("text/plain");
+  });
+});
+
+describe("GET /api/metrics — token authentication", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("returns 401 when token is required but no header provided", async () => {
     process.env.METRICS_AUTH_TOKEN = "secret123";
     const { GET } = await import("./route");
     const res = await GET(makeRequest());
     expect(res.status).toBe(401);
   });
 
-  it("returns metrics when correct bearer token provided", async () => {
+  it("returns 401 when wrong token provided", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("Bearer wrongtoken"));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 when token provided without Bearer prefix", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("secret123"));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 when correct bearer token provided", async () => {
     process.env.METRICS_AUTH_TOKEN = "secret123";
     const { GET } = await import("./route");
     const res = await GET(makeRequest("Bearer secret123"));
     expect(res.status).toBe(200);
+  });
+
+  it("returns metrics body when correct token provided", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret123";
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("Bearer secret123"));
     const text = await res.text();
     expect(text).toContain("process_uptime");
+  });
+
+  it("calls ensureMetrics when authenticated", async () => {
+    process.env.METRICS_AUTH_TOKEN = "mytoken";
+    const { GET } = await import("./route");
+    await GET(makeRequest("Bearer mytoken"));
+    expect(ensureMetricsMock).toHaveBeenCalled();
+  });
+
+  it("does NOT call ensureMetrics when unauthorized", async () => {
+    process.env.METRICS_AUTH_TOKEN = "secret";
+    const { GET } = await import("./route");
+    await GET(makeRequest("Bearer wrongtoken"));
+    expect(ensureMetricsMock).not.toHaveBeenCalled();
   });
 });
