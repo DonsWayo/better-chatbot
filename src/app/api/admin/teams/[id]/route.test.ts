@@ -196,3 +196,39 @@ describe("PATCH /api/admin/teams/[id] — additional", () => {
     expect(mockGetSession).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("PATCH /api/admin/teams/[id] — response shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateTeamPolicy.mockResolvedValue(undefined);
+  });
+
+  it("response is always a Response instance", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({}), makeParams("team-1") as any);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 ok field is strictly boolean true", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
+  it("updateTeamPolicy receives the correct teamId", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-99") as any);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-99", expect.anything());
+  });
+
+  it("never calls updateTeamPolicy when validation fails", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "invalid-value" }), makeParams("team-1") as any);
+    expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
+  });
+});

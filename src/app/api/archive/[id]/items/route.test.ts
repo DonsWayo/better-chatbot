@@ -202,3 +202,40 @@ describe("POST /api/archive/[id]/items — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/archive/[id]/items — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has itemId field matching input", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    addItemToArchiveMock.mockResolvedValueOnce({ id: "ai-1", archiveId: "a-1", itemId: "item-42" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ itemId: "item-42" }), { params: Promise.resolve({ id: "a-1" }) });
+    const body = await res.json();
+    expect(body.itemId).toBe("item-42");
+  });
+
+  it("getArchiveById called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    addItemToArchiveMock.mockResolvedValueOnce({ id: "ai-1", archiveId: "a-1", itemId: "item-1" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getArchiveByIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST (response shape)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
