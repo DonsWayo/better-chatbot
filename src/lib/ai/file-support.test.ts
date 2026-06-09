@@ -40,3 +40,48 @@ describe("file-support", () => {
     expect(DEFAULT_FILE_PART_MIME_TYPES).toContain("image/jpeg");
   });
 });
+
+describe("file-support — return type invariants", () => {
+  it("isFilePartSupported always returns a boolean", () => {
+    for (const mime of [undefined, "", "image/png", "text/plain", "application/octet-stream"]) {
+      expect(typeof isFilePartSupported(mime as any)).toBe("boolean");
+    }
+  });
+
+  it("DEFAULT_FILE_PART_MIME_TYPES is an array", () => {
+    expect(Array.isArray(DEFAULT_FILE_PART_MIME_TYPES)).toBe(true);
+  });
+
+  it("DEFAULT_FILE_PART_MIME_TYPES is non-empty", () => {
+    expect(DEFAULT_FILE_PART_MIME_TYPES.length).toBeGreaterThan(0);
+  });
+
+  it("all entries in DEFAULT_FILE_PART_MIME_TYPES are non-empty strings", () => {
+    for (const mime of DEFAULT_FILE_PART_MIME_TYPES) {
+      expect(typeof mime).toBe("string");
+      expect(mime.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("file-support — whitelist invariants", () => {
+  it("null whitelist falls back to default behavior", () => {
+    expect(isFilePartSupported("image/png", null as any)).toBe(true);
+  });
+
+  it("whitelist with one entry only matches that entry", () => {
+    const wl = ["image/gif"];
+    expect(isFilePartSupported("image/gif", wl)).toBe(true);
+    expect(isFilePartSupported("image/png", wl)).toBe(false);
+    expect(isFilePartSupported("application/pdf", wl)).toBe(false);
+  });
+
+  it("undefined mime with non-empty whitelist returns false", () => {
+    expect(isFilePartSupported(undefined, ["image/png"])).toBe(false);
+  });
+
+  it("case sensitivity — uppercase mime does not match lowercase whitelist", () => {
+    const wl = ["image/png"];
+    expect(isFilePartSupported("IMAGE/PNG", wl)).toBe(false);
+  });
+});
