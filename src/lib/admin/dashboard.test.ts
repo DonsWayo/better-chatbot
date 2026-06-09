@@ -238,3 +238,56 @@ describe("getDashboardStats — additional stats shapes", () => {
     expect(stats.requestsLast7d).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe("getDashboardStats — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("budgetsNearLimit counts entry at exactly 80% usage", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }],
+      [{ budgetUsd: "100.00", usedUsd: "80.00" }],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.budgetsNearLimit).toBeGreaterThanOrEqual(1);
+  });
+
+  it("costLast24hUsd is 0 when costUsd row is null", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 5, costUsd: null }],
+      [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.costLast24hUsd).toBe(0);
+  });
+
+  it("totalUsers reflects DB count exactly", async () => {
+    setupMocks([
+      [{ total: 99 }], [{ total: 1 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.totalUsers).toBe(99);
+  });
+
+  it("guardrailFiringsLast24h equals DB total", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 7 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.guardrailFiringsLast24h).toBe(7);
+  });
+});

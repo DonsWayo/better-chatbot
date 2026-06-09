@@ -238,3 +238,45 @@ describe("POST /api/cron/budget-reset — additional", () => {
     expect(capturedSet[0].usedUsd).toBe("0");
   });
 });
+
+describe("POST /api/cron/budget-reset — response shape", () => {
+  const SNAP = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env = { ...SNAP, CRON_SECRET: "test-secret" };
+    const updateWhereMock = vi.fn().mockResolvedValue([]);
+    const updateSetMock = vi.fn().mockReturnValue({ where: updateWhereMock });
+    mockUpdate.mockReturnValue({ set: updateSetMock });
+    const selectWhereMock = vi.fn().mockResolvedValue([]);
+    const selectFromMock = vi.fn().mockReturnValue({ where: selectWhereMock });
+    mockSelect.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("returns a Response instance on 401", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance on 200", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body reset count is a number", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(typeof body.reset).toBe("number");
+  });
+
+  it("401 body has error property", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});
