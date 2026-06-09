@@ -164,3 +164,41 @@ describe("POST /api/chat/export — guard chains", () => {
     expect(body.message).toBe("Chat exported successfully");
   });
 });
+
+describe("POST /api/chat/export — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401 (unauthenticated)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 401 (access denied)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200 (success)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has message property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("message");
+  });
+});
