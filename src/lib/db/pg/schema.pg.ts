@@ -401,6 +401,19 @@ export type BookmarkEntity = typeof BookmarkTable.$inferSelect;
 // Wave 3 – Team / Budget / Usage tables (ADR-0002, ADR-0003)
 // ---------------------------------------------------------------------------
 
+/**
+ * Per-team model entitlement override, layered on the org base allow-list
+ * (ERP price-list style; see lib/admin/model-policy.ts):
+ * - "inherit": effective = org base + `add` − `remove`
+ * - "replace": effective = exactly `models` (org base ignored)
+ */
+export type TeamModelPolicy = {
+  mode: "inherit" | "replace";
+  add?: string[];
+  remove?: string[];
+  models?: string[];
+};
+
 export const AsafeTeamTable = pgTable("asafe_team", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -418,6 +431,9 @@ export const AsafeTeamTable = pgTable("asafe_team", {
     .$type<string[]>()
     .notNull()
     .default([]),
+  // Layered model entitlement override (null = no override → legacy
+  // model_allow_list if non-empty, else the org base list applies as-is)
+  modelPolicy: jsonb("model_policy").$type<TeamModelPolicy>(),
   // W5+: email domain allow-list — empty array = any email domain allowed
   allowedEmailDomains: jsonb("allowed_email_domains")
     .$type<string[]>()
@@ -843,6 +859,21 @@ export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {
 });
 
 export type AsafeFeatureFlagEntity = typeof AsafeFeatureFlagTable.$inferSelect;
+
+// ── Org-wide settings (key-value, jsonb) ─────────────────────────────────────
+// Generic global settings store. First key: "org_base_model_allow_list" — the
+// org-wide BASE model allow-list (null/absent = no restriction). See
+// lib/admin/model-policy.ts for the resolution semantics.
+
+export const AsafeOrgSettingsTable = pgTable("asafe_org_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type AsafeOrgSettingEntity = typeof AsafeOrgSettingsTable.$inferSelect;
 
 // ── W8 AUP Acceptance (GDPR/EU AI Act: informed consent record) ──────────────
 

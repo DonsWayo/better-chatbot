@@ -1,14 +1,14 @@
 import "server-only";
 
-import { pgDb as db } from "lib/db/pg/db.pg";
 import {
-  AsafeTeamTable,
-  AsafeTeamMemberTable,
   AsafeTeamBudgetTable,
+  AsafeTeamMemberTable,
+  AsafeTeamTable,
   AsafeUsageEventTable,
   UserTable,
 } from "@/lib/db/pg/schema.pg";
-import { eq, sql, gte, lte, desc, and } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { pgDb as db } from "lib/db/pg/db.pg";
 
 export interface AdminTeamListItem {
   id: string;
@@ -134,7 +134,10 @@ export async function getBudgetAlerts(): Promise<BudgetAlertItem[]> {
       periodEnd: AsafeTeamBudgetTable.periodEnd,
     })
     .from(AsafeTeamBudgetTable)
-    .innerJoin(AsafeTeamTable, eq(AsafeTeamTable.id, AsafeTeamBudgetTable.teamId))
+    .innerJoin(
+      AsafeTeamTable,
+      eq(AsafeTeamTable.id, AsafeTeamBudgetTable.teamId),
+    )
     .where(
       and(
         lte(AsafeTeamBudgetTable.periodStart, now),
@@ -243,7 +246,9 @@ export async function addTeamMember(
     if (domains.length > 0) {
       const domain = emailDomain(userEmail);
       if (!domains.includes(domain)) {
-        throw new Error(`Email domain "${domain}" is not allowed for this team.`);
+        throw new Error(
+          `Email domain "${domain}" is not allowed for this team.`,
+        );
       }
     }
   }
@@ -287,7 +292,12 @@ export async function updateTeam(
       .replace(/^-|-$/g, "");
     await db
       .update(AsafeTeamTable)
-      .set({ name: patch.name, slug, description: patch.description ?? undefined, updatedAt: new Date() })
+      .set({
+        name: patch.name,
+        slug,
+        description: patch.description ?? undefined,
+        updatedAt: new Date(),
+      })
       .where(eq(AsafeTeamTable.id, teamId));
   } else if (patch.description !== undefined) {
     await db
@@ -298,9 +308,7 @@ export async function updateTeam(
 }
 
 export async function deleteTeam(teamId: string) {
-  await db
-    .delete(AsafeTeamTable)
-    .where(eq(AsafeTeamTable.id, teamId));
+  await db.delete(AsafeTeamTable).where(eq(AsafeTeamTable.id, teamId));
 }
 
 // ---------------------------------------------------------------------------
@@ -348,13 +356,20 @@ export interface TeamPolicy {
   allowImageGen: boolean;
   allowVision: boolean;
   allowSpeech: boolean;
-  /** Empty array = all approved models allowed; non-empty = restricted to listed model IDs */
+  /**
+   * EFFECTIVE model allow-list: org base layered with the team's
+   * model_policy override (see lib/admin/model-policy.ts).
+   * Empty array = all approved models allowed; non-empty = restricted to listed model IDs
+   */
   modelAllowList: string[];
   /** Empty array = any email domain allowed; non-empty = only matching domains */
   allowedEmailDomains: string[];
 }
 
-const _teamPolicyCache = new Map<string, { policy: TeamPolicy; expiresAt: number }>();
+const _teamPolicyCache = new Map<
+  string,
+  { policy: TeamPolicy; expiresAt: number }
+>();
 
 export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
   const now = Date.now();
@@ -369,13 +384,51 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
         allowVision: AsafeTeamTable.allowVision,
         allowSpeech: AsafeTeamTable.allowSpeech,
         modelAllowList: AsafeTeamTable.modelAllowList,
+        modelPolicy: AsafeTeamTable.modelPolicy,
         allowedEmailDomains: AsafeTeamTable.allowedEmailDomains,
       })
       .from(AsafeTeamTable)
       .where(eq(AsafeTeamTable.id, teamId))
       .limit(1);
 
-    const policy: TeamPolicy = row ?? {
+    // Layer the org base allow-list with the team's override (model_policy,
+    // or the legacy model_allow_list treated as a "replace" override).
+    // null = unrestricted → mapped to [] to keep this contract stable.
+    const { getOrgBaseModelAllowList, resolveModelAllowList } = await import(
+      "./model-policy"
+    );
+    const orgBase = await getOrgBaseModelAllowList();
+    const effectiveAllowList =
+      resolveModelAllowList(
+        orgBase,
+        row?.modelPolicy ?? null,
+        row?.modelAllowList ?? null,
+      ) ?? [];
+
+    const policy: TeamPolicy = row
+      ? {
+          guardrailPolicy: row.guardrailPolicy,
+          allowImageGen: row.allowImageGen,
+          allowVision: row.allowVision,
+          allowSpeech: row.allowSpeech,
+          modelAllowList: effectiveAllowList,
+          allowedEmailDomains: row.allowedEmailDomains,
+        }
+      : {
+          guardrailPolicy: "standard",
+          allowImageGen: false,
+          allowVision: false,
+          allowSpeech: false,
+          modelAllowList: effectiveAllowList,
+          allowedEmailDomains: [],
+        };
+    _teamPolicyCache.set(teamId, {
+      policy,
+      expiresAt: now + TEAM_ID_CACHE_TTL_MS,
+    });
+    return policy;
+  } catch {
+    return {
       guardrailPolicy: "standard",
       allowImageGen: false,
       allowVision: false,
@@ -383,10 +436,6 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
       modelAllowList: [],
       allowedEmailDomains: [],
     };
-    _teamPolicyCache.set(teamId, { policy, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
-    return policy;
-  } catch {
-    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: [] };
   }
 }
 
