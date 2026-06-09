@@ -76,4 +76,49 @@ describe("GET /api/mcp/list", () => {
     const body = await res.json();
     expect(body[0].config).toBeUndefined(); // non-owner config hidden
   });
+
+  it("never calls selectAllForUser when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllForUserMock).not.toHaveBeenCalled();
+  });
+
+  it("server without in-memory client shows disconnected status", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]); // no in-memory client
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].status).toBe("disconnected");
+  });
+
+  it("triggers refreshClient for server not yet in memory", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    getClientsMock.mockResolvedValueOnce([]); // server not in memory → should trigger refresh
+    refreshClientMock.mockResolvedValue(undefined);
+    const { GET } = await import("./route");
+    await GET();
+    expect(refreshClientMock).toHaveBeenCalledWith(SERVER.id);
+  });
+
+  it("includes toolInfo from in-memory client", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValueOnce([SERVER]);
+    const toolInfo = [{ name: "search", description: "Search the web" }];
+    getClientsMock.mockResolvedValueOnce([
+      {
+        id: "mcp-1",
+        client: {
+          getInfo: () => ({ id: "mcp-1", enabled: true, status: "connected", toolInfo }),
+        },
+      },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].toolInfo).toEqual(toolInfo);
+  });
 });

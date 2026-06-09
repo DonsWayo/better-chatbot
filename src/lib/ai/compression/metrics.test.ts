@@ -74,4 +74,24 @@ describe("recordCompressionSavings", () => {
     // but ratio is still observed
     expect(observeMock).toHaveBeenCalled();
   });
+
+  it("calculates exact 25% compression ratio (charsBefore=100, charsAfter=75)", () => {
+    recordCompressionSavings({ teamId: "t1", level: "light", charsBefore: 100, charsAfter: 75 });
+    expect(incMock).toHaveBeenCalledWith(expect.anything(), 25);
+    expect(observeMock).toHaveBeenCalledWith(expect.anything(), 0.75);
+  });
+
+  it("calculates exact chars saved for large text", () => {
+    recordCompressionSavings({ teamId: "t1", level: "aggressive", charsBefore: 10_000, charsAfter: 3_000 });
+    expect(incMock).toHaveBeenCalledWith(expect.anything(), 7_000);
+    expect(observeMock).toHaveBeenCalledWith(expect.anything(), 0.3);
+  });
+
+  it("tags labels with correct level string", () => {
+    recordCompressionSavings({ teamId: "team-1", level: "aggressive", charsBefore: 200, charsAfter: 100 });
+    expect(observeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ level: "aggressive" }),
+      0.5,
+    );
+  });
 });

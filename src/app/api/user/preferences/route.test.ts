@@ -74,4 +74,41 @@ describe("PUT /api/user/preferences", () => {
     expect(body.success).toBe(true);
     expect(body.preferences.theme).toBe("light");
   });
+
+  it("never calls updatePreferences when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(updatePreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("passes userId to updatePreferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-xyz" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(updatePreferencesMock).toHaveBeenCalledWith(
+      "user-xyz",
+      expect.anything(),
+    );
+  });
+});
+
+describe("GET /api/user/preferences — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getPreferences when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("passes userId to getPreferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).toHaveBeenCalledWith("user-abc");
+  });
 });

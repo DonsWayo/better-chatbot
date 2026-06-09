@@ -66,4 +66,47 @@ describe("POST /api/storage/ingest", () => {
     expect(res.status).toBe(200);
     expect(storageKeyFromUrlMock).toHaveBeenCalledWith("http://cdn.example.com/data.csv");
   });
+
+  it("returns 400 for invalid JSON body", async () => {
+    const badReq = { json: () => Promise.reject(new SyntaxError("Unexpected token")) } as unknown as Request;
+    const { POST } = await import("./route");
+    const res = await POST(badReq);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Invalid JSON");
+  });
+
+  it("treats url with contentType=text/csv query param as csv", async () => {
+    const url = "http://cdn.example.com/file?contentType=text/csv";
+    storageKeyFromUrlMock.mockReturnValueOnce("uploads/file");
+    downloadMock.mockResolvedValueOnce(Buffer.from("a,b\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["a", "b"], rows: [["1", "2"]] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("CSV preview");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ url }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.type).toBe("csv");
+  });
+
+  it("forwards preview and key in response body", async () => {
+    const PREVIEW = { headers: ["col1"], rows: [["val1"]] };
+    downloadMock.mockResolvedValueOnce(Buffer.from("col1\nval1"));
+    parseCsvPreviewMock.mockReturnValueOnce(PREVIEW);
+    formatCsvPreviewTextMock.mockReturnValueOnce("preview text");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/report.csv" }));
+    const body = await res.json();
+    expect(body.key).toBe("uploads/report.csv");
+    expect(body.preview).toEqual(PREVIEW);
+  });
+
+  it("returns 400 when url resolves to non-csv key and type is not csv", async () => {
+    storageKeyFromUrlMock.mockReturnValueOnce("uploads/file.pdf");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ url: "http://cdn.example.com/file.pdf" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("Unsupported");
+  });
 });

@@ -45,4 +45,25 @@ describe("auth route handler", () => {
     const req = new Request("http://localhost/api/auth/login", { method: "POST" });
     await expect(POST(req)).resolves.not.toThrow();
   });
+
+  it("GET handler returns a Response object", async () => {
+    const { GET } = await import("./route");
+    const req = new Request("http://localhost/api/auth/session");
+    const res = await GET(req);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST handler returns a Response object", async () => {
+    const { POST } = await import("./route");
+    const req = new Request("http://localhost/api/auth/sign-in", { method: "POST" });
+    const res = await POST(req);
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("toNextJsHandler is called exactly once on module load", async () => {
+    vi.resetModules();
+    toNextJsHandlerMock.mockClear();
+    await import("./route");
+    expect(toNextJsHandlerMock).toHaveBeenCalledOnce();
+  });
 });

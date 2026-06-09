@@ -75,4 +75,44 @@ describe("httpFetchTool", () => {
     );
     expect(result).toBeDefined();
   });
+
+  it("inputSchema rejects missing url field", () => {
+    const result = httpFetchTool.inputSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it("inputSchema accepts url-only (all other fields optional)", () => {
+    const result = httpFetchTool.inputSchema.safeParse({ url: "http://example.com" });
+    expect(result.success).toBe(true);
+  });
+
+  it("inputSchema accepts all optional fields alongside url", () => {
+    const result = httpFetchTool.inputSchema.safeParse({
+      url: "http://example.com",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "val" }),
+      timeout: 5000,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("error result has isError flag on failure", async () => {
+    const result = await httpFetchTool.execute!({ url: "not-a-url" } as any, {} as any);
+    expect(result).toMatchObject({ isError: true });
+  });
+});
+
+describe("httpFetchSchema — required and optional fields", () => {
+  it("url is the only required field", () => {
+    expect(httpFetchSchema.required).toHaveLength(1);
+    expect(httpFetchSchema.required).toContain("url");
+  });
+
+  it("method, headers, body, timeout are all optional", () => {
+    const optional = ["method", "headers", "body", "timeout"];
+    for (const field of optional) {
+      expect(httpFetchSchema.required).not.toContain(field);
+    }
+  });
 });

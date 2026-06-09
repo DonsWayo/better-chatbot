@@ -66,4 +66,33 @@ print(df.head())
     const result = pythonExecutionTool.inputSchema.safeParse({ code: multiLine });
     expect(result.success).toBe(true);
   });
+
+  it("has no server-side execute function (client-side only)", () => {
+    expect(pythonExecutionTool.execute).toBeUndefined();
+  });
+
+  it("inputSchema rejects empty object", () => {
+    const result = pythonExecutionTool.inputSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("pythonExecutionSchema — properties completeness", () => {
+  it("has a properties field", () => {
+    expect(pythonExecutionSchema.properties).toBeDefined();
+  });
+
+  it("has a required field as array", () => {
+    expect(Array.isArray(pythonExecutionSchema.required)).toBe(true);
+  });
+
+  it("code is the only required field", () => {
+    expect(pythonExecutionSchema.required).toHaveLength(1);
+    expect(pythonExecutionSchema.required![0]).toBe("code");
+  });
+
+  it("code description mentions network access via pyodide.http", () => {
+    const codeProp = (pythonExecutionSchema.properties as any)?.code;
+    expect(codeProp?.description).toContain("pyodide.http");
+  });
 });
