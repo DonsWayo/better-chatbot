@@ -65,6 +65,7 @@ import { notify } from "lib/notify";
 import dynamic from "next/dynamic";
 import { ModelProviderIcon } from "ui/model-provider-icon";
 import { WorkflowInvocation } from "./tool-invocation/workflow-invocation";
+import { CitationBar } from "./citation-bar";
 
 type MessagePart = UIMessage["parts"][number];
 type TextMessagePart = Extract<MessagePart, { type: "text" }>;
@@ -374,6 +375,7 @@ export const AssistMessagePart = memo(function AssistMessagePart({
         })}
       >
         <Markdown>{part.text}</Markdown>
+        <CitationBar text={part.text} />
       </div>
       {showActions && (
         <div className="flex w-full">
