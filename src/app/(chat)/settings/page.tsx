@@ -2,11 +2,18 @@
 
 import { Button } from "ui/button";
 import { Download } from "lucide-react";
+import { MyUsageSection } from "@/components/settings/my-usage";
 
 export default function SettingsPage() {
   return (
-    <div className="container max-w-2xl py-8">
-      <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+    <div className="container max-w-2xl py-8 space-y-6">
+      <h1 className="text-2xl font-semibold">Settings</h1>
+
+      {/* W3: per-user self-serve usage view */}
+      <div className="border rounded-lg p-4">
+        <MyUsageSection />
+      </div>
+
       <section className="border rounded-lg p-4">
         <h2 className="font-medium mb-2">Data &amp; Privacy</h2>
         <p className="text-sm text-muted-foreground mb-4">

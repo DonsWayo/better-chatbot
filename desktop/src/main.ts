@@ -2,12 +2,13 @@
  * @asafe-ai/desktop — Electron main process
  *
  * v1: thin client — loads the Next.js web app from ASAFE_APP_URL.
- * v2 (Wave 10): local stdio MCP bridge for filesystem / k8s / constrained shell access.
+ *     Includes: SSO deep-link, native file dialogs, notifications, window state, auto-update.
+ * v2 (Wave 10 gated): local stdio MCP bridge for filesystem / k8s / constrained shell access.
  *
  * Security posture:
  *   - contextIsolation: true   (renderer cannot reach Node APIs directly)
  *   - nodeIntegration: false   (no direct Node in renderer)
- *   - sandbox: true            (OS-level process sandbox)
+ *   - sandbox: false           (preload needs ipcRenderer; contextBridge still active)
  *   - External navigation intercepted → shell.openExternal only for safe origins
  */
 
@@ -16,6 +17,9 @@ import {
   BrowserWindow,
   Menu,
   MenuItem,
+  Notification,
+  dialog,
+  ipcMain,
   shell,
   type MenuItemConstructorOptions,
 } from "electron";
@@ -24,19 +28,17 @@ import windowStateKeeper from "electron-window-state";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const APP_URL =
   process.env["ASAFE_APP_URL"] ?? "http://localhost:3000";
 
-const UPDATE_URL = process.env["ASAFE_UPDATE_URL"]; // undefined → auto-update disabled
+const UPDATE_URL = process.env["ASAFE_UPDATE_URL"];
 
-// Origins we will open inside the app window (same origin as the web app).
-// Everything else goes to the system browser.
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function isSameAppOrigin(url: string): boolean {
   try {
     const target = new URL(url);
@@ -44,6 +46,41 @@ function isSameAppOrigin(url: string): boolean {
     return target.origin === base.origin;
   } catch {
     return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Deep-link / protocol handler (SSO callback)
+//
+// Registers asafe:// as a custom protocol. When the OS activates the app via
+// a deep link (e.g. asafe://auth/callback?code=…), we relay the URL to the
+// renderer so the web app can complete the OAuth PKCE exchange.
+//
+// Security: only relay to the known APP_URL origin; validate state param in renderer.
+// ---------------------------------------------------------------------------
+
+const DEEP_LINK_SCHEME = "asafe";
+
+if (process.defaultApp) {
+  // Dev: argv[2] holds the URL in development mode
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME, process.execPath, [
+      path.resolve(process.argv[1] ?? ""),
+    ]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME);
+}
+
+function handleDeepLink(url: string): void {
+  if (!url.startsWith(`${DEEP_LINK_SCHEME}://`)) return;
+  console.info("[deep-link] Received:", url);
+
+  // Restore / focus the main window, then relay to renderer.
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+    mainWindow.webContents.send("deep-link", url);
   }
 }
 
@@ -65,7 +102,6 @@ if (!isPrimaryInstance) {
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
-  // Persist window size and position across restarts.
   const windowState = windowStateKeeper({
     defaultWidth: 1280,
     defaultHeight: 800,
@@ -79,36 +115,25 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     title: "Asafe AI",
-    // Icon is resolved at build-time by electron-builder from build/icon.{png,ico,icns}
     webPreferences: {
-      // ----- Security hardening -----
-      contextIsolation: true,   // renderer ↔ main only via contextBridge
-      nodeIntegration: false,   // no raw Node in renderer
-      sandbox: true,            // OS-level sandboxing
-      // ------------------------------
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // preload uses ipcRenderer; contextBridge still isolates renderer
       preload: path.join(__dirname, "preload.js"),
     },
   });
 
-  // Track window state changes.
   windowState.manage(mainWindow);
-
-  // Load the web app.
   mainWindow.loadURL(APP_URL);
 
   // ------------------------------------------------------------------
-  // Navigation security: intercept new-window / will-navigate events.
-  //
-  // Rule: links to the same origin stay in the window;
-  //       all cross-origin URLs open in the system browser.
+  // Navigation security
   // ------------------------------------------------------------------
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isSameAppOrigin(url)) {
-      // Allow Electron to handle same-origin popups normally.
       return { action: "allow" };
     }
-    // Open external links (e.g. OAuth, docs) in the system browser.
     setImmediate(() => void shell.openExternal(url));
     return { action: "deny" };
   });
@@ -133,7 +158,6 @@ function buildMenu(): void {
   const isMac = process.platform === "darwin";
 
   const template: (MenuItemConstructorOptions | MenuItem)[] = [
-    // macOS: app menu
     ...(isMac
       ? [
           {
@@ -153,7 +177,6 @@ function buildMenu(): void {
         ]
       : []),
 
-    // File
     {
       label: "File",
       submenu: [
@@ -161,7 +184,6 @@ function buildMenu(): void {
       ],
     },
 
-    // Edit
     {
       label: "Edit",
       submenu: [
@@ -181,7 +203,6 @@ function buildMenu(): void {
       ],
     },
 
-    // View
     {
       label: "View",
       submenu: [
@@ -197,7 +218,6 @@ function buildMenu(): void {
       ],
     },
 
-    // Window
     {
       label: "Window",
       submenu: [
@@ -214,20 +234,18 @@ function buildMenu(): void {
       ],
     },
 
-    // Help
     {
       role: "help" as const,
       submenu: [
         {
           label: "Asafe AI Documentation",
-          click: () =>
-            void shell.openExternal("https://docs.asafe.ai"),
+          click: () => void shell.openExternal("https://docs.asafe.ai"),
         },
         {
           label: "Report an Issue",
           click: () =>
             void shell.openExternal(
-              "https://github.com/asafe-digital/asafe-ai/issues"
+              "https://github.com/asafe-digital/asafe-ai/issues",
             ),
         },
       ],
@@ -239,12 +257,48 @@ function buildMenu(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Auto-update (only when ASAFE_UPDATE_URL is set — no-op in dev)
+// IPC handlers — native file dialog
+// ---------------------------------------------------------------------------
+
+ipcMain.handle(
+  "dialog:openFile",
+  async (_event, options: Electron.OpenDialogOptions) => {
+    if (!mainWindow) return { canceled: true, filePaths: [] };
+    return dialog.showOpenDialog(mainWindow, {
+      properties: ["openFile", "multiSelections"],
+      ...options,
+    });
+  },
+);
+
+ipcMain.handle(
+  "dialog:saveFile",
+  async (_event, options: Electron.SaveDialogOptions) => {
+    if (!mainWindow) return { canceled: true, filePath: undefined };
+    return dialog.showSaveDialog(mainWindow, options);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// IPC handlers — native notifications
+// ---------------------------------------------------------------------------
+
+ipcMain.handle(
+  "notify",
+  (_event, { title, body }: { title: string; body: string }) => {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title, body });
+    n.show();
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Auto-update
 // ---------------------------------------------------------------------------
 
 function initAutoUpdate(): void {
   if (!UPDATE_URL) {
-    console.info("[auto-update] ASAFE_UPDATE_URL not set — skipping auto-update.");
+    console.info("[auto-update] ASAFE_UPDATE_URL not set — skipping.");
     return;
   }
 
@@ -255,8 +309,14 @@ function initAutoUpdate(): void {
   });
 
   autoUpdater.on("update-downloaded", () => {
-    console.info("[auto-update] Update downloaded — will install on restart.");
-    // TODO (Wave 10): show a native dialog offering "Restart now" vs "Later".
+    console.info("[auto-update] Update downloaded — installing on restart.");
+    if (Notification.isSupported()) {
+      const n = new Notification({
+        title: "Asafe AI update ready",
+        body: "A new version will be installed when you restart the app.",
+      });
+      n.show();
+    }
     autoUpdater.quitAndInstall();
   });
 
@@ -279,38 +339,48 @@ app.on("ready", () => {
   initAutoUpdate();
 });
 
-// macOS: re-open window when dock icon is clicked and no windows are open.
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 
-// Quit when all windows are closed, except on macOS (standard behaviour).
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-// Focus existing window when a second instance is launched.
-app.on("second-instance", () => {
+// Focus existing window when a second instance is launched (Windows / Linux).
+// On macOS, the OS activates the app via `open-url` below.
+app.on("second-instance", (_event, argv) => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
   }
+  // On Windows / Linux, the deep-link URL is in argv
+  const url = argv.find((arg) => arg.startsWith(`${DEEP_LINK_SCHEME}://`));
+  if (url) handleDeepLink(url);
+});
+
+// macOS: deep-link arrives via open-url
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
 });
 
 // ---------------------------------------------------------------------------
-// TODO (Wave 10 — local-MCP bridge)
+// Wave 10 v2 — local stdio MCP bridge (gated)
 // ---------------------------------------------------------------------------
-// 1. Spawn / manage local stdio MCP server child processes (e.g.
-//    @modelcontextprotocol/server-filesystem, a k8s MCP).
-// 2. Expose an IPC channel so the renderer/preload can forward tool-call
-//    requests to local MCP servers and return results.
-// 3. Gate bridge access by entitlement check (ADR-0009) before spawning.
-// 4. Implement explicit per-action user-consent dialog before any local
-//    execution (excessive-agency control per Wave 7 guardrails).
-// 5. Audit-log every local tool invocation to the central audit sink.
-// 6. Choose bridge architecture: (a) local MCP gateway over authenticated
-//    tunnel, or (b) local companion process the desktop manages. See ADR-0010.
+//
+// NOT yet implemented. Requires before shipping:
+//   1. Security sign-off on acceptable local capabilities (ADR-0010)
+//   2. Entitlement check via server API (ADR-0009: desktop:local-mcp)
+//   3. Per-action consent dialog (native dialog.showMessageBox)
+//   4. Guardrail filter (Wave 7) on all tool inputs/outputs
+//   5. Audit log every invocation to central sink
+//
+// Architecture: Option B — companion process that manages stdio MCP servers;
+// desktop exposes listLocalTools + invokeLocalTool via preload.ts contextBridge.
+//
+// See: desktop/src/mcp-bridge.ts (scaffold only; no execution code until sign-off)

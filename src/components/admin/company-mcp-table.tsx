@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
   Table,
@@ -11,21 +13,107 @@ import {
 } from "ui/table";
 import { Button } from "ui/button";
 import { Badge } from "ui/badge";
-import { Plug2 } from "lucide-react";
+import { Input } from "ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "ui/dialog";
+import { Card, CardContent } from "ui/card";
+import { Plug2, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import type { McpServerEntity } from "lib/db/pg/schema.pg";
 
 interface CompanyMcpTableProps {
   servers: McpServerEntity[];
 }
 
-export function CompanyMcpTable({ servers }: CompanyMcpTableProps) {
+export function CompanyMcpTable({ servers: initialServers }: CompanyMcpTableProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [servers, setServers] = useState(initialServers);
+
+  // Register dialog state
+  const [showRegister, setShowRegister] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newScope, setNewScope] = useState<"org" | "team">("org");
+  const [newUrl, setNewUrl] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+
+  const handleRegister = async () => {
+    if (!newName.trim() || !newUrl.trim()) return;
+    setIsRegistering(true);
+    setRegisterError(null);
+    try {
+      const res = await fetch("/api/admin/mcp/servers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          scope: newScope,
+          config: { url: newUrl.trim() },
+          enabled: true,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Registration failed");
+      }
+      const { server } = await res.json();
+      setServers((prev) => [...prev, server]);
+      setNewName(""); setNewUrl(""); setNewScope("org");
+      setShowRegister(false);
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      setRegisterError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleToggleEnabled = async (server: McpServerEntity) => {
+    try {
+      const res = await fetch(`/api/admin/mcp/servers/${server.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: !server.enabled }),
+      });
+      if (!res.ok) throw new Error("Toggle failed");
+      const { server: updated } = await res.json();
+      setServers((prev) => prev.map((s) => s.id === server.id ? updated : s));
+    } catch {
+      // silently fail — optimistic would be overkill for admin page
+    }
+  };
+
+  const handleDelete = async (serverId: string) => {
+    if (!confirm("Remove this MCP server from the registry?")) return;
+    try {
+      const res = await fetch(`/api/admin/mcp/servers/${serverId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      setServers((prev) => prev.filter((s) => s.id !== serverId));
+    } catch {
+      // silently fail
+    }
+  };
+
   return (
     <div className="space-y-4 w-full">
       <div className="flex items-center justify-between gap-4">
         <div className="text-sm text-muted-foreground">
           {servers.length} {servers.length === 1 ? "server" : "servers"}
         </div>
-        <Button size="sm" disabled>
+        <Button size="sm" onClick={() => setShowRegister(true)} data-testid="register-server-btn">
           <Plug2 className="h-4 w-4 mr-1" />
           Register Server
         </Button>
@@ -46,10 +134,7 @@ export function CompanyMcpTable({ servers }: CompanyMcpTableProps) {
           <TableBody>
             {servers.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center py-8 text-muted-foreground"
-                >
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No company MCP servers registered yet
                 </TableCell>
               </TableRow>
@@ -58,21 +143,13 @@ export function CompanyMcpTable({ servers }: CompanyMcpTableProps) {
                 <TableRow key={server.id}>
                   <TableCell className="font-medium">{server.name}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={server.scope === "org" ? "default" : "secondary"}
-                    >
+                    <Badge variant={server.scope === "org" ? "default" : "secondary"}>
                       {server.scope === "org" ? "Org-wide" : "Team"}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {server.lastConnectionStatus ? (
-                      <Badge
-                        variant={
-                          server.lastConnectionStatus === "connected"
-                            ? "default"
-                            : "destructive"
-                        }
-                      >
+                      <Badge variant={server.lastConnectionStatus === "connected" ? "default" : "destructive"}>
                         {server.lastConnectionStatus}
                       </Badge>
                     ) : (
@@ -80,16 +157,35 @@ export function CompanyMcpTable({ servers }: CompanyMcpTableProps) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={server.enabled ? "default" : "outline"}>
-                      {server.enabled ? "Enabled" : "Disabled"}
-                    </Badge>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleEnabled(server)}
+                      className="inline-flex items-center gap-1 text-sm"
+                      data-testid={`toggle-server-${server.id}`}
+                    >
+                      {server.enabled ? (
+                        <ToggleRight className="h-5 w-5 text-primary" />
+                      ) : (
+                        <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <span className={server.enabled ? "text-primary font-medium" : "text-muted-foreground"}>
+                        {server.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {format(new Date(server.createdAt), "MMM d, yyyy")}
                   </TableCell>
                   <TableCell>
-                    <Button variant="outline" size="sm" disabled>
-                      Edit
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(server.id)}
+                      aria-label="Remove server"
+                      data-testid={`delete-server-${server.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -98,6 +194,75 @@ export function CompanyMcpTable({ servers }: CompanyMcpTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Register Server dialog */}
+      <Dialog open={showRegister} onOpenChange={setShowRegister}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Register Company MCP Server</DialogTitle>
+            <DialogDescription>
+              Add an approved MCP server to the company catalog. Employees on authorised teams will be able to use its tools.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Card>
+            <CardContent className="space-y-4 pt-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Name
+                </label>
+                <Input
+                  placeholder="e.g. Company Jira"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  data-testid="new-server-name"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  URL (SSE endpoint)
+                </label>
+                <Input
+                  placeholder="https://mcp.example.com/sse"
+                  type="url"
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  data-testid="new-server-url"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Scope
+                </label>
+                <Select value={newScope} onValueChange={(v) => setNewScope(v as "org" | "team")}>
+                  <SelectTrigger data-testid="new-server-scope">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="org">Org-wide (all teams)</SelectItem>
+                    <SelectItem value="team">Team-specific</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {registerError && <p className="text-sm text-destructive">{registerError}</p>}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRegister(false)} disabled={isRegistering}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRegister}
+              disabled={!newName.trim() || !newUrl.trim() || isRegistering}
+              data-testid="confirm-register-btn"
+            >
+              {isRegistering ? "Registering…" : "Register"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,0 +1,168 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const { getSessionMock, getPreferencesMock, updatePreferencesMock } = vi.hoisted(() => ({
+  getSessionMock: vi.fn(),
+  getPreferencesMock: vi.fn(),
+  updatePreferencesMock: vi.fn(),
+}));
+
+vi.mock("auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/db/repository", () => ({
+  userRepository: {
+    getPreferences: getPreferencesMock,
+    updatePreferences: updatePreferencesMock,
+  },
+}));
+vi.mock("app-types/user", () => ({
+  UserPreferencesZodSchema: { parse: (b: unknown) => b },
+}));
+
+function makeRequest(body?: unknown): Request {
+  return { json: () => Promise.resolve(body) } as unknown as Request;
+}
+
+describe("GET /api/user/preferences", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(401);
+  });
+
+  it("returns empty object when no preferences stored", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({});
+  });
+
+  it("returns stored preferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const PREFS = { theme: "dark", language: "en" };
+    getPreferencesMock.mockResolvedValueOnce(PREFS);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.theme).toBe("dark");
+  });
+});
+
+describe("PUT /api/user/preferences", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ theme: "dark" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("updates preferences and returns updated values", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const PREFS = { theme: "light" };
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: PREFS });
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest(PREFS));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.preferences.theme).toBe("light");
+  });
+
+  it("never calls updatePreferences when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(updatePreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("passes userId to updatePreferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-xyz" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(updatePreferencesMock).toHaveBeenCalledWith(
+      "user-xyz",
+      expect.anything(),
+    );
+  });
+});
+
+describe("GET /api/user/preferences — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getPreferences when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("passes userId to getPreferences", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).toHaveBeenCalledWith("user-abc");
+  });
+
+  it("GET 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getPreferences called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PUT /api/user/preferences — body and exact-once", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("PUT 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT({ json: () => Promise.resolve({}) } as unknown as Request);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("updatePreferences called exactly once per authenticated PUT request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    await PUT({ json: () => Promise.resolve({ theme: "dark" }) } as unknown as Request);
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per PUT", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    await PUT(makeRequest({ theme: "dark" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/user/preferences — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});

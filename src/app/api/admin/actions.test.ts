@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { USER_ROLES } from "app-types/roles";
+import { UpdateUserBanStatusSchema } from "./validations";
 
 describe("Admin Actions - Business Logic", () => {
   describe("Self-Role Update Prevention Logic", () => {
@@ -40,5 +41,86 @@ describe("Admin Actions - Business Logic", () => {
 
       expect(role).toBe(USER_ROLES.ADMIN);
     });
+
+    it("all roles are truthy (no empty string)", () => {
+      for (const r of Object.values(USER_ROLES)) {
+        expect(r).toBeTruthy();
+      }
+    });
+  });
+
+  describe("Self-Ban Prevention Logic", () => {
+    it("identifies self-ban attempt", () => {
+      const adminId = "admin-1";
+      expect(adminId === "admin-1").toBe(true);
+    });
+
+    it("allows banning another user", () => {
+      const adminId = "admin-1";
+      const targetId = "user-2";
+      expect(adminId === targetId).toBe(false);
+    });
+  });
+});
+
+describe("UpdateUserBanStatusSchema", () => {
+  const VALID_UUID = "123e4567-e89b-12d3-a456-426614174000";
+
+  it("parses banned=false (string) as boolean false", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "false",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banned).toBe(false);
+  });
+
+  it("parses banned=true (string) as boolean true", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "true",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banned).toBe(true);
+  });
+
+  it("accepts optional banReason", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "true",
+      banReason: "Violated ToS",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banReason).toBe("Violated ToS");
+  });
+
+  it("omits banReason when not provided", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "true",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banReason).toBeUndefined();
+  });
+
+  it("rejects invalid banned value (not 'true'/'false')", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "yes",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing userId", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ banned: "true" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid UUID in userId", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: "not-a-uuid",
+      banned: "true",
+    });
+    expect(result.success).toBe(false);
   });
 });

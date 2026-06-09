@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   json,
+  jsonb,
   uuid,
   boolean,
   unique,
@@ -16,6 +17,7 @@ import {
   numeric,
   integer,
   customType,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -121,6 +123,8 @@ export const UserTable = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
   role: text("role").notNull().default("user"),
+  // W8: GDPR/EU AI Act — acceptable-use acknowledgment
+  acceptedAupAt: timestamp("accepted_aup_at", { withTimezone: true }),
 });
 
 // Role tables removed - using Better Auth's built-in role system
@@ -397,6 +401,15 @@ export const AsafeTeamTable = pgTable(
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 100 }).notNull().unique(),
     description: text("description"),
+    // W9: per-team guardrail posture and multimodal feature gates
+    guardrailPolicy: varchar("guardrail_policy", { length: 20 }).notNull().default("standard"),
+    allowImageGen: boolean("allow_image_gen").notNull().default(false),
+    allowVision: boolean("allow_vision").notNull().default(false),
+    allowSpeech: boolean("allow_speech").notNull().default(false),
+    // W4: model allow-list — empty array = all approved models allowed
+    modelAllowList: jsonb("model_allow_list").$type<string[]>().notNull().default([]),
+    // W5+: email domain allow-list — empty array = any email domain allowed
+    allowedEmailDomains: jsonb("allowed_email_domains").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
@@ -634,3 +647,104 @@ export const asafePromptTemplateRelations = relations(AsafePromptTemplateTable, 
 }));
 
 export type AsafePromptTemplateEntity = typeof AsafePromptTemplateTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Wave 1 – Postgres-backed KV cache (replaces Redis)
+// ---------------------------------------------------------------------------
+
+export const AsafeKvCacheTable = pgTable("asafe_kv_cache", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+});
+
+export const AsafeRateLimitBucketTable = pgTable(
+  "asafe_rate_limit_bucket",
+  {
+    userId: text("user_id").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(1),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.windowStart] }),
+  ],
+);
+
+// ── W8 Compliance Audit Log ──────────────────────────────────────────────────
+
+export const AsafeAuditLogTable = pgTable("asafe_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // Who
+  userId: text("user_id").notNull(),
+  teamId: uuid("team_id"),
+  // What type of event
+  eventType: text("event_type").notNull(), // "chat_request"|"admin_action"|"rag_retrieval"|"tool_call"|"guardrail"|"user_erasure"
+  // Serialised details — kept minimal (no raw prompt content; content hash only)
+  details: jsonb("details").notNull().default("{}"),
+  // Immutable timestamp — use now() at DB level so app clock skew can't falsify it
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeAuditLogEntity = typeof AsafeAuditLogTable.$inferSelect;
+
+// ── W7 Guardrail Events ──────────────────────────────────────────────────────
+
+export const AsafeGuardrailEventTable = pgTable("asafe_guardrail_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  blocked: boolean("blocked").notNull().default(false),
+  firings: jsonb("firings").notNull().default("[]"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeGuardrailEventEntity = typeof AsafeGuardrailEventTable.$inferSelect;
+
+// ── W5 Per-user model grants ─────────────────────────────────────────────────
+// Admins can grant a specific user access to a model that their team's
+// allow-list would otherwise block. expiresAt=null means permanent.
+
+export const AsafeUserModelGrantTable = pgTable(
+  "asafe_user_model_grant",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    modelId: text("model_id").notNull(),
+    grantedBy: text("granted_by").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_user_model_grant_user_id").on(t.userId),
+    unique("uq_user_model_grant").on(t.userId, t.modelId),
+  ],
+);
+
+export type AsafeUserModelGrantEntity = typeof AsafeUserModelGrantTable.$inferSelect;
+
+// ── W12 Feature Flags (kill switch + future toggles) ─────────────────────────
+
+export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {
+  name: text("name").primaryKey(), // e.g. "kill_switch", "compression_enabled"
+  enabled: boolean("enabled").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AsafeFeatureFlagEntity = typeof AsafeFeatureFlagTable.$inferSelect;
+
+// ── W8 AUP Acceptance (GDPR/EU AI Act: informed consent record) ──────────────
+
+export const AsafeAupAcceptanceTable = pgTable(
+  "asafe_aup_acceptance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    aupVersion: text("aup_version").notNull().default("1.0"),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("uq_aup_user_version").on(t.userId, t.aupVersion),
+    index("idx_aup_user_id").on(t.userId),
+  ],
+);
+
+export type AsafeAupAcceptanceEntity = typeof AsafeAupAcceptanceTable.$inferSelect;

@@ -13,6 +13,7 @@ import {
   AsafeUsageEventTable,
 } from "@/lib/db/pg/schema.pg";
 import globalLogger from "logger";
+import { budgetUtilizationGauge } from "@/lib/observability/metrics";
 
 const logger = globalLogger.withDefaults({ message: "budget: " });
 
@@ -44,6 +45,43 @@ export function estimateCostUsd(
     (promptTokens / 1_000_000) * pricing.promptPerM +
     (completionTokens / 1_000_000) * pricing.completionPerM
   );
+}
+
+// ---------------------------------------------------------------------------
+// Budget alert
+// ---------------------------------------------------------------------------
+
+const BUDGET_ALERT_THRESHOLD = 0.8;
+
+export async function checkBudgetAlert(teamId: string): Promise<void> {
+  const [budget] = await db
+    .select({
+      budgetUsd: AsafeTeamBudgetTable.budgetUsd,
+      usedUsd: AsafeTeamBudgetTable.usedUsd,
+      teamId: AsafeTeamBudgetTable.teamId,
+    })
+    .from(AsafeTeamBudgetTable)
+    .where(
+      and(
+        sql`${AsafeTeamBudgetTable.teamId} = ${teamId}`,
+        lte(AsafeTeamBudgetTable.periodStart, new Date()),
+        gte(AsafeTeamBudgetTable.periodEnd, new Date()),
+      ),
+    )
+    .limit(1);
+
+  if (!budget) return;
+
+  const ratio =
+    parseFloat(budget.usedUsd as string) /
+    parseFloat(budget.budgetUsd as string);
+
+  if (ratio >= BUDGET_ALERT_THRESHOLD) {
+    logger.warn(
+      `budget alert: team ${teamId} at ${(ratio * 100).toFixed(1)}% utilization`,
+    );
+    budgetUtilizationGauge.set({ team_id: teamId }, ratio);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +181,8 @@ export async function recordUsage(params: RecordUsageParams): Promise<void> {
             gte(AsafeTeamBudgetTable.periodEnd, now),
           ),
         );
+
+      checkBudgetAlert(params.teamId).catch(() => {});
     }
   } catch (err) {
     logger.error("recordUsage error:", err);

@@ -24,7 +24,7 @@ export default defineConfig({
       ]
     : [["html"], ["list"]],
   use: {
-    baseURL: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
+    baseURL: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001",
     ignoreHTTPSErrors: true,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
@@ -39,6 +39,8 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /.*auth-states\.setup\.ts/,
+      // Auth state setups must run serially — parallel sign-ins overwhelm the dev server
+      fullyParallel: false,
     },
 
     {
@@ -54,7 +56,7 @@ export default defineConfig({
 
   webServer: {
     command: "pnpm start",
-    url: "http://localhost:3000",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001",
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000, // 3 minutes for build and start
     stdout: "pipe",

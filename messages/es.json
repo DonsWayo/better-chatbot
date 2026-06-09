@@ -820,6 +820,27 @@
       "scope": "Ámbito",
       "scopeOrg": "Toda la organización",
       "scopeTeam": "Equipo"
+    },
+    "FeatureFlags": {
+      "title": "Indicadores de función",
+      "flagName": "Indicador",
+      "flagEnabled": "Habilitado",
+      "killSwitch": "Kill Switch",
+      "killSwitchDescription": "Bloquea toda la inferencia de IA al instante. Desactívalo tan pronto como se resuelva el incidente.",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "activated": "Kill switch activado — toda la inferencia está bloqueada",
+      "deactivated": "Kill switch desactivado — la inferencia funciona con normalidad",
+      "flagUpdated": "Indicador actualizado"
+    },
+    "Guardrails": {
+      "title": "Guardianes",
+      "blockedCount": "Bloqueados",
+      "warnedCount": "Advertidos",
+      "noEvents": "No hay eventos de guardián registrados todavía."
+    },
+    "Quality": {
+      "title": "Calidad"
     }
   },
   "MCP": {

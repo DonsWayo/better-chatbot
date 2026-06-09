@@ -87,4 +87,81 @@ describe("inference posture", () => {
       "gemini-2.5-flash-lite",
     ]);
   });
+
+  it("has exactly 4 approved models in the registry", () => {
+    const { customModelProvider } = modelsModule;
+    const openRouter = customModelProvider.modelsInfo.find(
+      (m) => m.provider === "openRouter",
+    );
+    expect(openRouter?.models).toHaveLength(4);
+  });
+
+  it("each model has a non-empty name", () => {
+    const { customModelProvider } = modelsModule;
+    const openRouter = customModelProvider.modelsInfo.find(
+      (m) => m.provider === "openRouter",
+    )!;
+    for (const model of openRouter.models) {
+      expect(typeof model.name).toBe("string");
+      expect(model.name.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("getModel returns a defined object for each approved model", () => {
+    const { customModelProvider } = modelsModule;
+    const MODELS = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+    for (const model of MODELS) {
+      const result = customModelProvider.getModel({ provider: "openRouter", model });
+      expect(result).toBeDefined();
+    }
+  });
+});
+
+describe("customModelProvider file support — gemini-2.5-flash-lite", () => {
+  it("maps gemini-2.5-flash-lite to Gemini file support", () => {
+    const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
+    const model = customModelProvider.getModel({
+      provider: "openRouter",
+      model: "gemini-2.5-flash-lite",
+    });
+    expect(getFilePartSupportedMimeTypes(model)).toEqual(
+      Array.from(GEMINI_FILE_MIME_TYPES),
+    );
+  });
+});
+
+describe("customModelProvider registry invariants", () => {
+  it("no model names are duplicated in the registry", () => {
+    const { customModelProvider } = modelsModule;
+    const openRouter = customModelProvider.modelsInfo.find((m) => m.provider === "openRouter")!;
+    const names = openRouter.models.map((m) => m.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("all models have a non-empty supportedFileMimeTypes array", () => {
+    const { customModelProvider } = modelsModule;
+    const openRouter = customModelProvider.modelsInfo.find((m) => m.provider === "openRouter")!;
+    for (const model of openRouter.models) {
+      expect(Array.isArray(model.supportedFileMimeTypes)).toBe(true);
+      expect(model.supportedFileMimeTypes!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("file support mime types are all non-empty strings", () => {
+    const { customModelProvider } = modelsModule;
+    const openRouter = customModelProvider.modelsInfo.find((m) => m.provider === "openRouter")!;
+    for (const model of openRouter.models) {
+      for (const mime of model.supportedFileMimeTypes ?? []) {
+        expect(typeof mime).toBe("string");
+        expect(mime.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("provider string for all models is exactly 'openRouter'", () => {
+    const { customModelProvider } = modelsModule;
+    for (const info of customModelProvider.modelsInfo) {
+      expect(info.provider).toBe("openRouter");
+    }
+  });
 });

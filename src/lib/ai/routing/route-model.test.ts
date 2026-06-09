@@ -63,4 +63,68 @@ describe("routeModel", () => {
     expect(d.candidates.length).toBeGreaterThan(0);
     expect(d.candidates[0]).toEqual(d.model);
   });
+
+  it("falls back to top tier when allow-list blocks all candidates", () => {
+    const d = routeModel({
+      text: "hello",
+      allowedModels: [{ provider: "openRouter", model: "nonexistent-model" }],
+    });
+    // When allow-list blocks everything, top tier for general = fast (gemini-2.5-flash)
+    expect(d.model.model).toBe("gemini-2.5-flash");
+  });
+
+  it("reason string contains the inferred taskClass", () => {
+    const d = routeModel({ text: "fix this ```js\nconst x = 1\n```" });
+    expect(d.reason).toContain("code");
+  });
+
+  it("reason string contains the chosen tier name", () => {
+    const d = routeModel({ text: "translate 'hello' to Spanish" });
+    expect(d.reason).toContain("cheap");
+  });
+
+  it("empty text routes to general", () => {
+    const d = routeModel({ text: "" });
+    expect(d.taskClass).toBe("general");
+  });
+
+  it("declaredTaskClass can force vision even without hasImage", () => {
+    const d = routeModel({ text: "anything", declaredTaskClass: "vision" });
+    expect(d.taskClass).toBe("vision");
+    expect(d.model.model).toBe("gemini-2.5-flash");
+  });
+
+  it("totalChars exactly above LONG_CONTEXT_CHARS triggers long_context", () => {
+    const d = routeModel({ text: "continue", totalChars: 8001 });
+    expect(d.taskClass).toBe("long_context");
+  });
+
+  it("totalChars at exactly LONG_CONTEXT_CHARS (8000) triggers long_context", () => {
+    const d = routeModel({ text: "continue", totalChars: 8000 });
+    expect(d.taskClass).toBe("long_context");
+  });
+
+  it("totalChars below threshold (7999) with plain text stays general", () => {
+    const d = routeModel({ text: "hi there", totalChars: 7999 });
+    expect(d.taskClass).toBe("general");
+  });
+
+  it("hasImage beats hasTools (vision checked before tool_use)", () => {
+    const d = routeModel({ text: "analyze this image with tools", hasImage: true, hasTools: true });
+    expect(d.taskClass).toBe("vision");
+  });
+
+  it("returned decision always has all required fields", () => {
+    const d = routeModel({ text: "hello" });
+    expect(d).toHaveProperty("taskClass");
+    expect(d).toHaveProperty("model");
+    expect(d).toHaveProperty("candidates");
+    expect(d).toHaveProperty("reason");
+  });
+
+  it("chosen model always has provider and model fields", () => {
+    const d = routeModel({ text: "hello" });
+    expect(typeof d.model.provider).toBe("string");
+    expect(typeof d.model.model).toBe("string");
+  });
 });

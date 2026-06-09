@@ -820,6 +820,27 @@
       "scope": "Scope",
       "scopeOrg": "Org-wide",
       "scopeTeam": "Team"
+    },
+    "FeatureFlags": {
+      "title": "Feature Flags",
+      "flagName": "Flag",
+      "flagEnabled": "Enabled",
+      "killSwitch": "Kill Switch",
+      "killSwitchDescription": "Block all AI inference instantly. Deactivate as soon as the incident is resolved.",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activated": "Kill switch activated — all inference is blocked",
+      "deactivated": "Kill switch deactivated — inference is running normally",
+      "flagUpdated": "Flag updated"
+    },
+    "Guardrails": {
+      "title": "Guardrails",
+      "blockedCount": "Blocked",
+      "warnedCount": "Warned",
+      "noEvents": "No guardrail events recorded yet."
+    },
+    "Quality": {
+      "title": "Quality"
     }
   },
   "MCP": {

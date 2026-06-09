@@ -144,6 +144,7 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
   }, []);
 
   const [input, setInput] = useState("");
+  const [ragCollectionId, setRagCollectionId] = useState<string | undefined>(undefined);
 
   const {
     messages,
@@ -215,6 +216,9 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
             model: latestRef.current.threadImageToolModel[threadId],
           },
           attachments,
+          ...(latestRef.current.ragCollectionId
+            ? { ragCollectionId: latestRef.current.ragCollectionId }
+            : {}),
         };
         return { body: requestBody };
       },
@@ -246,6 +250,7 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
     threadId,
     mentions: threadMentions[threadId],
     threadImageToolModel,
+    ragCollectionId,
   });
 
   const isLoading = useMemo(
@@ -501,6 +506,8 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
             isLoading={isLoading || isPendingToolCall}
             onStop={stop}
             onFocus={isFirstTime ? undefined : handleFocus}
+            ragCollectionId={ragCollectionId}
+            onRagCollectionChange={setRagCollectionId}
           />
         </div>
         <DeleteThreadPopup

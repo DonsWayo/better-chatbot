@@ -124,5 +124,37 @@ describe("MCP Config Diff", () => {
 
       expect(() => detectConfigChanges(prev, next)).toThrow();
     });
+
+    it("returns empty array when both prev and next are empty", () => {
+      expect(detectConfigChanges({}, {})).toHaveLength(0);
+    });
+
+    it("no changes when config url is identical", () => {
+      const cfg = { url: "https://same.com/sse" };
+      expect(detectConfigChanges({ a: cfg }, { a: cfg })).toHaveLength(0);
+    });
+
+    it("add change has correct type and key", () => {
+      const changes = detectConfigChanges({}, { myServer: { url: "https://new.com" } });
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe("add");
+      expect(changes[0].key).toBe("myServer");
+    });
+
+    it("remove change has correct type and key", () => {
+      const changes = detectConfigChanges({ myServer: { url: "https://old.com" } }, {});
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe("remove");
+      expect(changes[0].key).toBe("myServer");
+    });
+
+    it("update change contains the new value", () => {
+      const changes = detectConfigChanges(
+        { s: { url: "https://old.com" } },
+        { s: { url: "https://new.com" } },
+      );
+      expect(changes[0].type).toBe("update");
+      expect((changes[0].value as any).url).toBe("https://new.com");
+    });
   });
 });

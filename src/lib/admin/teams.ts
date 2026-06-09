@@ -8,7 +8,7 @@ import {
   AsafeUsageEventTable,
   UserTable,
 } from "@/lib/db/pg/schema.pg";
-import { eq, sql, gte, desc } from "drizzle-orm";
+import { eq, sql, gte, lte, desc, and } from "drizzle-orm";
 
 export interface AdminTeamListItem {
   id: string;
@@ -105,6 +105,59 @@ export async function getUsageSummary(options: {
   return { byModel, byTaskClass, totals, days };
 }
 
+// ---------------------------------------------------------------------------
+// Budget alert summary — used by the admin usage dashboard
+// ---------------------------------------------------------------------------
+
+export interface BudgetAlertItem {
+  teamId: string;
+  teamName: string;
+  budgetUsd: string;
+  usedUsd: string;
+  periodStart: Date;
+  periodEnd: Date;
+  utilizationRatio: number;
+  alert: boolean;
+}
+
+const BUDGET_ALERT_THRESHOLD = 0.8;
+
+export async function getBudgetAlerts(): Promise<BudgetAlertItem[]> {
+  const now = new Date();
+  const rows = await db
+    .select({
+      teamId: AsafeTeamBudgetTable.teamId,
+      teamName: AsafeTeamTable.name,
+      budgetUsd: AsafeTeamBudgetTable.budgetUsd,
+      usedUsd: AsafeTeamBudgetTable.usedUsd,
+      periodStart: AsafeTeamBudgetTable.periodStart,
+      periodEnd: AsafeTeamBudgetTable.periodEnd,
+    })
+    .from(AsafeTeamBudgetTable)
+    .innerJoin(AsafeTeamTable, eq(AsafeTeamTable.id, AsafeTeamBudgetTable.teamId))
+    .where(
+      and(
+        lte(AsafeTeamBudgetTable.periodStart, now),
+        gte(AsafeTeamBudgetTable.periodEnd, now),
+      ),
+    );
+
+  return rows.map((r) => {
+    const ratio =
+      parseFloat(r.usedUsd as string) / parseFloat(r.budgetUsd as string);
+    return {
+      teamId: r.teamId,
+      teamName: r.teamName,
+      budgetUsd: r.budgetUsd as string,
+      usedUsd: r.usedUsd as string,
+      periodStart: r.periodStart,
+      periodEnd: r.periodEnd,
+      utilizationRatio: ratio,
+      alert: ratio >= BUDGET_ALERT_THRESHOLD,
+    };
+  });
+}
+
 export async function createTeam(
   name: string,
   description?: string,
@@ -137,27 +190,64 @@ export async function getTeamWithMembers(teamId: string) {
     .limit(1);
   if (!team) return null;
 
-  const members = await db
-    .select({
-      memberId: AsafeTeamMemberTable.id,
-      userId: AsafeTeamMemberTable.userId,
-      role: AsafeTeamMemberTable.role,
-      joinedAt: AsafeTeamMemberTable.createdAt,
-      userName: UserTable.name,
-      userEmail: UserTable.email,
-    })
-    .from(AsafeTeamMemberTable)
-    .innerJoin(UserTable, eq(AsafeTeamMemberTable.userId, UserTable.id))
-    .where(eq(AsafeTeamMemberTable.teamId, teamId));
+  const now = new Date();
 
-  return { ...team, members };
+  const [members, activeBudget] = await Promise.all([
+    db
+      .select({
+        memberId: AsafeTeamMemberTable.id,
+        userId: AsafeTeamMemberTable.userId,
+        role: AsafeTeamMemberTable.role,
+        joinedAt: AsafeTeamMemberTable.createdAt,
+        userName: UserTable.name,
+        userEmail: UserTable.email,
+      })
+      .from(AsafeTeamMemberTable)
+      .innerJoin(UserTable, eq(AsafeTeamMemberTable.userId, UserTable.id))
+      .where(eq(AsafeTeamMemberTable.teamId, teamId)),
+    db
+      .select()
+      .from(AsafeTeamBudgetTable)
+      .where(
+        and(
+          eq(AsafeTeamBudgetTable.teamId, teamId),
+          lte(AsafeTeamBudgetTable.periodStart, now),
+          gte(AsafeTeamBudgetTable.periodEnd, now),
+        ),
+      )
+      .limit(1),
+  ]);
+
+  return { ...team, members, budget: activeBudget[0] ?? null };
+}
+
+/** Returns the domain part of an email address, lowercased. */
+export function emailDomain(email: string): string {
+  return email.split("@")[1]?.toLowerCase() ?? "";
 }
 
 export async function addTeamMember(
   teamId: string,
   userId: string,
   role: "admin" | "editor" | "member" = "member",
+  userEmail?: string,
 ) {
+  // Enforce email domain allow-list when configured
+  if (userEmail) {
+    const [teamRow] = await db
+      .select({ allowedEmailDomains: AsafeTeamTable.allowedEmailDomains })
+      .from(AsafeTeamTable)
+      .where(eq(AsafeTeamTable.id, teamId))
+      .limit(1);
+    const domains = (teamRow?.allowedEmailDomains as string[]) ?? [];
+    if (domains.length > 0) {
+      const domain = emailDomain(userEmail);
+      if (!domains.includes(domain)) {
+        throw new Error(`Email domain "${domain}" is not allowed for this team.`);
+      }
+    }
+  }
+
   // Insert with ON CONFLICT DO UPDATE to handle re-adding
   await db
     .insert(AsafeTeamMemberTable)
@@ -172,4 +262,142 @@ export async function removeTeamMember(memberId: string) {
   await db
     .delete(AsafeTeamMemberTable)
     .where(eq(AsafeTeamMemberTable.id, memberId));
+}
+
+export async function updateTeamMemberRole(
+  memberId: string,
+  role: "admin" | "editor" | "member",
+) {
+  await db
+    .update(AsafeTeamMemberTable)
+    .set({ role })
+    .where(eq(AsafeTeamMemberTable.id, memberId));
+}
+
+export async function updateTeam(
+  teamId: string,
+  patch: { name?: string; description?: string | null },
+) {
+  if (patch.name !== undefined) {
+    const slug = patch.name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    await db
+      .update(AsafeTeamTable)
+      .set({ name: patch.name, slug, description: patch.description ?? undefined, updatedAt: new Date() })
+      .where(eq(AsafeTeamTable.id, teamId));
+  } else if (patch.description !== undefined) {
+    await db
+      .update(AsafeTeamTable)
+      .set({ description: patch.description, updatedAt: new Date() })
+      .where(eq(AsafeTeamTable.id, teamId));
+  }
+}
+
+export async function deleteTeam(teamId: string) {
+  await db
+    .delete(AsafeTeamTable)
+    .where(eq(AsafeTeamTable.id, teamId));
+}
+
+// ---------------------------------------------------------------------------
+// getUserPrimaryTeamId — lightweight lookup with a 60-second in-process cache.
+// Used by the chat route to attach a teamId to budget checks and usage events
+// without adding a DB round-trip on every request after the first.
+// ---------------------------------------------------------------------------
+
+interface TeamIdCacheEntry {
+  teamId: string | null;
+  expiresAt: number;
+}
+
+const _teamIdCache = new Map<string, TeamIdCacheEntry>();
+const TEAM_ID_CACHE_TTL_MS = 60_000;
+
+export async function getUserPrimaryTeamId(
+  userId: string,
+): Promise<string | null> {
+  const now = Date.now();
+  const cached = _teamIdCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return cached.teamId;
+  }
+
+  try {
+    const [row] = await db
+      .select({ teamId: AsafeTeamMemberTable.teamId })
+      .from(AsafeTeamMemberTable)
+      .where(eq(AsafeTeamMemberTable.userId, userId))
+      .limit(1);
+
+    const teamId = row?.teamId ?? null;
+    _teamIdCache.set(userId, { teamId, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
+    return teamId;
+  } catch {
+    // Fail open: if the DB is unavailable, fall back to no team rather than
+    // blocking the chat request.
+    return null;
+  }
+}
+
+export interface TeamPolicy {
+  guardrailPolicy: string;
+  allowImageGen: boolean;
+  allowVision: boolean;
+  allowSpeech: boolean;
+  /** Empty array = all approved models allowed; non-empty = restricted to listed model IDs */
+  modelAllowList: string[];
+  /** Empty array = any email domain allowed; non-empty = only matching domains */
+  allowedEmailDomains: string[];
+}
+
+const _teamPolicyCache = new Map<string, { policy: TeamPolicy; expiresAt: number }>();
+
+export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
+  const now = Date.now();
+  const cached = _teamPolicyCache.get(teamId);
+  if (cached && cached.expiresAt > now) return cached.policy;
+
+  try {
+    const [row] = await db
+      .select({
+        guardrailPolicy: AsafeTeamTable.guardrailPolicy,
+        allowImageGen: AsafeTeamTable.allowImageGen,
+        allowVision: AsafeTeamTable.allowVision,
+        allowSpeech: AsafeTeamTable.allowSpeech,
+        modelAllowList: AsafeTeamTable.modelAllowList,
+        allowedEmailDomains: AsafeTeamTable.allowedEmailDomains,
+      })
+      .from(AsafeTeamTable)
+      .where(eq(AsafeTeamTable.id, teamId))
+      .limit(1);
+
+    const policy: TeamPolicy = row ?? {
+      guardrailPolicy: "standard",
+      allowImageGen: false,
+      allowVision: false,
+      allowSpeech: false,
+      modelAllowList: [],
+      allowedEmailDomains: [],
+    };
+    _teamPolicyCache.set(teamId, { policy, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
+    return policy;
+  } catch {
+    return { guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: [] };
+  }
+}
+
+export async function updateTeamPolicy(
+  teamId: string,
+  patch: Partial<TeamPolicy>,
+): Promise<void> {
+  await db
+    .update(AsafeTeamTable)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(AsafeTeamTable.id, teamId));
+  // Invalidate cache
+  _teamPolicyCache.delete(teamId);
 }

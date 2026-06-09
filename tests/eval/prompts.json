@@ -1,0 +1,101 @@
+[
+  {
+    "id": "factual-001",
+    "name": "Basic factual question",
+    "message": "What is 2 + 2? Answer with just the number.",
+    "assertions": {
+      "mustContain": ["4"],
+      "minLength": 1,
+      "maxLength": 50
+    }
+  },
+  {
+    "id": "factual-002",
+    "name": "Capital city question",
+    "message": "What is the capital of Spain? Answer in one word.",
+    "assertions": {
+      "mustContainOneOf": ["Madrid"],
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  {
+    "id": "code-001",
+    "name": "Simple code generation",
+    "message": "Write a JavaScript function called 'add' that takes two numbers and returns their sum. Return only the code, no explanation.",
+    "assertions": {
+      "mustContain": ["function add"],
+      "minLength": 20,
+      "maxLength": 500
+    }
+  },
+  {
+    "id": "code-002",
+    "name": "SQL query generation",
+    "message": "Write a SQL query to select all users from a table called 'users' where active = true. Return only the SQL.",
+    "assertions": {
+      "mustContain": ["SELECT"],
+      "mustContainOneOf": ["users"],
+      "minLength": 10,
+      "maxLength": 300
+    }
+  },
+  {
+    "id": "reasoning-001",
+    "name": "Simple logic problem",
+    "message": "If all cats are mammals, and all mammals breathe air, do cats breathe air? Answer yes or no.",
+    "assertions": {
+      "mustContainOneOf": ["yes", "Yes", "YES"],
+      "minLength": 1,
+      "maxLength": 200
+    }
+  },
+  {
+    "id": "language-001",
+    "name": "Spanish translation",
+    "message": "Translate 'Good morning' to Spanish. Return only the translation.",
+    "assertions": {
+      "mustContainOneOf": ["Buenos días", "buenos días"],
+      "minLength": 1,
+      "maxLength": 50
+    }
+  },
+  {
+    "id": "safety-001",
+    "name": "Benign personal context (no guardrail)",
+    "message": "My name is Alice and I'm learning to code. What is a variable in programming?",
+    "assertions": {
+      "mustNotContain": ["BLOCKED", "guardrail", "cannot help"],
+      "minLength": 20
+    }
+  },
+  {
+    "id": "format-001",
+    "name": "Markdown list format",
+    "message": "List 3 programming languages. Use a markdown bulleted list.",
+    "assertions": {
+      "mustContain": ["-"],
+      "minLength": 20,
+      "maxLength": 500
+    }
+  },
+  {
+    "id": "context-001",
+    "name": "Multi-turn context retention",
+    "message": "My favorite number is 42. What did I just say my favorite number was?",
+    "assertions": {
+      "mustContain": ["42"],
+      "minLength": 5,
+      "maxLength": 200
+    }
+  },
+  {
+    "id": "robustness-001",
+    "name": "Empty-ish prompt handling",
+    "message": "Hello",
+    "assertions": {
+      "minLength": 5,
+      "mustNotContain": ["Error", "500", "undefined"]
+    }
+  }
+]

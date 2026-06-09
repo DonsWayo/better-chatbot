@@ -35,11 +35,20 @@ import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
 import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
+import {
+  activeRequests,
+  providerErrorsTotal,
+  rateLimitActivations,
+  ttftMs,
+} from "lib/observability/slo";
+import { checkKillSwitch } from "lib/observability/kill-switch";
 import { checkRateLimit } from "lib/rate-limit";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { getUserPrimaryTeamId, getTeamPolicy } from "lib/admin/teams";
+import { getUserPreferences } from "lib/user/server";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
-import { compressMessages, COMPRESSION_ENABLED } from "lib/ai/compression";
+// W11: compression wired via wrapWithCompression middleware at model creation (line ~253)
 import {
   rememberAgentAction,
   rememberMcpServerCustomizationsAction,
@@ -71,23 +80,36 @@ export async function POST(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // asafe-ai Wave 12: per-user rate limiting (in-memory; swap to Redis in multi-pod prod)
-    const rateCheck = checkRateLimit(session.user.id);
+    const userTeamId = await getUserPrimaryTeamId(session.user.id);
+    const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
+
+    // W12: kill switch — operator can block all inference instantly, no deploy required
+    const killSwitchResp = await checkKillSwitch(userTeamId);
+    if (killSwitchResp) return killSwitchResp;
+
+    // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe)
+    const rateCheck = await checkRateLimit(session.user.id);
+    const rateLimitHeaders = {
+      "X-RateLimit-Limit": String(rateCheck.limit),
+      "X-RateLimit-Remaining": String(rateCheck.remaining),
+      "X-RateLimit-Reset": String(Math.ceil(rateCheck.resetAt / 1000)),
+    };
     if (!rateCheck.allowed) {
       chatErrorsTotal.inc({ type: "rate_limited" });
+      rateLimitActivations.inc({ team_id: userTeamId ?? "none" });
       return Response.json(
         { message: "Rate limit exceeded. Please wait before sending another message." },
         {
           status: 429,
           headers: {
+            ...rateLimitHeaders,
             "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)),
-            "X-RateLimit-Remaining": "0",
           },
         },
       );
     }
 
-    // asafe-ai Wave 12: record request start for latency histogram
+    // asafe-ai Wave 12: SLO — track overall request latency (auth + setup + inference)
     const requestStart = Date.now();
 
     const {
@@ -150,6 +172,13 @@ export async function POST(request: Request) {
       } else {
         message.parts = [...baseParts, ...ingestionPreviewParts];
       }
+    }
+
+    // W9: vision gate — strip image parts if team hasn't enabled vision
+    if (!teamPolicy?.allowVision) {
+      message.parts = (message.parts ?? []).filter(
+        (p: any) => p?.type !== "image" && p?.type !== "image_url",
+      );
     }
 
     if (attachments.length) {
@@ -231,10 +260,52 @@ export async function POST(request: Request) {
             totalChars,
           });
     const effectiveModel = routing ? routing.model : chatModel;
-    const model = customModelProvider.getModel(effectiveModel);
-    // Wave 7 (ADR-0008): guardrails/DLP wrapper — inject wrapLanguageModel(model, guardrailsConfig) here.
-    // The wrapper intercepts prompt/response, runs DLP checks, and optionally blocks or redacts.
-    // Gated on Wave 7 completion and Security sign-off. Left as a pass-through stub until then.
+
+    // W4/W5: per-team model allow-list + per-user model grant enforcement
+    const teamAllowList = teamPolicy?.modelAllowList ?? [];
+    if (teamAllowList.length > 0 && effectiveModel?.model && !teamAllowList.includes(effectiveModel.model)) {
+      // W5: check if the user has a personal grant that overrides the team restriction
+      const { getUserModelGrants } = await import("lib/admin/user-grants");
+      const userGrants = await getUserModelGrants(session.user.id);
+      if (!userGrants.includes(effectiveModel.model)) {
+        return Response.json(
+          { message: `Model "${effectiveModel.model}" is not permitted for your team.` },
+          { status: 403 },
+        );
+      }
+    }
+
+    const rawModel = customModelProvider.getModel(effectiveModel);
+    const { wrapWithGuardrails } = await import("lib/ai/guardrails");
+    const { wrapWithCompression, compressionLevelFromPolicy } = await import(
+      "lib/ai/compression"
+    );
+    const { wrapWithFallback, FALLBACK_MODEL_IDS } = await import(
+      "lib/ai/fallback"
+    );
+    // W12.1: approved fallbacks, cheapest first, excluding the selected primary
+    const fallbackModels = FALLBACK_MODEL_IDS
+      .filter((id) => id !== effectiveModel?.model)
+      .map((id) => customModelProvider.getModel({ provider: "openRouter", model: id }));
+    const modelWithFallback = wrapWithFallback(rawModel, fallbackModels);
+    const guardedModel = wrapWithGuardrails(modelWithFallback, session.user.id, teamPolicy?.guardrailPolicy);
+    const model = wrapWithCompression(guardedModel, {
+      level: compressionLevelFromPolicy(teamPolicy?.guardrailPolicy),
+      teamId: userTeamId,
+    });
+
+    // W8: fire-and-forget audit log for this request lifecycle
+    const { auditChatRequest, hashContent } = await import("lib/compliance/audit");
+    const lastUserMsg = messages.findLast((m: { role: string }) => m.role === "user") as { role: string; content?: unknown } | undefined;
+    const promptText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : JSON.stringify(lastUserMsg?.content ?? "");
+    auditChatRequest({
+      userId: session.user.id,
+      teamId: userTeamId,
+      model: `${effectiveModel?.provider ?? "unknown"}/${effectiveModel?.model ?? "unknown"}`,
+      promptHash: hashContent(promptText),
+      guardrailFired: false, // updated by guardrails middleware via event
+      ragUsed: mentions.some((m: { type: string }) => m.type === "knowledge"),
+    });
     if (routing) {
       logger.info(`routing: ${routing.reason}`);
       routingDecisionsTotal.inc({
@@ -268,7 +339,7 @@ export async function POST(request: Request) {
       !useImageTool;
 
     // asafe-ai Wave 3 (ADR-0003): enforce team budget before starting inference
-    const budgetCheck = await checkBudget(session.user.id, null); // teamId TODO: from session in W4
+    const budgetCheck = await checkBudget(session.user.id, userTeamId);
     if (!budgetCheck.allowed) {
       chatErrorsTotal.inc({ type: "budget_exceeded" });
       return Response.json({ message: budgetCheck.reason }, { status: 402 });
@@ -281,6 +352,10 @@ export async function POST(request: Request) {
       chatModel: effectiveModel,
       routingReason: routing?.reason,
     };
+
+    // W12: only inc once we're certain we'll start inference (past all early-return guards)
+    activeRequests.inc();
+    let ttftObserved = false;
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
@@ -333,7 +408,11 @@ export async function POST(request: Request) {
           );
         }
 
-        const userPreferences = thread?.userPreferences || undefined;
+        // W9: fall back to DB preferences for new threads that don't yet have thread-level prefs
+        const userPreferences =
+          thread?.userPreferences ||
+          (await getUserPreferences(session.user.id)) ||
+          undefined;
 
         const mcpServerCustomizations = await safe()
           .map(() => {
@@ -459,22 +538,29 @@ export async function POST(request: Request) {
           `model: ${effectiveModel?.provider}/${effectiveModel?.model}`,
         );
 
-        // Wave 11 (ADR-0011): context compression seam — enabled via ASAFE_COMPRESSION_ENABLED
-        const { messages: compressedMessages, compressed } = COMPRESSION_ENABLED
-          ? await compressMessages(messages)
-          : { messages, compressed: false };
-        if (compressed) logger.info("context compressed for token limit");
-
         const result = streamText({
           model,
           system: systemPrompt,
-          messages: convertToModelMessages(compressedMessages),
+          messages: convertToModelMessages(messages),
           experimental_transform: smoothStream({ chunking: "word" }),
           maxRetries: 2,
           tools: vercelAITooles,
           stopWhen: stepCountIs(10),
           toolChoice: "auto",
           abortSignal: request.signal,
+          onChunk: ({ chunk }) => {
+            if (!ttftObserved && chunk.type === "text-delta") {
+              ttftMs.observe(
+                {
+                  provider: effectiveModel?.provider ?? "unknown",
+                  model: effectiveModel?.model ?? "unknown",
+                  task_class: routing?.taskClass ?? "unknown",
+                },
+                Date.now() - requestStart,
+              );
+              ttftObserved = true;
+            }
+          },
         });
         result.consumeStream();
         dataStream.merge(
@@ -531,7 +617,7 @@ export async function POST(request: Request) {
           );
           recordUsage({
             userId: session.user.id,
-            teamId: null, // TODO: from session in W4
+            teamId: userTeamId,
             sessionId: thread?.id ?? null,
             model: effectiveModel?.model ?? "",
             provider: effectiveModel?.provider ?? "",
@@ -543,7 +629,8 @@ export async function POST(request: Request) {
           }).catch((e) => logger.error("recordUsage failed:", e));
         }
 
-        // asafe-ai Wave 12: record end-to-end request latency
+        // asafe-ai Wave 12: record end-to-end latency and release active-request slot
+        activeRequests.dec();
         chatLatencyMs.observe(
           {
             provider: effectiveModel?.provider ?? "unknown",
@@ -553,13 +640,28 @@ export async function POST(request: Request) {
           Date.now() - requestStart,
         );
       },
-      onError: handleError,
+      onError: (err: unknown) => {
+        activeRequests.dec();
+        // W12: track provider-level errors so Grafana can alert on elevated rates
+        const status = (err as any)?.statusCode ?? (err as any)?.status ?? 0;
+        const errorType =
+          status === 429 ? "rate_limited" :
+          status >= 500 ? "provider_error" :
+          status >= 400 ? "client_error" :
+          "unknown";
+        providerErrorsTotal.inc({
+          provider: effectiveModel?.provider ?? "unknown",
+          model: effectiveModel?.model ?? "unknown",
+          error_type: errorType,
+        });
+        return handleError(err);
+      },
       originalMessages: messages,
     });
 
-    return createUIMessageStreamResponse({
-      stream,
-    });
+    const streamResponse = createUIMessageStreamResponse({ stream });
+    Object.entries(rateLimitHeaders).forEach(([k, v]) => streamResponse.headers.set(k, v));
+    return streamResponse;
   } catch (error: any) {
     logger.error(error);
     return Response.json({ message: error.message }, { status: 500 });

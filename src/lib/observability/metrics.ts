@@ -53,6 +53,22 @@ export const budgetUtilizationGauge = new Gauge({
   registers: [metricsRegistry],
 });
 
+// ── W7 Guardrail metrics ──────────────────────────────────────────────────────
+
+export const guardrailFiringsTotal = new Counter({
+  name: `${PREFIX}guardrail_firings_total`,
+  help: "Total guardrail pattern firings by category, action, and policy posture",
+  labelNames: ["category", "action", "posture"],
+  registers: [metricsRegistry],
+});
+
+export const guardrailBlocksTotal = new Counter({
+  name: `${PREFIX}guardrail_blocks_total`,
+  help: "Total requests blocked by guardrails (blocked=true events)",
+  labelNames: ["posture"],
+  registers: [metricsRegistry],
+});
+
 let initialized = false;
 
 /** Idempotently register default process metrics. Safe to call on every scrape. */

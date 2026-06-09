@@ -74,4 +74,54 @@ describe("extractMCPToolId", () => {
     expect(serverName).toBe("server");
     expect(toolName).toBe("tool_with_underscores");
   });
+
+  it("round-trips through createMCPToolId for simple names", () => {
+    const id = createMCPToolId("myserver", "mytool");
+    const { serverName, toolName } = extractMCPToolId(id);
+    expect(serverName).toBe("myserver");
+    expect(toolName).toBe("mytool");
+  });
+
+  it("returns empty toolName when no underscore separator", () => {
+    const { serverName, toolName } = extractMCPToolId("noUnderscoreHere");
+    expect(serverName).toBe("noUnderscoreHere");
+    expect(toolName).toBe("");
+  });
+});
+
+describe("sanitizeFunctionName — edge cases", () => {
+  it("preserves alphanumeric names unchanged", () => {
+    expect(sanitizeFunctionName("validName123")).toBe("validName123");
+  });
+
+  it("handles name that is exactly 124 chars (no truncation)", () => {
+    const name = "a".repeat(124);
+    expect(sanitizeFunctionName(name)).toHaveLength(124);
+  });
+
+  it("handles name that is 125 chars (truncates to 124)", () => {
+    const name = "a".repeat(125);
+    expect(sanitizeFunctionName(name)).toHaveLength(124);
+  });
+
+  it("preserves dots in names", () => {
+    expect(sanitizeFunctionName("server.v2")).toBe("server.v2");
+  });
+
+  it("preserves dashes in names", () => {
+    expect(sanitizeFunctionName("my-server")).toBe("my-server");
+  });
+});
+
+describe("createMCPToolId — length guarantee", () => {
+  it("result never exceeds 124 characters for long names", () => {
+    const long = "x".repeat(100);
+    const id = createMCPToolId(long, long);
+    expect(id.length).toBeLessThanOrEqual(124);
+  });
+
+  it("separator is always present in result", () => {
+    const id = createMCPToolId("server", "tool");
+    expect(id).toContain("_");
+  });
 });

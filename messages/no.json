@@ -761,6 +761,27 @@
       "failedToUpdateRole": "Kunne ikke oppdatere rolle",
       "cannotUpdateOwnRole": "Du kan ikke oppdatere din egen rolle",
       "roleUpdatedSuccessfullyTo": "Brukerrolle oppdatert til {role}"
+    },
+    "FeatureFlags": {
+      "title": "Funksjonsflagg",
+      "flagName": "Flagg",
+      "flagEnabled": "Aktivert",
+      "killSwitch": "Kill Switch",
+      "killSwitchDescription": "Blokkerer all AI-inferens øyeblikkelig. Deaktiver så snart hendelsen er løst.",
+      "activate": "Aktiver",
+      "deactivate": "Deaktiver",
+      "activated": "Kill switch aktivert — all inferens er blokkert",
+      "deactivated": "Kill switch deaktivert — inferens kjører normalt",
+      "flagUpdated": "Flagg oppdatert"
+    },
+    "Guardrails": {
+      "title": "Sikkerhetsbarrierer",
+      "blockedCount": "Blokkert",
+      "warnedCount": "Advart",
+      "noEvents": "Ingen sikkerhetsbarrierer-hendelser registrert ennå."
+    },
+    "Quality": {
+      "title": "Kvalitet"
     }
   },
   "MCP": {

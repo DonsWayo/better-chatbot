@@ -61,6 +61,7 @@ import { ToolSelectDropdown } from "./tool-select-dropdown";
 
 import { useChatModels } from "@/hooks/queries/use-chat-models";
 import { isFilePartSupported, isIngestSupported } from "@/lib/ai/file-support";
+import { RagCollectionPicker } from "./rag-collection-picker";
 import { FileUIPart, TextUIPart } from "ai";
 import { AgentSummary } from "app-types/agent";
 import { EMOJI_DATA } from "lib/const";
@@ -80,6 +81,8 @@ interface PromptInputProps {
   threadId?: string;
   disabledMention?: boolean;
   onFocus?: () => void;
+  ragCollectionId?: string;
+  onRagCollectionChange?: (id: string | undefined) => void;
 }
 
 const ChatMentionInput = dynamic(() => import("./chat-mention-input"), {
@@ -108,6 +111,8 @@ export default function PromptInput({
   voiceDisabled,
   threadId,
   disabledMention,
+  ragCollectionId,
+  onRagCollectionChange,
 }: PromptInputProps) {
   const t = useTranslations("Chat");
   const { data: session } = authClient.useSession();
@@ -624,6 +629,14 @@ export default function PromptInput({
                       />
                     </>
                   ))}
+
+                {!isBasicUser && onRagCollectionChange && (
+                  <RagCollectionPicker
+                    value={ragCollectionId}
+                    onChange={onRagCollectionChange}
+                    disabled={!threadId}
+                  />
+                )}
 
                 <div className="flex-1" />
 

@@ -2,9 +2,10 @@
 
 import { requireAdminPermission } from "lib/auth/permissions";
 import { revalidatePath } from "next/cache";
-import { addTeamMember, removeTeamMember } from "lib/admin/teams";
+import { redirect } from "next/navigation";
+import { addTeamMember, removeTeamMember, updateTeamPolicy, updateTeamMemberRole, updateTeam, deleteTeam } from "lib/admin/teams";
 import { pgDb as db } from "lib/db/pg/db.pg";
-import { UserTable } from "@/lib/db/pg/schema.pg";
+import { UserTable, AsafeTeamBudgetTable } from "@/lib/db/pg/schema.pg";
 import { eq } from "drizzle-orm";
 
 export async function addTeamMemberAction(
@@ -19,7 +20,7 @@ export async function addTeamMemberAction(
     .where(eq(UserTable.email, email))
     .limit(1);
   if (!user) throw new Error("User not found");
-  await addTeamMember(teamId, user.id, role);
+  await addTeamMember(teamId, user.id, role, user.email ?? undefined);
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
@@ -29,5 +30,100 @@ export async function removeTeamMemberAction(
 ) {
   await requireAdminPermission();
   await removeTeamMember(memberId);
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function setModelAllowListAction(
+  teamId: string,
+  modelAllowList: string[],
+) {
+  await requireAdminPermission();
+  await updateTeamPolicy(teamId, { modelAllowList });
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function setEmailDomainsAction(
+  teamId: string,
+  allowedEmailDomains: string[],
+) {
+  await requireAdminPermission();
+  await updateTeamPolicy(teamId, { allowedEmailDomains });
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function setPolicyAction(
+  teamId: string,
+  patch: {
+    guardrailPolicy?: "strict" | "standard" | "permissive";
+    allowImageGen?: boolean;
+    allowVision?: boolean;
+    allowSpeech?: boolean;
+  },
+) {
+  await requireAdminPermission();
+  await updateTeamPolicy(teamId, patch);
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function updateMemberRoleAction(
+  memberId: string,
+  teamId: string,
+  role: "admin" | "editor" | "member",
+) {
+  await requireAdminPermission();
+  await updateTeamMemberRole(memberId, role);
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function renameTeamAction(
+  teamId: string,
+  name: string,
+  description?: string | null,
+) {
+  await requireAdminPermission();
+  await updateTeam(teamId, { name, description: description ?? null });
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function deleteTeamAction(teamId: string) {
+  await requireAdminPermission();
+  await deleteTeam(teamId);
+  revalidatePath("/admin/teams");
+  redirect("/admin/teams");
+}
+
+export async function setBudgetAction(
+  teamId: string,
+  budgetUsd: string,
+  periodStart: string,
+  periodEnd: string,
+) {
+  await requireAdminPermission("manage team budgets");
+
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+
+  if (end <= start) {
+    throw new Error("Period end must be after period start");
+  }
+
+  await db
+    .insert(AsafeTeamBudgetTable)
+    .values({
+      teamId,
+      budgetUsd,
+      periodStart: start,
+      periodEnd: end,
+    })
+    .onConflictDoUpdate({
+      target: AsafeTeamBudgetTable.teamId,
+      set: {
+        budgetUsd,
+        periodStart: start,
+        periodEnd: end,
+        updatedAt: new Date(),
+      },
+    });
+
   revalidatePath(`/admin/teams/${teamId}`);
 }

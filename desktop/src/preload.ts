@@ -1,70 +1,112 @@
 /**
  * @asafe-ai/desktop — Electron preload script
  *
- * Runs in an isolated context (contextIsolation:true, sandbox:true).
+ * Runs in an isolated context (contextIsolation:true).
  * Exposes a minimal, typed surface to the renderer via contextBridge.
  *
  * DO NOT expose Node.js APIs or electron internals directly to the renderer.
  * Every new capability requires deliberate review here.
  */
 
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
 // ---------------------------------------------------------------------------
 // Public API surface exposed to the web app (window.asafeDesktop)
 // ---------------------------------------------------------------------------
 
 contextBridge.exposeInMainWorld("asafeDesktop", {
-  /** True when running inside the desktop app (feature-flag for the web UI). */
+  /** True when running inside the desktop app — the web UI can feature-flag on this. */
   isDesktop: true as const,
 
-  /** OS platform string — used by the web UI for platform-specific UX hints. */
+  /** OS platform — used for platform-specific UX hints. */
   platform: process.platform,
 
   /** Electron version string. */
   version: process.versions["electron"] ?? "unknown",
 
   // --------------------------------------------------------------------------
-  // TODO (Wave 10 — local-MCP bridge IPC)
+  // Native file dialogs
+  // --------------------------------------------------------------------------
+
+  /** Open a native file picker. Returns {canceled, filePaths} (Electron API shape). */
+  openFile: (
+    options?: Partial<Electron.OpenDialogOptions>,
+  ): Promise<{ canceled: boolean; filePaths: string[] }> =>
+    ipcRenderer.invoke("dialog:openFile", options ?? {}),
+
+  /** Open a native save dialog. Returns {canceled, filePath}. */
+  saveFile: (
+    options?: Partial<Electron.SaveDialogOptions>,
+  ): Promise<{ canceled: boolean; filePath: string | undefined }> =>
+    ipcRenderer.invoke("dialog:saveFile", options ?? {}),
+
+  // --------------------------------------------------------------------------
+  // Native notifications
+  // --------------------------------------------------------------------------
+
+  /** Show a native OS notification. */
+  notify: (title: string, body: string): Promise<void> =>
+    ipcRenderer.invoke("notify", { title, body }),
+
+  // --------------------------------------------------------------------------
+  // SSO deep-link relay
   //
-  // When the main process gains the local stdio MCP bridge, expose it here
-  // via ipcRenderer.invoke so the renderer can:
+  // The main process calls webContents.send("deep-link", url) when an
+  // asafe:// URL activates the app. Subscribe here to complete OAuth.
+  // --------------------------------------------------------------------------
+
+  /** Register a listener for incoming deep-link URLs (e.g. asafe://auth/callback?…). */
+  onDeepLink: (callback: (url: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, url: string) =>
+      callback(url);
+    ipcRenderer.on("deep-link", listener);
+    return () => ipcRenderer.removeListener("deep-link", listener);
+  },
+
+  // --------------------------------------------------------------------------
+  // Wave 10 v2 — local stdio MCP bridge (NOT YET ENABLED)
   //
-  //   1. List available local MCP tools (filtered by entitlement, ADR-0009).
-  //   2. Invoke a local tool, which triggers a per-action consent dialog in main
-  //      (excessive-agency control, Wave 7 guardrails) before execution.
-  //   3. Receive the tool result back as a structured JSON payload.
-  //
-  // Example sketch (DO NOT enable until Security sign-off per ADR-0010):
+  // These will be added once Security sign-off is obtained (ADR-0010).
+  // Stub types are declared below so TypeScript consumers know what's coming.
   //
   //   listLocalTools: (): Promise<LocalMcpTool[]> =>
   //     ipcRenderer.invoke("mcp:list-tools"),
   //
-  //   invokeLocalTool: (
-  //     toolName: string,
-  //     args: Record<string, unknown>
-  //   ): Promise<unknown> =>
+  //   invokeLocalTool: (toolName: string, args: Record<string, unknown>) =>
   //     ipcRenderer.invoke("mcp:invoke-tool", toolName, args),
   //
-  // Both handlers in main.ts must validate inputs, check entitlements, and
-  // show a consent dialog BEFORE touching the local system.
+  // Both invoke handlers in main.ts check entitlements, display a consent
+  // dialog, and pass through Wave 7 guardrails before executing.
   // --------------------------------------------------------------------------
 } satisfies AsafeDesktopApi);
 
 // ---------------------------------------------------------------------------
-// Type declaration (kept in preload so web consumers can import if needed)
+// Type declarations
 // ---------------------------------------------------------------------------
+
+export interface LocalMcpTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
 
 export interface AsafeDesktopApi {
   isDesktop: true;
   platform: NodeJS.Platform;
   version: string;
-  // Wave 10 additions (see TODO above):
+  openFile: (
+    options?: Partial<Electron.OpenDialogOptions>,
+  ) => Promise<{ canceled: boolean; filePaths: string[] }>;
+  saveFile: (
+    options?: Partial<Electron.SaveDialogOptions>,
+  ) => Promise<{ canceled: boolean; filePath: string | undefined }>;
+  notify: (title: string, body: string) => Promise<void>;
+  onDeepLink: (callback: (url: string) => void) => () => void;
+  // Wave 10 v2 (pending Security sign-off):
   // listLocalTools?: () => Promise<LocalMcpTool[]>;
   // invokeLocalTool?: (toolName: string, args: Record<string, unknown>) => Promise<unknown>;
 }
 
-// Augment the window type for the renderer (TypeScript consumers of the web bundle).
 declare global {
   interface Window {
     asafeDesktop?: AsafeDesktopApi;

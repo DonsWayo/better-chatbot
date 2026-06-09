@@ -147,6 +147,56 @@ const options = {
         },
       },
     },
+    // Re-sync Entra group → role on every sign-in (not just first creation).
+    // This ensures users who join/leave Entra groups get updated roles on next login.
+    session: {
+      create: {
+        after: async (session) => {
+          try {
+            // Only re-sync for Microsoft SSO accounts
+            const accounts = await pgDb
+              .select()
+              .from(AccountTable)
+              .where(eq(AccountTable.userId, session.userId));
+
+            const msAcc = accounts.find((a) => a.providerId === "microsoft");
+            if (!msAcc) return;
+
+            const tokenToParse = msAcc.idToken ?? msAcc.accessToken;
+            if (!tokenToParse) return;
+
+            const claims = parseJwtClaims(tokenToParse);
+            const groupIds: string[] = Array.isArray(claims?.groups)
+              ? (claims.groups as string[])
+              : [];
+
+            if (groupIds.length === 0) return;
+
+            const mappedRole = roleFromEntraClaims(groupIds);
+
+            // Only write if changed to avoid noisy updates
+            const [currentUser] = await pgDb
+              .select({ role: UserTable.role })
+              .from(UserTable)
+              .where(eq(UserTable.id, session.userId))
+              .limit(1);
+
+            if (currentUser?.role !== mappedRole) {
+              await pgDb
+                .update(UserTable)
+                .set({ role: mappedRole })
+                .where(eq(UserTable.id, session.userId));
+              logger.info(
+                `Wave 4 Entra re-sync: role updated ${currentUser?.role} → "${mappedRole}" for user ${session.userId}`,
+              );
+            }
+          } catch (err) {
+            // Never block sign-in due to re-sync errors
+            logger.warn("Entra role re-sync failed (non-fatal):", err);
+          }
+        },
+      },
+    },
   },
   emailAndPassword: {
     enabled: emailAndPasswordEnabled,

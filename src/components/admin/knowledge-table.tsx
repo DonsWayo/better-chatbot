@@ -22,7 +22,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "ui/dialog";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Plus, ArrowRight } from "lucide-react";
 
 import type { AsafeKnowledgeCollectionEntity } from "@/lib/db/pg/schema.pg";
 
@@ -211,12 +212,12 @@ export function KnowledgeTable({ collections }: KnowledgeTableProps) {
                     {format(new Date(collection.createdAt), "MMM d, yyyy")}
                   </TableCell>
                   <TableCell>
-                    <span className="text-xs text-muted-foreground">
-                      Ingest via{" "}
-                      <code className="bg-muted px-1 rounded">
-                        POST /api/knowledge/ingest
-                      </code>
-                    </span>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/admin/knowledge/${collection.id}`}>
+                        Manage
+                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
