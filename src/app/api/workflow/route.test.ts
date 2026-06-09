@@ -55,6 +55,30 @@ describe("GET /api/workflow", () => {
     const body = await res.json();
     expect(body).toHaveLength(1);
   });
+
+  it("never calls selectAll when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).not.toHaveBeenCalled();
+  });
+
+  it("response body is always an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectAllMock.mockResolvedValueOnce([{ id: "wf-x" }]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+
+  it("passes userId to selectAll", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-abc-123" } });
+    selectAllMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectAllMock).toHaveBeenCalledWith("user-abc-123");
+  });
 });
 
 describe("POST /api/workflow (create)", () => {
@@ -85,6 +109,29 @@ describe("POST /api/workflow (create)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe("wf-new");
+  });
+
+  it("never calls save when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls save when user lacks creation permission", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateWorkflowMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "New Workflow" }));
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "New Workflow" }));
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
   });
 });
 

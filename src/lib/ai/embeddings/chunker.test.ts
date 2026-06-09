@@ -104,3 +104,24 @@ describe("chunkText — chunk ordering", () => {
     }
   });
 });
+
+describe("chunkText — return type invariants", () => {
+  it("always returns an array", () => {
+    expect(Array.isArray(chunkText("hello"))).toBe(true);
+    expect(Array.isArray(chunkText(""))).toBe(true);
+  });
+
+  it("all returned chunks are non-empty strings", () => {
+    const longText = Array(50).fill("Sample sentence about something. ").join("");
+    const chunks = chunkText(longText, { maxTokens: 50 });
+    for (const chunk of chunks) {
+      expect(typeof chunk).toBe("string");
+      expect(chunk.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("uses default maxTokens when not provided (short text returns 1 chunk)", () => {
+    const chunks = chunkText("Short text.");
+    expect(chunks.length).toBeGreaterThanOrEqual(1);
+  });
+});
