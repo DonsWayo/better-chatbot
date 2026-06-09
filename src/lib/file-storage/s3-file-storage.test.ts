@@ -22,6 +22,7 @@ vi.mock("@aws-sdk/client-s3", () => {
   };
 });
 
+import { Readable } from "stream";
 import { createS3FileStorage } from "./s3-file-storage";
 
 describe("s3-file-storage", () => {
@@ -172,5 +173,39 @@ describe("s3-file-storage — key prefix invariants", () => {
     });
     expect(typeof res.key).toBe("string");
     expect(res.key.length).toBeGreaterThan(0);
+  });
+});
+
+describe("s3-file-storage — delete and download", () => {
+  beforeEach(() => {
+    sendMock.mockReset();
+    process.env.FILE_STORAGE_S3_BUCKET = "my-bucket";
+    process.env.FILE_STORAGE_S3_REGION = "us-east-1";
+    process.env.FILE_STORAGE_PREFIX = "files";
+    delete process.env.FILE_STORAGE_S3_PUBLIC_BASE_URL;
+  });
+
+  it("delete sends a command to s3", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createS3FileStorage();
+    await storage.delete("files/old.txt");
+    expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("download sends a command to s3", async () => {
+    sendMock.mockResolvedValueOnce({
+      Body: Readable.from([Buffer.from([1, 2, 3])]),
+    });
+    const storage = createS3FileStorage();
+    const result = await storage.download("files/data.bin");
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(result).toBeDefined();
+  });
+
+  it("upload sends exactly one command to s3", async () => {
+    sendMock.mockResolvedValueOnce({});
+    const storage = createS3FileStorage();
+    await storage.upload(Buffer.from("test"), { filename: "t.txt", contentType: "text/plain" });
+    expect(sendMock).toHaveBeenCalledTimes(1);
   });
 });

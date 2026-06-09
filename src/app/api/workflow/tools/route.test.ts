@@ -110,4 +110,27 @@ describe("GET /api/workflow/tools", () => {
     const body = await res.json() as { userId: string }[];
     expect(body[0]).toHaveProperty("userId");
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls repository with undefined when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    workflowRepositoryMock.selectExecuteAbility.mockResolvedValue([]);
+    await GET();
+    expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledWith(undefined);
+  });
+
+  it("each returned workflow has an id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectExecuteAbility.mockResolvedValue(WORKFLOWS);
+    const res = await GET();
+    const body = await res.json() as { id: string }[];
+    for (const wf of body) {
+      expect(wf).toHaveProperty("id");
+    }
+  });
 });

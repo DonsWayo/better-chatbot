@@ -131,4 +131,24 @@ describe("POST /api/chat/temporary", () => {
       expect.objectContaining({ model: expect.anything() }),
     );
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ messages: MESSAGES }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call getUserPreferences when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ messages: MESSAGES }));
+    expect(getUserPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it("streamText receives a system prompt argument", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ messages: MESSAGES }));
+    expect(streamTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ system: expect.any(String) }),
+    );
+  });
 });

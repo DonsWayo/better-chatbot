@@ -167,5 +167,32 @@ describe("MCP Config Diff", () => {
       const result = detectConfigChanges({}, {});
       expect(Array.isArray(result)).toBe(true);
     });
+
+    it("returns empty array when both configs are empty", () => {
+      expect(detectConfigChanges({}, {})).toHaveLength(0);
+    });
+
+    it("multiple adds are all of type add", () => {
+      const prev: Record<string, MCPServerConfig> = {};
+      const next: Record<string, MCPServerConfig> = {
+        a: { url: "https://a.com" },
+        b: { command: "node" },
+      };
+      const changes = detectConfigChanges(prev, next);
+      expect(changes).toHaveLength(2);
+      for (const c of changes) {
+        expect(c.type).toBe("add");
+      }
+    });
+
+    it("each change has key and value fields", () => {
+      const prev: Record<string, MCPServerConfig> = { x: { url: "https://x.com" } };
+      const next: Record<string, MCPServerConfig> = { y: { url: "https://y.com" } };
+      const changes = detectConfigChanges(prev, next);
+      for (const c of changes) {
+        expect(c).toHaveProperty("key");
+        expect(c).toHaveProperty("value");
+      }
+    });
   });
 });

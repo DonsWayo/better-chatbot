@@ -108,4 +108,24 @@ describe("DELETE /api/export/[id]", () => {
     const body = await res.json();
     expect(body.error).toBe("Connection lost");
   });
+
+  it("calls checkAccess exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.checkAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.deleteById.mockResolvedValue(undefined);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1"));
+    expect(chatExportRepositoryMock.checkAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call checkAccess when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1"));
+    expect(chatExportRepositoryMock.checkAccess).not.toHaveBeenCalled();
+  });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new NextRequest("http://localhost"), makeContext("exp-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
