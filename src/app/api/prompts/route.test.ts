@@ -266,3 +266,36 @@ describe("GET /api/prompts — response shape", () => {
     expect(dbSelectMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET and POST /api/prompts — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect never called when GET unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("dbInsert never called when POST unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(new Request("http://localhost/api/prompts", { method: "POST", body: JSON.stringify({ title: "T", content: "C" }) }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error property for GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});

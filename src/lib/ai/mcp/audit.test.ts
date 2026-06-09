@@ -268,3 +268,40 @@ describe("auditMcpInvocation — response invariants", () => {
     expect(arg).not.toBeNull();
   });
 });
+
+describe("auditMcpInvocation — input field propagation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+  });
+
+  it("insert record contains the userId passed in", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "specific-user-id", toolName: "t", outcome: "success" });
+    const arg = valuesMock.mock.calls[0][0];
+    expect(arg.userId).toBe("specific-user-id");
+  });
+
+  it("insert record contains the toolName passed in", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "u1", toolName: "specific_tool", outcome: "success" });
+    const arg = valuesMock.mock.calls[0][0];
+    expect(arg.toolName).toBe("specific_tool");
+  });
+
+  it("insert record contains the outcome passed in", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "u1", toolName: "t", outcome: "error" });
+    const arg = valuesMock.mock.calls[0][0];
+    expect(arg.outcome).toBe("error");
+  });
+
+  it("insert called exactly once per auditMcpInvocation call", async () => {
+    await auditMcpInvocation({ userId: "u1", toolName: "t", outcome: "success" });
+    expect(mockPgDb.insert).toHaveBeenCalledTimes(1);
+  });
+});
