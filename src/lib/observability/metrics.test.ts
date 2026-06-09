@@ -82,4 +82,39 @@ describe("metrics module", () => {
     expect(r1).toBe(r2);
     expect(r1).toBe(metricsRegistry);
   });
+
+  it("chatRequestsTotal has inc() method", async () => {
+    const { chatRequestsTotal } = await import("./metrics");
+    expect(typeof chatRequestsTotal.inc).toBe("function");
+  });
+
+  it("routingDecisionsTotal has inc() method", async () => {
+    const { routingDecisionsTotal } = await import("./metrics");
+    expect(typeof routingDecisionsTotal.inc).toBe("function");
+  });
+
+  it("chatLatencyMs has observe() method", async () => {
+    const { chatLatencyMs } = await import("./metrics");
+    expect(typeof chatLatencyMs.observe).toBe("function");
+  });
+
+  it("budgetUtilizationGauge has set() method", async () => {
+    const { budgetUtilizationGauge } = await import("./metrics");
+    expect(typeof budgetUtilizationGauge.set).toBe("function");
+  });
+
+  it("guardrailFiringsTotal has labels() method", async () => {
+    const { guardrailFiringsTotal } = await import("./metrics");
+    expect(typeof guardrailFiringsTotal.labels).toBe("function");
+  });
+
+  it("guardrailBlocksTotal is callable with inc()", async () => {
+    const { guardrailBlocksTotal } = await import("./metrics");
+    expect(() => guardrailBlocksTotal.inc()).not.toThrow();
+  });
+
+  it("chatErrorsTotal is callable with inc()", async () => {
+    const { chatErrorsTotal } = await import("./metrics");
+    expect(() => chatErrorsTotal.inc()).not.toThrow();
+  });
 });

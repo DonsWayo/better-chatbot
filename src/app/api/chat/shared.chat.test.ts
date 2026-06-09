@@ -73,4 +73,35 @@ describe("mergeSystemPrompt", () => {
     const result = mergeSystemPrompt("A", "B", "C");
     expect(result).toBe("A\n\nB\n\nC");
   });
+
+  it("handles empty string inputs like falsy values", () => {
+    const result = mergeSystemPrompt("Hello", "  ", "World");
+    expect(result).not.toContain("  ");
+  });
+
+  it("returns single non-empty prompt as-is (no extra newlines)", () => {
+    const result = mergeSystemPrompt("Only one prompt here");
+    expect(result).toBe("Only one prompt here");
+    expect(result).not.toContain("\n");
+  });
+
+  it("works with empty args list", () => {
+    const result = mergeSystemPrompt();
+    expect(result).toBe("");
+  });
+
+  it("maintains order of prompts", () => {
+    const result = mergeSystemPrompt("First", "Second", "Third");
+    const idx1 = result.indexOf("First");
+    const idx2 = result.indexOf("Second");
+    const idx3 = result.indexOf("Third");
+    expect(idx1).toBeLessThan(idx2);
+    expect(idx2).toBeLessThan(idx3);
+  });
+
+  it("uses double newline as separator (not single)", () => {
+    const result = mergeSystemPrompt("A", "B");
+    expect(result).toContain("\n\n");
+    expect(result).not.toBe("A\nB");
+  });
 });

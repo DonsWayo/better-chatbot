@@ -54,19 +54,16 @@ describe("GET /api/knowledge/collections/[id]/documents", () => {
 
   it("returns 200 with documents list", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
-    // Simulate two separate db.select() calls
     let callCount = 0;
     dbSelectMock.mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
-        // Collection check
         return {
           from: () => ({
             where: () => Promise.resolve([{ id: "col-1" }]),
           }),
         };
       }
-      // Document chunks grouped
       return {
         from: () => ({
           where: () => ({
@@ -84,5 +81,41 @@ describe("GET /api/knowledge/collections/[id]/documents", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.documents).toBeDefined();
+  });
+
+  it("never calls db.select when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 with empty documents array when collection has no documents", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    let callCount = 0;
+    dbSelectMock.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          from: () => ({
+            where: () => Promise.resolve([{ id: "col-1" }]),
+          }),
+        };
+      }
+      return {
+        from: () => ({
+          where: () => ({
+            groupBy: () => ({
+              orderBy: () => Promise.resolve([]),
+            }),
+          }),
+        }),
+      };
+    });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.documents).toHaveLength(0);
   });
 });

@@ -73,4 +73,35 @@ describe("WeatherExample", () => {
     const prompt = WeatherExample.instructions?.systemPrompt ?? "";
     expect(prompt).toContain("open-meteo");
   });
+
+  it("has a non-empty systemPrompt", () => {
+    const prompt = WeatherExample.instructions?.systemPrompt ?? "";
+    expect(prompt.length).toBeGreaterThan(10);
+  });
+});
+
+describe("example agents — shared invariants", () => {
+  it("both examples have names", () => {
+    expect(RandomDataGeneratorExample.name).toBeTruthy();
+    expect(WeatherExample.name).toBeTruthy();
+  });
+
+  it("both examples have different names", () => {
+    expect(RandomDataGeneratorExample.name).not.toBe(WeatherExample.name);
+  });
+
+  it("both examples have emoji icons", () => {
+    expect(RandomDataGeneratorExample.icon?.type).toBe("emoji");
+    expect(WeatherExample.icon?.type).toBe("emoji");
+  });
+
+  it("both examples have systemPrompts", () => {
+    expect(RandomDataGeneratorExample.instructions?.systemPrompt?.length ?? 0).toBeGreaterThan(0);
+    expect(WeatherExample.instructions?.systemPrompt?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it("both examples have at least one mention", () => {
+    expect((RandomDataGeneratorExample.instructions?.mentions ?? []).length).toBeGreaterThan(0);
+    expect((WeatherExample.instructions?.mentions ?? []).length).toBeGreaterThan(0);
+  });
 });
