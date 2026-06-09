@@ -181,7 +181,8 @@ describe("equal — Set", () => {
 
 describe("equal — return type invariants", () => {
   it("always returns a boolean", () => {
-    for (const [a, b] of [[1, 1], [null, undefined], [{}, []], [NaN, NaN]] as any[]) {
+    const pairs: [unknown, unknown][] = [[1, 1], [null, undefined], [{}, []], [NaN, NaN]];
+    for (const [a, b] of pairs) {
       expect(typeof equal(a, b)).toBe("boolean");
     }
   });

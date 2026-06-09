@@ -44,7 +44,7 @@ describe("file-support", () => {
 describe("file-support — return type invariants", () => {
   it("isFilePartSupported always returns a boolean", () => {
     for (const mime of [undefined, "", "image/png", "text/plain", "application/octet-stream"]) {
-      expect(typeof isFilePartSupported(mime as any)).toBe("boolean");
+      expect(typeof isFilePartSupported(mime)).toBe("boolean");
     }
   });
 
@@ -65,8 +65,9 @@ describe("file-support — return type invariants", () => {
 });
 
 describe("file-support — whitelist invariants", () => {
-  it("null whitelist falls back to default behavior", () => {
-    expect(isFilePartSupported("image/png", null as any)).toBe(true);
+  it("undefined whitelist uses default mime set", () => {
+    expect(isFilePartSupported("image/png", undefined)).toBe(true);
+    expect(isFilePartSupported("text/plain", undefined)).toBe(false);
   });
 
   it("whitelist with one entry only matches that entry", () => {

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { JSONSchema7 } from "json-schema";
 import { jsExecutionSchema } from "./js-run-tool";
+
+const codeProp = jsExecutionSchema.properties?.code as unknown as JSONSchema7;
 
 describe("jsExecutionSchema", () => {
   it("is type object", () => {
@@ -11,14 +14,12 @@ describe("jsExecutionSchema", () => {
   });
 
   it("code property is type string", () => {
-    const code = jsExecutionSchema.properties?.code as any;
-    expect(code?.type).toBe("string");
+    expect(codeProp?.type).toBe("string");
   });
 
   it("code property has a description", () => {
-    const code = jsExecutionSchema.properties?.code as any;
-    expect(typeof code?.description).toBe("string");
-    expect(code?.description.length).toBeGreaterThan(0);
+    expect(typeof codeProp?.description).toBe("string");
+    expect((codeProp?.description ?? "").length).toBeGreaterThan(0);
   });
 
   it("required is an array", () => {

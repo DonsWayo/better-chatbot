@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { JSONSchema7 } from "json-schema";
 import { pythonExecutionSchema } from "./python-run-tool";
+
+const codeProp = pythonExecutionSchema.properties?.code as unknown as JSONSchema7;
 
 describe("pythonExecutionSchema", () => {
   it("is type object", () => {
@@ -11,14 +14,12 @@ describe("pythonExecutionSchema", () => {
   });
 
   it("code property is type string", () => {
-    const code = pythonExecutionSchema.properties?.code as any;
-    expect(code?.type).toBe("string");
+    expect(codeProp?.type).toBe("string");
   });
 
   it("code property has a description mentioning Python", () => {
-    const code = pythonExecutionSchema.properties?.code as any;
-    expect(typeof code?.description).toBe("string");
-    expect(code?.description.toLowerCase()).toContain("python");
+    expect(typeof codeProp?.description).toBe("string");
+    expect((codeProp?.description ?? "").toLowerCase()).toContain("python");
   });
 
   it("required is an array", () => {

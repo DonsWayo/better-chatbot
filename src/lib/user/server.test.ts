@@ -2,10 +2,8 @@
 
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 
-// Mock server-only module
 vi.mock("server-only", () => ({}));
 
-// Mock dependencies
 vi.mock("lib/db/repository", () => ({
   userRepository: {
     getUserById: vi.fn(),
@@ -42,9 +40,15 @@ import {
   updateUserDetails,
 } from "./server";
 
-/*
- * Tests focus on the business logic of the user server.
- */
+type MockSession = Awaited<ReturnType<typeof getSession>>;
+const mockSessionFor = (user: Record<string, unknown>): MockSession =>
+  ({ user, session: {} }) as unknown as MockSession;
+
+type MockAccount = { providerId: string; id: string };
+type MockAccountList = Awaited<ReturnType<typeof auth.api.listUserAccounts>>;
+const asMockAccountList = (accounts: MockAccount[]): MockAccountList =>
+  accounts as unknown as MockAccountList;
+
 describe("User Server", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,20 +56,17 @@ describe("User Server", () => {
 
   describe("getUserAccounts - Account Type Detection", () => {
     beforeEach(() => {
-      vi.mocked(getSession).mockResolvedValue({
-        user: { id: "user-1" },
-      } as any);
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "user-1" }));
       vi.mocked(headers).mockResolvedValue(new Headers());
     });
 
     it("should correctly identify password vs OAuth accounts", async () => {
-      const mockAccounts = [
-        { providerId: "credential", id: "1" },
-        { providerId: "google", id: "2" },
-        { providerId: "github", id: "3" },
-      ];
       vi.mocked(auth.api.listUserAccounts).mockResolvedValue(
-        mockAccounts as any,
+        asMockAccountList([
+          { providerId: "credential", id: "1" },
+          { providerId: "google", id: "2" },
+          { providerId: "github", id: "3" },
+        ]),
       );
 
       const result = await getUserAccounts("user-1");
@@ -75,12 +76,11 @@ describe("User Server", () => {
     });
 
     it("should handle OAuth-only accounts", async () => {
-      const mockAccounts = [
-        { providerId: "google", id: "1" },
-        { providerId: "github", id: "2" },
-      ];
       vi.mocked(auth.api.listUserAccounts).mockResolvedValue(
-        mockAccounts as any,
+        asMockAccountList([
+          { providerId: "google", id: "1" },
+          { providerId: "github", id: "2" },
+        ]),
       );
 
       const result = await getUserAccounts("user-1");
@@ -90,9 +90,8 @@ describe("User Server", () => {
     });
 
     it("should handle password-only accounts", async () => {
-      const mockAccounts = [{ providerId: "credential", id: "1" }];
       vi.mocked(auth.api.listUserAccounts).mockResolvedValue(
-        mockAccounts as any,
+        asMockAccountList([{ providerId: "credential", id: "1" }]),
       );
 
       const result = await getUserAccounts("user-1");
@@ -102,27 +101,24 @@ describe("User Server", () => {
     });
 
     it("should filter out credential provider from OAuth list", async () => {
-      const mockAccounts = [
-        { providerId: "credential", id: "1" },
-        { providerId: "credential", id: "2" }, // multiple credential accounts
-        { providerId: "google", id: "3" },
-      ];
       vi.mocked(auth.api.listUserAccounts).mockResolvedValue(
-        mockAccounts as any,
+        asMockAccountList([
+          { providerId: "credential", id: "1" },
+          { providerId: "credential", id: "2" },
+          { providerId: "google", id: "3" },
+        ]),
       );
 
       const result = await getUserAccounts("user-1");
 
       expect(result.hasPassword).toBe(true);
-      expect(result.oauthProviders).toEqual(["google"]); // credential filtered out
+      expect(result.oauthProviders).toEqual(["google"]);
     });
   });
 
   describe("getUserIdAndCheckAccess - Access Control Logic", () => {
     it("should use requested user ID when provided", async () => {
-      vi.mocked(getSession).mockResolvedValue({
-        user: { id: "current-user" },
-      } as any);
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "current-user" }));
 
       const result = await getUserIdAndCheckAccess("target-user");
 
@@ -130,9 +126,7 @@ describe("User Server", () => {
     });
 
     it("should fall back to current user ID when none provided", async () => {
-      vi.mocked(getSession).mockResolvedValue({
-        user: { id: "current-user" },
-      } as any);
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "current-user" }));
 
       const result = await getUserIdAndCheckAccess();
 
@@ -140,7 +134,7 @@ describe("User Server", () => {
     });
 
     it("should call notFound for falsy user IDs", async () => {
-      vi.mocked(getSession).mockResolvedValue({ user: { id: "" } } as any);
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "" }));
 
       await getUserIdAndCheckAccess();
 
@@ -148,11 +142,9 @@ describe("User Server", () => {
     });
 
     it("should handle null/undefined gracefully", async () => {
-      vi.mocked(getSession).mockResolvedValue({
-        user: { id: "fallback-user" },
-      } as any);
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "fallback-user" }));
 
-      const result1 = await getUserIdAndCheckAccess(null as any);
+      const result1 = await getUserIdAndCheckAccess(null as unknown as string);
       const result2 = await getUserIdAndCheckAccess(undefined);
 
       expect(result1).toBe("fallback-user");
@@ -161,30 +153,23 @@ describe("User Server", () => {
   });
 
   describe("updateUserDetails - User Update Logic", () => {
-    let userRepository: any;
+    let userRepo: Awaited<typeof import("lib/db/repository")>["userRepository"];
 
     beforeAll(async () => {
-      const userRepositoryModule = await import("lib/db/repository");
-      userRepository = userRepositoryModule.userRepository;
+      const mod = await import("lib/db/repository");
+      userRepo = mod.userRepository;
     });
 
     beforeEach(() => {
-      vi.mocked(getSession).mockResolvedValue({
-        user: { id: "current-user" },
-      } as any);
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "current-user" }));
     });
 
     it("should update user with provided fields", async () => {
-      vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
 
-      await updateUserDetails(
-        "user-1",
-        "New Name",
-        "new@email.com",
-        "new-image.jpg",
-      );
+      await updateUserDetails("user-1", "New Name", "new@email.com", "new-image.jpg");
 
-      expect(userRepository.updateUserDetails).toHaveBeenCalledWith({
+      expect(userRepo.updateUserDetails).toHaveBeenCalledWith({
         userId: "user-1",
         name: "New Name",
         email: "new@email.com",
@@ -193,33 +178,33 @@ describe("User Server", () => {
     });
 
     it("should update only name when provided", async () => {
-      vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
 
       await updateUserDetails("user-1", "New Name");
 
-      expect(userRepository.updateUserDetails).toHaveBeenCalledWith({
+      expect(userRepo.updateUserDetails).toHaveBeenCalledWith({
         userId: "user-1",
         name: "New Name",
       });
     });
 
     it("should update only email when provided", async () => {
-      vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
 
       await updateUserDetails("user-1", undefined, "new@email.com");
 
-      expect(userRepository.updateUserDetails).toHaveBeenCalledWith({
+      expect(userRepo.updateUserDetails).toHaveBeenCalledWith({
         userId: "user-1",
         email: "new@email.com",
       });
     });
 
     it("should update only image when provided", async () => {
-      vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
 
       await updateUserDetails("user-1", undefined, undefined, "new-image.jpg");
 
-      expect(userRepository.updateUserDetails).toHaveBeenCalledWith({
+      expect(userRepo.updateUserDetails).toHaveBeenCalledWith({
         userId: "user-1",
         image: "new-image.jpg",
       });
@@ -228,21 +213,21 @@ describe("User Server", () => {
     it("should return early when no fields provided", async () => {
       await updateUserDetails("user-1");
 
-      expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+      expect(userRepo.updateUserDetails).not.toHaveBeenCalled();
     });
 
     it("should handle empty string values as falsy", async () => {
       await updateUserDetails("user-1", "", "", "");
 
-      expect(userRepository.updateUserDetails).not.toHaveBeenCalled();
+      expect(userRepo.updateUserDetails).not.toHaveBeenCalled();
     });
 
     it("should use resolved user ID from access check", async () => {
-      vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
 
       await updateUserDetails("user-1", "New Name");
 
-      expect(userRepository.updateUserDetails).toHaveBeenCalledWith({
+      expect(userRepo.updateUserDetails).toHaveBeenCalledWith({
         userId: "user-1",
         name: "New Name",
       });

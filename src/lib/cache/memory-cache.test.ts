@@ -161,9 +161,9 @@ describe("MemoryCache", () => {
       vi.advanceTimersByTime(100);
 
       // The sweep should have removed the item from the store
-      // We'll verify this is working by checking internal implementation
-      const hasKey = (cleanupCache as any).store.has("expire-me");
-      expect(hasKey).toBe(false);
+      // Verify via getAll (returns 0 entries post-sweep)
+      const allAfterSweep = await cleanupCache.getAll();
+      expect(allAfterSweep.has("expire-me")).toBe(false);
     } finally {
       vi.useRealTimers();
     }

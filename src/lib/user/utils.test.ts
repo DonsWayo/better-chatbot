@@ -69,7 +69,7 @@ describe("getUserAvatar — return type invariants", () => {
   it("always returns a string", () => {
     expect(typeof getUserAvatar({})).toBe("string");
     expect(typeof getUserAvatar({ image: "x.jpg" })).toBe("string");
-    expect(typeof getUserAvatar(undefined as any)).toBe("string");
+    expect(typeof getUserAvatar({ image: null })).toBe("string");
   });
 
   it("returns a non-null value", () => {
@@ -80,13 +80,14 @@ describe("getUserAvatar — return type invariants", () => {
 
 describe("getIsUserAdmin — return type invariants", () => {
   it("always returns a boolean", () => {
-    for (const input of [
+    const inputs: Array<{ role?: string | null } | undefined> = [
       undefined,
       {},
       { role: "admin" },
       { role: "user" },
       { role: null },
-    ] as any[]) {
+    ];
+    for (const input of inputs) {
       expect(typeof getIsUserAdmin(input)).toBe("boolean");
     }
   });

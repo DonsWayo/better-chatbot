@@ -34,7 +34,7 @@ describe("Auth Config", () => {
 
   afterEach(() => {
     // restore the original environment variables
-    process.env = { ...originalEnv } as any; //ts-ignore
+    process.env = { ...originalEnv } as NodeJS.ProcessEnv;
     // Clean up after each test
     vi.unstubAllEnvs();
   });

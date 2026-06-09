@@ -32,7 +32,7 @@ describe("node-validate", () => {
   const createOutputNodeData = (
     id: string,
     name: string,
-    outputData: any[] = [],
+    outputData: { key: string; source?: { nodeId: string; path: string[] } }[] = [],
   ): UINode<NodeKind.Output> => ({
     id,
     type: "default",
@@ -49,8 +49,10 @@ describe("node-validate", () => {
   const createLLMNodeData = (
     id: string,
     name: string,
-    model: any = { id: "gpt-4", name: "GPT-4" },
-    messages: any[] = [{ role: "user", content: { type: "doc", content: [] } }],
+    model: { provider: string; model: string } = { provider: "openai", model: "gpt-4" },
+    messages: { role: "user" | "assistant" | "system"; content?: { type: string; content: unknown[] } }[] = [
+      { role: "user", content: { type: "doc", content: [] } },
+    ],
   ): UINode<NodeKind.LLM> => ({
     id,
     type: "default",

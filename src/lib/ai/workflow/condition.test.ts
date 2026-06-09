@@ -6,13 +6,13 @@ import {
   NumberConditionOperator,
   BooleanConditionOperator,
 } from "./condition";
-import type { ConditionBranch } from "./condition";
+import type { ConditionBranch, ConditionOperator } from "./condition";
 
-const src = (val: any) => () => val;
+const src = (val: unknown) => () => val;
 
 const makeBranch = (
-  op: any,
-  value: any,
+  op: ConditionOperator,
+  value: unknown,
   operator: "AND" | "OR" = "AND",
 ): ConditionBranch => ({
   id: "if",
@@ -198,7 +198,7 @@ describe("getFirstConditionOperator", () => {
   });
 
   it("defaults to StringConditionOperator.Equals for unknown types", () => {
-    expect(getFirstConditionOperator("unknown" as any)).toBe(StringConditionOperator.Equals);
+    expect(getFirstConditionOperator("unknown" as unknown as "string")).toBe(StringConditionOperator.Equals);
   });
 });
 

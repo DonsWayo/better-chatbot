@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { JSONSchema7 } from "json-schema";
 import { httpFetchSchema } from "./fetch";
+
+const prop = (key: string) => httpFetchSchema.properties?.[key] as unknown as JSONSchema7;
 
 describe("httpFetchSchema", () => {
   it("is an object schema", () => {
@@ -15,31 +18,30 @@ describe("httpFetchSchema", () => {
   });
 
   it("method property is an enum", () => {
-    const method = httpFetchSchema.properties?.method as any;
-    expect(Array.isArray(method?.enum)).toBe(true);
+    expect(Array.isArray(prop("method")?.enum)).toBe(true);
   });
 
   it("method enum includes GET and POST", () => {
-    const method = httpFetchSchema.properties?.method as any;
-    expect(method.enum).toContain("GET");
-    expect(method.enum).toContain("POST");
+    const methodEnum = prop("method")?.enum as string[] | undefined;
+    expect(methodEnum).toContain("GET");
+    expect(methodEnum).toContain("POST");
   });
 
   it("method enum includes all common HTTP methods", () => {
-    const method = httpFetchSchema.properties?.method as any;
+    const methodEnum = prop("method")?.enum as string[] | undefined;
     for (const m of ["GET", "POST", "PUT", "DELETE", "PATCH"]) {
-      expect(method.enum).toContain(m);
+      expect(methodEnum).toContain(m);
     }
   });
 
   it("timeout property has a default value", () => {
-    const timeout = httpFetchSchema.properties?.timeout as any;
+    const timeout = prop("timeout");
     expect(timeout?.default).toBeDefined();
     expect(typeof timeout?.default).toBe("number");
   });
 
   it("headers property allows additionalProperties", () => {
-    const headers = httpFetchSchema.properties?.headers as any;
+    const headers = prop("headers");
     expect(headers?.additionalProperties).toBe(true);
   });
 });
@@ -59,7 +61,6 @@ describe("httpFetchSchema — shape invariants", () => {
   });
 
   it("method default is GET", () => {
-    const method = httpFetchSchema.properties?.method as any;
-    expect(method?.default).toBe("GET");
+    expect(prop("method")?.default).toBe("GET");
   });
 });
