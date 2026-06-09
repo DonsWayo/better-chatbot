@@ -228,3 +228,40 @@ describe("getStorageInfoAction — type field values", () => {
     expect(res.type).toBe("local");
   });
 });
+
+describe("checkStorageAction — response shape", () => {
+  beforeEach(() => {
+    delete process.env.FILE_STORAGE_TYPE;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.FILE_STORAGE_S3_BUCKET;
+    delete process.env.FILE_STORAGE_S3_REGION;
+    delete process.env.AWS_REGION;
+  });
+
+  it("result always has isValid field", async () => {
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res).toHaveProperty("isValid");
+  });
+
+  it("isValid is always a boolean", async () => {
+    process.env.FILE_STORAGE_TYPE = "s3";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(typeof res.isValid).toBe("boolean");
+  });
+
+  it("s3 result has solution field when invalid", async () => {
+    process.env.FILE_STORAGE_TYPE = "s3";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res).toHaveProperty("solution");
+  });
+
+  it("valid local result has no error field", async () => {
+    process.env.FILE_STORAGE_TYPE = "local";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.error).toBeUndefined();
+  });
+});

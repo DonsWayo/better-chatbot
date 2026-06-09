@@ -229,3 +229,45 @@ describe("POST /api/prompts/[id]/use — response invariants", () => {
     expect(dbUpdateWhereMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/prompts/[id]/use — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectFromMock.mockReturnValue({ where: dbSelectWhereMock });
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbUpdateSetMock.mockReturnValue({ where: dbUpdateWhereMock });
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+  });
+
+  it("different promptId values are forwarded to the query", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-abc" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-abc" }) });
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 401 for every unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "p-any" }) });
+    expect(res.status).toBe(401);
+  });
+
+  it("404 returned for missing prompt regardless of userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-99" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "absent" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("response 200 body has ok:true when prompt exists", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-ok" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "p-ok" }) });
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+});

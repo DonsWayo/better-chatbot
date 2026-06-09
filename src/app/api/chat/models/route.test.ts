@@ -228,3 +228,48 @@ describe("GET /api/chat/models — response shape", () => {
     expect(typeof body[0].name).toBe("string");
   });
 });
+
+describe("GET /api/chat/models — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("api-key model sorts before non-api-key when provided in reverse order", async () => {
+    modelsInfoMock.mockReturnValue([
+      { id: "free-only", name: "Free", hasAPIKey: false },
+      { id: "paid-only", name: "Paid", hasAPIKey: true },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body[0].id).toBe("paid-only");
+    expect(body[1].id).toBe("free-only");
+  });
+
+  it("model count equals the input list length", async () => {
+    modelsInfoMock.mockReturnValue([
+      { id: "m1", name: "M1", hasAPIKey: true },
+      { id: "m2", name: "M2", hasAPIKey: false },
+      { id: "m3", name: "M3", hasAPIKey: true },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveLength(3);
+  });
+
+  it("response is always a Response instance for empty model list", async () => {
+    modelsInfoMock.mockReturnValue([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("endpoint is public — returns 200 with no auth required", async () => {
+    modelsInfoMock.mockReturnValue([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+  });
+});

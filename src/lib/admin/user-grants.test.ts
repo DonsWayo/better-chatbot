@@ -229,3 +229,45 @@ describe("revokeUserModelGrant — additional", () => {
     expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("getUserModelGrants — response invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    selectWhereMock.mockResolvedValue([]);
+    selectFromMock.mockReturnValue({ where: selectWhereMock });
+    selectMock.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("result is always an array", async () => {
+    selectWhereMock.mockResolvedValue([]);
+    const { getUserModelGrants } = await import("./user-grants");
+    const result = await getUserModelGrants("u-arr");
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("selectMock called exactly once per uncached request", async () => {
+    selectWhereMock.mockResolvedValue([]);
+    const { getUserModelGrants } = await import("./user-grants");
+    await getUserModelGrants("u-fresh");
+    expect(selectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns array of strings not array of objects", async () => {
+    selectWhereMock.mockResolvedValue([{ modelId: "openai/gpt-5.1" }]);
+    const { getUserModelGrants } = await import("./user-grants");
+    const result = await getUserModelGrants("u-typed");
+    expect(typeof result[0]).toBe("string");
+  });
+
+  it("multiple userId queries for different users are independent", async () => {
+    selectWhereMock
+      .mockResolvedValueOnce([{ modelId: "model-a" }])
+      .mockResolvedValueOnce([{ modelId: "model-b" }]);
+    const { getUserModelGrants } = await import("./user-grants");
+    const r1 = await getUserModelGrants("u-x1");
+    const r2 = await getUserModelGrants("u-x2");
+    expect(r1).toEqual(["model-a"]);
+    expect(r2).toEqual(["model-b"]);
+  });
+});

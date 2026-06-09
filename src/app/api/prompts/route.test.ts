@@ -229,3 +229,40 @@ describe("POST /api/prompts — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 });
+
+describe("GET /api/prompts — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectOrderByMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body is an array even when empty", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectOrderByMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body).toHaveLength(0);
+  });
+
+  it("dbSelect called exactly once per authenticated GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbSelectOrderByMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).toHaveBeenCalledTimes(1);
+  });
+});
