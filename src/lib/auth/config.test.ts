@@ -289,3 +289,34 @@ describe("Auth Config", () => {
     });
   });
 });
+
+describe("getAuthConfig — additional edge cases", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns an object with socialAuthenticationProviders key", () => {
+    const config = getAuthConfig();
+    expect(config).toHaveProperty("socialAuthenticationProviders");
+  });
+
+  it("socialAuthenticationProviders.google is undefined when no Google env vars set", () => {
+    const config = getAuthConfig();
+    expect(config.socialAuthenticationProviders.google).toBeUndefined();
+  });
+
+  it("DISABLE_EMAIL_SIGN_IN=true disables emailAndPasswordEnabled", () => {
+    vi.stubEnv("DISABLE_EMAIL_SIGN_IN", "true");
+    const config = getAuthConfig();
+    expect(config.emailAndPasswordEnabled).toBe(false);
+  });
+
+  it("emailAndPasswordEnabled defaults to true when no env vars are set", () => {
+    const config = getAuthConfig();
+    expect(config.emailAndPasswordEnabled).toBe(true);
+  });
+});

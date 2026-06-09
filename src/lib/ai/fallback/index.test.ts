@@ -276,3 +276,26 @@ describe("FALLBACK_MODEL_IDS", () => {
     expect(FALLBACK_MODEL_IDS).toContain("claude-opus-4.8");
   });
 });
+
+describe("FALLBACK_MODEL_IDS — invariants", () => {
+  it("is a non-empty array", () => {
+    expect(Array.isArray(FALLBACK_MODEL_IDS)).toBe(true);
+    expect(FALLBACK_MODEL_IDS.length).toBeGreaterThan(0);
+  });
+
+  it("all entries are non-empty strings", () => {
+    for (const id of FALLBACK_MODEL_IDS) {
+      expect(typeof id).toBe("string");
+      expect(id.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("has no duplicate entries", () => {
+    const unique = new Set(FALLBACK_MODEL_IDS);
+    expect(unique.size).toBe(FALLBACK_MODEL_IDS.length);
+  });
+
+  it("contains at least 3 model IDs", () => {
+    expect(FALLBACK_MODEL_IDS.length).toBeGreaterThanOrEqual(3);
+  });
+});

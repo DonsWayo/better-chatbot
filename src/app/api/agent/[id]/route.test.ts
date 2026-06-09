@@ -289,3 +289,39 @@ describe("DELETE /api/agent/[id] — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/agent/[id] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("selectAgentById called exactly once on authenticated GET", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectAgentById not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "ag-1" }) });
+    expect(selectAgentByIdMock).not.toHaveBeenCalled();
+  });
+});
