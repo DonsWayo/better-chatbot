@@ -64,3 +64,52 @@ describe("User Utils", () => {
     });
   });
 });
+
+describe("getUserAvatar — return type invariants", () => {
+  it("always returns a string", () => {
+    expect(typeof getUserAvatar({})).toBe("string");
+    expect(typeof getUserAvatar({ image: "x.jpg" })).toBe("string");
+    expect(typeof getUserAvatar(undefined as any)).toBe("string");
+  });
+
+  it("returns a non-null value", () => {
+    expect(getUserAvatar({})).not.toBeNull();
+    expect(getUserAvatar({ image: null })).not.toBeNull();
+  });
+});
+
+describe("getIsUserAdmin — return type invariants", () => {
+  it("always returns a boolean", () => {
+    for (const input of [
+      undefined,
+      {},
+      { role: "admin" },
+      { role: "user" },
+      { role: null },
+    ] as any[]) {
+      expect(typeof getIsUserAdmin(input)).toBe("boolean");
+    }
+  });
+});
+
+describe("getIsUserAdmin — additional edge cases", () => {
+  it("returns false for role = 'Admin' (capital A)", () => {
+    expect(getIsUserAdmin({ role: "Admin" })).toBe(false);
+  });
+
+  it("returns false for role = 'ADMIN' (all caps)", () => {
+    expect(getIsUserAdmin({ role: "ADMIN" })).toBe(false);
+  });
+
+  it("returns true for admin role mixed with other valid roles", () => {
+    expect(getIsUserAdmin({ role: "editor,admin" })).toBe(true);
+  });
+
+  it("returns false for empty role string", () => {
+    expect(getIsUserAdmin({ role: "" })).toBe(false);
+  });
+
+  it("returns false for purely whitespace role", () => {
+    expect(getIsUserAdmin({ role: "   " })).toBe(false);
+  });
+});

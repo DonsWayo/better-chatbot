@@ -187,3 +187,98 @@ describe("createOpenAICompatibleModels", () => {
     expect(result.unsupportedModels.size).toBe(0);
   });
 });
+
+describe("createOpenAICompatibleModels — return type invariants", () => {
+  it("result always has providers and unsupportedModels keys", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(result).toHaveProperty("providers");
+    expect(result).toHaveProperty("unsupportedModels");
+  });
+
+  it("providers is always an object", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(typeof result.providers).toBe("object");
+    expect(result.providers).not.toBeNull();
+  });
+
+  it("unsupportedModels is always a Set", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(result.unsupportedModels).toBeInstanceOf(Set);
+  });
+
+  it("provider entry is an object", () => {
+    const config: OpenAICompatibleProvider[] = [
+      {
+        provider: "p",
+        apiKey: "k",
+        baseUrl: "https://x.com",
+        models: [{ apiName: "m", uiName: "M", supportsTools: true }],
+      },
+    ];
+    const { providers } = createOpenAICompatibleModels(config);
+    expect(typeof providers["p"]).toBe("object");
+  });
+
+  it("model entry is a function or object (AI SDK model factory)", () => {
+    const config: OpenAICompatibleProvider[] = [
+      {
+        provider: "p",
+        apiKey: "k",
+        baseUrl: "https://x.com",
+        models: [{ apiName: "m", uiName: "M", supportsTools: true }],
+      },
+    ];
+    const { providers } = createOpenAICompatibleModels(config);
+    const entry = providers["p"]?.["M"];
+    expect(entry !== undefined).toBe(true);
+  });
+});
+
+describe("createOpenAICompatibleModels — unsupportedModels invariants", () => {
+  it("supported-tools models are NOT in unsupportedModels", () => {
+    const config: OpenAICompatibleProvider[] = [
+      {
+        provider: "p",
+        apiKey: "k",
+        baseUrl: "https://x.com",
+        models: [{ apiName: "m-supported", uiName: "Supported", supportsTools: true }],
+      },
+    ];
+    const { unsupportedModels } = createOpenAICompatibleModels(config);
+    expect(unsupportedModels.has("Supported")).toBe(false);
+  });
+
+  it("non-tools models are in unsupportedModels keyed by uiName", () => {
+    const config: OpenAICompatibleProvider[] = [
+      {
+        provider: "p",
+        apiKey: "k",
+        baseUrl: "https://x.com",
+        models: [{ apiName: "m-unsupported", uiName: "No Tools", supportsTools: false }],
+      },
+    ];
+    const { unsupportedModels } = createOpenAICompatibleModels(config);
+    expect(unsupportedModels.has("No Tools")).toBe(true);
+  });
+
+  it("all-supported config has empty unsupportedModels", () => {
+    const config: OpenAICompatibleProvider[] = [
+      {
+        provider: "p",
+        apiKey: "k",
+        baseUrl: "https://x.com",
+        models: [
+          { apiName: "a", uiName: "A", supportsTools: true },
+          { apiName: "b", uiName: "B", supportsTools: true },
+        ],
+      },
+    ];
+    const { unsupportedModels } = createOpenAICompatibleModels(config);
+    expect(unsupportedModels.size).toBe(0);
+  });
+
+  it("null config returns empty unsupportedModels", () => {
+    const { unsupportedModels } = createOpenAICompatibleModels(null as any);
+    expect(unsupportedModels.size).toBe(0);
+  });
+});

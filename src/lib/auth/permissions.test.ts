@@ -94,3 +94,56 @@ describe("auth/permissions", () => {
     ).rejects.toThrow(/Permission required/);
   });
 });
+
+describe("auth/permissions — return type invariants", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("hasAdminPermission always resolves to a boolean", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(null as any);
+    const result = await permissions.hasAdminPermission();
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("canManageUsers always resolves to a boolean", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(null as any);
+    const result = await permissions.canManageUsers();
+    expect(typeof result).toBe("boolean");
+  });
+
+  it("canManageUser always resolves to a boolean", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(null as any);
+    const result = await permissions.canManageUser("any");
+    expect(typeof result).toBe("boolean");
+  });
+});
+
+describe("auth/permissions — guard invariants", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("requireAdminPermission resolves without throwing when admin", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({ user: { id: "u1", role: "admin" } } as any);
+    vi.mocked(getIsUserAdmin).mockReturnValue(true);
+    await expect(permissions.requireAdminPermission("act")).resolves.not.toThrow();
+  });
+
+  it("requireUserManagePermissionFor resolves when user manages self", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue({ user: { id: "self", role: "user" } } as any);
+    vi.mocked(getIsUserAdmin).mockReturnValue(false);
+    await expect(permissions.requireUserManagePermissionFor("self", "self-action")).resolves.not.toThrow();
+  });
+
+  it("canManageUser returns false when no session", async () => {
+    const permissions = await import("./permissions");
+    vi.mocked(getSession).mockResolvedValue(null as any);
+    expect(await permissions.canManageUser("target")).toBe(false);
+  });
+});

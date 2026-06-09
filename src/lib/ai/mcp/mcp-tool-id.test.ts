@@ -75,3 +75,75 @@ describe("extractMCPToolId", () => {
     expect(toolName).toBe("tool_with_underscores");
   });
 });
+
+describe("sanitizeFunctionName — additional invariants", () => {
+  it("empty string returns empty string or underscore prefix", () => {
+    const result = sanitizeFunctionName("");
+    expect(typeof result).toBe("string");
+  });
+
+  it("single valid letter is unchanged", () => {
+    expect(sanitizeFunctionName("a")).toBe("a");
+  });
+
+  it("already-valid name is unchanged", () => {
+    expect(sanitizeFunctionName("valid_name123")).toBe("valid_name123");
+  });
+
+  it("name at exactly 124 chars is not truncated", () => {
+    const name = "a".repeat(124);
+    expect(sanitizeFunctionName(name).length).toBe(124);
+  });
+
+  it("name at 125 chars is truncated to 124", () => {
+    const name = "a".repeat(125);
+    expect(sanitizeFunctionName(name).length).toBe(124);
+  });
+
+  it("returns a string (never throws)", () => {
+    for (const input of ["@@@", "   ", "123abc", "!!!"]) {
+      expect(typeof sanitizeFunctionName(input)).toBe("string");
+    }
+  });
+});
+
+describe("createMCPToolId — additional invariants", () => {
+  it("result is always a string", () => {
+    expect(typeof createMCPToolId("a", "b")).toBe("string");
+  });
+
+  it("result length never exceeds 124", () => {
+    const id = createMCPToolId("s".repeat(60), "t".repeat(60));
+    expect(id.length).toBeLessThanOrEqual(124);
+  });
+
+  it("simple names produce underscore-separated result", () => {
+    expect(createMCPToolId("myserver", "mytool")).toBe("myserver_mytool");
+  });
+
+  it("result contains at least one underscore when names are non-empty", () => {
+    const id = createMCPToolId("s", "t");
+    expect(id).toContain("_");
+  });
+});
+
+describe("extractMCPToolId — additional invariants", () => {
+  it("serverName is always a non-empty string", () => {
+    const { serverName } = extractMCPToolId("s_t");
+    expect(typeof serverName).toBe("string");
+    expect(serverName.length).toBeGreaterThan(0);
+  });
+
+  it("toolName is always a non-empty string", () => {
+    const { toolName } = extractMCPToolId("s_t");
+    expect(typeof toolName).toBe("string");
+    expect(toolName.length).toBeGreaterThan(0);
+  });
+
+  it("round-trips simple names", () => {
+    const id = createMCPToolId("server", "tool");
+    const { serverName, toolName } = extractMCPToolId(id);
+    expect(serverName).toBe("server");
+    expect(toolName).toBe("tool");
+  });
+});

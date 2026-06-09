@@ -83,3 +83,66 @@ describe("fuzzySearch", () => {
     expect(result).toContainEqual(testItems[2]); // Cherry
   });
 });
+
+describe("fuzzySearch — return type invariants", () => {
+  const items: SearchItem[] = [
+    { id: "x1", label: "Alpha" },
+    { id: "x2", label: "Beta" },
+  ];
+
+  test("always returns an array", () => {
+    expect(Array.isArray(fuzzySearch(items, ""))).toBe(true);
+    expect(Array.isArray(fuzzySearch(items, "al"))).toBe(true);
+    expect(Array.isArray(fuzzySearch(items, "zzz"))).toBe(true);
+  });
+
+  test("each result item has id and label", () => {
+    const results = fuzzySearch(items, "a");
+    for (const r of results) {
+      expect(r).toHaveProperty("id");
+      expect(r).toHaveProperty("label");
+    }
+  });
+
+  test("result items are a subset of input items", () => {
+    const results = fuzzySearch(items, "bet");
+    for (const r of results) {
+      expect(items).toContainEqual(r);
+    }
+  });
+
+  test("result with empty query has same length as input", () => {
+    expect(fuzzySearch(items, "").length).toBe(items.length);
+  });
+});
+
+describe("fuzzySearch — edge case invariants", () => {
+  test("handles empty items array", () => {
+    expect(fuzzySearch([], "anything")).toEqual([]);
+  });
+
+  test("handles single item array — match", () => {
+    const items: SearchItem[] = [{ id: "s", label: "single" }];
+    expect(fuzzySearch(items, "singl")).toContainEqual(items[0]);
+  });
+
+  test("handles single item array — no match", () => {
+    const items: SearchItem[] = [{ id: "s", label: "single" }];
+    expect(fuzzySearch(items, "zzz")).toHaveLength(0);
+  });
+
+  test("does not return duplicates", () => {
+    const items: SearchItem[] = [
+      { id: "a", label: "apple" },
+      { id: "b", label: "apricot" },
+    ];
+    const results = fuzzySearch(items, "ap");
+    const ids = results.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("query with only spaces returns all items", () => {
+    const items: SearchItem[] = [{ id: "a", label: "test" }];
+    expect(fuzzySearch(items, "   ").length).toBe(items.length);
+  });
+});
