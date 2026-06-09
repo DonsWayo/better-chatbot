@@ -66,4 +66,58 @@ describe("DEFAULT_USER_ROLE", () => {
     expect(DEFAULT_USER_ROLE).toBe("editor");
     vi.unstubAllEnvs();
   });
+
+  it("accepts 'admin' env value → admin", async () => {
+    vi.stubEnv("DEFAULT_USER_ROLE", "admin");
+    vi.resetModules();
+    const { DEFAULT_USER_ROLE } = await import("./roles");
+    expect(DEFAULT_USER_ROLE).toBe("admin");
+    vi.unstubAllEnvs();
+  });
+
+  it("result is always one of the known roles", async () => {
+    const { DEFAULT_USER_ROLE, USER_ROLES } = await import("./roles");
+    expect(Object.values(USER_ROLES)).toContain(DEFAULT_USER_ROLE);
+  });
+});
+
+describe("USER_ROLES — value shape", () => {
+  it("all values are lowercase strings", async () => {
+    const { USER_ROLES } = await import("./roles");
+    for (const value of Object.values(USER_ROLES)) {
+      expect(value).toBe(value.toLowerCase());
+    }
+  });
+
+  it("no duplicate values", async () => {
+    const { USER_ROLES } = await import("./roles");
+    const values = Object.values(USER_ROLES);
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it("keys are uppercase", async () => {
+    const { USER_ROLES } = await import("./roles");
+    for (const key of Object.keys(USER_ROLES)) {
+      expect(key).toBe(key.toUpperCase());
+    }
+  });
+});
+
+describe("userRolesInfo — completeness", () => {
+  it("user role has label 'User'", async () => {
+    const { userRolesInfo } = await import("./roles");
+    expect(userRolesInfo.user.label).toBe("User");
+  });
+
+  it("all descriptions are non-empty strings", async () => {
+    const { userRolesInfo, USER_ROLES } = await import("./roles");
+    for (const role of Object.values(USER_ROLES)) {
+      expect(userRolesInfo[role].description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("has exactly 3 entries (one per role)", async () => {
+    const { userRolesInfo } = await import("./roles");
+    expect(Object.keys(userRolesInfo)).toHaveLength(3);
+  });
 });

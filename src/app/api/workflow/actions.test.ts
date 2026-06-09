@@ -72,4 +72,28 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
     expect(result[0].id).toBe("wf-1");
     expect(result[2].name).toBe("Notify");
   });
+
+  it("returns identity of what repository returns (no transformation)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u5" } });
+    const REPO_RESULT = [{ id: "w-identity", name: "Identity Test", extra: true }];
+    selectExecuteAbilityMock.mockResolvedValueOnce(REPO_RESULT);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    const result = await selectExecuteAbilityWorkflowsAction();
+    expect(result).toEqual(REPO_RESULT);
+  });
+
+  it("does not call getSession more than once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u6" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    await selectExecuteAbilityWorkflowsAction();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates repository error to caller", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u7" } });
+    selectExecuteAbilityMock.mockRejectedValueOnce(new Error("db timeout"));
+    const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
+    await expect(selectExecuteAbilityWorkflowsAction()).rejects.toThrow("db timeout");
+  });
 });

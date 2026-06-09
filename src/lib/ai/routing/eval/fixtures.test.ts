@@ -64,4 +64,40 @@ describe("EVAL_FIXTURES", () => {
       expect(f.request.totalChars ?? 0, `${f.name} needs totalChars`).toBeGreaterThan(LONG_CONTEXT_CHARS);
     }
   });
+
+  it("non-vision fixtures do not have hasImage:true", () => {
+    const nonVision = EVAL_FIXTURES.filter((f) => !f.name.startsWith("vision/"));
+    for (const f of nonVision) {
+      expect(f.request.hasImage, `${f.name} should not have hasImage`).toBeFalsy();
+    }
+  });
+
+  it("non-tool_use fixtures do not have hasTools:true", () => {
+    const nonTool = EVAL_FIXTURES.filter((f) => !f.name.startsWith("tool_use/"));
+    for (const f of nonTool) {
+      expect(f.request.hasTools, `${f.name} should not have hasTools`).toBeFalsy();
+    }
+  });
+
+  it("all fixture texts are unique", () => {
+    const texts = EVAL_FIXTURES.map((f) => f.request.text);
+    const unique = new Set(texts);
+    expect(unique.size).toBe(texts.length);
+  });
+
+  it("code class has at least 2 fixtures", () => {
+    expect(EVAL_FIXTURES.filter((f) => f.name.startsWith("code/")).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("reasoning class has at least 2 fixtures", () => {
+    expect(EVAL_FIXTURES.filter((f) => f.name.startsWith("reasoning/")).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("each fixture name prefix is one of the known task classes", () => {
+    const knownClasses = new Set(ALL_TASK_CLASSES as readonly string[]);
+    for (const f of EVAL_FIXTURES) {
+      const prefix = f.name.split("/")[0];
+      expect(knownClasses.has(prefix), `unknown task class in fixture: ${f.name}`).toBe(true);
+    }
+  });
 });

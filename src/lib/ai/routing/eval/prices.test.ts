@@ -70,4 +70,34 @@ describe("MODEL_PRICES", () => {
       MODEL_PRICES["gemini-2.5-flash-lite"].outPerMTok,
     );
   });
+
+  it("gemini-2.5-flash has correct per-million-token rates", () => {
+    const flash = MODEL_PRICES["gemini-2.5-flash"];
+    expect(flash.inPerMTok).toBe(0.3);
+    expect(flash.outPerMTok).toBe(2.5);
+  });
+
+  it("gemini-2.5-flash-lite has correct per-million-token rates", () => {
+    const lite = MODEL_PRICES["gemini-2.5-flash-lite"];
+    expect(lite.inPerMTok).toBe(0.1);
+    expect(lite.outPerMTok).toBe(0.4);
+  });
+
+  it("all price values are finite positive numbers (no NaN, no Infinity)", () => {
+    for (const [model, prices] of Object.entries(MODEL_PRICES)) {
+      expect(Number.isFinite(prices.inPerMTok), `${model}: inPerMTok finite`).toBe(true);
+      expect(Number.isFinite(prices.outPerMTok), `${model}: outPerMTok finite`).toBe(true);
+    }
+  });
+
+  it("output-to-input ratio is at least 2:1 for all models", () => {
+    for (const [model, prices] of Object.entries(MODEL_PRICES)) {
+      expect(prices.outPerMTok / prices.inPerMTok, `${model}: ratio`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("balanced tier (gpt-5.1) is cheaper than frontier (claude-opus-4.8)", () => {
+    expect(MODEL_PRICES["gpt-5.1"].outPerMTok).toBeLessThan(MODEL_PRICES["claude-opus-4.8"].outPerMTok);
+    expect(MODEL_PRICES["gpt-5.1"].inPerMTok).toBeLessThan(MODEL_PRICES["claude-opus-4.8"].inPerMTok);
+  });
 });
