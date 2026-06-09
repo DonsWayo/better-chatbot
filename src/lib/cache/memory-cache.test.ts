@@ -275,3 +275,30 @@ describe("MemoryCache — additional invariants", () => {
     expect((await cache.getAll()).size).toBe(0);
   });
 });
+
+describe("MemoryCache — delete and size invariants", () => {
+  let cache: MemoryCache;
+
+  beforeEach(() => { cache = new MemoryCache(); });
+  afterEach(() => { cache.clear(); });
+
+  test("delete removes a key — get returns undefined after delete", async () => {
+    await cache.set("del-key", "value");
+    await cache.delete("del-key");
+    expect(await cache.get("del-key")).toBeUndefined();
+  });
+
+  test("delete on nonexistent key does not throw", async () => {
+    await expect(cache.delete("nonexistent")).resolves.not.toThrow();
+  });
+
+  test("set with same key overwrites value", async () => {
+    await cache.set("dup", "first");
+    await cache.set("dup", "second");
+    expect(await cache.get("dup")).toBe("second");
+  });
+
+  test("get on empty cache returns undefined", async () => {
+    expect(await cache.get("missing")).toBeUndefined();
+  });
+});

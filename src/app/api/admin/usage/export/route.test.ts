@@ -277,3 +277,32 @@ describe("GET /api/admin/usage/export — edge cases", () => {
     expect(typeof text).toBe("string");
   });
 });
+
+describe("GET /api/admin/usage/export — response invariants", () => {
+  it("returns Response instance for 401", async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns Response instance for 403", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(403);
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    mockSession.mockResolvedValue(null);
+    await GET(makeRequest());
+    expect(mockSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("content-disposition header contains 'attachment' for admin", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    const res = await GET(makeRequest());
+    expect(res.headers.get("content-disposition")).toContain("attachment");
+  });
+});
