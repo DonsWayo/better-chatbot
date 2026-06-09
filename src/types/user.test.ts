@@ -128,4 +128,40 @@ describe("UserZodSchema — additional boundaries", () => {
     const r = UserZodSchema.safeParse({ ...base, email: "user@mail.company.org" });
     expect(r.success).toBe(true);
   });
+
+  it("accepts whitespace-only name (min(1) has no trim)", () => {
+    const r = UserZodSchema.safeParse({ ...base, name: "   " });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects null email", () => {
+    const r = UserZodSchema.safeParse({ ...base, email: null });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts password with mixed case and digits", () => {
+    const r = UserZodSchema.safeParse({ ...base, password: "MyPass42" });
+    expect(r.success).toBe(true);
+  });
+});
+
+describe("UserPreferencesZodSchema — additional", () => {
+  it("rejects non-string displayName", () => {
+    const r = UserPreferencesZodSchema.safeParse({ displayName: 42 });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects non-string botName", () => {
+    const r = UserPreferencesZodSchema.safeParse({ botName: true });
+    expect(r.success).toBe(false);
+  });
+
+  it("parsed data has only the provided keys", () => {
+    const r = UserPreferencesZodSchema.safeParse({ displayName: "Alice" });
+    if (r.success) {
+      expect(r.data.displayName).toBe("Alice");
+      expect(r.data.botName).toBeUndefined();
+    }
+    expect(r.success).toBe(true);
+  });
 });

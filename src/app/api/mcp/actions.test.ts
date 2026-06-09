@@ -133,4 +133,54 @@ describe("selectMcpClientsAction", () => {
     const result = await selectMcpClientsAction();
     expect(result).toEqual([]);
   });
+
+  it("never calls selectAllForUser when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { selectMcpClientsAction } = await import("./actions");
+    await selectMcpClientsAction();
+    expect(selectAllForUserMock).not.toHaveBeenCalled();
+  });
+
+  it("result is always an array", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { selectMcpClientsAction } = await import("./actions");
+    const result = await selectMcpClientsAction();
+    expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("getCurrentUser called exactly once per invocation", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { selectMcpClientsAction } = await import("./actions");
+    await selectMcpClientsAction();
+    expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("saveMcpClientAction — guard chains", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.NOT_ALLOW_ADD_MCP_SERVERS;
+  });
+
+  it("never calls insertMcpServer when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    expect(insertMcpServerMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls insertMcpServer when canCreateMCP returns false", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    canCreateMCPMock.mockResolvedValueOnce(false);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    expect(insertMcpServerMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls insertMcpServer when env flag blocks request", async () => {
+    process.env.NOT_ALLOW_ADD_MCP_SERVERS = "1";
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    expect(insertMcpServerMock).not.toHaveBeenCalled();
+  });
 });
