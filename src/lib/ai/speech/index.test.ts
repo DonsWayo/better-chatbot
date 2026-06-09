@@ -50,4 +50,38 @@ describe("DEFAULT_VOICE_TOOLS", () => {
     const tool = DEFAULT_VOICE_TOOLS.find((t) => t.name === "endConversation");
     expect(tool?.parameters.required).toEqual([]);
   });
+
+  it("all tool names are unique", () => {
+    const names = DEFAULT_VOICE_TOOLS.map((t) => t.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("contains exactly 2 tools", () => {
+    expect(DEFAULT_VOICE_TOOLS).toHaveLength(2);
+  });
+
+  it("changeBrowserTheme has only 'theme' in properties", () => {
+    const tool = DEFAULT_VOICE_TOOLS.find((t) => t.name === "changeBrowserTheme");
+    const keys = Object.keys(tool?.parameters.properties ?? {});
+    expect(keys).toEqual(["theme"]);
+  });
+
+  it("endConversation has empty properties object", () => {
+    const tool = DEFAULT_VOICE_TOOLS.find((t) => t.name === "endConversation");
+    expect(tool?.parameters.properties).toEqual({});
+  });
+
+  it("theme enum contains exactly light and dark", () => {
+    const tool = DEFAULT_VOICE_TOOLS.find((t) => t.name === "changeBrowserTheme");
+    const themeProp = (tool?.parameters.properties as Record<string, { enum?: string[] }>)["theme"];
+    expect(themeProp.enum).toHaveLength(2);
+    expect(themeProp.enum).toContain("light");
+    expect(themeProp.enum).toContain("dark");
+  });
+
+  it("endConversation description is non-empty string", () => {
+    const tool = DEFAULT_VOICE_TOOLS.find((t) => t.name === "endConversation");
+    expect(typeof tool?.description).toBe("string");
+    expect((tool?.description ?? "").length).toBeGreaterThan(0);
+  });
 });
