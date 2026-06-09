@@ -99,4 +99,33 @@ describe("POST /api/storage/upload", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("never calls checkStorageAction when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(checkStorageActionMock).not.toHaveBeenCalled();
+  });
+
+  it("upload is called exactly once per successful upload", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    uploadMock.mockResolvedValueOnce({ key: "k", sourceUrl: "http://cdn/k" });
+    const file = new File(["data"], "data.bin", { type: "application/octet-stream" });
+    const { POST } = await import("./route");
+    await POST(makeRequest(file));
+    expect(uploadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body has both key and url fields", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    uploadMock.mockResolvedValueOnce({ key: "uploads/f.txt", sourceUrl: "http://cdn/f.txt" });
+    const file = new File(["x"], "f.txt", { type: "text/plain" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(file));
+    const body = await res.json();
+    expect(body).toHaveProperty("key");
+    expect(body).toHaveProperty("url");
+  });
 });

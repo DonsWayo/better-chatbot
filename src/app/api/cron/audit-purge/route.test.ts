@@ -100,4 +100,25 @@ describe("POST /api/cron/audit-purge", () => {
     expect(body).toHaveProperty("deleted");
     expect(body).toHaveProperty("cutoff");
   });
+
+  it("cutoff is a string (ISO date) in the response", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    const body = await res.json();
+    expect(typeof body.cutoff).toBe("string");
+    expect(body.cutoff.length).toBeGreaterThan(0);
+  });
+
+  it("secret comparison is case-sensitive", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("TEST-SECRET"));
+    expect(res.status).toBe(401);
+  });
+
+  it("401 body has error field", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

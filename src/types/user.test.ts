@@ -100,3 +100,32 @@ describe("UserPreferencesZodSchema", () => {
     expect(r.success).toBe(true);
   });
 });
+
+describe("UserZodSchema — additional boundaries", () => {
+  const base = { name: "Bob", email: "bob@example.com", password: "Password1" };
+
+  it("accepts password at exactly 20 characters (max boundary)", () => {
+    const r = UserZodSchema.safeParse({ ...base, password: "Abcdefgh1234567890Ab" });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects password at 21 characters", () => {
+    const r = UserZodSchema.safeParse({ ...base, password: "Abcdefgh1234567890Ab1" });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects email missing @ sign", () => {
+    const r = UserZodSchema.safeParse({ ...base, email: "notanemail.com" });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects name as number", () => {
+    const r = UserZodSchema.safeParse({ ...base, name: 42 });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts subdomain email", () => {
+    const r = UserZodSchema.safeParse({ ...base, email: "user@mail.company.org" });
+    expect(r.success).toBe(true);
+  });
+});
