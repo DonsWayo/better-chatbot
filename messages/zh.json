@@ -373,7 +373,9 @@
     "mcpServerCustomizationDescription": "MCP 服务器自定义指令将在 MCP 服务器可用时添加到系统提示中。",
     "toolCustomizationInstructionsPlaceholder": "工具自定义指令不可用。",
     "mcpServerCustomizationPlaceholder": "例如：如果输入值是电子邮件，始终以 example@example.com 格式输入电子邮件。",
-    "noInstructions": "无"
+    "noInstructions": "无",
+    "localServersNotAvailableTitle": "本地 MCP 服务器不可用",
+    "localServersNotAvailableOnThisDeployment": "此部署不支持本地（stdio）MCP 服务器。请连接到远程 MCP 服务器 URL — 本地服务器仅在桌面应用中可用。"
   },
   "Error": {},
   "Info": {

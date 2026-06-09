@@ -162,7 +162,6 @@
     },
     "Thread": {
       "chat": "채팅",
-
       "renameChat": "채팅 이름 변경",
       "deleteChat": "채팅 삭제",
       "deleteUnarchivedChats": "아카이브되지 않은 채팅 모두 삭제",
@@ -182,7 +181,6 @@
       "createLink": "링크 만들기",
       "linkCopied": "링크가 복사되었습니다"
     },
-
     "ChatPreferences": {
       "title": "채팅 환경설정",
       "whatShouldWeCallYou": "뭐라고 불러드릴까요?",
@@ -388,7 +386,9 @@
     "mcpServerCustomizationDescription": "MCP 서버 사용자 지정 지침은 MCP서버를 사용할 때 시스템 프롬프트에 추가됩니다.",
     "toolCustomizationInstructionsPlaceholder": "도구 사용자 지정 지침이 없습니다.",
     "mcpServerCustomizationPlaceholder": "예) 이 MCP 서버의 툴중에 입력값이 email인 경우 항상 example@example.com 형식으로 입력해주세요.",
-    "noInstructions": "없음"
+    "noInstructions": "없음",
+    "localServersNotAvailableTitle": "로컬 MCP 서버를 사용할 수 없습니다",
+    "localServersNotAvailableOnThisDeployment": "이 배포에서는 로컬(stdio) MCP 서버가 지원되지 않습니다. 원격 MCP 서버 URL에 연결하세요 — 로컬 서버는 데스크톱 앱에서만 사용할 수 있습니다."
   },
   "Error": {},
   "Info": {

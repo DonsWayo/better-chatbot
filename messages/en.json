@@ -810,6 +810,8 @@
     "public": "Featured",
     "publicDescription": "Featured for all users to use",
     "featured": "Featured",
-    "featuredDescription": "Featured for all users to use"
+    "featuredDescription": "Featured for all users to use",
+    "localServersNotAvailableTitle": "Local MCP servers not available",
+    "localServersNotAvailableOnThisDeployment": "Local (stdio) MCP servers are not supported on this deployment. Connect to a remote MCP server URL instead — local servers are only available in the desktop app."
   }
 }

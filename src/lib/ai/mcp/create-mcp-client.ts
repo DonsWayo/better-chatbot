@@ -206,9 +206,12 @@ export class MCPClient {
 
       // Create appropriate transport based on server config type
       if (isMaybeStdioConfig(this.serverConfig)) {
-        // Skip stdio transport
+        // Cloud deployments are remote-only (like claude.ai web). Local stdio
+        // servers run only in the desktop app / local dev.
         if (IS_MCP_SERVER_REMOTE_ONLY) {
-          throw new Error("VERCEL: Stdio transport is not supported");
+          throw new Error(
+            "Local (stdio) MCP servers are not supported on this deployment. Use a remote MCP server URL — local servers are only available in the desktop app.",
+          );
         }
 
         const config = MCPStdioConfigZodSchema.parse(this.serverConfig);

@@ -810,6 +810,8 @@
     "publicDescription": "Offentlig for alle brukere",
     "featured": "Fremhevet",
     "featuredDescription": "Fremhevet for alle brukere",
-    "noInstructions": "Ingen"
+    "noInstructions": "Ingen",
+    "localServersNotAvailableTitle": "Lokale MCP-servere er ikke tilgjengelige",
+    "localServersNotAvailableOnThisDeployment": "Lokale (stdio) MCP-servere støttes ikke i denne distribusjonen. Koble til en ekstern MCP-server-URL i stedet — lokale servere er kun tilgjengelige i skrivebordsappen."
   }
 }

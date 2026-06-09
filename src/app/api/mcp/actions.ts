@@ -10,6 +10,12 @@ import {
   canShareMCPServer,
   getCurrentUser,
 } from "lib/auth/permissions";
+import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
+import { IS_MCP_SERVER_REMOTE_ONLY } from "lib/const";
+
+export async function isMcpServerRemoteOnlyAction() {
+  return IS_MCP_SERVER_REMOTE_ONLY;
+}
 
 export async function selectMcpClientsAction() {
   // Get current user to filter MCP servers
@@ -71,6 +77,16 @@ export async function saveMcpClientAction(
   const hasPermission = await canCreateMCP();
   if (!hasPermission) {
     throw new Error("You don't have permission to create MCP connections");
+  }
+
+  // Cloud deployments are remote-only (like claude.ai web): local stdio
+  // servers would spawn arbitrary processes inside the shared server. Local
+  // servers are only available in the desktop app / local dev.
+  if (IS_MCP_SERVER_REMOTE_ONLY && isMaybeStdioConfig(server.config)) {
+    throw new Error(
+      "Local (stdio) MCP servers are not supported on this deployment. " +
+        "Connect to a remote MCP server URL instead — local servers are only available in the desktop app.",
+    );
   }
   // Validate name to ensure it only contains alphanumeric characters and hyphens
   const nameSchema = z.string().regex(/^[a-zA-Z0-9\-]+$/, {

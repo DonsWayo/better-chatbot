@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   MCPServerConfig,
   MCPRemoteConfigZodSchema,
@@ -20,12 +20,16 @@ import { Loader } from "lucide-react";
 import {
   isMaybeMCPServerConfig,
   isMaybeRemoteConfig,
+  isMaybeStdioConfig,
 } from "lib/ai/mcp/is-mcp-config";
 
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
-import { existMcpClientByServerNameAction } from "@/app/api/mcp/actions";
+import {
+  existMcpClientByServerNameAction,
+  isMcpServerRemoteOnlyAction,
+} from "@/app/api/mcp/actions";
 
 interface MCPEditorProps {
   initialConfig?: MCPServerConfig;
@@ -35,7 +39,7 @@ interface MCPEditorProps {
 
 const STDIO_ARGS_ENV_PLACEHOLDER = `/** STDIO Example */
 {
-  "command": "node", 
+  "command": "node",
   "args": ["index.js"],
   "env": {
     "OPENAI_API_KEY": "sk-...",
@@ -43,6 +47,14 @@ const STDIO_ARGS_ENV_PLACEHOLDER = `/** STDIO Example */
 }
 
 /** SSE,Streamable HTTP Example */
+{
+  "url": "https://api.example.com",
+  "headers": {
+    "Authorization": "Bearer sk-..."
+  }
+}`;
+
+const REMOTE_ONLY_PLACEHOLDER = `/** SSE,Streamable HTTP Example */
 {
   "url": "https://api.example.com",
   "headers": {
@@ -61,6 +73,15 @@ export default function MCPEditor({
   const [isLoading, setIsLoading] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+  // Cloud deployments are remote-only (like claude.ai web); local stdio
+  // servers are only available in the desktop app / local dev.
+  const [remoteOnly, setRemoteOnly] = useState(false);
+
+  useEffect(() => {
+    isMcpServerRemoteOnlyAction()
+      .then(setRemoteOnly)
+      .catch(() => setRemoteOnly(false));
+  }, []);
 
   const errorDebounce = useMemo(() => createDebounce(), []);
 
@@ -91,18 +112,31 @@ export default function MCPEditor({
     return true;
   };
 
+  const isStdioBlocked = useMemo(
+    () => remoteOnly && isMaybeStdioConfig(config),
+    [remoteOnly, config],
+  );
+
   const saveDisabled = useMemo(() => {
     return (
       name.trim() === "" ||
       isLoading ||
       !!jsonError ||
       !!nameError ||
+      isStdioBlocked ||
       !isMaybeMCPServerConfig(config)
     );
-  }, [isLoading, jsonError, nameError, config, name]);
+  }, [isLoading, jsonError, nameError, config, name, isStdioBlocked]);
 
   // Validate
   const validateConfig = (jsonConfig: unknown): boolean => {
+    if (remoteOnly && isMaybeStdioConfig(jsonConfig)) {
+      handleErrorWithToast(
+        new Error(t("MCP.localServersNotAvailableOnThisDeployment")),
+        "mcp-editor-error",
+      );
+      return false;
+    }
     const result = isMaybeRemoteConfig(jsonConfig)
       ? MCPRemoteConfigZodSchema.safeParse(jsonConfig)
       : MCPStdioConfigZodSchema.safeParse(jsonConfig);
@@ -200,6 +234,17 @@ export default function MCPEditor({
             <Label htmlFor="config">Config</Label>
           </div>
 
+          {isStdioBlocked && (
+            <Alert variant="destructive" className="border-destructive">
+              <AlertTitle className="text-sm font-semibold">
+                {t("MCP.localServersNotAvailableTitle")}
+              </AlertTitle>
+              <AlertDescription className="text-xs">
+                {t("MCP.localServersNotAvailableOnThisDeployment")}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Split view for config editor */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Left side: Textarea for editing */}
@@ -210,7 +255,11 @@ export default function MCPEditor({
                 onChange={(e) => handleConfigChange(e.target.value)}
                 data-testid="mcp-config-editor"
                 className="font-mono h-[40vh] resize-none overflow-y-auto"
-                placeholder={STDIO_ARGS_ENV_PLACEHOLDER}
+                placeholder={
+                  remoteOnly
+                    ? REMOTE_ONLY_PLACEHOLDER
+                    : STDIO_ARGS_ENV_PLACEHOLDER
+                }
               />
             </div>
 

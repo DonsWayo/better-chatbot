@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import {
   PROMPT_PASTE_MAX_LENGTH,
   COOKIE_KEY_SIDEBAR_STATE,
@@ -136,5 +136,92 @@ describe("const — BASE_URL", () => {
 
   it("starts with http:// or https://", () => {
     expect(BASE_URL.startsWith("http://") || BASE_URL.startsWith("https://")).toBe(true);
+  });
+});
+
+describe("const — IS_MCP_SERVER_REMOTE_ONLY (cloud vs desktop policy)", () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+  const ORIGINAL_VERCEL = process.env.VERCEL;
+  const ORIGINAL_DESKTOP = process.env.DESKTOP_APP;
+  const ORIGINAL_ALLOW_LOCAL = process.env.MCP_ALLOW_LOCAL_SERVERS;
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+    vi.stubEnv("NODE_ENV", ORIGINAL_NODE_ENV ?? "test");
+    if (ORIGINAL_VERCEL === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = ORIGINAL_VERCEL;
+    if (ORIGINAL_DESKTOP === undefined) delete process.env.DESKTOP_APP;
+    else process.env.DESKTOP_APP = ORIGINAL_DESKTOP;
+    if (ORIGINAL_ALLOW_LOCAL === undefined)
+      delete process.env.MCP_ALLOW_LOCAL_SERVERS;
+    else process.env.MCP_ALLOW_LOCAL_SERVERS = ORIGINAL_ALLOW_LOCAL;
+    vi.unstubAllEnvs();
+  });
+
+  it("is remote-only in production cloud (no desktop, no opt-in)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.VERCEL;
+    delete process.env.DESKTOP_APP;
+    delete process.env.MCP_ALLOW_LOCAL_SERVERS;
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(true);
+  });
+
+  it("allows local servers in the desktop app (DESKTOP_APP=1)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.VERCEL;
+    process.env.DESKTOP_APP = "1";
+    delete process.env.MCP_ALLOW_LOCAL_SERVERS;
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(false);
+  });
+
+  it("allows local servers with explicit MCP_ALLOW_LOCAL_SERVERS=true opt-in", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.VERCEL;
+    delete process.env.DESKTOP_APP;
+    process.env.MCP_ALLOW_LOCAL_SERVERS = "true";
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(false);
+  });
+
+  it("allows local servers in local dev (NODE_ENV !== production)", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    delete process.env.VERCEL;
+    delete process.env.DESKTOP_APP;
+    delete process.env.MCP_ALLOW_LOCAL_SERVERS;
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(false);
+  });
+
+  it("Vercel is always remote-only, even with desktop/opt-in flags", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.VERCEL = "1";
+    process.env.DESKTOP_APP = "1";
+    process.env.MCP_ALLOW_LOCAL_SERVERS = "true";
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(true);
+  });
+
+  it("MCP_ALLOW_LOCAL_SERVERS must be exactly 'true' (not '1')", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.VERCEL;
+    delete process.env.DESKTOP_APP;
+    process.env.MCP_ALLOW_LOCAL_SERVERS = "1";
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(true);
+  });
+
+  it("DESKTOP_APP must be exactly '1' (not 'true')", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.VERCEL;
+    process.env.DESKTOP_APP = "true";
+    delete process.env.MCP_ALLOW_LOCAL_SERVERS;
+    const { IS_MCP_SERVER_REMOTE_ONLY } = await import("./const");
+    expect(IS_MCP_SERVER_REMOTE_ONLY).toBe(true);
   });
 });

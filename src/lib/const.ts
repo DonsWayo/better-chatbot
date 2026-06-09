@@ -9,7 +9,29 @@ export const PROMPT_PASTE_MAX_LENGTH = 1000;
 export const IS_VERCEL_ENV = process.env.VERCEL === "1";
 export const IS_DOCKER_ENV = process.env.DOCKER_BUILD === "1";
 
-export const IS_MCP_SERVER_REMOTE_ONLY = IS_VERCEL_ENV;
+/**
+ * Local stdio MCP servers spawn a child process on the host that runs the app.
+ * That is only safe on the user's own machine (desktop app / local dev) —
+ * never on a shared cloud deployment (Vercel, EKS, Docker), where it would let
+ * any user execute arbitrary commands inside the server.
+ *
+ * This mirrors how Claude works: claude.ai (web) supports remote MCP
+ * connectors only (URL-based, Streamable HTTP/SSE with OAuth), while local
+ * stdio servers are exclusive to Claude Desktop, where they run on the user's
+ * machine.
+ *
+ * - DESKTOP_APP=1 is set by the desktop (Electron) build.
+ * - MCP_ALLOW_LOCAL_SERVERS=true is an explicit opt-in for self-hosted,
+ *   single-user production builds running on a trusted machine.
+ * - Local dev (NODE_ENV !== "production") allows stdio for development.
+ * - Vercel is always remote-only: stdio cannot work there at all.
+ */
+export const IS_DESKTOP_APP = process.env.DESKTOP_APP === "1";
+export const MCP_ALLOW_LOCAL_SERVERS =
+  process.env.MCP_ALLOW_LOCAL_SERVERS === "true";
+
+export const IS_MCP_SERVER_REMOTE_ONLY =
+  IS_VERCEL_ENV || !(IS_DESKTOP_APP || MCP_ALLOW_LOCAL_SERVERS || IS_DEV);
 export const FILE_BASED_MCP_CONFIG =
   process.env.FILE_BASED_MCP_CONFIG === "true";
 
