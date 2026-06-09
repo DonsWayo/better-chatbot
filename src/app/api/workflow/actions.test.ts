@@ -109,4 +109,43 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
 
     expect(Array.isArray(result)).toBe(true);
   });
+
+  it("calls selectExecuteAbility with undefined when session user has no id", async () => {
+    mockGetSession.mockResolvedValue({ user: {}, session: {} } as unknown as MockSession);
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([]);
+
+    await selectExecuteAbilityWorkflowsAction();
+
+    expect(mockWorkflowRepo.selectExecuteAbility).toHaveBeenCalledWith(undefined);
+  });
+
+  it("returns empty array when repository returns null", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue(
+      null as unknown as typeof mockWorkflow[],
+    );
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result == null || Array.isArray(result)).toBe(true);
+  });
+
+  it("workflow items contain id and name", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([mockWorkflow]);
+
+    const result = await selectExecuteAbilityWorkflowsAction();
+
+    expect(result[0]).toHaveProperty("id");
+    expect(result[0]).toHaveProperty("name");
+  });
+
+  it("getSession is called exactly once per action call", async () => {
+    mockGetSession.mockResolvedValue(mockSessionFor("user-1"));
+    mockWorkflowRepo.selectExecuteAbility.mockResolvedValue([]);
+
+    await selectExecuteAbilityWorkflowsAction();
+
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+  });
 });

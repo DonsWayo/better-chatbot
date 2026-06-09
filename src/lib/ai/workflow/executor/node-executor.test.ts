@@ -159,4 +159,51 @@ describe("templateNodeExecutor", () => {
     const result = templateNodeExecutor({ node, state });
     expect((result.output as Record<string, unknown>).template).toBe("");
   });
+
+  it("result output is an object", () => {
+    const state = makeState({});
+    const node = makeTemplateNode({ type: "string" });
+    const result = templateNodeExecutor({ node, state });
+    expect(typeof result.output).toBe("object");
+  });
+});
+
+describe("inputNodeExecutor — additional invariants", () => {
+  it("query values are preserved in output", () => {
+    const query = { nested: { a: 1, b: [1, 2, 3] } };
+    const state = makeState(query);
+    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    expect(result.output).toEqual(query);
+  });
+
+  it("query with numeric values is returned correctly", () => {
+    const query = { x: 42, y: -7.5 };
+    const state = makeState(query);
+    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    expect((result.output as Record<string, unknown>).x).toBe(42);
+    expect((result.output as Record<string, unknown>).y).toBe(-7.5);
+  });
+
+  it("output is synchronous (not a promise)", () => {
+    const state = makeState({ a: 1 });
+    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    expect(result).not.toBeInstanceOf(Promise);
+  });
+});
+
+describe("outputNodeExecutor — additional invariants", () => {
+  it("output keys match outputData keys", () => {
+    const state = makeState({}, { "n1": { val: "x" } });
+    const node = makeOutputNode([
+      { key: "myKey", source: { nodeId: "n1", path: ["val"] } },
+    ]);
+    const result = outputNodeExecutor({ node, state });
+    expect(Object.keys(result.output as object)).toContain("myKey");
+  });
+
+  it("output is synchronous", () => {
+    const state = makeState({}, {});
+    const result = outputNodeExecutor({ node: makeOutputNode([]), state });
+    expect(result).not.toBeInstanceOf(Promise);
+  });
 });

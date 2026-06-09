@@ -89,4 +89,25 @@ describe("GET /api/workflow/tools", () => {
     expect(names).toContain("Workflow A");
     expect(names).toContain("Workflow B");
   });
+
+  it("does not call repository when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(workflowRepositoryMock.selectExecuteAbility).not.toHaveBeenCalled();
+  });
+
+  it("calls repository exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectExecuteAbility.mockResolvedValue([]);
+    await GET();
+    expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledTimes(1);
+  });
+
+  it("workflow items contain userId field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectExecuteAbility.mockResolvedValue(WORKFLOWS);
+    const res = await GET();
+    const body = await res.json() as { userId: string }[];
+    expect(body[0]).toHaveProperty("userId");
+  });
 });
