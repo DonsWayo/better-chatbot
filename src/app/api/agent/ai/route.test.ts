@@ -124,3 +124,31 @@ describe("POST /api/agent/ai", () => {
     expect(typeof capturedSystem).toBe("string");
   });
 });
+
+describe("POST /api/agent/ai — additional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("streamObject never called when unauthenticated (guard chain)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build agent" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns Response instance on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-resp" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "generate an agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+});

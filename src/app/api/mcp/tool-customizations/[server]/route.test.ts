@@ -125,3 +125,29 @@ describe("GET /api/mcp/tool-customizations/[server]", () => {
     expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/mcp/tool-customizations/[server] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("repository never called for different server when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "other-server" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
+  });
+
+  it("200 status for authenticated user even with empty customizations", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-empty" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-empty" }) });
+    expect(res.status).toBe(200);
+  });
+});

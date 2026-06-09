@@ -127,3 +127,29 @@ describe("GET /api/workflow/tools", () => {
     expect(Array.isArray(body)).toBe(true);
   });
 });
+
+describe("GET /api/workflow/tools — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("selectExecuteAbility called with correct userId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "the-user-id" } });
+    selectExecuteAbilityMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectExecuteAbilityMock).toHaveBeenCalledWith("the-user-id");
+  });
+
+  it("response status is 200 regardless of session state", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+  });
+});

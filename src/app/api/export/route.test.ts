@@ -129,3 +129,38 @@ describe("GET /api/export", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("GET /api/export — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 error body contains specific error message from exception", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockRejectedValueOnce(new Error("unique db error xyz"));
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.error).toContain("unique db error xyz");
+  });
+
+  it("repository never called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).not.toHaveBeenCalled();
+  });
+
+  it("repository called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectSummaryByExporterIdMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET();
+    expect(selectSummaryByExporterIdMock).toHaveBeenCalledTimes(1);
+  });
+});
