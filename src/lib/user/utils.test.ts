@@ -28,6 +28,17 @@ describe("User Utils", () => {
       // But still return user image when available
       expect(getUserAvatar({ image: "custom.jpg" })).toBe("custom.jpg");
     });
+
+    it("only 'true' (exact) disables default avatar — other truthy values do not", () => {
+      process.env.DISABLE_DEFAULT_AVATAR = "1";
+      expect(getUserAvatar({ image: null })).toBe("/pf.png");
+
+      process.env.DISABLE_DEFAULT_AVATAR = "TRUE";
+      expect(getUserAvatar({ image: null })).toBe("/pf.png");
+
+      process.env.DISABLE_DEFAULT_AVATAR = "yes";
+      expect(getUserAvatar({ image: null })).toBe("/pf.png");
+    });
   });
 
   describe("getIsUserAdmin - Role Parsing Logic", () => {
@@ -61,6 +72,19 @@ describe("User Utils", () => {
     });
     it("should handle undefined user", () => {
       expect(getIsUserAdmin(undefined)).toBe(false);
+    });
+
+    it("admin as substring of another word is not matched", () => {
+      expect(getIsUserAdmin({ role: "administrator" })).toBe(false);
+      expect(getIsUserAdmin({ role: "super_admin" })).toBe(false);
+    });
+
+    it("admin first in comma-separated list is detected", () => {
+      expect(getIsUserAdmin({ role: `${USER_ROLES.ADMIN},${USER_ROLES.USER}` })).toBe(true);
+    });
+
+    it("admin last in comma-separated list is detected", () => {
+      expect(getIsUserAdmin({ role: `${USER_ROLES.USER},${USER_ROLES.ADMIN}` })).toBe(true);
     });
   });
 });

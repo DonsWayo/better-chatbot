@@ -64,4 +64,39 @@ describe("equal", () => {
     expect(equal([], {})).toBe(false);
     expect(equal(new Date(), {})).toBe(false);
   });
+
+  it("treats 0 and -0 as equal (=== behavior)", () => {
+    expect(equal(0, -0)).toBe(true);
+    expect(equal(-0, 0)).toBe(true);
+  });
+
+  it("compares empty objects and arrays", () => {
+    expect(equal({}, {})).toBe(true);
+    expect(equal([], [])).toBe(true);
+  });
+
+  it("compares object with array-valued property", () => {
+    expect(equal({ a: [1, 2] }, { a: [1, 2] })).toBe(true);
+    expect(equal({ a: [1, 2] }, { a: [1, 3] })).toBe(false);
+  });
+
+  it("compares 3-level deep nested objects", () => {
+    expect(equal({ a: { b: { c: 1 } } }, { a: { b: { c: 1 } } })).toBe(true);
+    expect(equal({ a: { b: { c: 1 } } }, { a: { b: { c: 2 } } })).toBe(false);
+  });
+
+  it("returns false for null vs false", () => {
+    expect(equal(null, false)).toBe(false);
+    expect(equal(0, null)).toBe(false);
+  });
+
+  it("handles empty string equality", () => {
+    expect(equal("", "")).toBe(true);
+    expect(equal("", false)).toBe(false);
+    expect(equal("", null)).toBe(false);
+  });
+
+  it("object key order does not affect equality", () => {
+    expect(equal({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true);
+  });
 });

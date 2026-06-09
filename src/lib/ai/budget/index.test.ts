@@ -76,4 +76,29 @@ describe("estimateCostUsd", () => {
     expect(liteCost).toBeLessThan(gptCost);
     expect(liteCost).toBeLessThan(opusCost);
   });
+
+  it("cost ordering: claude-opus > gpt-5.1 > gemini-flash > gemini-flash-lite", () => {
+    const T = 1_000_000;
+    const opus = estimateCostUsd("claude-opus-4.8", T, T);
+    const gpt = estimateCostUsd("gpt-5.1", T, T);
+    const flash = estimateCostUsd("gemini-2.5-flash", T, T);
+    const lite = estimateCostUsd("gemini-2.5-flash-lite", T, T);
+    expect(opus).toBeGreaterThan(gpt);
+    expect(gpt).toBeGreaterThan(flash);
+    expect(flash).toBeGreaterThan(lite);
+  });
+
+  it("always returns a non-negative number", () => {
+    const models = ["claude-opus-4.8", "gpt-5.1", "gemini-2.5-flash", "unknown-model"];
+    for (const model of models) {
+      expect(estimateCostUsd(model, 1000, 1000)).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("cost is additive: separate calls sum to combined call", () => {
+    const a = estimateCostUsd("gpt-5.1", 100_000, 0);
+    const b = estimateCostUsd("gpt-5.1", 0, 100_000);
+    const combined = estimateCostUsd("gpt-5.1", 100_000, 100_000);
+    expect(a + b).toBeCloseTo(combined, 10);
+  });
 });
