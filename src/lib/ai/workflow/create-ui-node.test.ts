@@ -1,86 +1,161 @@
-import { describe, it, expect, vi } from "vitest";
-
-vi.mock("lib/utils", () => ({
-  generateUUID: vi.fn(() => "test-uuid"),
-}));
-vi.mock("@xyflow/react", () => ({}));
-vi.mock("ts-edge", () => ({}));
-vi.mock("ai", () => ({}));
-vi.mock("lib/utils", () => ({
-  generateUUID: vi.fn(() => "test-uuid"),
-  isString: (v: any) => typeof v === "string",
-  exclude: (obj: any, keys: string[]) => {
-    const r = { ...obj };
-    for (const k of keys) delete r[k];
-    return r;
-  },
-  objectFlow: () => ({}),
-}));
-
-import { createUINode } from "./create-ui-node";
+import { describe, it, expect } from "vitest";
+import {
+  createUINode,
+  defaultLLMNodeOutputSchema,
+  defaultTemplateNodeOutputSchema,
+} from "./create-ui-node";
 import { NodeKind } from "./workflow.interface";
 
 describe("createUINode", () => {
-  it("creates an Input node with generated UUID", () => {
+  it("creates an Input node with expected kind", () => {
     const node = createUINode(NodeKind.Input);
-    expect(node.id).toBe("test-uuid");
     expect(node.data.kind).toBe(NodeKind.Input);
-    expect(node.data.name).toBe(NodeKind.Input.toUpperCase());
+  });
+
+  it("generates a UUID id by default", () => {
+    const node = createUINode(NodeKind.Input);
+    expect(typeof node.id).toBe("string");
+    expect(node.id.length).toBeGreaterThan(0);
+  });
+
+  it("uses provided id option", () => {
+    const node = createUINode(NodeKind.Input, { id: "fixed-id" });
+    expect(node.id).toBe("fixed-id");
+    expect(node.data.id).toBe("fixed-id");
   });
 
   it("uses provided position", () => {
-    const node = createUINode(NodeKind.LLM, { position: { x: 100, y: 200 } });
+    const node = createUINode(NodeKind.Input, { position: { x: 100, y: 200 } });
     expect(node.position).toEqual({ x: 100, y: 200 });
   });
 
-  it("defaults position to {x:0, y:0}", () => {
-    const node = createUINode(NodeKind.Tool);
+  it("defaults position to origin when not provided", () => {
+    const node = createUINode(NodeKind.Input);
     expect(node.position).toEqual({ x: 0, y: 0 });
   });
 
-  it("uses provided name", () => {
-    const node = createUINode(NodeKind.LLM, { name: "My LLM Node" });
-    expect(node.data.name).toBe("My LLM Node");
+  it("defaults name to uppercase kind", () => {
+    const node = createUINode(NodeKind.Input);
+    expect(node.data.name).toBe("INPUT");
   });
 
-  it("uses provided id", () => {
-    const node = createUINode(NodeKind.Input, { id: "custom-id" });
-    expect(node.id).toBe("custom-id");
+  it("uses provided name option", () => {
+    const node = createUINode(NodeKind.Input, { name: "My Input" });
+    expect(node.data.name).toBe("My Input");
   });
 
-  it("sets isNew:true in runtime", () => {
-    const node = createUINode(NodeKind.Output);
+  it("marks node as new via runtime flag", () => {
+    const node = createUINode(NodeKind.Input);
     expect(node.data.runtime?.isNew).toBe(true);
   });
 
-  it("LLM node has output schema with text property", () => {
+  it("sets type to 'default'", () => {
     const node = createUINode(NodeKind.LLM);
-    const props = node.data.outputSchema?.properties ?? {};
-    expect(typeof props).toBe("object");
+    expect(node.type).toBe("default");
   });
+});
 
-  it("Output node has outputData array", () => {
+describe("createUINode — Output node", () => {
+  it("initializes outputData as empty array", () => {
     const node = createUINode(NodeKind.Output);
-    expect(Array.isArray(node.data.outputData)).toBe(true);
+    expect((node.data as any).outputData).toEqual([]);
+  });
+});
+
+describe("createUINode — LLM node", () => {
+  it("has the default LLM output schema", () => {
+    const node = createUINode(NodeKind.LLM);
+    expect(node.data.outputSchema).toEqual(defaultLLMNodeOutputSchema);
   });
 
-  it("Condition node has if/else branches", () => {
+  it("initializes with one empty user message", () => {
+    const node = createUINode(NodeKind.LLM);
+    const data = node.data as any;
+    expect(data.messages).toHaveLength(1);
+    expect(data.messages[0].role).toBe("user");
+  });
+});
+
+describe("createUINode — Condition node", () => {
+  it("initializes branches with if and else", () => {
     const node = createUINode(NodeKind.Condition);
-    expect(node.data.branches?.if).toBeDefined();
-    expect(node.data.branches?.else).toBeDefined();
-    expect(node.data.branches?.if.type).toBe("if");
-    expect(node.data.branches?.else.type).toBe("else");
+    const data = node.data as any;
+    expect(data.branches.if).toBeDefined();
+    expect(data.branches.else).toBeDefined();
+    expect(data.branches.if.type).toBe("if");
+    expect(data.branches.else.type).toBe("else");
   });
 
-  it("Tool node has tool_result in outputSchema", () => {
+  it("if branch has empty conditions", () => {
+    const node = createUINode(NodeKind.Condition);
+    const data = node.data as any;
+    expect(data.branches.if.conditions).toEqual([]);
+    expect(data.branches.if.logicalOperator).toBe("AND");
+  });
+});
+
+describe("createUINode — Tool node", () => {
+  it("sets tool_result in output schema properties", () => {
     const node = createUINode(NodeKind.Tool);
-    expect(node.data.outputSchema?.properties?.tool_result).toBeDefined();
+    expect(node.data.outputSchema.properties?.tool_result).toBeDefined();
+    expect(node.data.outputSchema.properties?.tool_result).toMatchObject({ type: "object" });
+  });
+});
+
+describe("createUINode — HTTP node", () => {
+  it("sets default method to GET", () => {
+    const node = createUINode(NodeKind.Http);
+    expect((node.data as any).method).toBe("GET");
   });
 
-  it("Http node has response schema with status/body fields", () => {
+  it("initializes headers and query as empty arrays", () => {
     const node = createUINode(NodeKind.Http);
-    const responseProps = (node.data.outputSchema?.properties?.response as any)?.properties ?? {};
-    expect(responseProps.status).toBeDefined();
-    expect(responseProps.body).toBeDefined();
+    const data = node.data as any;
+    expect(data.headers).toEqual([]);
+    expect(data.query).toEqual([]);
+  });
+
+  it("sets default timeout to 30000ms", () => {
+    const node = createUINode(NodeKind.Http);
+    expect((node.data as any).timeout).toBe(30000);
+  });
+
+  it("has response object in output schema", () => {
+    const node = createUINode(NodeKind.Http);
+    expect(node.data.outputSchema.properties?.response).toBeDefined();
+    const responseSchema = node.data.outputSchema.properties?.response as any;
+    expect(responseSchema.properties?.status).toMatchObject({ type: "number" });
+    expect(responseSchema.properties?.ok).toMatchObject({ type: "boolean" });
+  });
+});
+
+describe("createUINode — Template node", () => {
+  it("has the default template output schema", () => {
+    const node = createUINode(NodeKind.Template);
+    expect(node.data.outputSchema).toEqual(defaultTemplateNodeOutputSchema);
+  });
+
+  it("initializes template with tiptap type and empty content", () => {
+    const node = createUINode(NodeKind.Template);
+    const data = node.data as any;
+    expect(data.template.type).toBe("tiptap");
+    expect(data.template.tiptap.type).toBe("doc");
+    expect(data.template.tiptap.content).toEqual([]);
+  });
+});
+
+describe("defaultLLMNodeOutputSchema", () => {
+  it("has answer as string type", () => {
+    expect(defaultLLMNodeOutputSchema.properties?.answer).toMatchObject({ type: "string" });
+  });
+
+  it("has totalTokens as number type", () => {
+    expect(defaultLLMNodeOutputSchema.properties?.totalTokens).toMatchObject({ type: "number" });
+  });
+});
+
+describe("defaultTemplateNodeOutputSchema", () => {
+  it("has template as string type", () => {
+    expect(defaultTemplateNodeOutputSchema.properties?.template).toMatchObject({ type: "string" });
   });
 });
