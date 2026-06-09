@@ -63,4 +63,39 @@ describe("routeModel", () => {
     expect(d.candidates.length).toBeGreaterThan(0);
     expect(d.candidates[0]).toEqual(d.model);
   });
+
+  it("falls back to top tier when allow-list blocks all candidates", () => {
+    const d = routeModel({
+      text: "hello",
+      allowedModels: [{ provider: "openRouter", model: "nonexistent-model" }],
+    });
+    // When allow-list blocks everything, top tier for general = fast (gemini-2.5-flash)
+    expect(d.model.model).toBe("gemini-2.5-flash");
+  });
+
+  it("reason string contains the inferred taskClass", () => {
+    const d = routeModel({ text: "fix this ```js\nconst x = 1\n```" });
+    expect(d.reason).toContain("code");
+  });
+
+  it("reason string contains the chosen tier name", () => {
+    const d = routeModel({ text: "translate 'hello' to Spanish" });
+    expect(d.reason).toContain("cheap");
+  });
+
+  it("empty text routes to general", () => {
+    const d = routeModel({ text: "" });
+    expect(d.taskClass).toBe("general");
+  });
+
+  it("declaredTaskClass can force vision even without hasImage", () => {
+    const d = routeModel({ text: "anything", declaredTaskClass: "vision" });
+    expect(d.taskClass).toBe("vision");
+    expect(d.model.model).toBe("gemini-2.5-flash");
+  });
+
+  it("totalChars exactly above LONG_CONTEXT_CHARS triggers long_context", () => {
+    const d = routeModel({ text: "continue", totalChars: 8001 });
+    expect(d.taskClass).toBe("long_context");
+  });
 });

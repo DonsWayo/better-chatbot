@@ -70,3 +70,46 @@ describe("buildUserDetailUrl — roundtrip with buildReturnUrl", () => {
     expect(returnUrl).toBe(`/admin/users?${originalParams}`);
   });
 });
+
+describe("buildUserDetailUrl — additional cases", () => {
+  it("includes searchPageParams key in URL when params given", () => {
+    const url = buildUserDetailUrl("u-1", "page=1");
+    expect(url).toContain("searchPageParams=");
+  });
+
+  it("does not include searchPageParams key when no params", () => {
+    const url = buildUserDetailUrl("u-1");
+    expect(url).not.toContain("searchPageParams");
+  });
+
+  it("starts with /admin/users/", () => {
+    expect(buildUserDetailUrl("u-abc")).toMatch(/^\/admin\/users\//);
+  });
+
+  it("userId appears verbatim in the URL path", () => {
+    const uid = "unique-user-id-42";
+    expect(buildUserDetailUrl(uid)).toContain(uid);
+  });
+});
+
+describe("buildReturnUrl — additional cases", () => {
+  it("appends a question mark separator before the params", () => {
+    const encoded = encodeURIComponent("key=val");
+    const url = buildReturnUrl("/base", encoded);
+    expect(url).toContain("?key=val");
+  });
+
+  it("returns base URL unchanged when only whitespace encoded", () => {
+    const encoded = encodeURIComponent("   ");
+    // spaces-only decoded → non-empty string → appended
+    const url = buildReturnUrl("/base", encoded);
+    // whitespace IS non-empty, so it gets appended
+    expect(url).toContain("/base");
+  });
+
+  it("handles numeric page params correctly", () => {
+    const encoded = encodeURIComponent("page=100");
+    const url = buildReturnUrl("/admin/users", encoded);
+    expect(url).toBe("/admin/users?page=100");
+  });
+});

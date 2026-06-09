@@ -87,3 +87,79 @@ describe("GET /api/mcp/oauth/callback", () => {
     expect(text).toContain("Authentication Failed");
   });
 });
+
+describe("GET /api/mcp/oauth/callback — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getSessionByState when error param present", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest({ error: "access_denied" }));
+    expect(getSessionByStateMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls getSessionByState when code is missing", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest({ state: "xyz" }));
+    expect(getSessionByStateMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls getSessionByState when state is missing", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest({ code: "abc" }));
+    expect(getSessionByStateMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls finishAuth when session not found", async () => {
+    getSessionByStateMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest({ code: "abc123", state: "xyz" }));
+    expect(finishAuthMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls refreshClient when finishAuth throws", async () => {
+    getSessionByStateMock.mockResolvedValueOnce({ mcpServerId: "mcp-2" });
+    getClientMock.mockResolvedValueOnce({ client: { finishAuth: finishAuthMock } });
+    finishAuthMock.mockRejectedValueOnce(new Error("token exchange failed"));
+    const { GET } = await import("./route");
+    await GET(makeRequest({ code: "bad-code", state: "state-val" }));
+    expect(refreshClientMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/mcp/oauth/callback — HTML content", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("success HTML contains window.close()", async () => {
+    getSessionByStateMock.mockResolvedValueOnce({ mcpServerId: "mcp-1" });
+    getClientMock.mockResolvedValueOnce({ client: { finishAuth: finishAuthMock } });
+    finishAuthMock.mockResolvedValueOnce(undefined);
+    refreshClientMock.mockResolvedValueOnce(undefined);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ code: "auth-code", state: "state-val" }));
+    const text = await res.text();
+    expect(text).toContain("window.close()");
+  });
+
+  it("error HTML also contains window.close()", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ error: "access_denied" }));
+    const text = await res.text();
+    expect(text).toContain("window.close()");
+  });
+
+  it("success response has Content-Type text/html", async () => {
+    getSessionByStateMock.mockResolvedValueOnce({ mcpServerId: "mcp-1" });
+    getClientMock.mockResolvedValueOnce({ client: { finishAuth: finishAuthMock } });
+    finishAuthMock.mockResolvedValueOnce(undefined);
+    refreshClientMock.mockResolvedValueOnce(undefined);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ code: "auth-code", state: "state-val" }));
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+
+  it("error response has Content-Type text/html", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ error: "access_denied" }));
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+});
