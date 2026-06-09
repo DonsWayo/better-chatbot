@@ -203,4 +203,73 @@ describe("Admin Server - Business Logic", () => {
       expect(DEFAULT_SORT_DIRECTION).toBe("desc");
     });
   });
+
+  describe("requireAdminSession - session checks", () => {
+    it("throws when getSession returns null", async () => {
+      vi.mocked(getSession).mockResolvedValue(null);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+      await expect(requireAdminSession()).rejects.toThrow("Unauthorized: No session found");
+    });
+
+    it("calls requireAdminPermission when session exists", async () => {
+      const sess = mockSessionFor({ id: "admin-1" });
+      vi.mocked(getSession).mockResolvedValue(sess);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+      await requireAdminSession();
+      expect(requireAdminPermission).toHaveBeenCalledWith("access admin functions");
+    });
+
+    it("calls getSession exactly once", async () => {
+      const sess = mockSessionFor({ id: "admin-1" });
+      vi.mocked(getSession).mockResolvedValue(sess);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+      await requireAdminSession();
+      expect(getSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns the session on success", async () => {
+      const sess = mockSessionFor({ id: "admin-1", role: USER_ROLES.ADMIN });
+      vi.mocked(getSession).mockResolvedValue(sess);
+      vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
+      const result = await requireAdminSession();
+      expect(result).toEqual(sess);
+    });
+  });
+
+  describe("getAdminUsers - error handling and invariants", () => {
+    beforeEach(() => {
+      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "admin-1", role: USER_ROLES.ADMIN }));
+      vi.mocked(canListUsers).mockResolvedValue(true);
+      vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
+    });
+
+    it("propagates repository errors", async () => {
+      vi.mocked(pgAdminRepository.getUsers).mockRejectedValue(new Error("DB failure"));
+      await expect(getAdminUsers()).rejects.toThrow("DB failure");
+    });
+
+    it("calls getUsers exactly once per call", async () => {
+      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(mockPaginated({}));
+      await getAdminUsers();
+      expect(pgAdminRepository.getUsers).toHaveBeenCalledTimes(1);
+    });
+
+    it("passes filterField and filterValue when provided", async () => {
+      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(mockPaginated({}));
+      await getAdminUsers({ filterField: "role" as const, filterValue: "admin" });
+      expect(pgAdminRepository.getUsers).toHaveBeenCalledWith(
+        expect.objectContaining({ filterField: "role", filterValue: "admin" }),
+      );
+    });
+
+    it("returns result from repository unchanged", async () => {
+      const paginated = mockPaginated({
+        users: [{ id: "u1" } as unknown as AdminUsersPaginated["users"][number]],
+        total: 1,
+      });
+      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(paginated);
+      const result = await getAdminUsers();
+      expect(result).toBe(paginated);
+    });
+  });
 });

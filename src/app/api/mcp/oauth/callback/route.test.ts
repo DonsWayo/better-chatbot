@@ -137,4 +137,26 @@ describe("GET /api/mcp/oauth/callback", () => {
     await GET(makeRequest({ code: "c", state: "my-state-123" }));
     expect(mcpOAuthRepositoryMock.getSessionByState).toHaveBeenCalledWith("my-state-123");
   });
+
+  it("calls getSessionByState exactly once per request", async () => {
+    mcpOAuthRepositoryMock.getSessionByState.mockResolvedValue(OAUTH_SESSION);
+    mcpClientsManagerMock.getClient.mockResolvedValue(makeClient());
+    await GET(makeRequest({ code: "code", state: "state" }));
+    expect(mcpOAuthRepositoryMock.getSessionByState).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls getClient with mcpServerId from session", async () => {
+    mcpOAuthRepositoryMock.getSessionByState.mockResolvedValue({ mcpServerId: "srv-abc" });
+    const client = makeClient();
+    mcpClientsManagerMock.getClient.mockResolvedValue(client);
+    await GET(makeRequest({ code: "code", state: "state" }));
+    expect(mcpClientsManagerMock.getClient).toHaveBeenCalledWith("srv-abc");
+  });
+
+  it("refreshes with correct mcpServerId from session", async () => {
+    mcpOAuthRepositoryMock.getSessionByState.mockResolvedValue({ mcpServerId: "srv-xyz" });
+    mcpClientsManagerMock.getClient.mockResolvedValue(makeClient());
+    await GET(makeRequest({ code: "code", state: "state" }));
+    expect(mcpClientsManagerMock.refreshClient).toHaveBeenCalledWith("srv-xyz");
+  });
 });

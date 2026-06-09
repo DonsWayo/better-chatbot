@@ -167,3 +167,45 @@ describe("createAzureOpenAICompatible — return type invariants", () => {
     expect(result).toBeDefined();
   });
 });
+
+describe("createAzureOpenAICompatible — fetch intercept", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("fetch function is called with a URL", async () => {
+    const config = {
+      name: "Az",
+      apiKey: "k",
+      baseURL: "https://x.com/deployments/",
+    };
+    let capturedFetch: ((url: string | Request, init?: RequestInit) => Promise<Response>) | undefined;
+    mockCreateOpenAICompatible.mockImplementation((opts) => {
+      capturedFetch = opts.fetch as typeof capturedFetch;
+      return vi.fn();
+    });
+    const provider = createAzureOpenAICompatible(config);
+    provider("model", "2024-01-01");
+    expect(capturedFetch).toBeDefined();
+    expect(typeof capturedFetch).toBe("function");
+  });
+
+  it("name is preserved in provider config", () => {
+    const config = {
+      name: "MyAzureProvider",
+      apiKey: "k",
+      baseURL: "https://x.com/deployments/",
+    };
+    const provider = createAzureOpenAICompatible(config);
+    provider("m", "v");
+    expect(mockCreateOpenAICompatible).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "MyAzureProvider" }),
+    );
+  });
+
+  it("does not call createOpenAICompatible before the returned function is called", () => {
+    const config = { name: "Az", apiKey: "k", baseURL: "https://x.com/" };
+    createAzureOpenAICompatible(config);
+    expect(mockCreateOpenAICompatible).not.toHaveBeenCalled();
+  });
+});

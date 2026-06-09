@@ -96,4 +96,23 @@ describe("GET /api/user/details", () => {
     const body = await res.json();
     expect(body.error).toBe("Failed to get user details");
   });
+
+  it("does not call getUser when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    getUserMock.mockResolvedValue(USER);
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call getUser when session has no user id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await GET();
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
 });

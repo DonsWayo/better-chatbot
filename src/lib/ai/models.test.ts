@@ -119,3 +119,35 @@ describe("isToolCallUnsupportedModel", () => {
     expect(typeof isToolCallUnsupportedModel(model)).toBe("boolean");
   });
 });
+
+describe("customModelProvider — provider name invariants", () => {
+  it("provider names are non-empty strings", () => {
+    const { customModelProvider } = modelsModule;
+    for (const entry of customModelProvider.modelsInfo) {
+      expect(entry.provider.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("model names are non-empty strings", () => {
+    const { customModelProvider } = modelsModule;
+    for (const entry of customModelProvider.modelsInfo) {
+      for (const model of entry.models) {
+        expect(model.name.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("getFilePartSupportedMimeTypes returns an array", () => {
+    const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
+    const model = customModelProvider.getModel({ provider: "openai", model: "gpt-4.1" });
+    expect(Array.isArray(getFilePartSupportedMimeTypes(model))).toBe(true);
+  });
+
+  it("getFilePartSupportedMimeTypes entries are strings", () => {
+    const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
+    const model = customModelProvider.getModel({ provider: "openai", model: "gpt-4.1" });
+    for (const mime of getFilePartSupportedMimeTypes(model)) {
+      expect(typeof mime).toBe("string");
+    }
+  });
+});

@@ -159,4 +159,26 @@ describe("GET /api/mcp/list", () => {
     const body = await res.json();
     expect(body).toEqual([]);
   });
+
+  it("returns JSON content-type", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
+    mcpRepositoryMock.selectAllForUser.mockResolvedValue([]);
+    mcpClientsManagerMock.getClients.mockResolvedValue([]);
+    const res = await GET();
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+
+  it("calls selectAllForUser exactly once", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "user-1" });
+    mcpRepositoryMock.selectAllForUser.mockResolvedValue([]);
+    mcpClientsManagerMock.getClients.mockResolvedValue([]);
+    await GET();
+    expect(mcpRepositoryMock.selectAllForUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectAllForUser when no current user", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    await GET();
+    expect(mcpRepositoryMock.selectAllForUser).not.toHaveBeenCalled();
+  });
 });

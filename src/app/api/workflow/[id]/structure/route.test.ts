@@ -141,4 +141,27 @@ describe("POST /api/workflow/[id]/structure", () => {
       false,
     );
   });
+
+  it("does not call saveStructure when access is denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
+    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+    expect(workflowRepositoryMock.saveStructure).not.toHaveBeenCalled();
+  });
+
+  it("getSession is called exactly once per POST request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
+    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveStructure is called exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.saveStructure.mockResolvedValue(undefined);
+    await POST(makeRequest(STRUCTURE_BODY), makeContext("wf-1"));
+    expect(workflowRepositoryMock.saveStructure).toHaveBeenCalledTimes(1);
+  });
 });

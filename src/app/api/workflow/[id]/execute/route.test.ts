@@ -161,4 +161,26 @@ describe("POST /api/workflow/[id]/execute", () => {
     const res = await POST(makeRequest({ query: "hello" }), makeContext("wf-1"));
     expect(res.headers.get("Content-Type")).toBe("application/octet-stream");
   });
+
+  it("does not call checkAccess when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(workflowRepositoryMock.checkAccess).not.toHaveBeenCalled();
+  });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(true);
+    workflowRepositoryMock.selectStructureById.mockResolvedValue(WORKFLOW);
+    createWorkflowExecutorMock.mockReturnValue(makeExecutorMock());
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectStructureById when access is denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.checkAccess.mockResolvedValue(false);
+    await POST(makeRequest({ query: "run" }), makeContext("wf-1"));
+    expect(workflowRepositoryMock.selectStructureById).not.toHaveBeenCalled();
+  });
 });

@@ -124,4 +124,25 @@ describe("DELETE /api/archive/[id]/items/[itemId]", () => {
     const body = await res.json();
     expect(body).toHaveProperty("success", true);
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call getArchiveById when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    expect(archiveRepositoryMock.getArchiveById).not.toHaveBeenCalled();
+  });
+
+  it("removeItemFromArchive called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
+    archiveRepositoryMock.getArchiveItems.mockResolvedValue([{ itemId: "item-1" }]);
+    archiveRepositoryMock.removeItemFromArchive.mockResolvedValue(undefined);
+    await DELETE(new Request("http://x"), makeContext("arch-1", "item-1"));
+    expect(archiveRepositoryMock.removeItemFromArchive).toHaveBeenCalledTimes(1);
+  });
 });

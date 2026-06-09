@@ -114,3 +114,36 @@ describe("checkStorageAction — s3 config edge cases", () => {
     expect(res.isValid).toBe(true);
   });
 });
+
+describe("checkStorageAction — no storage type configured", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    delete process.env.FILE_STORAGE_TYPE;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+    delete process.env.FILE_STORAGE_S3_BUCKET;
+    delete process.env.FILE_STORAGE_S3_REGION;
+    delete process.env.AWS_REGION;
+  });
+
+  it("returns an object even with no env vars set", async () => {
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(typeof res).toBe("object");
+    expect(res).not.toBeNull();
+  });
+
+  it("result has isValid key regardless of env configuration", async () => {
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res).toHaveProperty("isValid");
+    expect(typeof res.isValid).toBe("boolean");
+  });
+
+  it("vercel-blob with valid token is valid", async () => {
+    process.env.FILE_STORAGE_TYPE = "vercel-blob";
+    process.env.BLOB_READ_WRITE_TOKEN = "my-token";
+    const { checkStorageAction } = await importActions();
+    const res = await checkStorageAction();
+    expect(res.isValid).toBe(true);
+  });
+});
