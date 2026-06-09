@@ -93,4 +93,24 @@ describe("buildCompressionConfig — ordering", () => {
     const aggressive = buildCompressionConfig("aggressive");
     expect(aggressive.historyCompressionThreshold).toBeLessThan(light.historyCompressionThreshold);
   });
+
+  it("all fields are finite numbers for non-off levels", () => {
+    for (const level of ["light", "standard", "aggressive"] as const) {
+      const config = buildCompressionConfig(level);
+      expect(Number.isFinite(config.maxToolOutputChars)).toBe(true);
+      expect(Number.isFinite(config.recentMessageWindow)).toBe(true);
+      expect(Number.isFinite(config.maxOldAssistantMsgChars)).toBe(true);
+      expect(Number.isFinite(config.historyCompressionThreshold)).toBe(true);
+    }
+  });
+
+  it("multiple overrides are all applied", () => {
+    const config = buildCompressionConfig("standard", {
+      maxToolOutputChars: 111,
+      recentMessageWindow: 3,
+    });
+    expect(config.maxToolOutputChars).toBe(111);
+    expect(config.recentMessageWindow).toBe(3);
+    expect(config.level).toBe("standard");
+  });
 });

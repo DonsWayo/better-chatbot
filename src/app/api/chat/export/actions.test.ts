@@ -85,4 +85,30 @@ describe("addExportChatCommentAction", () => {
     const result = await addExportChatCommentAction({ exportId: "e1", content: {} as any });
     expect(result).toEqual(EXPECTED);
   });
+
+  it("calls insertComment exactly once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c-x" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    expect(insertCommentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates insertComment error to caller", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockRejectedValueOnce(new Error("insert failed"));
+    const { addExportChatCommentAction } = await import("./actions");
+    await expect(
+      addExportChatCommentAction({ exportId: "e1", content: {} as any }),
+    ).rejects.toThrow("insert failed");
+  });
+
+  it("does not pass parentId when not provided (undefined)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    const callArg = insertCommentMock.mock.calls[0][0];
+    expect(callArg.parentId === undefined || callArg.parentId === null).toBe(true);
+  });
 });

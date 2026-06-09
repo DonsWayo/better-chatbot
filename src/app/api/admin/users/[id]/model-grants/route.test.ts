@@ -92,3 +92,54 @@ describe("POST /api/admin/users/[id]/model-grants", () => {
     expect(mockGrantModel).toHaveBeenCalledWith("u3", "claude-opus-4.8", "a1", new Date(exp));
   });
 });
+
+describe("GET /api/admin/users/[id]/model-grants — guard chains", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListGrants.mockResolvedValue([]);
+  });
+
+  it("never calls listGrants when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(mockListGrants).not.toHaveBeenCalled();
+  });
+
+  it("never calls listGrants for non-admin", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET(makeGetRequest(), makeParams("u1") as any);
+    expect(mockListGrants).not.toHaveBeenCalled();
+  });
+
+  it("response body has grants array", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    mockListGrants.mockResolvedValue([fakeGrant]);
+    const { GET } = await import("./route");
+    const res = await GET(makeGetRequest(), makeParams("u1") as any);
+    const body = await res.json();
+    expect(Array.isArray(body.grants)).toBe(true);
+  });
+});
+
+describe("POST /api/admin/users/[id]/model-grants — guard chains", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGrantModel.mockResolvedValue(undefined);
+  });
+
+  it("never calls grantModel when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    expect(mockGrantModel).not.toHaveBeenCalled();
+  });
+
+  it("never calls grantModel for unknown model", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    await POST(makePostRequest({ modelId: "not-real" }), makeParams("u1") as any);
+    expect(mockGrantModel).not.toHaveBeenCalled();
+  });
+});
