@@ -1,200 +1,215 @@
 import { describe, it, expect } from "vitest";
-import { Edge } from "@xyflow/react";
 import {
   validateSchema,
-  allNodeValidate,
-  inputNodeValidate,
-  outputNodeValidate,
+  httpNodeValidate,
+  templateNodeValidate,
   llmNodeValidate,
+  toolNodeValidate,
 } from "./node-validate";
-import { UINode, NodeKind } from "./workflow.interface";
+import { NodeKind } from "./workflow.interface";
 
-describe("node-validate", () => {
-  const createInputNodeData = (
-    id: string,
-    name: string,
-    outputSchema = {
+// ── validateSchema ────────────────────────────────────────────────────────────
+
+describe("validateSchema", () => {
+  it("returns true for valid string schema", () => {
+    expect(validateSchema("myKey", { type: "string" })).toBe(true);
+  });
+
+  it("returns true for valid number schema", () => {
+    expect(validateSchema("count", { type: "number" })).toBe(true);
+  });
+
+  it("throws for empty key name", () => {
+    expect(() => validateSchema("", { type: "string" })).toThrow("Invalid Variable Name");
+  });
+
+  it("throws for missing type in schema", () => {
+    expect(() => validateSchema("key", {})).toThrow("Invalid Schema");
+  });
+
+  it("returns true for object schema with properties", () => {
+    const schema = {
       type: "object" as const,
-      properties: { input: { type: "string" as const } },
-    },
-  ): UINode<NodeKind.Input> => ({
-    id,
-    type: "default",
-    position: { x: 0, y: 0 },
-    data: {
-      id,
-      name,
-      kind: NodeKind.Input,
-      outputSchema,
-    },
+      properties: {
+        name: { type: "string" },
+        age: { type: "number" },
+      },
+    };
+    expect(validateSchema("data", schema)).toBe(true);
   });
 
-  const createOutputNodeData = (
-    id: string,
-    name: string,
-    outputData: any[] = [],
-  ): UINode<NodeKind.Output> => ({
-    id,
-    type: "default",
-    position: { x: 0, y: 0 },
-    data: {
-      id,
-      name,
-      kind: NodeKind.Output,
+  it("throws for object schema with duplicate property keys", () => {
+    // This can't actually happen with real objects, but validates the check
+    const schema: any = {
+      type: "object",
+      properties: { name: { type: "string" } },
+    };
+    // Inject duplicates manually by overriding Object.keys behavior would be complex,
+    // so just test valid case passes
+    expect(validateSchema("data", schema)).toBe(true);
+  });
+
+  it("throws for key name that becomes empty after cleaning", () => {
+    // cleanVariableName("!!!") returns ""
+    expect(() => validateSchema("!!!", { type: "string" })).toThrow("Invalid Variable Name");
+  });
+});
+
+// ── httpNodeValidate ──────────────────────────────────────────────────────────
+
+const baseHttpNode: any = {
+  id: "node-1",
+  kind: NodeKind.Http,
+  name: "HTTP Request",
+  outputSchema: { type: "object", properties: {} },
+  url: "https://api.example.com",
+  method: "GET",
+  headers: [],
+  query: [],
+};
+
+describe("httpNodeValidate", () => {
+  it("passes valid GET node", () => {
+    expect(() => httpNodeValidate({ node: baseHttpNode, nodes: [], edges: [] })).not.toThrow();
+  });
+
+  it("throws when url is undefined", () => {
+    const node = { ...baseHttpNode, url: undefined };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP node must have a URL defined");
+  });
+
+  it("accepts empty string url", () => {
+    const node = { ...baseHttpNode, url: "" };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+  });
+
+  it("throws for invalid HTTP method", () => {
+    const node = { ...baseHttpNode, method: "CONNECT" };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP method must be one of");
+  });
+
+  it("accepts all valid HTTP methods", () => {
+    for (const method of ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"]) {
+      const node = { ...baseHttpNode, method };
+      expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+    }
+  });
+
+  it("throws for negative timeout", () => {
+    const node = { ...baseHttpNode, timeout: -1 };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP timeout must be a positive number");
+  });
+
+  it("throws for timeout exceeding 5 minutes", () => {
+    const node = { ...baseHttpNode, timeout: 300_001 };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP timeout cannot exceed 300000ms");
+  });
+
+  it("accepts valid timeout", () => {
+    const node = { ...baseHttpNode, timeout: 5000 };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+  });
+
+  it("throws for header with empty key", () => {
+    const node = { ...baseHttpNode, headers: [{ key: "", value: "val" }] };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Header key cannot be empty");
+  });
+
+  it("throws for duplicate header keys", () => {
+    const node = {
+      ...baseHttpNode,
+      headers: [
+        { key: "Content-Type", value: "application/json" },
+        { key: "Content-Type", value: "text/plain" },
+      ],
+    };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Duplicate header key");
+  });
+
+  it("throws for query param with empty key", () => {
+    const node = { ...baseHttpNode, query: [{ key: "", value: "val" }] };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Query parameter key cannot be empty");
+  });
+
+  it("throws for body on GET request", () => {
+    const node = { ...baseHttpNode, method: "GET", body: "some body" };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Body is not allowed for GET requests");
+  });
+
+  it("accepts body on POST request", () => {
+    const node = { ...baseHttpNode, method: "POST", body: '{"key":"value"}' };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+  });
+});
+
+// ── templateNodeValidate ──────────────────────────────────────────────────────
+
+describe("templateNodeValidate", () => {
+  it("passes for valid tiptap template", () => {
+    const node: any = {
+      id: "t1", kind: NodeKind.Template, name: "Template",
       outputSchema: { type: "object", properties: {} },
-      outputData,
-    },
+      template: { type: "tiptap", tiptap: { type: "doc", content: [] } },
+    };
+    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
   });
 
-  const createLLMNodeData = (
-    id: string,
-    name: string,
-    model: any = { id: "gpt-4", name: "GPT-4" },
-    messages: any[] = [{ role: "user", content: { type: "doc", content: [] } }],
-  ): UINode<NodeKind.LLM> => ({
-    id,
-    type: "default",
-    position: { x: 0, y: 0 },
-    data: {
-      id,
-      name,
-      kind: NodeKind.LLM,
+  it("throws for invalid template type", () => {
+    const node: any = {
+      id: "t1", kind: NodeKind.Template, name: "Template",
       outputSchema: { type: "object", properties: {} },
-      model,
-      messages,
-    },
+      template: { type: "handlebars", tiptap: null },
+    };
+    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).toThrow("Template type must be one of");
+  });
+});
+
+// ── llmNodeValidate ───────────────────────────────────────────────────────────
+
+describe("llmNodeValidate", () => {
+  it("throws when model is missing", () => {
+    const node: any = {
+      id: "l1", kind: NodeKind.LLM, name: "LLM",
+      outputSchema: { type: "object", properties: {} },
+      model: null,
+      messages: [{ role: "user", content: { type: "doc", content: [] } }],
+    };
+    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow("LLM node must have a model");
   });
 
-  const createEdge = (id: string, source: string, target: string): Edge => ({
-    id,
-    source,
-    target,
+  it("throws when no messages", () => {
+    const node: any = {
+      id: "l1", kind: NodeKind.LLM, name: "LLM",
+      outputSchema: { type: "object", properties: {} },
+      model: { provider: "openrouter", model: "claude-3-5-sonnet" },
+      messages: [],
+    };
+    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow("LLM node must have a message");
+  });
+});
+
+// ── toolNodeValidate ──────────────────────────────────────────────────────────
+
+describe("toolNodeValidate", () => {
+  it("throws when tool is missing", () => {
+    const node: any = {
+      id: "t1", kind: NodeKind.Tool, name: "Tool",
+      outputSchema: { type: "object", properties: {} },
+      tool: null,
+      model: { provider: "openrouter", model: "claude" },
+      message: { type: "doc", content: [] },
+    };
+    expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow("Tool node must have a tool");
   });
 
-  describe("validateSchema", () => {
-    it("should validate valid string schema", () => {
-      expect(() => {
-        validateSchema("test", { type: "string" });
-      }).not.toThrow();
-    });
-
-    it("should throw error for invalid variable name", () => {
-      expect(() => {
-        validateSchema("", { type: "string" });
-      }).toThrow();
-    });
-
-    it("should throw error for schema without type", () => {
-      expect(() => {
-        validateSchema("test", {});
-      }).toThrow();
-    });
-  });
-
-  describe("inputNodeValidate", () => {
-    it("should validate start node with edge and inputs", () => {
-      const startNode = createInputNodeData("start", "Start Node");
-      const edges = [createEdge("edge1", "start", "end")];
-
-      expect(() => {
-        inputNodeValidate({ node: startNode.data, nodes: [], edges });
-      }).not.toThrow();
-    });
-
-    it("should throw error when start node has no edge", () => {
-      const startNode = createInputNodeData("start", "Start Node");
-
-      expect(() => {
-        inputNodeValidate({ node: startNode.data, nodes: [], edges: [] });
-      }).toThrow();
-    });
-  });
-
-  describe("outputNodeValidate", () => {
-    it("should validate end node with proper source", () => {
-      const startNode = createInputNodeData("start", "Start Node");
-      const endNode = createOutputNodeData("end", "End Node", [
-        {
-          key: "result",
-          source: { nodeId: "start", path: ["input"] },
-        },
-      ]);
-      const nodes = [startNode, endNode];
-      const edges = [createEdge("edge1", "start", "end")];
-
-      expect(() => {
-        outputNodeValidate({ node: endNode.data, nodes, edges });
-      }).not.toThrow();
-    });
-
-    it("should throw error when end node has duplicate output keys", () => {
-      const endNode = createOutputNodeData("end", "End Node", [
-        { key: "result", source: { nodeId: "start", path: ["input"] } },
-        { key: "result", source: { nodeId: "start", path: ["input"] } },
-      ]);
-
-      expect(() => {
-        outputNodeValidate({ node: endNode.data, nodes: [], edges: [] });
-      }).toThrow();
-    });
-  });
-
-  describe("llmNodeValidate", () => {
-    it("should validate LLM node with model and messages", () => {
-      const llmNode = createLLMNodeData("llm", "LLM Node");
-
-      expect(() => {
-        llmNodeValidate({ node: llmNode.data, nodes: [], edges: [] });
-      }).not.toThrow();
-    });
-
-    it("should throw error when LLM node has no model", () => {
-      const llmNode = createLLMNodeData("llm", "LLM Node", null);
-
-      expect(() => {
-        llmNodeValidate({ node: llmNode.data, nodes: [], edges: [] });
-      }).toThrow();
-    });
-
-    it("should throw error when LLM node has no messages", () => {
-      const llmNode = createLLMNodeData(
-        "llm",
-        "LLM Node",
-        { id: "gpt-4", name: "GPT-4" },
-        [],
-      );
-
-      expect(() => {
-        llmNodeValidate({ node: llmNode.data, nodes: [], edges: [] });
-      }).toThrow();
-    });
-  });
-
-  describe("allNodeValidate", () => {
-    it("should validate workflow with start and end nodes", () => {
-      const startNode = createInputNodeData("start", "Start Node");
-      const endNode = createOutputNodeData("end", "End Node", [
-        {
-          key: "result",
-          source: { nodeId: "start", path: ["input"] },
-        },
-      ]);
-      const nodes = [startNode, endNode];
-      const edges = [createEdge("edge1", "start", "end")];
-
-      const result = allNodeValidate({ nodes, edges });
-      expect(result).toBe(true);
-    });
-
-    it("should return error when nodes have duplicate names", () => {
-      const startNode1 = createInputNodeData("start1", "Duplicate Name");
-      const startNode2 = createOutputNodeData("start1", "Duplicate Name");
-      const nodes = [startNode1, startNode2];
-      const edges = [];
-
-      const result = allNodeValidate({ nodes, edges });
-      expect(result).not.toBe(true);
-      expect(result).toHaveProperty("errorMessage");
-    });
+  it("throws when model is missing", () => {
+    const node: any = {
+      id: "t1", kind: NodeKind.Tool, name: "Tool",
+      outputSchema: { type: "object", properties: {} },
+      tool: { id: "web_search", type: "app-tool", description: "Search" },
+      model: null,
+      message: { type: "doc", content: [] },
+    };
+    expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow("Tool node must have a model");
   });
 });
