@@ -236,3 +236,21 @@ describe("canCreateAgent — additional", () => {
     expect(canEditAgent(null)).toBe(false);
   });
 });
+
+describe("canDeleteAgent — additional", () => {
+  it("undefined role cannot delete agents", () => {
+    expect(canDeleteAgent(undefined)).toBe(false);
+  });
+
+  it("null role cannot delete agents", () => {
+    expect(canDeleteAgent(null)).toBe(false);
+  });
+
+  it("empty string cannot delete agents", () => {
+    expect(canDeleteAgent("")).toBe(false);
+  });
+
+  it("user role cannot delete agents", () => {
+    expect(canDeleteAgent("user")).toBe(false);
+  });
+});
