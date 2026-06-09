@@ -76,4 +76,22 @@ describe("MCP_CONFIG_PATH", () => {
     const { MCP_CONFIG_PATH } = await import("./config-path");
     expect(MCP_CONFIG_PATH.startsWith("/")).toBe(true);
   });
+
+  it("whitespace-only value is used as-is (truthy)", async () => {
+    process.env.MCP_CONFIG_PATH = "   ";
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH).toBe("   ");
+  });
+
+  it("path with spaces is preserved", async () => {
+    process.env.MCP_CONFIG_PATH = "/home/user/my config/mcp.json";
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH).toBe("/home/user/my config/mcp.json");
+  });
+
+  it("path with unicode characters is preserved", async () => {
+    process.env.MCP_CONFIG_PATH = "/path/tö/mcp.json";
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH).toBe("/path/tö/mcp.json");
+  });
 });

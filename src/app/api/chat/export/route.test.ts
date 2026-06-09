@@ -123,4 +123,26 @@ describe("POST /api/chat/export", () => {
     const res = await POST(makeRequest(VALID_BODY));
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
   });
+
+  it("does not call checkAccess when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest(VALID_BODY));
+    expect(chatRepositoryMock.checkAccess).not.toHaveBeenCalled();
+  });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.checkAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.exportChat.mockResolvedValue(undefined);
+    await POST(makeRequest(VALID_BODY));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls exportChat exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.checkAccess.mockResolvedValue(true);
+    chatExportRepositoryMock.exportChat.mockResolvedValue(undefined);
+    await POST(makeRequest(VALID_BODY));
+    expect(chatExportRepositoryMock.exportChat).toHaveBeenCalledTimes(1);
+  });
 });

@@ -114,4 +114,29 @@ describe("GET /api/mcp/tool-customizations/[server]", () => {
     expect(body).toHaveLength(2);
     expect(body[1].toolName).toBe("tool-b");
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET(new Request("http://x"), makeContext("server-1"));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls repository with undefined userId when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([]);
+    await GET(new Request("http://x"), makeContext("server-1"));
+    expect(mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: undefined }),
+    );
+  });
+
+  it("uses prompt from returned customization", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    mcpMcpToolCustomizationRepositoryMock.selectByUserIdAndMcpServerId.mockResolvedValue([
+      { id: "tc-1", toolName: "t", mcpServerId: "s", prompt: "My custom prompt" },
+    ]);
+    const res = await GET(new Request("http://x"), makeContext("s"));
+    const body = await res.json();
+    expect(body[0].prompt).toBe("My custom prompt");
+  });
 });

@@ -147,4 +147,28 @@ describe("POST /api/storage/upload-url", () => {
     const body = await res.json();
     expect(body.solution).toBe("Set AWS_BUCKET env var");
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ filename: "test.csv" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call checkStorage when session has no user id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await POST(makeRequest({ filename: "test.csv" }));
+    expect(checkStorageActionMock).not.toHaveBeenCalled();
+  });
+
+  it("presigned response includes directUploadSupported: true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.createUploadUrl = vi.fn().mockResolvedValue({
+      key: "uploads/doc.pdf",
+      url: "https://s3.example.com/presigned",
+    });
+    serverFileStorageMock.getSourceUrl.mockResolvedValue("https://cdn/doc.pdf");
+    const res = await POST(makeRequest({ filename: "doc.pdf" }));
+    const body = await res.json();
+    expect(body.directUploadSupported).toBe(true);
+  });
 });

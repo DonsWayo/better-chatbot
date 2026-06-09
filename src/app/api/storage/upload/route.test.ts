@@ -144,4 +144,36 @@ describe("POST /api/storage/upload", () => {
     const body = await res.json();
     expect(body.metadata).toBeDefined();
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeFileRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls checkStorageAction exactly once when authorized and file provided", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const file = new File(["content"], "test.txt", { type: "text/plain" });
+    serverFileStorageMock.upload.mockResolvedValue({
+      key: "k",
+      sourceUrl: "http://x",
+      metadata: {},
+    });
+    await POST(makeFileRequest(file));
+    expect(checkStorageActionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("success body includes key and url", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    serverFileStorageMock.upload.mockResolvedValue({
+      key: "uploads/img.png",
+      sourceUrl: "http://cdn/img.png",
+      metadata: {},
+    });
+    const file = new File(["img"], "img.png", { type: "image/png" });
+    const res = await POST(makeFileRequest(file));
+    const body = await res.json();
+    expect(body.key).toBe("uploads/img.png");
+    expect(body.url).toBe("http://cdn/img.png");
+  });
 });

@@ -91,4 +91,29 @@ describe("GET /api/thread", () => {
     expect(body).toHaveLength(3);
     expect(body[2].id).toBe("t-3");
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("each returned thread has an id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatRepositoryMock.selectThreadsByUserId.mockResolvedValue([
+      { id: "t-1", title: "T1" },
+      { id: "t-2", title: "T2" },
+    ]);
+    const res = await GET();
+    const body = await res.json();
+    for (const thread of body) {
+      expect(thread).toHaveProperty("id");
+    }
+  });
+
+  it("returns 401 when session has no user id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    const res = await GET();
+    expect(res.status).toBe(401);
+  });
 });
