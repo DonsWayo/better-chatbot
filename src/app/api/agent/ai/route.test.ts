@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { getSessionMock } = vi.hoisted(() => ({
+const { getSessionMock, streamObjectMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
+  streamObjectMock: vi.fn(() => ({ toTextStreamResponse: vi.fn(() => new Response("{}")) })),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
@@ -14,7 +15,12 @@ vi.mock("logger", () => ({
 }));
 vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
 vi.mock("app-types/agent", () => ({
-  AgentGenerateSchema: { parse: (b: unknown) => b },
+  AgentGenerateSchema: {
+    parse: (b: unknown) => b,
+    extend: () => ({
+      parse: (b: unknown) => b,
+    }),
+  },
 }));
 vi.mock("../../chat/shared.chat", () => ({
   loadAppDefaultTools: vi.fn().mockResolvedValue({}),
@@ -30,7 +36,7 @@ vi.mock("lib/ai/mcp/mcp-manager", () => ({
   mcpClientsManager: { tools: vi.fn().mockResolvedValue({}) },
 }));
 vi.mock("ai", () => ({
-  streamObject: vi.fn(() => ({ toTextStreamResponse: vi.fn(() => new Response("{}")) })),
+  streamObject: streamObjectMock,
 }));
 
 function makeRequest(body?: unknown): Request {
@@ -38,12 +44,29 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("POST /api/agent/ai", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ message: "create an agent" }));
     expect(res.status).toBe(401);
+  });
+
+  it("never calls streamObject when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "create an agent" }));
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("streams agent generation when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "build me an agent" }));
+    expect(res.status).toBe(200);
   });
 });

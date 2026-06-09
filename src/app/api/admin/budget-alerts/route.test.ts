@@ -27,7 +27,12 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 describe("GET /api/admin/budget-alerts", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectFromMock.mockReturnValue({ innerJoin: dbSelectInnerJoinMock });
+    dbSelectInnerJoinMock.mockReturnValue({ where: dbSelectWhereMock });
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+  });
 
   it("returns 403 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -41,6 +46,21 @@ describe("GET /api/admin/budget-alerts", () => {
     const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(403);
+  });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(403);
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 
   it("returns empty alerts list when no budgets active", async () => {
@@ -66,7 +86,30 @@ describe("GET /api/admin/budget-alerts", () => {
     expect(body.alerts).toHaveLength(2);
     const eng = body.alerts.find((a: any) => a.teamId === "t-1");
     const design = body.alerts.find((a: any) => a.teamId === "t-2");
-    expect(eng.alert).toBe(true);   // 85% >= 80%
-    expect(design.alert).toBe(false); // 20% < 80%
+    expect(eng.alert).toBe(true);
+    expect(design.alert).toBe(false);
+  });
+
+  it("includes utilizationRatio in each alert", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-3", teamName: "QA", budgetUsd: "200.00", usedUsd: "100.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    const qa = body.alerts[0];
+    expect(qa.utilizationRatio).toBeCloseTo(0.5);
+  });
+
+  it("alerts at exactly 80% boundary", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-4", teamName: "DevOps", budgetUsd: "100.00", usedUsd: "80.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts[0].alert).toBe(true);
   });
 });

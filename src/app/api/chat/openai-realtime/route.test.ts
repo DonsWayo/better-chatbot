@@ -40,11 +40,28 @@ describe("POST /api/chat/openai-realtime", () => {
     expect(res.status).toBe(401);
   });
 
+  it("checks OPENAI_API_KEY before auth when key is missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ model: "gpt-4o" }));
+    expect(res.status).toBe(500);
+  });
+
   it("returns 500 when OPENAI_API_KEY is missing", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ model: "gpt-4o" }));
     expect(res.status).toBe(500);
+  });
+
+  it("500 body has error field when API key missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });
