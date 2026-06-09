@@ -110,4 +110,41 @@ describe("existsByEmailAction — edge cases", () => {
     await existsByEmailAction("a@b.com");
     expect(existsByEmailMock).toHaveBeenCalledTimes(1);
   });
+
+  it("result is a primitive boolean, not an object", async () => {
+    existsByEmailMock.mockResolvedValueOnce(true);
+    const { existsByEmailAction } = await import("./actions");
+    const result = await existsByEmailAction("a@b.com");
+    expect(typeof result).toBe("boolean");
+  });
+});
+
+describe("signUpAction — call args", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("signUpEmail called with email, name, and password from input", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "u1", email: "a@b.com", name: "Alice" } });
+    const { signUpAction } = await import("./actions");
+    await signUpAction({ email: "a@b.com", name: "Alice", password: "Secret123" });
+    expect(signUpEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ email: "a@b.com", name: "Alice", password: "Secret123" }),
+      }),
+    );
+  });
+
+  it("signUpEmail called exactly once on valid input", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "u1", email: "a@b.com", name: "Alice" } });
+    const { signUpAction } = await import("./actions");
+    await signUpAction({ email: "a@b.com", name: "Alice", password: "Secret123" });
+    expect(signUpEmailMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("success result has user.email matching input email", async () => {
+    signUpEmailMock.mockResolvedValueOnce({ user: { id: "u1", email: "match@example.com", name: "Test" } });
+    const { signUpAction } = await import("./actions");
+    const result = await signUpAction({ email: "match@example.com", name: "Test", password: "Pass123!" });
+    expect(result.success).toBe(true);
+    expect(result.user?.email).toBe("match@example.com");
+  });
 });

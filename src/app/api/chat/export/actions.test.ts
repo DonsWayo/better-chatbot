@@ -111,4 +111,31 @@ describe("addExportChatCommentAction", () => {
     const callArg = insertCommentMock.mock.calls[0][0];
     expect(callArg.parentId === undefined || callArg.parentId === null).toBe(true);
   });
+
+  it("getSession called exactly once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1" });
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: {} as any });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("content is forwarded to insertComment in the insert payload", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    insertCommentMock.mockResolvedValueOnce({ id: "c1" });
+    const content = { type: "doc", content: [{ type: "paragraph", text: "hello" }] };
+    const { addExportChatCommentAction } = await import("./actions");
+    await addExportChatCommentAction({ exportId: "e1", content: content as any });
+    expect(insertCommentMock).toHaveBeenCalledWith(
+      expect.objectContaining({ content }),
+    );
+  });
+
+  it("error thrown when unauthenticated is an instance of Error", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { addExportChatCommentAction } = await import("./actions");
+    await expect(
+      addExportChatCommentAction({ exportId: "e1", content: {} as any }),
+    ).rejects.toBeInstanceOf(Error);
+  });
 });

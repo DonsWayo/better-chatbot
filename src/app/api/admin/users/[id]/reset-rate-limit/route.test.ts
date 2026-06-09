@@ -102,4 +102,29 @@ describe("DELETE /api/admin/users/[id]/reset-rate-limit", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("403 body has error field", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    const res = await DELETE({} as never, { params: makeParams("user-1") });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("200 body has both success and deleted properties", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockDelete.mockReturnValue(makeChain([{ userId: "u1" }]));
+    const res = await DELETE({} as never, { params: makeParams("u1") });
+    const body = await res.json();
+    expect(body).toHaveProperty("success");
+    expect(body).toHaveProperty("deleted");
+  });
+
+  it("deleted is a number in the success response", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockDelete.mockReturnValue(makeChain([{ userId: "u1" }, { userId: "u1" }, { userId: "u1" }]));
+    const res = await DELETE({} as never, { params: makeParams("u1") });
+    const body = await res.json();
+    expect(typeof body.deleted).toBe("number");
+    expect(body.deleted).toBe(3);
+  });
 });

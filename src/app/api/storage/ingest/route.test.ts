@@ -109,4 +109,38 @@ describe("POST /api/storage/ingest", () => {
     const body = await res.json();
     expect(body.error).toContain("Unsupported");
   });
+
+  it("storageKeyFromUrl not called when key is provided directly", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("a,b\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["a", "b"], rows: [] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("text");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ key: "uploads/direct.csv" }));
+    expect(storageKeyFromUrlMock).not.toHaveBeenCalled();
+  });
+
+  it("download called exactly once per valid csv request", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("x,y\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["x", "y"], rows: [] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("preview");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ key: "uploads/data.csv" }));
+    expect(downloadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("storageKeyFromUrl called exactly once when url provided without key", async () => {
+    storageKeyFromUrlMock.mockReturnValueOnce("uploads/derived.csv");
+    downloadMock.mockResolvedValueOnce(Buffer.from("col\nval"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["col"], rows: [] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("text");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ url: "http://cdn.example.com/derived.csv" }));
+    expect(storageKeyFromUrlMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("parseCsvPreview not called when file type is unsupported", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ key: "uploads/file.pdf", type: "auto" }));
+    expect(parseCsvPreviewMock).not.toHaveBeenCalled();
+  });
 });
