@@ -102,3 +102,88 @@ describe("workflow-store", () => {
     ).toBe("cgoing");
   });
 });
+
+describe("createGraphStore — input/output invariants", () => {
+  it("setInput and getInput round-trip a value", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setInput("node-a", { x: 1 });
+    expect(ctx.getInput("node-a")).toEqual({ x: 1 });
+  });
+
+  it("getInput returns undefined for unknown node", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.getInput("no-such-node")).toBeUndefined();
+  });
+
+  it("setInput overwrites previous value", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setInput("n1", "first");
+    ctx.setInput("n1", "second");
+    expect(ctx.getInput("n1")).toBe("second");
+  });
+
+  it("outputs is empty map initially", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.outputs).toEqual({});
+  });
+
+  it("setOutput stores a primitive at root path", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setOutput({ nodeId: "n1", path: ["score"] }, 42);
+    expect(ctx.getOutput({ nodeId: "n1", path: ["score"] })).toBe(42);
+  });
+
+  it("setOutput stores nested objects", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setOutput({ nodeId: "n1", path: ["meta"] }, { title: "hello" });
+    expect(ctx.getOutput({ nodeId: "n1", path: ["meta", "title"] })).toBe("hello");
+  });
+
+  it("getOutput returns undefined for unknown nodeId with empty path", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.getOutput({ nodeId: "ghost", path: [] })).toBeUndefined();
+  });
+
+  it("multiple nodes are isolated from each other", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    ctx.setOutput({ nodeId: "n1", path: ["val"] }, "from-n1");
+    ctx.setOutput({ nodeId: "n2", path: ["val"] }, "from-n2");
+    expect(ctx.getOutput({ nodeId: "n1", path: ["val"] })).toBe("from-n1");
+    expect(ctx.getOutput({ nodeId: "n2", path: ["val"] })).toBe("from-n2");
+  });
+});
+
+describe("createGraphStore — state shape invariants", () => {
+  it("store function returns an object", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    expect(typeof store()).toBe("object");
+  });
+
+  it("context exposes nodes and edges from params", () => {
+    const node = { id: "n1", nodeConfig: {} } as unknown as DBNode;
+    const store = createGraphStore({ nodes: [node], edges: [] });
+    const ctx = store();
+    expect(ctx.nodes).toHaveLength(1);
+    expect(ctx.edges).toHaveLength(0);
+  });
+
+  it("query starts as empty object", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.query).toEqual({});
+  });
+
+  it("inputs starts as empty object", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.inputs).toEqual({});
+  });
+});
