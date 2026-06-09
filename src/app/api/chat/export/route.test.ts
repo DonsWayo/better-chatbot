@@ -121,3 +121,46 @@ describe("POST /api/chat/export", () => {
     expect(typeof body.message).toBe("string");
   });
 });
+
+describe("POST /api/chat/export — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is plain text Unauthorized when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("401 body is plain text Unauthorized when access denied", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls checkAccess when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ threadId: "t-1" }));
+    expect(checkAccessMock).not.toHaveBeenCalled();
+  });
+
+  it("200 message is the exact success string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    exportChatMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ threadId: "t-1" }));
+    const body = await res.json();
+    expect(body.message).toBe("Chat exported successfully");
+  });
+});

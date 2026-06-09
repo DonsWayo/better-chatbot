@@ -124,3 +124,81 @@ describe("GET /api/health — readiness", () => {
     expect(body).toHaveProperty("version");
   });
 });
+
+describe("GET /api/health — liveness additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("version is a string in liveness response", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    const body = await res.json();
+    expect(typeof body.version).toBe("string");
+  });
+
+  it("uptime is an integer (rounded) in liveness", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    const body = await res.json();
+    expect(Number.isInteger(body.uptime)).toBe(true);
+  });
+
+  it("liveness body has status, version, uptime keys", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    const body = await res.json();
+    expect(body).toHaveProperty("status");
+    expect(body).toHaveProperty("version");
+    expect(body).toHaveProperty("uptime");
+  });
+
+  it("pgDbExecute never called for non-ready request", async () => {
+    const { GET } = await import("./route");
+    await GET(makeRequest("http://localhost:3001/api/health"));
+    expect(pgDbExecuteMock).toHaveBeenCalledTimes(0);
+  });
+});
+
+describe("GET /api/health — readiness additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("pgDbExecute called exactly once for readiness", async () => {
+    pgDbExecuteMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    expect(pgDbExecuteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("503 body has version field", async () => {
+    pgDbExecuteMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    const body = await res.json();
+    expect(body).toHaveProperty("version");
+  });
+
+  it("503 body has checks.db property", async () => {
+    pgDbExecuteMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    const body = await res.json();
+    expect(body.checks).toHaveProperty("db");
+  });
+
+  it("readiness version is a string", async () => {
+    pgDbExecuteMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    const body = await res.json();
+    expect(typeof body.version).toBe("string");
+  });
+
+  it("readiness body has status, version, checks fields", async () => {
+    pgDbExecuteMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    const body = await res.json();
+    expect(body).toHaveProperty("status");
+    expect(body).toHaveProperty("version");
+    expect(body).toHaveProperty("checks");
+  });
+});
