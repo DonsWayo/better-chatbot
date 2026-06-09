@@ -3,8 +3,8 @@ import { getSession } from "lib/auth/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { McpServerTable } from "lib/db/pg/schema.pg";
 import { inArray } from "drizzle-orm";
+import { registerMcpServer } from "lib/admin/mcp-servers";
 import { z } from "zod";
-import type { MCPServerConfig } from "app-types/mcp";
 
 const CreateServerSchema = z.object({
   name: z.string().min(1).max(200),
@@ -56,17 +56,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "teamId required when scope=team" }, { status: 400 });
   }
 
-  const [server] = await db
-    .insert(McpServerTable)
-    .values({
-      name,
-      scope,
-      teamId: teamId ?? null,
-      config: config as MCPServerConfig,
-      enabled,
-      userId: session.user.id,
-    })
-    .returning();
-
+  const server = await registerMcpServer({ name, scope, teamId, config: config as never, enabled, userId: session.user.id });
   return NextResponse.json({ server }, { status: 201 });
 }

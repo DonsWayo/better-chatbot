@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "lib/auth/server";
-import { pgDb } from "lib/db/pg/db.pg";
-import { AsafeRateLimitBucketTable } from "lib/db/pg/schema.pg";
-import { eq } from "drizzle-orm";
+import { resetUserRateLimit } from "lib/admin/rate-limit";
 
 /**
  * DELETE /api/admin/users/[id]/reset-rate-limit
@@ -22,11 +20,6 @@ export async function DELETE(
 
   const { id: userId } = await params;
   if (!userId) return NextResponse.json({ error: "Missing user id" }, { status: 400 });
-
-  const deleted = await pgDb
-    .delete(AsafeRateLimitBucketTable)
-    .where(eq(AsafeRateLimitBucketTable.userId, userId))
-    .returning();
-
-  return NextResponse.json({ success: true, deleted: deleted.length });
+  const deleted = await resetUserRateLimit(userId);
+  return NextResponse.json({ success: true, deleted });
 }

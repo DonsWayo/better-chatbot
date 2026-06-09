@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
+import { resetUserRateLimitAction, eraseUserDataAction } from "@/app/api/admin/actions";
 import {
   Dialog,
   DialogContent,
@@ -28,13 +29,9 @@ export function UserAdminActions({ userId }: UserAdminActionsProps) {
   async function handleResetRateLimit() {
     setResetting(true);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/reset-rate-limit`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Reset failed");
+      const deleted = await resetUserRateLimitAction(userId);
       setResetDone(true);
-      toast.success(`Rate limit cleared (${data.deleted} bucket${data.deleted !== 1 ? "s" : ""} removed)`);
+      toast.success(`Rate limit cleared (${deleted} bucket${deleted !== 1 ? "s" : ""} removed)`);
       setTimeout(() => setResetDone(false), 3000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset rate limit");
@@ -72,9 +69,7 @@ export function UserAdminActions({ userId }: UserAdminActionsProps) {
     setErasing(true);
     setShowEraseConfirm(false);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/erasure`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as any).error ?? "Erasure failed");
+      await eraseUserDataAction(userId);
       toast.success("User data erased successfully (GDPR Article 17)");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erasure failed");

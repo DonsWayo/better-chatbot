@@ -2,6 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  registerCompanyMcpServerAction,
+  updateCompanyMcpServerAction,
+  deleteCompanyMcpServerAction,
+} from "@/app/api/admin/actions";
 import { format } from "date-fns";
 import {
   Table,
@@ -55,21 +60,12 @@ export function CompanyMcpTable({ servers: initialServers }: CompanyMcpTableProp
     setIsRegistering(true);
     setRegisterError(null);
     try {
-      const res = await fetch("/api/admin/mcp/servers", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: newName.trim(),
-          scope: newScope,
-          config: { url: newUrl.trim() },
-          enabled: true,
-        }),
+      const server = await registerCompanyMcpServerAction({
+        name: newName.trim(),
+        scope: newScope,
+        config: { url: newUrl.trim() } as never,
+        enabled: true,
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Registration failed");
-      }
-      const { server } = await res.json();
       setServers((prev) => [...prev, server]);
       setNewName(""); setNewUrl(""); setNewScope("org");
       setShowRegister(false);
@@ -83,13 +79,7 @@ export function CompanyMcpTable({ servers: initialServers }: CompanyMcpTableProp
 
   const handleToggleEnabled = async (server: McpServerEntity) => {
     try {
-      const res = await fetch(`/api/admin/mcp/servers/${server.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: !server.enabled }),
-      });
-      if (!res.ok) throw new Error("Toggle failed");
-      const { server: updated } = await res.json();
+      const updated = await updateCompanyMcpServerAction(server.id, { enabled: !server.enabled });
       setServers((prev) => prev.map((s) => s.id === server.id ? updated : s));
     } catch {
       // silently fail — optimistic would be overkill for admin page
@@ -99,8 +89,7 @@ export function CompanyMcpTable({ servers: initialServers }: CompanyMcpTableProp
   const handleDelete = async (serverId: string) => {
     if (!confirm("Remove this MCP server from the registry?")) return;
     try {
-      const res = await fetch(`/api/admin/mcp/servers/${serverId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      await deleteCompanyMcpServerAction(serverId);
       setServers((prev) => prev.filter((s) => s.id !== serverId));
     } catch {
       // silently fail

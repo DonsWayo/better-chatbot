@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "lib/auth/server";
-import { pgDb as db } from "lib/db/pg/db.pg";
-import { McpServerTable } from "lib/db/pg/schema.pg";
-import { eq, and, inArray } from "drizzle-orm";
+import { updateMcpServer, deleteMcpServer } from "lib/admin/mcp-servers";
 import { z } from "zod";
 
 const PatchServerSchema = z.object({
@@ -29,19 +27,7 @@ export async function PATCH(
   const parsed = PatchServerSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const patch = parsed.data;
-
-  const [updated] = await db
-    .update(McpServerTable)
-    .set({ ...patch, updatedAt: new Date() })
-    .where(
-      and(
-        eq(McpServerTable.id, id),
-        inArray(McpServerTable.scope, ["org", "team"]),
-      ),
-    )
-    .returning();
-
+  const updated = await updateMcpServer(id, parsed.data);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ server: updated });
 }
@@ -59,17 +45,7 @@ export async function DELETE(
   if (session.user.role !== "admin") return NextResponse.json({ error: "Admin required" }, { status: 403 });
 
   const { id } = await params;
-
-  const [deleted] = await db
-    .delete(McpServerTable)
-    .where(
-      and(
-        eq(McpServerTable.id, id),
-        inArray(McpServerTable.scope, ["org", "team"]),
-      ),
-    )
-    .returning({ id: McpServerTable.id });
-
-  if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, id: deleted.id });
+  const deletedId = await deleteMcpServer(id);
+  if (!deletedId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ ok: true, id: deletedId });
 }

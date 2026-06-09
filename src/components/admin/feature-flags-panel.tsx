@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "ui/card";
 import { Badge } from "ui/badge";
+import { toggleFeatureFlagAction } from "@/app/api/admin/actions";
 import { Switch } from "ui/switch";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Zap } from "lucide-react";
@@ -18,12 +19,12 @@ interface FeatureFlagsPanelProps {
 }
 
 async function toggleFlag(name: string, enabled: boolean): Promise<boolean> {
-  const res = await fetch("/api/admin/feature-flags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, enabled }),
-  });
-  return res.ok;
+  try {
+    await toggleFeatureFlagAction(name, enabled);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {

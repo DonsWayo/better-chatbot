@@ -173,34 +173,34 @@ describe("customModelProvider — additional edge cases", () => {
   });
 
   it("OPENAI_FILE_MIME_TYPES is non-empty", () => {
-    expect(OPENAI_FILE_MIME_TYPES.size).toBeGreaterThan(0);
+    expect(OPENAI_FILE_MIME_TYPES.length).toBeGreaterThan(0);
   });
 
   it("GEMINI_FILE_MIME_TYPES is non-empty", () => {
-    expect(GEMINI_FILE_MIME_TYPES.size).toBeGreaterThan(0);
+    expect(GEMINI_FILE_MIME_TYPES.length).toBeGreaterThan(0);
   });
 
   it("ANTHROPIC_FILE_MIME_TYPES is non-empty", () => {
-    expect(ANTHROPIC_FILE_MIME_TYPES.size).toBeGreaterThan(0);
+    expect(ANTHROPIC_FILE_MIME_TYPES.length).toBeGreaterThan(0);
   });
 });
 
 describe("MIME type sets — membership invariants", () => {
   it("OPENAI_FILE_MIME_TYPES contains image/png", () => {
-    expect(OPENAI_FILE_MIME_TYPES.has("image/png")).toBe(true);
+    expect(OPENAI_FILE_MIME_TYPES).toContain("image/png");
   });
 
   it("GEMINI_FILE_MIME_TYPES contains image/jpeg", () => {
-    expect(GEMINI_FILE_MIME_TYPES.has("image/jpeg")).toBe(true);
+    expect(GEMINI_FILE_MIME_TYPES).toContain("image/jpeg");
   });
 
   it("ANTHROPIC_FILE_MIME_TYPES contains image/jpeg", () => {
-    expect(ANTHROPIC_FILE_MIME_TYPES.has("image/jpeg")).toBe(true);
+    expect(ANTHROPIC_FILE_MIME_TYPES).toContain("image/jpeg");
   });
 
-  it("each MIME type set has more than 1 entry", () => {
-    expect(OPENAI_FILE_MIME_TYPES.size).toBeGreaterThan(1);
-    expect(GEMINI_FILE_MIME_TYPES.size).toBeGreaterThan(1);
-    expect(ANTHROPIC_FILE_MIME_TYPES.size).toBeGreaterThan(1);
+  it("each MIME type list has more than 1 entry", () => {
+    expect(OPENAI_FILE_MIME_TYPES.length).toBeGreaterThan(1);
+    expect(GEMINI_FILE_MIME_TYPES.length).toBeGreaterThan(1);
+    expect(ANTHROPIC_FILE_MIME_TYPES.length).toBeGreaterThan(1);
   });
 });

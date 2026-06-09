@@ -161,30 +161,37 @@ describe("MemoryMCPConfigStorage", () => {
 });
 
 describe("MemoryMCPConfigStorage — additional invariants", () => {
+  const makeServer = (name: string): McpServerInsert => ({
+    name,
+    config: { command: "node", args: [name] },
+    userId: "u-add-test",
+    scope: "personal",
+  });
+
   let storage: MemoryMCPConfigStorage;
   beforeEach(() => { storage = new MemoryMCPConfigStorage(); });
 
   it("saved config contains the original config object", async () => {
-    const server = createTestServer("s");
+    const server = makeServer("s");
     const saved = await storage.save(server);
     expect(saved.config).toEqual(server.config);
   });
 
   it("get returns null after the saved id is deleted", async () => {
-    const saved = await storage.save(createTestServer("del-me"));
+    const saved = await storage.save(makeServer("del-me"));
     await storage.delete(saved.id);
     expect(await storage.get(saved.id)).toBeNull();
   });
 
   it("loadAll returns all saved names", async () => {
-    await storage.save(createTestServer("alpha"));
-    await storage.save(createTestServer("beta"));
+    await storage.save(makeServer("alpha"));
+    await storage.save(makeServer("beta"));
     const all = await storage.loadAll();
     expect(all.map((s) => s.name).sort()).toEqual(["alpha", "beta"]);
   });
 
   it("size decrements by one after a delete", async () => {
-    const saved = await storage.save(createTestServer("to-delete"));
+    const saved = await storage.save(makeServer("to-delete"));
     const before = storage.size();
     await storage.delete(saved.id);
     expect(storage.size()).toBe(before - 1);
@@ -192,6 +199,13 @@ describe("MemoryMCPConfigStorage — additional invariants", () => {
 });
 
 describe("MemoryMCPConfigStorage — state invariants", () => {
+  const makeServer = (name: string): McpServerInsert => ({
+    name,
+    config: { command: "node", args: [name] },
+    userId: "u-state-test",
+    scope: "personal",
+  });
+
   let storage: InstanceType<typeof MemoryMCPConfigStorage>;
 
   beforeEach(() => {
@@ -203,7 +217,7 @@ describe("MemoryMCPConfigStorage — state invariants", () => {
   });
 
   it("size increments after save", async () => {
-    await storage.save({ name: "s1", config: { command: "node" } } as Parameters<MemoryMCPConfigStorage["save"]>[0]);
+    await storage.save(makeServer("s1"));
     expect(storage.size()).toBe(1);
   });
 

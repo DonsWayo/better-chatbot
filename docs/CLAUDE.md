@@ -40,6 +40,58 @@ The waves add exactly these, at the seams identified below.
 - **MCP →** `src/lib/ai/mcp/` (client manager, OAuth provider, config storage backends). Company MCP registry builds on this.
 - **Storage / ingest →** `src/app/api/storage/` and `src/lib/file-ingest/`, `src/lib/ai/ingest/`. RAG ingestion hooks here.
 
+## Server Actions vs REST API routes — mandatory rule
+
+This is the most important Next.js architectural rule for this codebase. Violations introduce silent duplication and must be caught in review.
+
+### Decision matrix
+
+| Scenario | Pattern |
+|---|---|
+| Internal UI mutation (button, form, dialog) | **Server Action only** — no route |
+| Data fetching in a client component (SWR/useEffect) | **Route only** — no action |
+| Data fetching in a server component | **Direct lib call** — no route, no action |
+| Streaming response (chat, agent, workflow execute) | **Route only** |
+| File download (GDPR export, CSV) | **Route only** |
+| External consumer (webhook, cron, third-party) | **Route + Action** — both call the same shared lib function |
+
+### The shared-code pattern (when both route and action exist)
+
+```ts
+// 1. Shared logic in lib/  (no "use server", no auth)
+// lib/admin/feature-flags.ts
+export async function upsertFeatureFlag(name: string, enabled: boolean) { ... }
+
+// 2. Route handler — thin auth wrapper + HTTP shape
+// app/api/admin/feature-flags/route.ts
+export async function POST(req) {
+  const session = await getSession();
+  if (session?.user.role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
+  const { name, enabled } = await req.json();
+  await upsertFeatureFlag(name, enabled);
+  return Response.json({ name, enabled });
+}
+
+// 3. Server Action — thin auth wrapper + revalidation
+// app/api/admin/actions.ts  ("use server" at top)
+export async function toggleFeatureFlagAction(name: string, enabled: boolean) {
+  const session = await getSession();
+  if (session?.user.role !== "admin") throw new Error("Forbidden");
+  await upsertFeatureFlag(name, enabled);
+}
+```
+
+### What is NOT allowed
+
+- A client component calling `fetch("/api/...")` for a mutation that has (or should have) a Server Action equivalent.
+- A route handler that duplicates logic already in an `actions.ts` file.
+- A Server Action that duplicates logic already in a route handler, without extracting a shared lib function.
+- Adding a new `route.ts` for an internal-UI-only mutation — add to `actions.ts` instead.
+
+### SWR + Server Actions
+
+SWR requires a URL key, so GET routes for client-side data fetching are correct and should stay. After a Server Action mutation, call `mutate("/api/the-route")` to invalidate the SWR cache — do not re-fetch inside the action.
+
 ## Stack conventions (match the existing repo — do not introduce new tooling)
 
 - Language: **TypeScript**, strict. Lint/format: **Biome** (`pnpm lint:fix`, `pnpm format`). Types: `pnpm check-types`.

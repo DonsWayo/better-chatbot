@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { grantUserModelAction, revokeUserModelGrantAction } from "@/app/api/admin/actions";
 import { Button } from "ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
 import { Badge } from "ui/badge";
@@ -59,13 +60,7 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
     if (!selectedModel) return;
     setGranting(true);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/model-grants`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modelId: selectedModel }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to grant");
+      await grantUserModelAction(userId, selectedModel);
       toast.success(`Model access granted: ${selectedModel}`);
       setSelectedModel("");
       startTransition(() => { fetchGrants(); });
@@ -79,10 +74,7 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
   const handleRevoke = async (grantId: string, modelId: string) => {
     setRevokingId(grantId);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/model-grants/${grantId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to revoke");
+      await revokeUserModelGrantAction(grantId, userId);
       toast.success(`Grant revoked: ${modelId}`);
       startTransition(() => { fetchGrants(); });
     } catch (err) {

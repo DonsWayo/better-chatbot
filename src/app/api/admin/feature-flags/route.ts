@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { getSession } from "lib/auth/server";
 import { pgDb } from "lib/db/pg/db.pg";
 import { AsafeFeatureFlagTable } from "lib/db/pg/schema.pg";
-
+import { upsertFeatureFlag } from "lib/admin/feature-flags";
 import { z } from "zod";
-import { _resetKillSwitchCache } from "lib/observability/kill-switch";
 
 const UpdateFlagSchema = z.object({
   name: z.string().min(1).max(100),
@@ -46,19 +45,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
 
   const { name, enabled } = parsed.data;
-
-  await pgDb
-    .insert(AsafeFeatureFlagTable)
-    .values({ name, enabled, updatedAt: new Date() })
-    .onConflictDoUpdate({
-      target: AsafeFeatureFlagTable.name,
-      set: { enabled, updatedAt: new Date() },
-    });
-
-  // Flush the in-process cache so the new value is visible immediately in this pod
-  if (name === "kill_switch") {
-    _resetKillSwitchCache();
-  }
-
+  await upsertFeatureFlag(name, enabled);
   return NextResponse.json({ name, enabled });
 }

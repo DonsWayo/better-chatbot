@@ -13,7 +13,8 @@ import JsonView from "./ui/json-view";
 import { toast } from "sonner";
 import { safe } from "ts-safe";
 import { useRouter } from "next/navigation";
-import { createDebounce, fetcher, isNull, safeJSONParse } from "lib/utils";
+import { createDebounce, isNull, safeJSONParse } from "lib/utils";
+import { saveMcpClientAction } from "@/app/api/mcp/actions";
 import { handleErrorWithToast } from "ui/shared-toast";
 import { mutate } from "swr";
 import { Loader } from "lucide-react";
@@ -139,16 +140,7 @@ export default function MCPEditor({
           }
         }
       })
-      .map(() =>
-        fetcher("/api/mcp", {
-          method: "POST",
-          body: JSON.stringify({
-            name,
-            config,
-            id,
-          }),
-        }),
-      )
+      .map(() => saveMcpClientAction({ name, config, id } as never))
       .ifOk(() => {
         toast.success(t("MCP.configurationSavedSuccessfully"));
         mutate("/api/mcp/list");
