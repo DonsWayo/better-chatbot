@@ -54,4 +54,44 @@ describe("GET /api/user/export", () => {
     expect(json.profile.email).toBe("alice@example.com");
     expect(json.conversations).toBeInstanceOf(Array);
   });
+
+  it("includes userId in the filename of content-disposition", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-deadbeef-1234567890", name: "Bob", email: "bob@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const disposition = res.headers.get("content-disposition") ?? "";
+    expect(disposition).toContain("u-deadbe");
+  });
+
+  it("profile includes name and role from session", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-profile-test", name: "Carol", email: "carol@example.com", role: "editor" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const json = await res.json();
+    expect(json.profile.name).toBe("Carol");
+    expect(json.profile.role).toBe("editor");
+  });
+
+  it("usageEvents and feedback are arrays in the export", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-1", name: "Dan", email: "dan@example.com", role: "user" },
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const json = await res.json();
+    expect(Array.isArray(json.usageEvents)).toBe(true);
+    expect(Array.isArray(json.feedback)).toBe(true);
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

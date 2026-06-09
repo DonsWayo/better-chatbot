@@ -32,7 +32,13 @@ function makeRequest(): Request {
 }
 
 describe("POST /api/prompts/[id]/use", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectFromMock.mockReturnValue({ where: dbSelectWhereMock });
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbUpdateSetMock.mockReturnValue({ where: dbUpdateWhereMock });
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -41,12 +47,27 @@ describe("POST /api/prompts/[id]/use", () => {
     expect(res.status).toBe(401);
   });
 
+  it("never calls db.select when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when prompt not found", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
     dbSelectWhereMock.mockResolvedValueOnce([]);
     const { POST } = await import("./route");
     const res = await POST(makeRequest(), { params: Promise.resolve({ id: "missing" }) });
     expect(res.status).toBe(404);
+  });
+
+  it("never calls db.update when prompt is not found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "not-there" }) });
+    expect(dbUpdateMock).not.toHaveBeenCalled();
   });
 
   it("increments usage count and returns ok", async () => {
@@ -58,5 +79,22 @@ describe("POST /api/prompts/[id]/use", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(dbUpdateSetMock).toHaveBeenCalledOnce();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("404 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "gone" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });

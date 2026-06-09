@@ -23,11 +23,32 @@ describe("GET /api/admin/users/[id]/data-export", () => {
     expect(res.status).toBe(401);
   });
 
+  it("never calls exportUserData when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    expect(exportUserDataMock).not.toHaveBeenCalled();
+  });
+
   it("returns 403 for non-admin", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
     const { GET } = await import("./route");
     const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
     expect(res.status).toBe(403);
+  });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("never calls exportUserData for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u2" }) });
+    expect(exportUserDataMock).not.toHaveBeenCalled();
   });
 
   it("returns 200 with JSON export for admin", async () => {
@@ -48,5 +69,25 @@ describe("GET /api/admin/users/[id]/data-export", () => {
     const { GET } = await import("./route");
     await GET(makeRequest(), { params: Promise.resolve({ id: "u4" }) });
     expect(exportUserDataMock).toHaveBeenCalledWith("u4");
+  });
+
+  it("export response body contains exported data from exportUserData", async () => {
+    const exportData = { exportedAt: "2026-06-01", userId: "u5", profile: { name: "Eve" }, chatThreads: [{ id: "t-1" }] };
+    getSessionMock.mockResolvedValue({ user: { id: "admin1", role: "admin" } });
+    exportUserDataMock.mockResolvedValueOnce(exportData);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u5" }) });
+    const body = await res.json();
+    expect(body.userId).toBe("u5");
+    expect(body.profile.name).toBe("Eve");
+    expect(body.chatThreads).toHaveLength(1);
+  });
+
+  it("401 response has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });
