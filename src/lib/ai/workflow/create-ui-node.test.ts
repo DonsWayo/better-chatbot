@@ -1,4 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import type {
+  OutputNodeData,
+  LLMNodeData,
+  ConditionNodeData,
+  HttpNodeData,
+  TemplateNodeData,
+  NodeRuntimeField,
+} from "./workflow.interface";
 import {
   createUINode,
   defaultLLMNodeOutputSchema,
@@ -70,12 +78,13 @@ describe("createUINode — kind-specific data", () => {
 
   it("Output node has outputData array", () => {
     const node = createUINode(NodeKind.Output);
-    expect(Array.isArray((node.data as any).outputData)).toBe(true);
+    const data = node.data as OutputNodeData;
+    expect(Array.isArray(data.outputData)).toBe(true);
   });
 
   it("LLM node has messages array with one user message", () => {
     const node = createUINode(NodeKind.LLM);
-    const data = node.data as any;
+    const data = node.data as LLMNodeData;
     expect(Array.isArray(data.messages)).toBe(true);
     expect(data.messages.length).toBe(1);
     expect(data.messages[0].role).toBe("user");
@@ -89,14 +98,15 @@ describe("createUINode — kind-specific data", () => {
 
   it("Condition node has branches.if and branches.else", () => {
     const node = createUINode(NodeKind.Condition);
-    const data = node.data as any;
+    const data = node.data as ConditionNodeData;
     expect(data.branches).toHaveProperty("if");
     expect(data.branches).toHaveProperty("else");
   });
 
   it("Condition.if branch has type 'if'", () => {
     const node = createUINode(NodeKind.Condition);
-    expect((node.data as any).branches.if.type).toBe("if");
+    const data = node.data as ConditionNodeData;
+    expect(data.branches.if.type).toBe("if");
   });
 
   it("Tool node has tool_result in output schema", () => {
@@ -106,7 +116,8 @@ describe("createUINode — kind-specific data", () => {
 
   it("Http node sets method to GET", () => {
     const node = createUINode(NodeKind.Http);
-    expect((node.data as any).method).toBe("GET");
+    const data = node.data as HttpNodeData;
+    expect(data.method).toBe("GET");
   });
 
   it("Http node has response in output schema", () => {
@@ -116,7 +127,8 @@ describe("createUINode — kind-specific data", () => {
 
   it("Http node default timeout is 30000", () => {
     const node = createUINode(NodeKind.Http);
-    expect((node.data as any).timeout).toBe(30000);
+    const data = node.data as HttpNodeData;
+    expect(data.timeout).toBe(30000);
   });
 
   it("Template node uses defaultTemplateNodeOutputSchema", () => {
@@ -126,7 +138,8 @@ describe("createUINode — kind-specific data", () => {
 
   it("Template node has template.type 'tiptap'", () => {
     const node = createUINode(NodeKind.Template);
-    expect((node.data as any).template.type).toBe("tiptap");
+    const data = node.data as TemplateNodeData;
+    expect(data.template.type).toBe("tiptap");
   });
 });
 
@@ -141,7 +154,8 @@ describe("createUINode — return type invariants", () => {
 
   it("data.runtime.isNew is true", () => {
     const node = createUINode(NodeKind.Input);
-    expect((node.data as any).runtime.isNew).toBe(true);
+    const runtime = node.data.runtime as NodeRuntimeField;
+    expect(runtime.isNew).toBe(true);
   });
 
   it("outputSchema is a fresh copy each call (not shared reference)", () => {

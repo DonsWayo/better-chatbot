@@ -67,6 +67,6 @@ export function isBetterAuthRole(obj: unknown): obj is BetterAuthRole {
     typeof obj === "object" &&
     obj !== null &&
     "statements" in obj &&
-    typeof (obj as any).statements === "object"
+    typeof (obj as Record<string, unknown>).statements === "object"
   );
 }

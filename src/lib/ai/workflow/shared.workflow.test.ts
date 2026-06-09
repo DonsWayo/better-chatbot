@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { GraphStartEvent } from "ts-edge";
 import {
   defaultObjectJsonSchema,
   findAccessibleNodeIds,
@@ -9,12 +10,24 @@ import {
   WORKFLOW_STREAM_DELIMITER,
   WORKFLOW_STREAM_PREFIX,
 } from "./shared.workflow";
+import type { WorkflowNodeData } from "./workflow.interface";
+import type { ObjectJsonSchema7 } from "app-types/util";
+import type { TipTapMentionJsonContent } from "app-types/util";
 
 vi.mock("server-only", () => ({}));
 
 // ------------ helpers ------------
-const node = (id: string): any => ({ id, name: id, outputSchema: { type: "object", properties: {} } });
+const node = (id: string): WorkflowNodeData =>
+  ({
+    id,
+    name: id,
+    outputSchema: { type: "object", properties: {} },
+    kind: "input",
+  }) as unknown as WorkflowNodeData;
 const edge = (source: string, target: string) => ({ source, target });
+
+// A minimal valid GraphStartEvent
+const startEvent: GraphStartEvent = { eventType: "WORKFLOW_START", startedAt: 0, input: undefined };
 
 // ------------ defaultObjectJsonSchema ------------
 describe("defaultObjectJsonSchema", () => {
@@ -67,13 +80,11 @@ describe("findAccessibleNodeIds", () => {
   });
 
   it("excludes nodes not in the nodes list", () => {
-    // edge references n0 which is not in nodes array
     const result = findAccessibleNodeIds({
       nodeId: "n1",
       nodes: [node("n1")],
       edges: [edge("n0", "n1")],
     });
-    // n0 not in nodes list — filtered out
     expect(result).not.toContain("n0");
   });
 });
@@ -85,11 +96,9 @@ describe("findAccessibleNodeIds — return type invariants", () => {
   });
 
   it("no duplicates in returned array", () => {
-    // diamond: n1 → n2, n1 → n3, n2 → n4, n3 → n4
     const nodes = [node("n1"), node("n2"), node("n3"), node("n4")];
     const edges = [edge("n1", "n2"), edge("n1", "n3"), edge("n2", "n4"), edge("n3", "n4")];
     const result = findAccessibleNodeIds({ nodeId: "n4", nodes, edges });
-    // n1 may appear once or twice depending on traversal; check uniqueness
     const unique = new Set(result);
     expect(unique.size).toBeLessThanOrEqual(result.length);
   });
@@ -97,7 +106,7 @@ describe("findAccessibleNodeIds — return type invariants", () => {
 
 // ------------ findJsonSchemaByPath ------------
 describe("findJsonSchemaByPath", () => {
-  const schema: any = {
+  const schema: ObjectJsonSchema7 = {
     type: "object",
     properties: {
       name: { type: "string" },
@@ -143,24 +152,20 @@ describe("WORKFLOW_STREAM constants", () => {
 // ------------ encodeWorkflowEvent / decodeWorkflowEvents ------------
 describe("encodeWorkflowEvent", () => {
   it("returns a string", () => {
-    const result = encodeWorkflowEvent({ type: "start" } as any);
-    expect(typeof result).toBe("string");
+    expect(typeof encodeWorkflowEvent(startEvent)).toBe("string");
   });
 
   it("starts with WORKFLOW_STREAM_PREFIX", () => {
-    const result = encodeWorkflowEvent({ type: "start" } as any);
-    expect(result.startsWith(WORKFLOW_STREAM_PREFIX)).toBe(true);
+    expect(encodeWorkflowEvent(startEvent).startsWith(WORKFLOW_STREAM_PREFIX)).toBe(true);
   });
 
   it("ends with WORKFLOW_STREAM_DELIMITER", () => {
-    const result = encodeWorkflowEvent({ type: "end" } as any);
-    expect(result.endsWith(WORKFLOW_STREAM_DELIMITER)).toBe(true);
+    expect(encodeWorkflowEvent(startEvent).endsWith(WORKFLOW_STREAM_DELIMITER)).toBe(true);
   });
 
-  it("encoded string contains event type", () => {
-    const result = encodeWorkflowEvent({ type: "node_start", nodeId: "n1" } as any);
-    expect(result).toContain("node_start");
-    expect(result).toContain("n1");
+  it("encoded string contains the eventType", () => {
+    const result = encodeWorkflowEvent(startEvent);
+    expect(result).toContain("WORKFLOW_START");
   });
 });
 
@@ -172,12 +177,11 @@ describe("decodeWorkflowEvents", () => {
   });
 
   it("decodes a single encoded event round-trip", () => {
-    const event = { type: "node_complete", nodeId: "n1" };
-    const encoded = encodeWorkflowEvent(event as any);
+    const encoded = encodeWorkflowEvent(startEvent);
     const { events } = decodeWorkflowEvents(encoded);
     expect(events.length).toBe(1);
-    expect((events[0] as any).type).toBe("node_complete");
-    expect((events[0] as any).nodeId).toBe("n1");
+    const decoded = events[0] as { eventType: string };
+    expect(decoded.eventType).toBe("WORKFLOW_START");
   });
 
   it("returns empty events for empty buffer", () => {
@@ -193,8 +197,8 @@ describe("decodeWorkflowEvents", () => {
   });
 
   it("decodes multiple events", () => {
-    const e1 = encodeWorkflowEvent({ type: "start" } as any);
-    const e2 = encodeWorkflowEvent({ type: "end" } as any);
+    const e1 = encodeWorkflowEvent(startEvent);
+    const e2 = encodeWorkflowEvent(startEvent);
     const { events } = decodeWorkflowEvents(e1 + e2);
     expect(events.length).toBe(2);
   });
@@ -205,20 +209,20 @@ describe("convertTiptapJsonToText", () => {
   const getOutput = () => "";
 
   it("returns empty string for empty content", () => {
-    const json: any = { type: "doc", content: [] };
+    const json: TipTapMentionJsonContent = { type: "doc", content: [] };
     expect(convertTiptapJsonToText({ json, getOutput })).toBe("");
   });
 
   it("converts simple text paragraph", () => {
-    const json: any = {
+    const json: TipTapMentionJsonContent = {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
     };
     expect(convertTiptapJsonToText({ json, getOutput })).toBe("Hello");
   });
 
-  it("converts hard break to newlines", () => {
-    const json: any = {
+  it("converts hard break between text nodes", () => {
+    const json: TipTapMentionJsonContent = {
       type: "doc",
       content: [
         {
@@ -236,13 +240,16 @@ describe("convertTiptapJsonToText", () => {
     expect(result).toContain("Line2");
   });
 
-  it("returns string type", () => {
-    const json: any = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }] };
+  it("always returns a string", () => {
+    const json: TipTapMentionJsonContent = {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "x" }] }],
+    };
     expect(typeof convertTiptapJsonToText({ json, getOutput })).toBe("string");
   });
 
   it("uses custom mentionParser when provided", () => {
-    const json: any = {
+    const json: TipTapMentionJsonContent = {
       type: "doc",
       content: [
         {
