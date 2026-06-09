@@ -187,3 +187,60 @@ describe("createOpenAICompatibleModels", () => {
     expect(result.unsupportedModels.size).toBe(0);
   });
 });
+
+describe("createOpenAICompatibleModels — additional", () => {
+  it("providers object is empty for empty models array", () => {
+    const result = createOpenAICompatibleModels([
+      { provider: "empty-provider", apiKey: "k", baseUrl: "http://x", models: [] },
+    ]);
+    expect(result.providers["empty-provider"]).toEqual({});
+    expect(result.unsupportedModels.size).toBe(0);
+  });
+
+  it("all-tools-supported models produce zero unsupportedModels", () => {
+    const result = createOpenAICompatibleModels([
+      {
+        provider: "prov",
+        apiKey: "k",
+        baseUrl: "http://x",
+        models: [
+          { apiName: "m1", uiName: "M1", supportsTools: true },
+          { apiName: "m2", uiName: "M2", supportsTools: true },
+        ],
+      },
+    ]);
+    expect(result.unsupportedModels.size).toBe(0);
+  });
+
+  it("all-no-tools models add all to unsupportedModels", () => {
+    const result = createOpenAICompatibleModels([
+      {
+        provider: "prov",
+        apiKey: "k",
+        baseUrl: "http://x",
+        models: [
+          { apiName: "m1", uiName: "M1", supportsTools: false },
+          { apiName: "m2", uiName: "M2", supportsTools: false },
+        ],
+      },
+    ]);
+    expect(result.unsupportedModels.size).toBe(2);
+  });
+
+  it("returns providers with correct provider name as key", () => {
+    const result = createOpenAICompatibleModels([
+      {
+        provider: "my-special-provider",
+        apiKey: "k",
+        baseUrl: "http://x",
+        models: [{ apiName: "m", uiName: "M", supportsTools: true }],
+      },
+    ]);
+    expect(Object.keys(result.providers)).toContain("my-special-provider");
+  });
+
+  it("unsupportedModels is a Set", () => {
+    const result = createOpenAICompatibleModels([]);
+    expect(result.unsupportedModels).toBeInstanceOf(Set);
+  });
+});

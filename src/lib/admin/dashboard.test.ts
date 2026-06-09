@@ -184,3 +184,57 @@ describe("getDashboardStats", () => {
     }
   });
 });
+
+describe("getDashboardStats — additional stats shapes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  it("totalUsers is an integer (not a float)", async () => {
+    setupMocks([
+      [{ total: 10 }], [{ total: 3 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(Number.isInteger(stats.totalUsers)).toBe(true);
+  });
+
+  it("totalTeams is an integer", async () => {
+    setupMocks([
+      [{ total: 5 }], [{ total: 2 }],
+      [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(Number.isInteger(stats.totalTeams)).toBe(true);
+  });
+
+  it("costLast24hUsd is non-negative", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 10, costUsd: "2.50" }],
+      [{ requests: 100, costUsd: "15.00" }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.costLast24hUsd).toBeGreaterThanOrEqual(0);
+  });
+
+  it("requestsLast24h and requestsLast7d are non-negative integers", async () => {
+    setupMocks([
+      [{ total: 0 }], [{ total: 0 }],
+      [{ requests: 5, costUsd: null }],
+      [{ requests: 50, costUsd: null }],
+      [{ total: 0 }], [],
+    ]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats.requestsLast24h).toBeGreaterThanOrEqual(0);
+    expect(stats.requestsLast7d).toBeGreaterThanOrEqual(0);
+  });
+});
