@@ -161,3 +161,27 @@ describe("ArchiveCreateSchema and ArchiveUpdateSchema — type checks", () => {
     if (r.success) expect(r.data.name).toBe("Test");
   });
 });
+
+describe("ArchiveCreateSchema and ArchiveUpdateSchema — data shape", () => {
+  it("ArchiveCreateSchema result.data.name matches input exactly", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "My Archive" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("My Archive");
+  });
+
+  it("ArchiveUpdateSchema result.data.name matches input exactly", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Updated Name" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.name).toBe("Updated Name");
+  });
+
+  it("ArchiveUpdateSchema rejects number as description", () => {
+    const r = ArchiveUpdateSchema.safeParse({ name: "Valid", description: 42 });
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveCreateSchema rejects number as description", () => {
+    const r = ArchiveCreateSchema.safeParse({ name: "Valid", description: 123 });
+    expect(r.success).toBe(false);
+  });
+});

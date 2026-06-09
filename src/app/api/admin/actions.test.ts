@@ -161,3 +161,30 @@ describe("UpdateUserBanStatusSchema — additional", () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe("UpdateUserBanStatusSchema — invariants", () => {
+  const VALID_UUID = "123e4567-e89b-12d3-a456-426614174000";
+
+  it("parsed data.userId equals input uuid on success", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "true" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.userId).toBe(VALID_UUID);
+  });
+
+  it("parsed data.banned is a boolean on success", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "false" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(typeof result.data.banned).toBe("boolean");
+  });
+
+  it("banReason defaults to undefined when not provided", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "true" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.banReason).toBeUndefined();
+  });
+
+  it("rejects null userId", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({ userId: null, banned: "true" });
+    expect(result.success).toBe(false);
+  });
+});
