@@ -140,4 +140,34 @@ describe("addExportChatCommentAction", () => {
       }),
     ).rejects.toThrow("DB error");
   });
+
+  it("throws when session has no user", async () => {
+    getSessionMock.mockResolvedValue({ user: null });
+    await expect(
+      addExportChatCommentAction({
+        exportId: "exp-1",
+        content: { type: "doc", content: [] },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("throws when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await expect(
+      addExportChatCommentAction({
+        exportId: "exp-1",
+        content: { type: "doc", content: [] },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("getSession is called exactly once per action call", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.insertComment.mockResolvedValue(undefined);
+    await addExportChatCommentAction({
+      exportId: "exp-1",
+      content: { type: "doc", content: [] },
+    });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });

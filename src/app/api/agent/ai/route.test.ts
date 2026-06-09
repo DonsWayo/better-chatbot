@@ -132,4 +132,30 @@ describe("POST /api/agent/ai", () => {
     await POST(makeRequest({ message: "test" }));
     expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledWith("user-99");
   });
+
+  it("calls workflowRepository.selectExecuteAbility exactly once", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ message: "test" }));
+    expect(workflowRepositoryMock.selectExecuteAbility).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectExecuteAbility when unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ message: "test" }));
+    expect(workflowRepositoryMock.selectExecuteAbility).not.toHaveBeenCalled();
+  });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ message: "test" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes model to streamObject", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ message: "Build agent" }));
+    expect(streamObjectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: expect.anything() }),
+    );
+  });
 });
