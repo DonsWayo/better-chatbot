@@ -65,4 +65,49 @@ describe("createLineChartTool — shape invariants", () => {
     expect(typeof createLineChartTool.description).toBe("string");
     expect(createLineChartTool.description.length).toBeGreaterThan(0);
   });
+
+  it("description mentions 'line chart'", () => {
+    expect(createLineChartTool.description.toLowerCase()).toContain("line");
+  });
+
+  it("has an execute function", () => {
+    expect(typeof createLineChartTool.execute).toBe("function");
+  });
+
+  it("execute resolves to 'Success'", async () => {
+    const result = await createLineChartTool.execute({ data: [], title: "T", description: null, yAxisLabel: null }, { messages: [], toolCallId: "t1" });
+    expect(result).toBe("Success");
+  });
+
+  it("inputSchema rejects data item with missing xAxisLabel", () => {
+    const input = {
+      ...validInput,
+      data: [{ series: [{ seriesName: "A", value: 1 }] }],
+    };
+    expect(createLineChartTool.inputSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("inputSchema rejects series item with missing seriesName", () => {
+    const input = {
+      ...validInput,
+      data: [{ xAxisLabel: "Q1", series: [{ value: 1 }] }],
+    };
+    expect(createLineChartTool.inputSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("inputSchema accepts multiple data points", () => {
+    const input = {
+      ...validInput,
+      data: [
+        { xAxisLabel: "Q1", series: [{ seriesName: "A", value: 10 }] },
+        { xAxisLabel: "Q2", series: [{ seriesName: "A", value: 20 }] },
+        { xAxisLabel: "Q3", series: [{ seriesName: "A", value: 30 }] },
+      ],
+    };
+    expect(createLineChartTool.inputSchema.safeParse(input).success).toBe(true);
+  });
+
+  it("inputSchema accepts null description", () => {
+    expect(createLineChartTool.inputSchema.safeParse({ ...validInput, description: null }).success).toBe(true);
+  });
 });

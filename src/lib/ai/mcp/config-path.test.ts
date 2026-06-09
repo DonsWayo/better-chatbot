@@ -46,4 +46,34 @@ describe("MCP_CONFIG_PATH", () => {
     const { MCP_CONFIG_PATH } = await import("./config-path");
     expect(MCP_CONFIG_PATH.startsWith(process.cwd())).toBe(true);
   });
+
+  it("env var path is used verbatim (no normalization)", async () => {
+    process.env.MCP_CONFIG_PATH = "/some/path/../config.json";
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH).toBe("/some/path/../config.json");
+  });
+
+  it("empty string env var falls back to default (falsy)", async () => {
+    process.env.MCP_CONFIG_PATH = "";
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH).toBe(join(process.cwd(), ".mcp-config.json"));
+  });
+
+  it("result is a string", async () => {
+    delete process.env.MCP_CONFIG_PATH;
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(typeof MCP_CONFIG_PATH).toBe("string");
+  });
+
+  it("env var set to relative path is used as-is", async () => {
+    process.env.MCP_CONFIG_PATH = "./local-config.json";
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH).toBe("./local-config.json");
+  });
+
+  it("default path is an absolute path", async () => {
+    delete process.env.MCP_CONFIG_PATH;
+    const { MCP_CONFIG_PATH } = await import("./config-path");
+    expect(MCP_CONFIG_PATH.startsWith("/")).toBe(true);
+  });
 });
