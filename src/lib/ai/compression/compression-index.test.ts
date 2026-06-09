@@ -41,6 +41,19 @@ describe("compressionLevelFromPolicy", () => {
   it("returns standard for unknown policy", () => {
     expect(compressionLevelFromPolicy("unknown")).toBe("standard");
   });
+
+  it("returns standard when input is 'aggressive' (no case for it)", () => {
+    expect(compressionLevelFromPolicy("aggressive")).toBe("standard");
+  });
+
+  it("returns a non-empty string for every policy", () => {
+    const policies = ["strict", "permissive", "standard", null, undefined, "random"];
+    for (const p of policies) {
+      const level = compressionLevelFromPolicy(p as any);
+      expect(typeof level).toBe("string");
+      expect(level.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("wrapWithCompression", () => {
@@ -70,5 +83,27 @@ describe("wrapWithCompression", () => {
   it("defaults to standard level when no opts given", () => {
     const result = wrapWithCompression(fakeModel);
     expect(result).toBeDefined();
+  });
+
+  it("returns defined value for aggressive level", () => {
+    const result = wrapWithCompression(fakeModel, { level: "aggressive" });
+    expect(result).toBeDefined();
+  });
+
+  it("returns defined value for light level", () => {
+    const result = wrapWithCompression(fakeModel, { level: "light" });
+    expect(result).toBeDefined();
+  });
+
+  it("accepts teamId option without throwing", () => {
+    expect(() =>
+      wrapWithCompression(fakeModel, { level: "standard", teamId: "team-abc" }),
+    ).not.toThrow();
+  });
+
+  it("accepts null teamId without throwing", () => {
+    expect(() =>
+      wrapWithCompression(fakeModel, { level: "standard", teamId: null }),
+    ).not.toThrow();
   });
 });

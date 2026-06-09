@@ -85,3 +85,41 @@ describe("resolvePolicy", () => {
     expect(strictChars).toBeLessThan(resolvePolicy("permissive").maxInputChars);
   });
 });
+
+describe("resolvePolicy — return type shape", () => {
+  it("always returns an object with posture, pii, secrets, injection, maxInputChars, outputLeakProtection", () => {
+    const policies = [resolvePolicy("strict"), resolvePolicy("standard"), resolvePolicy("permissive"), resolvePolicy()];
+    for (const p of policies) {
+      expect(p).toHaveProperty("posture");
+      expect(p).toHaveProperty("pii");
+      expect(p).toHaveProperty("secrets");
+      expect(p).toHaveProperty("injection");
+      expect(p).toHaveProperty("maxInputChars");
+      expect(p).toHaveProperty("outputLeakProtection");
+    }
+  });
+
+  it("maxInputChars is always a positive number", () => {
+    const postures = ["strict", "standard", "permissive", null, undefined];
+    for (const p of postures) {
+      const policy = resolvePolicy(p as any);
+      expect(typeof policy.maxInputChars).toBe("number");
+      expect(policy.maxInputChars).toBeGreaterThan(0);
+    }
+  });
+
+  it("outputLeakProtection is always a boolean", () => {
+    const postures = ["strict", "standard", "permissive", null];
+    for (const p of postures) {
+      expect(typeof resolvePolicy(p as any).outputLeakProtection).toBe("boolean");
+    }
+  });
+
+  it("maxInputChars ordering: strict < standard < permissive", () => {
+    const s = resolvePolicy("strict").maxInputChars;
+    const m = resolvePolicy("standard").maxInputChars;
+    const p = resolvePolicy("permissive").maxInputChars;
+    expect(s).toBeLessThan(m);
+    expect(m).toBeLessThan(p);
+  });
+});

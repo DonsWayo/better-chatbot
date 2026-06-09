@@ -74,3 +74,38 @@ describe("PERMISSION_TYPES", () => {
     }
   });
 });
+
+describe("RESOURCES — uniqueness and format", () => {
+  it("has no duplicate values", () => {
+    const values = Object.values(RESOURCES);
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it("all keys are uppercase strings", () => {
+    for (const k of Object.keys(RESOURCES)) {
+      expect(k).toBe(k.toUpperCase());
+    }
+  });
+});
+
+describe("PERMISSION_TYPES — uniqueness and format", () => {
+  it("has no duplicate values", () => {
+    const values = Object.values(PERMISSION_TYPES);
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it("all keys are uppercase strings", () => {
+    for (const k of Object.keys(PERMISSION_TYPES)) {
+      expect(k).toBe(k.toUpperCase());
+    }
+  });
+});
+
+describe("RESOURCES and PERMISSION_TYPES — cross-property", () => {
+  it("no overlapping values between RESOURCES and PERMISSION_TYPES", () => {
+    const resourceValues = new Set(Object.values(RESOURCES));
+    for (const v of Object.values(PERMISSION_TYPES)) {
+      expect(resourceValues.has(v)).toBe(false);
+    }
+  });
+});

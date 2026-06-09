@@ -68,4 +68,29 @@ describe("createTeamAction", () => {
     await createTeamAction("Finance");
     expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
   });
+
+  it("calls createTeam exactly once per invocation", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockResolvedValue(undefined);
+    const { createTeamAction } = await import("./actions");
+    await createTeamAction("HR");
+    expect(createTeamMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes name exactly as-is (no transformation)", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockResolvedValue(undefined);
+    const { createTeamAction } = await import("./actions");
+    const name = "My Exact Team Name 123";
+    await createTeamAction(name);
+    expect(createTeamMock).toHaveBeenCalledWith(name, undefined);
+  });
+
+  it("passes both name and description to createTeam in order", async () => {
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+    createTeamMock.mockResolvedValue(undefined);
+    const { createTeamAction } = await import("./actions");
+    await createTeamAction("Alpha", "Alpha team description");
+    expect(createTeamMock).toHaveBeenCalledWith("Alpha", "Alpha team description");
+  });
 });

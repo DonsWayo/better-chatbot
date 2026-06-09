@@ -63,4 +63,44 @@ describe("APP_DEFAULT_TOOL_KIT", () => {
       expect(tool.execute).toBeUndefined();
     }
   });
+
+  it("Visualization toolkit has exactly 4 tools", () => {
+    const viz = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Visualization];
+    expect(Object.keys(viz)).toHaveLength(4);
+  });
+
+  it("WebSearch toolkit has exactly 2 tools", () => {
+    const ws = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.WebSearch];
+    expect(Object.keys(ws)).toHaveLength(2);
+  });
+
+  it("Http toolkit has exactly 1 tool", () => {
+    const http = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Http];
+    expect(Object.keys(http)).toHaveLength(1);
+  });
+
+  it("Code toolkit has exactly 2 tools", () => {
+    const code = APP_DEFAULT_TOOL_KIT[AppDefaultToolkit.Code];
+    expect(Object.keys(code)).toHaveLength(2);
+  });
+
+  it("each tool has a non-empty description", () => {
+    for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
+      for (const [toolName, tool] of Object.entries(kit)) {
+        expect(
+          typeof (tool as any).description,
+          `${kitName}/${toolName} should have string description`,
+        ).toBe("string");
+        expect((tool as any).description.length, `${kitName}/${toolName} description empty`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("total tool count across all kits is 9", () => {
+    const total = Object.values(APP_DEFAULT_TOOL_KIT).reduce(
+      (sum, kit) => sum + Object.keys(kit).length,
+      0,
+    );
+    expect(total).toBe(9);
+  });
 });

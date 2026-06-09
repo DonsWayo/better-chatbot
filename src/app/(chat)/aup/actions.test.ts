@@ -77,4 +77,29 @@ describe("acceptAupAction", () => {
     await expect(acceptAupAction()).rejects.toThrow("DB failure");
     expect(redirectMock).not.toHaveBeenCalledWith("/");
   });
+
+  it("redirect destination on success is exactly '/'", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    recordAupAcceptanceMock.mockResolvedValue(undefined);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(redirectMock).toHaveBeenCalledWith("/");
+    expect(redirectMock).not.toHaveBeenCalledWith("/home");
+    expect(redirectMock).not.toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("redirect destination on unauthenticated is exactly '/auth/signin'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow();
+    expect(redirectMock).toHaveBeenCalledWith("/auth/signin");
+  });
+
+  it("getSession is called exactly once per invocation", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    recordAupAcceptanceMock.mockResolvedValue(undefined);
+    const { acceptAupAction } = await import("./actions");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
