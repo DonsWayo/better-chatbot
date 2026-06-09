@@ -212,3 +212,36 @@ describe("GET /api/user/details/[id] — guard chain", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("GET /api/user/details/[id] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getUser not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("canManageUser not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(canManageUserMock).not.toHaveBeenCalled();
+  });
+
+  it("GET returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});

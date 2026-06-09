@@ -212,3 +212,36 @@ describe("DELETE /api/knowledge/collections/[id]/documents/[docId] — additiona
     expect(dbDeleteMock).not.toHaveBeenCalled();
   });
 });
+
+describe("DELETE /api/knowledge/collections/[id]/documents/[docId] — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: "doc-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbSelect not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: "doc-1" }) });
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("DELETE returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: "doc-1" }) });
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("dbDelete not called when session exists but role is editor", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "col-1", docId: "doc-1" }) });
+    expect(dbDeleteMock).not.toHaveBeenCalled();
+  });
+});

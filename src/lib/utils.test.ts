@@ -234,3 +234,21 @@ describe("errorToString — additional", () => {
     }
   });
 });
+
+describe("parseEnvBoolean — additional", () => {
+  test("returns true for '1'", () => {
+    expect(parseEnvBoolean("1")).toBe(true);
+  });
+
+  test("returns false for '0'", () => {
+    expect(parseEnvBoolean("0")).toBe(false);
+  });
+
+  test("returns false for undefined", () => {
+    expect(parseEnvBoolean(undefined)).toBe(false);
+  });
+
+  test("returns true for 'TRUE' (case insensitive)", () => {
+    expect(parseEnvBoolean("TRUE")).toBe(true);
+  });
+});
