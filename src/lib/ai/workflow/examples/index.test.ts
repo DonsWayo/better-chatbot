@@ -88,4 +88,25 @@ describe("BabyResearch factory", () => {
       expect(edge.id!.length).toBeGreaterThan(0);
     }
   });
+
+  it("each node has a kind field", () => {
+    const { nodes } = BabyResearch();
+    for (const node of nodes) {
+      expect(node).toHaveProperty("kind");
+    }
+  });
+
+  it("workflow icon value is a non-empty string", () => {
+    const { workflow } = BabyResearch();
+    expect(workflow.icon?.value.length).toBeGreaterThan(0);
+  });
+});
+
+describe("GetWeather factory — extra coverage", () => {
+  it("each node has a kind field", () => {
+    const { nodes } = GetWeather();
+    for (const node of nodes) {
+      expect(node).toHaveProperty("kind");
+    }
+  });
 });

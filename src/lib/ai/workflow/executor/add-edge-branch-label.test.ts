@@ -314,4 +314,39 @@ describe("addEdgeBranchLabel", () => {
     // The traversal should continue from llm2 since it was reached
     expect(edges[2].uiConfig.label).toBeUndefined(); // but this won't be labeled since traversal stops at existing label
   });
+
+  it("function returns void (mutates in-place)", () => {
+    const nodes: DBNode[] = [
+      createNode("start", NodeKind.Input, "Start"),
+      createNode("end", NodeKind.Output, "End"),
+    ];
+    const edges: DBEdge[] = [createEdge("e1", "start", "end")];
+    const result = addEdgeBranchLabel(nodes, edges);
+    expect(result).toBeUndefined();
+  });
+
+  it("assigned labels are strings", () => {
+    const nodes: DBNode[] = [
+      createNode("start", NodeKind.Input, "Start"),
+      createNode("llm1", NodeKind.LLM, "LLM1"),
+      createNode("end", NodeKind.Output, "End"),
+    ];
+    const edges: DBEdge[] = [
+      createEdge("e1", "start", "llm1"),
+      createEdge("e2", "llm1", "end"),
+    ];
+    addEdgeBranchLabel(nodes, edges);
+    for (const edge of edges) {
+      if (edge.uiConfig.label !== undefined) {
+        expect(typeof edge.uiConfig.label).toBe("string");
+      }
+    }
+  });
+
+  it("empty edges array is left unchanged", () => {
+    const nodes: DBNode[] = [createNode("start", NodeKind.Input, "Start")];
+    const edges: DBEdge[] = [];
+    addEdgeBranchLabel(nodes, edges);
+    expect(edges).toHaveLength(0);
+  });
 });

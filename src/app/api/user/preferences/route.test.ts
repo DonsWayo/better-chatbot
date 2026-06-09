@@ -132,4 +132,33 @@ describe("PUT /api/user/preferences", () => {
     const body = await res.json();
     expect(body.error).toBe("Update failed");
   });
+
+  it("does not call updatePreferences when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await PUT(makeRequest(PREFERENCES));
+    expect(userRepositoryMock.updatePreferences).not.toHaveBeenCalled();
+  });
+
+  it("returns JSON content-type on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    userRepositoryMock.updatePreferences.mockResolvedValue({
+      preferences: PREFERENCES,
+    });
+    const res = await PUT(makeRequest(PREFERENCES));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+});
+
+describe("GET /api/user/preferences — extra coverage", () => {
+  it("getSession is called exactly once per GET request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call getPreferences when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(userRepositoryMock.getPreferences).not.toHaveBeenCalled();
+  });
 });

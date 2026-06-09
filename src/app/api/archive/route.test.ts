@@ -126,4 +126,25 @@ describe("POST /api/archive", () => {
     const res = await POST(makeRequest({ name: "Test" }));
     expect(res.status).toBe(500);
   });
+
+  it("does not call createArchive when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ name: "Test" }));
+    expect(archiveRepositoryMock.createArchive).not.toHaveBeenCalled();
+  });
+
+  it("calls createArchive exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.createArchive.mockResolvedValue({ id: "arch-1" });
+    await POST(makeRequest({ name: "Test" }));
+    expect(archiveRepositoryMock.createArchive).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/archive — extra coverage", () => {
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -153,4 +153,25 @@ describe("POST /api/agent", () => {
     await POST(makePostRequest(VALID_AGENT_BODY));
     expect(serverCacheMock.delete).toHaveBeenCalledWith("agent:ag-new");
   });
+
+  it("does not call canCreateAgent when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makePostRequest(VALID_AGENT_BODY));
+    expect(canCreateAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("returns JSON content-type on 403", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateAgentMock.mockResolvedValue(false);
+    const res = await POST(makePostRequest(VALID_AGENT_BODY));
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+  });
+});
+
+describe("GET /api/agent — extra coverage", () => {
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET(makeGetRequest());
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
 });
