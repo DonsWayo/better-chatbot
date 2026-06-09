@@ -104,4 +104,24 @@ describe("mergeSystemPrompt", () => {
     expect(result).toContain("\n\n");
     expect(result).not.toBe("A\nB");
   });
+
+  it("result does not start with a newline", () => {
+    const result = mergeSystemPrompt("Hello", "World");
+    expect(result.startsWith("\n")).toBe(false);
+  });
+
+  it("result does not end with a newline", () => {
+    const result = mergeSystemPrompt("Hello", "World");
+    expect(result.endsWith("\n")).toBe(false);
+  });
+
+  it("tabs and newlines in input are trimmed away", () => {
+    const result = mergeSystemPrompt("\t\tYou are helpful\t\t", "\n\nBe concise\n\n");
+    expect(result).toBe("You are helpful\n\nBe concise");
+  });
+
+  it("all-whitespace strings are filtered out entirely", () => {
+    const result = mergeSystemPrompt("   ", "  \t  ", "Real prompt");
+    expect(result).toBe("Real prompt");
+  });
 });

@@ -106,4 +106,49 @@ describe("PATCH /api/admin/teams/[id]", () => {
     const body = await res.json();
     expect(body).toEqual({ ok: true });
   });
+
+  it("never calls updateTeamPolicy when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-1") as any);
+    expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
+  });
+
+  it("never calls updateTeamPolicy for non-admin", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "editor" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-1") as any);
+    expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({}), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "editor" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({}), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("updateTeamPolicy called exactly once on success", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("team-1") as any);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error field when validation fails", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ guardrailPolicy: "invalid-value" }), makeParams("team-1") as any);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

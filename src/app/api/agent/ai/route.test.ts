@@ -99,4 +99,28 @@ describe("POST /api/agent/ai", () => {
     const text = await res.text();
     expect(text).toBe("Unauthorized");
   });
+
+  it("streamObject called with the message as prompt", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    let capturedPrompt = "";
+    streamObjectMock.mockImplementationOnce((opts: any) => {
+      capturedPrompt = opts.prompt ?? "";
+      return { toTextStreamResponse: vi.fn(() => new Response("ok")) };
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "build a support agent", chatModel: undefined }));
+    expect(capturedPrompt).toBe("build a support agent");
+  });
+
+  it("streamObject receives a system prompt string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    let capturedSystem: unknown = null;
+    streamObjectMock.mockImplementationOnce((opts: any) => {
+      capturedSystem = opts.system;
+      return { toTextStreamResponse: vi.fn(() => new Response("ok")) };
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "create agent" }));
+    expect(typeof capturedSystem).toBe("string");
+  });
 });
