@@ -188,3 +188,44 @@ describe("POST /api/prompts/[id]/use — additional", () => {
     expect(dbSelectMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/prompts/[id]/use — response invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectFromMock.mockReturnValue({ where: dbSelectWhereMock });
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbUpdateSetMock.mockReturnValue({ where: dbUpdateWhereMock });
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+  });
+
+  it("response is a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-1" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is a Response instance for 404", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(), { params: Promise.resolve({ id: "gone" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("dbUpdateWhereMock called exactly once per successful POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "p-1" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(dbUpdateWhereMock).toHaveBeenCalledTimes(1);
+  });
+});
