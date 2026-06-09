@@ -62,6 +62,36 @@ describe("GET /api/admin/mcp/servers", () => {
     const body = await res.json();
     expect(body.servers).toHaveLength(1);
   });
+
+  it("never queries DB when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("never queries DB for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });
 
 describe("POST /api/admin/mcp/servers", () => {
@@ -72,6 +102,13 @@ describe("POST /api/admin/mcp/servers", () => {
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(401);
+  });
+
+  it("returns 403 for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    expect(res.status).toBe(403);
   });
 
   it("returns 400 on invalid body", async () => {
@@ -107,5 +144,27 @@ describe("POST /api/admin/mcp/servers", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.server.name).toBe("Docs MCP");
+  });
+
+  it("never calls dbInsert when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls dbInsert for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });

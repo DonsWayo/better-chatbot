@@ -109,4 +109,30 @@ describe("POST /api/chat/temporary", () => {
     await POST(makeRequest({ messages: [], instructions: "be concise" }));
     expect(capturedSystem).toContain("be concise");
   });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [] }));
+    expect(res.status).toBe(401);
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
+
+  it("never calls streamText when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("streamText called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    streamTextMock.mockReturnValueOnce({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(streamTextMock).toHaveBeenCalledTimes(1);
+  });
 });
