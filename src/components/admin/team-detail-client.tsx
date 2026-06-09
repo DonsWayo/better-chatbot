@@ -13,7 +13,6 @@ import {
 } from "ui/table";
 import { Button } from "ui/button";
 import { Input } from "ui/input";
-import { Badge } from "ui/badge";
 import {
   Select,
   SelectContent,
@@ -28,7 +27,7 @@ import {
   CardHeader,
   CardTitle,
 } from "ui/card";
-import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck, BarChart3, Settings } from "lucide-react";
+import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck, BarChart3, Settings, Pencil } from "lucide-react";
 import Link from "next/link";
 import {
   addTeamMemberAction,
@@ -37,7 +36,21 @@ import {
   setModelAllowListAction,
   setEmailDomainsAction,
   setPolicyAction,
+  renameTeamAction,
+  deleteTeamAction,
+  updateMemberRoleAction,
 } from "@/app/(chat)/(admin)/admin/teams/[id]/actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "ui/alert-dialog";
 
 type Role = "admin" | "editor" | "member";
 
@@ -93,16 +106,44 @@ interface TeamDetailClientProps {
   team: Team;
 }
 
-const ROLE_BADGE_VARIANT: Record<string, "default" | "secondary" | "outline"> =
-  {
-    admin: "default",
-    editor: "secondary",
-    member: "outline",
-  };
 
 export function TeamDetailClient({ team }: TeamDetailClientProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+
+  // Rename state
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState(team.name);
+  const [newDescription, setNewDescription] = useState(team.description ?? "");
+  const [isSavingRename, setIsSavingRename] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  const handleRename = async () => {
+    if (!newName.trim()) return;
+    setIsSavingRename(true);
+    setRenameError(null);
+    try {
+      await renameTeamAction(team.id, newName.trim(), newDescription.trim() || null);
+      setIsRenaming(false);
+      startTransition(() => { router.refresh(); });
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : "Failed to rename team");
+    } finally {
+      setIsSavingRename(false);
+    }
+  };
+
+  // Delete state
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteTeamAction(team.id);
+    } catch {
+      setIsDeleting(false);
+    }
+  };
 
   // Add member form state
   const [email, setEmail] = useState("");
@@ -112,6 +153,19 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
   // Remove state
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Role change state
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+
+  const handleRoleChange = async (memberId: string, newRole: "admin" | "editor" | "member") => {
+    setUpdatingRoleId(memberId);
+    try {
+      await updateMemberRoleAction(memberId, team.id, newRole);
+      startTransition(() => { router.refresh(); });
+    } finally {
+      setUpdatingRoleId(null);
+    }
+  };
 
   // Per-team usage state (fetched client-side to avoid blocking SSR)
   const [usageRows, setUsageRows] = useState<UsageRow[]>([]);
@@ -305,16 +359,80 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
       {/* Team header */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">{team.name}</h1>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
-            {team.slug}
-          </code>
-          {team.description && <span>{team.description}</span>}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Created {format(new Date(team.createdAt), "MMM d, yyyy")}
-        </p>
+        {isRenaming ? (
+          <div className="space-y-2">
+            <input
+              className="text-2xl font-semibold bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setIsRenaming(false); }}
+              autoFocus
+              data-testid="rename-team-input"
+            />
+            <input
+              className="text-sm text-muted-foreground bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
+              placeholder="Description (optional)"
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setIsRenaming(false); }}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleRename} disabled={!newName.trim() || isSavingRename} data-testid="save-rename-btn">
+                {isSavingRename ? "Saving…" : "Save"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setIsRenaming(false); setNewName(team.name); setNewDescription(team.description ?? ""); }}>
+                Cancel
+              </Button>
+            </div>
+            {renameError && <p className="text-sm text-destructive">{renameError}</p>}
+          </div>
+        ) : (
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold">{team.name}</h1>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{team.slug}</code>
+                {team.description && <span>{team.description}</span>}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Created {format(new Date(team.createdAt), "MMM d, yyyy")}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setIsRenaming(true)} data-testid="rename-team-btn">
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                Rename
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" data-testid="delete-team-btn">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete &quot;{team.name}&quot;?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the team and remove all members. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      data-testid="confirm-delete-team-btn"
+                    >
+                      {isDeleting ? "Deleting…" : "Delete Team"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Usage summary (last 30 days) */}
@@ -406,14 +524,20 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
                       </TableCell>
                       <TableCell className="text-sm">{m.userEmail}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            ROLE_BADGE_VARIANT[m.role] ?? "outline"
-                          }
-                          className="capitalize text-xs"
+                        <Select
+                          value={m.role}
+                          onValueChange={(v) => handleRoleChange(m.memberId, v as Role)}
+                          disabled={updatingRoleId === m.memberId}
                         >
-                          {m.role}
-                        </Badge>
+                          <SelectTrigger className="h-7 w-28 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="member">Member</SelectItem>
+                            <SelectItem value="editor">Editor</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(m.joinedAt), "MMM d, yyyy")}

@@ -23,7 +23,7 @@ export async function PATCH(
   if (session.user.role !== "admin") return NextResponse.json({ error: "Admin required" }, { status: 403 });
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   const parsed = PatchTeamSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 

@@ -264,6 +264,45 @@ export async function removeTeamMember(memberId: string) {
     .where(eq(AsafeTeamMemberTable.id, memberId));
 }
 
+export async function updateTeamMemberRole(
+  memberId: string,
+  role: "admin" | "editor" | "member",
+) {
+  await db
+    .update(AsafeTeamMemberTable)
+    .set({ role })
+    .where(eq(AsafeTeamMemberTable.id, memberId));
+}
+
+export async function updateTeam(
+  teamId: string,
+  patch: { name?: string; description?: string | null },
+) {
+  if (patch.name !== undefined) {
+    const slug = patch.name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    await db
+      .update(AsafeTeamTable)
+      .set({ name: patch.name, slug, description: patch.description ?? undefined, updatedAt: new Date() })
+      .where(eq(AsafeTeamTable.id, teamId));
+  } else if (patch.description !== undefined) {
+    await db
+      .update(AsafeTeamTable)
+      .set({ description: patch.description, updatedAt: new Date() })
+      .where(eq(AsafeTeamTable.id, teamId));
+  }
+}
+
+export async function deleteTeam(teamId: string) {
+  await db
+    .delete(AsafeTeamTable)
+    .where(eq(AsafeTeamTable.id, teamId));
+}
+
 // ---------------------------------------------------------------------------
 // getUserPrimaryTeamId — lightweight lookup with a 60-second in-process cache.
 // Used by the chat route to attach a teamId to budget checks and usage events
