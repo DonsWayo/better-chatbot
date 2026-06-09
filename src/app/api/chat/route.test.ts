@@ -155,3 +155,38 @@ describe("POST /api/chat — additional guard chains", () => {
     expect(vi.mocked(routeModel)).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/chat — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("never calls streamText when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { streamText } = await import("ai");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(streamText)).not.toHaveBeenCalled();
+  });
+
+  it("never calls getUserPreferences when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { getUserPreferences } = await import("lib/user/server");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(getUserPreferences)).not.toHaveBeenCalled();
+  });
+
+  it("never calls loadMcpTools when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { loadMcpTools } = await import("./shared.chat");
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(vi.mocked(loadMcpTools)).not.toHaveBeenCalled();
+  });
+});

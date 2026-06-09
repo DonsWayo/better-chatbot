@@ -157,3 +157,40 @@ describe("POST /api/storage/upload — additional", () => {
     expect(body).toHaveProperty("error");
   });
 });
+
+describe("POST /api/storage/upload — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 500 (misconfigured storage)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "No driver", solution: "" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 400 (no file)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 200 (success)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    uploadMock.mockResolvedValueOnce({ key: "k", sourceUrl: "http://cdn/k" });
+    const file = new File(["hi"], "hi.txt", { type: "text/plain" });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(file));
+    expect(res).toBeInstanceOf(Response);
+  });
+});
