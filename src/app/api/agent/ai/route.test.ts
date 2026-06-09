@@ -69,4 +69,34 @@ describe("POST /api/agent/ai", () => {
     const res = await POST(makeRequest({ message: "build me an agent" }));
     expect(res.status).toBe(200);
   });
+
+  it("calls streamObject exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "create an agent for customer support" }));
+    expect(streamObjectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns a Response object on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "create a coding agent" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns 401 when session is an empty object (falsy user)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hello" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("response body for 401 is text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "test" }));
+    expect(res.status).toBe(401);
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
 });

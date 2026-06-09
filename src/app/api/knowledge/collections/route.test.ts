@@ -85,4 +85,47 @@ describe("POST /api/knowledge/collections", () => {
     const body = await res.json();
     expect(body.collection.name).toBe("Product Docs");
   });
+
+  it("never calls db.insert when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Test" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls db.insert when non-admin user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Test" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when name is empty string", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "" }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /api/knowledge/collections — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls db.select when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns empty collections array when DB returns nothing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const selectAllMock = vi.fn().mockResolvedValue([]);
+    dbSelectMock.mockReturnValueOnce({ from: selectAllMock });
+    const { GET } = await import("./route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.collections).toHaveLength(0);
+  });
 });

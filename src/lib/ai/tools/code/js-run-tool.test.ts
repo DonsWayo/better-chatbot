@@ -82,3 +82,33 @@ describe("jsExecutionSchema — properties completeness", () => {
     expect(jsExecutionSchema.required[0]).toBe("code");
   });
 });
+
+describe("jsExecutionTool — tool metadata", () => {
+  it("description mentions JavaScript or execution", () => {
+    const desc = jsExecutionTool.description!.toLowerCase();
+    const relevant = desc.includes("javascript") || desc.includes("execut") || desc.includes("code");
+    expect(relevant).toBe(true);
+  });
+
+  it("inputSchema accepts extra fields (zod strips them by default)", () => {
+    const result = jsExecutionTool.inputSchema.safeParse({ code: "1+1", extra: "ignored" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect((result.data as any).extra).toBeUndefined();
+    }
+  });
+
+  it("inputSchema accepts code with template literals", () => {
+    const code = "const msg = `Hello ${'world'}`; console.log(msg);";
+    expect(jsExecutionTool.inputSchema.safeParse({ code }).success).toBe(true);
+  });
+
+  it("inputSchema accepts code with async/await syntax", () => {
+    const code = "async function run() { await fetch('/api'); } run();";
+    expect(jsExecutionTool.inputSchema.safeParse({ code }).success).toBe(true);
+  });
+
+  it("execute is undefined (not a server-side tool)", () => {
+    expect((jsExecutionTool as any).execute).toBeUndefined();
+  });
+});

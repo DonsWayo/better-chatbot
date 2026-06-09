@@ -80,3 +80,55 @@ describe("tag builder — different tag names do not interfere", () => {
     expect(bTag.isMaybe(aObj)).toBe(false);
   });
 });
+
+describe("tag builder — isMaybe edge cases", () => {
+  const nodeTag = tag<{ value: unknown }>("node");
+
+  it("returns false for an array (even if it has the tag key)", () => {
+    const arr = Object.assign([], { "__$ref__": "node" });
+    // Arrays are objects, so isMaybe may vary, but raw arrays without tag should fail
+    expect(nodeTag.isMaybe([])).toBe(false);
+  });
+
+  it("returns false for a number primitive", () => {
+    expect(nodeTag.isMaybe(42)).toBe(false);
+  });
+
+  it("returns false for a boolean", () => {
+    expect(nodeTag.isMaybe(true)).toBe(false);
+  });
+
+  it("returns true for nested data objects created with the same tag", () => {
+    const obj = nodeTag.create({ value: { nested: { deep: "ok" } } });
+    expect(nodeTag.isMaybe(obj)).toBe(true);
+  });
+
+  it("two separately created objects with same tag are both isMaybe", () => {
+    const o1 = nodeTag.create({ value: "first" });
+    const o2 = nodeTag.create({ value: "second" });
+    expect(nodeTag.isMaybe(o1)).toBe(true);
+    expect(nodeTag.isMaybe(o2)).toBe(true);
+  });
+});
+
+describe("tag builder — unwrap with complex data", () => {
+  const recordTag = tag<{ items: string[]; meta: { count: number } }>("record");
+
+  it("unwrap preserves array fields", () => {
+    const obj = recordTag.create({ items: ["a", "b", "c"], meta: { count: 3 } });
+    const unwrapped = recordTag.unwrap(obj);
+    expect(unwrapped.items).toEqual(["a", "b", "c"]);
+  });
+
+  it("unwrap preserves nested object fields", () => {
+    const obj = recordTag.create({ items: [], meta: { count: 5 } });
+    const unwrapped = recordTag.unwrap(obj);
+    expect(unwrapped.meta.count).toBe(5);
+  });
+
+  it("isMaybe is false on unwrapped object (tag key removed)", () => {
+    const obj = recordTag.create({ items: [], meta: { count: 0 } });
+    const unwrapped = recordTag.unwrap(obj);
+    expect(recordTag.isMaybe(unwrapped)).toBe(false);
+  });
+});

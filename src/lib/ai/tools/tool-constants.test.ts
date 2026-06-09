@@ -81,3 +81,46 @@ describe("constants", () => {
     expect(ImageToolName).toBe("image-manager");
   });
 });
+
+describe("DefaultToolName — value uniqueness", () => {
+  it("all DefaultToolName values are unique (no duplicates)", () => {
+    const values = Object.values(DefaultToolName);
+    const unique = new Set(values);
+    expect(unique.size).toBe(values.length);
+  });
+
+  it("AppDefaultToolkit values are all unique", () => {
+    const values = Object.values(AppDefaultToolkit);
+    const unique = new Set(values);
+    expect(unique.size).toBe(values.length);
+  });
+
+  it("SequentialThinkingToolName does not collide with DefaultToolName entries", () => {
+    const toolNames = Object.values(DefaultToolName) as string[];
+    expect(toolNames).not.toContain(SequentialThinkingToolName);
+  });
+
+  it("ImageToolName does not collide with DefaultToolName entries", () => {
+    const toolNames = Object.values(DefaultToolName) as string[];
+    expect(toolNames).not.toContain(ImageToolName);
+  });
+});
+
+describe("DefaultToolName — string format", () => {
+  it("all values are non-empty strings", () => {
+    for (const value of Object.values(DefaultToolName)) {
+      expect(typeof value).toBe("string");
+      expect((value as string).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("visualization tool names follow camelCase or kebab-case", () => {
+    expect(DefaultToolName.CreatePieChart).toMatch(/^[a-zA-Z][a-zA-Z0-9-]*$/);
+    expect(DefaultToolName.CreateBarChart).toMatch(/^[a-zA-Z][a-zA-Z0-9-]*$/);
+  });
+
+  it("execution tool names use kebab-case with 'execution' suffix", () => {
+    expect(DefaultToolName.JavascriptExecution).toContain("execution");
+    expect(DefaultToolName.PythonExecution).toContain("execution");
+  });
+});
