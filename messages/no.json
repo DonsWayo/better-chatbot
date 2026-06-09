@@ -164,7 +164,10 @@
       "noAccount": "Har du ikke en konto? ",
       "signUp": "Registrer deg",
       "signIn": "Logg inn",
-      "orContinueWith": "ELLER FORTSETT MED"
+      "orContinueWith": "ELLER FORTSETT MED",
+      "continueWithMicrosoft": "Fortsett med Microsoft",
+      "administratorSignIn": "Administratorålogging",
+      "backToMicrosoftSignIn": "← Tilbake til Microsoft-pålogging"
     },
     "SignUp": {
       "title": "Opprett en konto",

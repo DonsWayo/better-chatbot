@@ -51,7 +51,10 @@
       "noAccount": "アカウントをお持ちでない方は",
       "signUp": "サインアップ",
       "signIn": "サインイン",
-      "orContinueWith": "または次で続行"
+      "orContinueWith": "または次で続行",
+      "continueWithMicrosoft": "Microsoft で続行",
+      "administratorSignIn": "管理者サインイン",
+      "backToMicrosoftSignIn": "← Microsoft サインインに戻る"
     },
     "SignUp": {
       "title": "アカウントを作成",

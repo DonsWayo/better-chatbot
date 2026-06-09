@@ -52,7 +52,10 @@
       "noAccount": "没有账户？",
       "signUp": "注册",
       "signIn": "登录",
-      "orContinueWith": "或继续使用"
+      "orContinueWith": "或继续使用",
+      "continueWithMicrosoft": "使用 Microsoft 继续",
+      "administratorSignIn": "管理员登录",
+      "backToMicrosoftSignIn": "← 返回 Microsoft 登录"
     },
     "SignUp": {
       "title": "创建账户",

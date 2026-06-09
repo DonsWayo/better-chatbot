@@ -51,7 +51,10 @@
       "noAccount": "Vous n'avez pas de compte ?",
       "signUp": "S'inscrire",
       "signIn": "Se connecter",
-      "orContinueWith": "OU CONTINUER AVEC"
+      "orContinueWith": "OU CONTINUER AVEC",
+      "continueWithMicrosoft": "Continuer avec Microsoft",
+      "administratorSignIn": "Connexion administrateur",
+      "backToMicrosoftSignIn": "← Retour à la connexion Microsoft"
     },
     "SignUp": {
       "title": "Créer un compte",

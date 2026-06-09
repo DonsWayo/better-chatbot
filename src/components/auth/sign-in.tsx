@@ -38,6 +38,8 @@ export default function SignIn({
   const t = useTranslations("Auth.SignIn");
 
   const [loading, setLoading] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const hasSocial = socialAuthenticationProviders.length > 0;
 
   const [formData, setFormData] = useObjectState({
     email: "",
@@ -81,98 +83,108 @@ export default function SignIn({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col">
-          {emailAndPasswordEnabled && !isFirstUser && (
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  autoFocus
-                  disabled={loading}
-                  value={formData.email}
-                  onChange={(e) => setFormData({ email: e.target.value })}
-                  type="email"
-                  placeholder="user@example.com"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
-                <Input
-                  id="password"
-                  disabled={loading}
-                  value={formData.password}
-                  placeholder="********"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      emailAndPasswordSignIn();
-                    }
-                  }}
-                  onChange={(e) => setFormData({ password: e.target.value })}
-                  type="password"
-                  required
-                />
-              </div>
-              <Button
-                className="w-full"
-                onClick={emailAndPasswordSignIn}
-                disabled={loading}
-                data-testid="signin-submit-button"
-              >
-                {loading ? (
-                  <Loader className="size-4 animate-spin ml-1" />
-                ) : (
-                  t("signIn")
-                )}
-              </Button>
+          {/*
+            asafe-ai: Microsoft (Entra) SSO is the DEFAULT sign-in. Email/password is a
+            secondary path for the seeded super-admin, hidden behind "Administrator sign-in".
+            When no SSO provider is configured (e.g. local dev), the email form shows directly
+            so the admin can always log in.
+          */}
+          {hasSocial && !showAdmin && !isFirstUser && (
+            <div className="flex flex-col gap-2 w-full">
+              {socialAuthenticationProviders.includes("microsoft") && (
+                <Button
+                  onClick={() => handleSocialSignIn("microsoft")}
+                  className="w-full"
+                  data-testid="signin-microsoft-button"
+                >
+                  <MicrosoftIcon className="size-4" />
+                  {t("continueWithMicrosoft")}
+                </Button>
+              )}
+              {socialAuthenticationProviders.includes("google") && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleSocialSignIn("google")}
+                  className="flex-1 w-full"
+                >
+                  <GoogleIcon className="size-4 fill-foreground" />
+                  Google
+                </Button>
+              )}
+              {socialAuthenticationProviders.includes("github") && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleSocialSignIn("github")}
+                  className="flex-1 w-full"
+                >
+                  <GithubIcon className="size-4 fill-foreground" />
+                  GitHub
+                </Button>
+              )}
             </div>
           )}
-          {socialAuthenticationProviders.length > 0 && (
-            <>
-              {emailAndPasswordEnabled && (
-                <div className="flex items-center my-4">
-                  <div className="flex-1 h-px bg-accent"></div>
-                  <span className="px-4 text-sm text-muted-foreground">
-                    {t("orContinueWith")}
-                  </span>
-                  <div className="flex-1 h-px bg-accent"></div>
+          {emailAndPasswordEnabled &&
+            (showAdmin || isFirstUser || !hasSocial) && (
+              <div className="flex flex-col gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    autoFocus
+                    disabled={loading}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ email: e.target.value })}
+                    type="email"
+                    placeholder="admin@example.com"
+                    required
+                  />
                 </div>
-              )}
-              <div className="flex flex-col gap-2 w-full">
-                {socialAuthenticationProviders.includes("google") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialSignIn("google")}
-                    className="flex-1 w-full"
-                  >
-                    <GoogleIcon className="size-4 fill-foreground" />
-                    Google
-                  </Button>
-                )}
-                {socialAuthenticationProviders.includes("github") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialSignIn("github")}
-                    className="flex-1 w-full"
-                  >
-                    <GithubIcon className="size-4 fill-foreground" />
-                    GitHub
-                  </Button>
-                )}
-                {socialAuthenticationProviders.includes("microsoft") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialSignIn("microsoft")}
-                    className="flex-1 w-full"
-                  >
-                    <MicrosoftIcon className="size-4 fill-foreground" />
-                    Microsoft
-                  </Button>
-                )}
+                <div className="grid gap-2">
+                  <div className="flex items-center">
+                    <Label htmlFor="password">Password</Label>
+                  </div>
+                  <Input
+                    id="password"
+                    disabled={loading}
+                    value={formData.password}
+                    placeholder="********"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        emailAndPasswordSignIn();
+                      }
+                    }}
+                    onChange={(e) => setFormData({ password: e.target.value })}
+                    type="password"
+                    required
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={emailAndPasswordSignIn}
+                  disabled={loading}
+                  data-testid="signin-submit-button"
+                >
+                  {loading ? (
+                    <Loader className="size-4 animate-spin ml-1" />
+                  ) : (
+                    t("signIn")
+                  )}
+                </Button>
               </div>
-            </>
+            )}
+          {emailAndPasswordEnabled && hasSocial && !isFirstUser && (
+            <div className="mt-6 text-center text-sm">
+              <button
+                type="button"
+                onClick={() => setShowAdmin((v) => !v)}
+                className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                data-testid="admin-signin-toggle"
+              >
+                {showAdmin
+                  ? t("backToMicrosoftSignIn")
+                  : t("administratorSignIn")}
+              </button>
+            </div>
           )}
           {signUpEnabled && (
             <div className="my-8 text-center text-sm text-muted-foreground">
