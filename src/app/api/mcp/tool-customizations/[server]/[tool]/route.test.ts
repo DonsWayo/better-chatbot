@@ -228,3 +228,37 @@ describe("DELETE /api/mcp/tool-customizations/[server]/[tool]", () => {
     );
   });
 });
+
+describe("GET /api/mcp/tool-customizations/[server]/[tool] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1", tool: "search" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1", tool: "search" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ prompt: "x" }), { params: Promise.resolve({ server: "srv-1", tool: "search" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("DELETE response is always a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    deleteToolCustomizationMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE({} as Request, { params: Promise.resolve({ server: "srv-1", tool: "search" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+});

@@ -229,3 +229,32 @@ describe("setModelAllowListAction — additional", () => {
     expect(updateTeamPolicyMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("removeTeamMemberAction — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("requireAdminPermission called exactly once", async () => {
+    const { removeTeamMemberAction } = await import("./actions");
+    await removeTeamMemberAction("member-2", "team-10");
+    expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("removeTeamMember called exactly once per action", async () => {
+    const { removeTeamMemberAction } = await import("./actions");
+    await removeTeamMemberAction("member-3", "team-11");
+    expect(removeTeamMemberMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when requireAdminPermission rejects", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    const { removeTeamMemberAction } = await import("./actions");
+    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow("Forbidden");
+    expect(removeTeamMemberMock).not.toHaveBeenCalled();
+  });
+
+  it("revalidates the correct team path on success", async () => {
+    const { removeTeamMemberAction } = await import("./actions");
+    await removeTeamMemberAction("mem-id-unique", "team-path-99");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-path-99");
+  });
+});
