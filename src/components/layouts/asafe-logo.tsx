@@ -11,7 +11,7 @@ import Image from "next/image";
  * Height is controlled by the caller via `className` (e.g. "h-6"); the mark
  * scales to match.
  */
-export function AsafeLogo({ className = "h-6" }: { className?: string }) {
+export function AsafeLogo({ className = "h-7" }: { className?: string }) {
   return (
     <span className={`flex items-center gap-2 ${className}`}>
       <Image
@@ -22,7 +22,9 @@ export function AsafeLogo({ className = "h-6" }: { className?: string }) {
         priority
         className="h-full w-auto"
       />
-      <span className="font-bold tracking-tight text-foreground">A-SAFE</span>
+      <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
+        A-SAFE
+      </span>
     </span>
   );
 }

@@ -155,6 +155,69 @@
       "when": 1749974402000,
       "tag": "0021_asafe_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1771595098815,
+      "tag": "0022_asafe_guardrail_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1771595099815,
+      "tag": "0023_asafe_compliance",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1771595100815,
+      "tag": "0024_asafe_team_w9",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1771595101815,
+      "tag": "0025_asafe_feature_flags_w12",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1771595102815,
+      "tag": "0026_asafe_team_model_allow_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1771595103815,
+      "tag": "0027_asafe_user_model_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1771595104815,
+      "tag": "0028_asafe_team_email_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1771595105815,
+      "tag": "0029_asafe_aup_acceptance",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1771595106815,
+      "tag": "0030_asafe_mcp_team_ids",
+      "breakpoints": true
     }
   ]
 }

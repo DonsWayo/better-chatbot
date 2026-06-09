@@ -51,7 +51,7 @@ export function AppSidebar({
         />
       </div>
       <SidebarHeaderShared
-        title={<AsafeLogo className="h-6" />}
+        title={<AsafeLogo className="h-7" />}
         href="/"
         enableShortcuts={true}
         onLinkClick={() => {
