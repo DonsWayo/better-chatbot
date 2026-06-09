@@ -112,4 +112,40 @@ describe("GET /api/admin/budget-alerts", () => {
     const body = await res.json();
     expect(body.alerts[0].alert).toBe(true);
   });
+
+  it("never calls dbSelect when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls dbSelect for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET();
+    expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("200 response always has alerts property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("alerts");
+    expect(Array.isArray(body.alerts)).toBe(true);
+  });
+
+  it("utilizationRatio is 1.0 when usedUsd equals budgetUsd", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { teamId: "t-5", teamName: "Infra", budgetUsd: "500.00", usedUsd: "500.00", periodStart: new Date(), periodEnd: new Date() },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body.alerts[0].utilizationRatio).toBeCloseTo(1.0);
+    expect(body.alerts[0].alert).toBe(true);
+  });
 });

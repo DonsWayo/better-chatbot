@@ -127,4 +127,36 @@ describe("GET /api/admin/teams — guard chain", () => {
     const res = await GET(makeRequest());
     expect(res.status).toBe(403);
   });
+
+  it("GET 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("GET 403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("POST 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Zeta" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("POST 403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Eta" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

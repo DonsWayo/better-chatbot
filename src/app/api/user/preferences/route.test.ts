@@ -111,4 +111,40 @@ describe("GET /api/user/preferences — guard chain", () => {
     await GET();
     expect(getPreferencesMock).toHaveBeenCalledWith("user-abc");
   });
+
+  it("GET 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getPreferences called exactly once per authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getPreferencesMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getPreferencesMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PUT /api/user/preferences — body and exact-once", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("PUT 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { PUT } = await import("./route");
+    const res = await PUT({ json: () => Promise.resolve({}) } as unknown as Request);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("updatePreferences called exactly once per authenticated PUT request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    updatePreferencesMock.mockResolvedValueOnce({ preferences: {} });
+    const { PUT } = await import("./route");
+    await PUT({ json: () => Promise.resolve({ theme: "dark" }) } as unknown as Request);
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+  });
 });

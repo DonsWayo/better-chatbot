@@ -128,4 +128,36 @@ describe("GET /api/knowledge/collections — guard chains", () => {
     const body = await res.json();
     expect(body.collections).toHaveLength(0);
   });
+
+  it("GET 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("POST 401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Test" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("POST 403 body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Test" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("db.insert called exactly once on valid admin request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "col-x", name: "X Docs" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "X Docs", visibility: "org" }));
+    expect(dbInsertMock).toHaveBeenCalledTimes(1);
+  });
 });
