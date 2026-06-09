@@ -224,3 +224,34 @@ describe("checkRateLimit — additional edge cases", () => {
     expect(r1.resetAt).not.toBe(r2.resetAt);
   });
 });
+
+describe("checkRateLimit — response invariants", () => {
+  it("remaining is never negative", async () => {
+    const { valuesFn } = makeInsertChain(100);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-neg", 5, 60_000);
+    expect(result.remaining).toBeGreaterThanOrEqual(0);
+  });
+
+  it("limit matches the input parameter exactly", async () => {
+    const { valuesFn } = makeInsertChain(3);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-lim", 42, 60_000);
+    expect(result.limit).toBe(42);
+  });
+
+  it("remaining plus one equals limit when count is 1", async () => {
+    const limit = 15;
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-r", limit, 60_000);
+    expect(result.remaining + 1).toBe(limit);
+  });
+
+  it("allowed is boolean type in all cases", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+    const result = await checkRateLimit("u-booltype", 10, 60_000);
+    expect(typeof result.allowed).toBe("boolean");
+  });
+});

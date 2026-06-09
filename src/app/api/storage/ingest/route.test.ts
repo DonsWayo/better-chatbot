@@ -224,3 +224,34 @@ describe("POST /api/storage/ingest — response shape", () => {
     expect(body.text).toBe(EXPECTED_TEXT);
   });
 });
+
+describe("POST /api/storage/ingest — edge cases", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("400 body has error field for invalid json", async () => {
+    const badReq = { json: () => Promise.reject(new SyntaxError("bad")) } as unknown as Request;
+    const { POST } = await import("./route");
+    const res = await POST(badReq);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("parseCsvPreview not called when neither key nor url provided", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ type: "csv" }));
+    expect(parseCsvPreviewMock).not.toHaveBeenCalled();
+  });
+
+  it("download not called when file type is unsupported", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest({ key: "uploads/file.docx", type: "auto" }));
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("response is always a Response instance for invalid json", async () => {
+    const badReq = { json: () => Promise.reject(new SyntaxError("bad")) } as unknown as Request;
+    const { POST } = await import("./route");
+    const res = await POST(badReq);
+    expect(res).toBeInstanceOf(Response);
+  });
+});
