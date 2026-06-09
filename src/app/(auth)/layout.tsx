@@ -1,9 +1,9 @@
 import { getSession } from "lib/auth/server";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { AsafeLogo } from "@/components/layouts/asafe-logo";
 import { BackgroundPaths } from "ui/background-paths";
 import { FlipWords } from "ui/flip-words";
-import { Think } from "ui/think";
 
 export default async function AuthLayout({
   children,
@@ -21,11 +21,9 @@ export default async function AuthLayout({
             <div className="absolute inset-0 w-full h-full">
               <BackgroundPaths />
             </div>
-            <h1 className="text-xl font-semibold flex items-center gap-3 animate-in fade-in duration-1000">
-              <Think />
-
-              <span>Asafe AI</span>
-            </h1>
+            <div className="animate-in fade-in duration-1000">
+              <AsafeLogo className="h-10" />
+            </div>
             <div className="flex-1" />
             <FlipWords
               words={[t("description")]}

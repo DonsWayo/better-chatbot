@@ -51,7 +51,10 @@
       "noAccount": "アカウントをお持ちでない方は",
       "signUp": "サインアップ",
       "signIn": "サインイン",
-      "orContinueWith": "または次で続行"
+      "orContinueWith": "または次で続行",
+      "continueWithMicrosoft": "Microsoft で続行",
+      "administratorSignIn": "管理者サインイン",
+      "backToMicrosoftSignIn": "← Microsoft サインインに戻る"
     },
     "SignUp": {
       "title": "アカウントを作成",
@@ -161,7 +164,6 @@
     },
     "Thread": {
       "chat": "チャット",
-
       "renameChat": "名前を変更",
       "deleteChat": "チャットを削除",
       "deleteUnarchivedChats": "アーカイブされていないチャットをすべて削除",
@@ -181,7 +183,6 @@
       "createLink": "リンクを作成",
       "linkCopied": "リンクがコピーされました"
     },
-
     "ChatPreferences": {
       "title": "チャット設定",
       "whatShouldWeCallYou": "何とお呼びすればよろしいですか？",

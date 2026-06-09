@@ -51,7 +51,10 @@
       "noAccount": "Vous n'avez pas de compte ?",
       "signUp": "S'inscrire",
       "signIn": "Se connecter",
-      "orContinueWith": "OU CONTINUER AVEC"
+      "orContinueWith": "OU CONTINUER AVEC",
+      "continueWithMicrosoft": "Continuer avec Microsoft",
+      "administratorSignIn": "Connexion administrateur",
+      "backToMicrosoftSignIn": "← Retour à la connexion Microsoft"
     },
     "SignUp": {
       "title": "Créer un compte",
@@ -161,7 +164,6 @@
     },
     "Thread": {
       "chat": "Chat",
-
       "renameChat": "Renommer",
       "deleteChat": "Supprimer le Chat",
       "deleteUnarchivedChats": "Supprimer Tous les Chats Non Archivés",
@@ -181,7 +183,6 @@
       "createLink": "Créer le Lien",
       "linkCopied": "Lien copié"
     },
-
     "ChatPreferences": {
       "title": "Préférences de Chat",
       "whatShouldWeCallYou": "Comment devrions-nous vous appeler ?",
@@ -249,7 +250,6 @@
     "theme": "Thème",
     "signOut": "Se déconnecter",
     "language": "Langue",
-
     "showAllChats": "Voir Tous les Chats",
     "showLessChats": "Afficher moins",
     "reportAnIssue": "Signaler un problème",

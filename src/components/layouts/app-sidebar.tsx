@@ -6,6 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
 import { AppSidebarAgents } from "./app-sidebar-agents";
 import { AppSidebarMenus } from "./app-sidebar-menus";
 import { AppSidebarThreads } from "./app-sidebar-threads";
+import { AsafeLogo } from "./asafe-logo";
 import { SidebarHeaderShared } from "./sidebar-header";
 
 import { BasicUser } from "app-types/user";
@@ -39,7 +40,7 @@ export function AppSidebar({
       className="border-r border-sidebar-border/80"
     >
       <SidebarHeaderShared
-        title="Asafe AI"
+        title={<AsafeLogo className="h-6" />}
         href="/"
         enableShortcuts={true}
         onLinkClick={() => {

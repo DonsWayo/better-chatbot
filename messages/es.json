@@ -164,7 +164,10 @@
       "noAccount": "¿No tienes una cuenta?",
       "signUp": "Registrarse",
       "signIn": "Iniciar sesión",
-      "orContinueWith": "O CONTINÚA CON"
+      "orContinueWith": "O CONTINÚA CON",
+      "continueWithMicrosoft": "Continuar con Microsoft",
+      "administratorSignIn": "Acceso de administrador",
+      "backToMicrosoftSignIn": "← Volver al acceso con Microsoft"
     },
     "SignUp": {
       "title": "Crear una cuenta",

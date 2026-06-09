@@ -33,6 +33,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "tsx scripts/db-migrate.ts",
+    "admin:create": "tsx scripts/create-super-admin.ts",
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
     "docker-compose:up": "docker-compose -f docker/compose.yml up -d --build",

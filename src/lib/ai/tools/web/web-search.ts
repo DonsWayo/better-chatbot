@@ -154,6 +154,57 @@ export const exaContentsSchema: JSONSchema7 = {
 const API_KEY = process.env.EXA_API_KEY;
 const BASE_URL = "https://api.exa.ai";
 
+// asafe-ai: optional Brave Search backend. When BRAVE_API_KEY is set, web *search*
+// routes to Brave instead of Exa (content extraction still uses Exa). Brave results are
+// mapped into the Exa response shape so the existing UI renders unchanged.
+const BRAVE_API_KEY = process.env.BRAVE_API_KEY;
+
+const braveSearch = async (params: any): Promise<ExaSearchResponse> => {
+  const url = new URL("https://api.search.brave.com/res/v1/web/search");
+  url.searchParams.set("q", params.query);
+  url.searchParams.set(
+    "count",
+    String(Math.min(Math.max(params.numResults || 5, 1), 20)),
+  );
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      "Accept-Encoding": "gzip",
+      "X-Subscription-Token": BRAVE_API_KEY as string,
+    },
+  });
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("Invalid BRAVE_API_KEY");
+  }
+  if (response.status === 429) {
+    throw new Error("Brave API usage limit exceeded");
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Brave API error: ${response.status} ${response.statusText}`,
+    );
+  }
+  const data = await response.json();
+  const results: ExaSearchResult[] = (data.web?.results || []).map(
+    (r: any) => ({
+      id: r.url,
+      title: r.title,
+      url: r.url,
+      publishedDate: r.page_age || r.age || "",
+      author: r.profile?.name || r.meta_url?.hostname || "",
+      text: r.description || "",
+      image: r.thumbnail?.src,
+      favicon: r.meta_url?.favicon,
+    }),
+  );
+  return {
+    requestId: "brave",
+    autopromptString: "",
+    resolvedSearchType: "brave",
+    results,
+  };
+};
+
 const fetchExa = async (endpoint: string, body: any): Promise<any> => {
   if (!API_KEY) {
     throw new Error("EXA_API_KEY is not configured");
@@ -210,7 +261,9 @@ export const exaSearchToolForWorkflow = createTool({
     if (params.endPublishedDate)
       searchRequest.endPublishedDate = params.endPublishedDate;
 
-    return fetchExa("/search", searchRequest);
+    return BRAVE_API_KEY
+      ? braveSearch(params)
+      : fetchExa("/search", searchRequest);
   },
 });
 
@@ -262,7 +315,9 @@ export const exaSearchTool = createTool({
       if (params.endPublishedDate)
         searchRequest.endPublishedDate = params.endPublishedDate;
 
-      const result = await fetchExa("/search", searchRequest);
+      const result = BRAVE_API_KEY
+        ? await braveSearch(params)
+        : await fetchExa("/search", searchRequest);
 
       return {
         ...result,

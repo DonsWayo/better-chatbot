@@ -46,7 +46,7 @@ export const ChatGreeting = () => {
     >
       <div className="rounded-xl p-6 flex flex-col gap-2 leading-relaxed text-center">
         <h1 className="text-2xl md:text-3xl">
-          {word ? <FlipWords words={[word]} className="text-primary" /> : ""}
+          {word ? <FlipWords words={[word]} className="text-foreground" /> : ""}
         </h1>
       </div>
     </motion.div>
