@@ -468,6 +468,31 @@ function initAutoUpdate(): void {
 // App lifecycle
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// App identity — name, About panel, dev dock icon
+// ---------------------------------------------------------------------------
+
+app.setName("Asafe AI");
+
+app.setAboutPanelOptions({
+  applicationName: "Asafe AI",
+  applicationVersion: app.getVersion(),
+  copyright: "© 2026 A-SAFE Digital",
+  credits:
+    "Pioneering Workplace Safety — industrial-strength AI from the inventors of the flexible polymer safety barrier.",
+  iconPath: path.join(app.getAppPath(), "assets", "icon.png"),
+});
+
+// Packaged builds get the icon from electron-builder; in dev the default
+// Electron icon would show in the dock, so set it explicitly.
+if (!app.isPackaged && process.platform === "darwin") {
+  try {
+    app.dock?.setIcon(path.join(app.getAppPath(), "assets", "icon.png"));
+  } catch {
+    // best-effort — dev nicety only
+  }
+}
+
 app.on("ready", () => {
   buildMenu();
   splashWindow = createSplashWindow();

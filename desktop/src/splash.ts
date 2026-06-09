@@ -67,16 +67,17 @@ function buildSplashHtml(): string {
     50%      { opacity: 1;    transform: scale(1.06); }
   }
 
-  /* Brand card */
+  /* Brand card — near-black with the yellow wordmark for maximum legibility */
   .card {
     position: relative;
     width: 380px;
     height: 240px;
     border-radius: 24px;
-    background: linear-gradient(160deg, #ffd75e 0%, #ffc72c 45%, #f0b400 100%);
+    border: 1px solid rgba(255, 199, 44, 0.25);
+    background: linear-gradient(160deg, #232323 0%, #161616 55%, #0d0d0d 100%);
     box-shadow:
-      0 20px 60px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -90,15 +91,15 @@ function buildSplashHtml(): string {
     to   { opacity: 1; transform: scale(1) translateY(0); }
   }
 
-  /* Soft light rays inside the card, like the app background */
+  /* Soft yellow light rays inside the card, like the app background */
   .card::before {
     content: "";
     position: absolute;
     inset: -40%;
     background:
       conic-gradient(from 200deg at 30% -10%,
-        transparent 0deg, rgba(255, 255, 255, 0.28) 8deg, transparent 18deg,
-        transparent 40deg, rgba(255, 255, 255, 0.18) 50deg, transparent 62deg);
+        transparent 0deg, rgba(255, 199, 44, 0.14) 8deg, transparent 18deg,
+        transparent 40deg, rgba(255, 199, 44, 0.09) 50deg, transparent 62deg);
     animation: rays-drift 7s ease-in-out infinite alternate;
     pointer-events: none;
   }
@@ -138,21 +139,22 @@ function buildSplashHtml(): string {
     color: #1a1a1a;
   }
 
-  /* Loading dots */
-  .dots { display: flex; gap: 9px; }
+  /* Loading dots — yellow pellets on the dark card */
+  .dots { display: flex; gap: 10px; }
   .dots span {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: #1a1a1a;
-    opacity: 0.25;
+    background: #ffc72c;
+    box-shadow: 0 0 8px rgba(255, 199, 44, 0.45);
+    opacity: 0.4;
     animation: dot-bounce 1.2s ease-in-out infinite;
   }
   .dots span:nth-child(2) { animation-delay: 0.15s; }
   .dots span:nth-child(3) { animation-delay: 0.3s; }
   @keyframes dot-bounce {
-    0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
-    30%           { opacity: 1;    transform: translateY(-5px); }
+    0%, 60%, 100% { opacity: 0.4; transform: translateY(0) scale(1); }
+    30%           { opacity: 1;   transform: translateY(-6px) scale(1.12); }
   }
 
   /* Fade-out, triggered from the main process before close */
