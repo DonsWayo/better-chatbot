@@ -168,7 +168,7 @@ describe("Admin Validations", () => {
 });
 
 describe("UpdateUserRoleSchema — return type invariants", () => {
-  const VALID_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 
   it("parse returns an object", () => {
     const result = UpdateUserRoleSchema.safeParse({ userId: VALID_UUID });

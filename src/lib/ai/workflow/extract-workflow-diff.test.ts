@@ -3,33 +3,34 @@ import { Edge } from "@xyflow/react";
 import { extractWorkflowDiff } from "./extract-workflow-diff";
 import { UINode, NodeKind } from "./workflow.interface";
 
-describe("extractWorkflowDiff", () => {
-  const createTestNode = (
-    id: string,
-    name: string,
-    position = { x: 0, y: 0 },
-  ): UINode => ({
+const createTestNode = (
+  id: string,
+  name: string,
+  position = { x: 0, y: 0 },
+): UINode => ({
+  id,
+  type: "default",
+  position,
+  data: {
     id,
-    type: "default",
-    position,
-    data: {
-      id,
-      name,
-      kind: NodeKind.Input,
-      outputSchema: { type: "object", properties: {} },
-      runtime: {},
-    },
-  });
+    name,
+    kind: NodeKind.Input,
+    outputSchema: { type: "object", properties: {} },
+    runtime: {},
+  },
+});
 
-  const createTestEdge = (
-    id: string,
-    source: string,
-    target: string,
-  ): Edge => ({
-    id,
-    source,
-    target,
-  });
+const createTestEdge = (
+  id: string,
+  source: string,
+  target: string,
+): Edge => ({
+  id,
+  source,
+  target,
+});
+
+describe("extractWorkflowDiff", () => {
 
   it("should detect added nodes and edges", () => {
     const oldData = {
