@@ -163,3 +163,35 @@ describe("GET /api/mcp/oauth/callback — HTML content", () => {
     expect(res.headers.get("Content-Type")).toContain("text/html");
   });
 });
+
+describe("GET /api/mcp/oauth/callback — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSessionByState called exactly once per GET", async () => {
+    getSessionByStateMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest({ state: "s1", code: "c1" }));
+    expect(getSessionByStateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("GET returns a Response instance when session is null", async () => {
+    getSessionByStateMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ state: "s1", code: "c1" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getClient not called when session not found", async () => {
+    getSessionByStateMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest({ state: "s1", code: "c1" }));
+    expect(getClientMock).not.toHaveBeenCalled();
+  });
+
+  it("finishAuth not called when session not found", async () => {
+    getSessionByStateMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest({ state: "s1", code: "c1" }));
+    expect(finishAuthMock).not.toHaveBeenCalled();
+  });
+});

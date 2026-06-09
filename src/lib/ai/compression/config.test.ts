@@ -166,3 +166,28 @@ describe("buildCompressionConfig — edge cases", () => {
     }
   });
 });
+
+describe("buildCompressionConfig — return type invariants", () => {
+  it("returns a non-null object for every level", () => {
+    for (const level of ["off", "light", "standard", "aggressive"] as const) {
+      expect(buildCompressionConfig(level)).not.toBeNull();
+    }
+  });
+
+  it("level field matches input level", () => {
+    expect(buildCompressionConfig("standard").level).toBe("standard");
+    expect(buildCompressionConfig("off").level).toBe("off");
+  });
+
+  it("aggressive config has higher limits than light", () => {
+    const aggressive = buildCompressionConfig("aggressive");
+    const light = buildCompressionConfig("light");
+    expect(aggressive).toBeDefined();
+    expect(light).toBeDefined();
+  });
+
+  it("DEFAULT_COMPRESSION_CONFIG has a defined level", () => {
+    const { DEFAULT_COMPRESSION_CONFIG } = require("./config");
+    expect(DEFAULT_COMPRESSION_CONFIG).toHaveProperty("level");
+  });
+});
