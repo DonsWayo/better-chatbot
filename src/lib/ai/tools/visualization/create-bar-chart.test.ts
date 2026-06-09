@@ -102,4 +102,47 @@ describe("createBarChartTool inputSchema validation", () => {
     };
     expect(schema.safeParse(single).success).toBe(true);
   });
+
+  it("accepts zero values in series", () => {
+    const data = {
+      ...validData,
+      data: [{ xAxisLabel: "Jan", series: [{ seriesName: "Revenue", value: 0 }] }],
+    };
+    expect(schema.safeParse(data).success).toBe(true);
+  });
+
+  it("accepts negative values in series", () => {
+    const data = {
+      ...validData,
+      data: [{ xAxisLabel: "Jan", series: [{ seriesName: "Loss", value: -100 }] }],
+    };
+    expect(schema.safeParse(data).success).toBe(true);
+  });
+
+  it("accepts empty series array per data point", () => {
+    const data = {
+      ...validData,
+      data: [{ xAxisLabel: "Q1", series: [] }],
+    };
+    expect(schema.safeParse(data).success).toBe(true);
+  });
+
+  it("accepts many data points", () => {
+    const many = {
+      ...validData,
+      data: Array.from({ length: 24 }, (_, i) => ({
+        xAxisLabel: `Month ${i + 1}`,
+        series: [{ seriesName: "KPI", value: i * 5 }],
+      })),
+    };
+    expect(schema.safeParse(many).success).toBe(true);
+  });
+
+  it("rejects when data item is missing series key", () => {
+    const bad = {
+      ...validData,
+      data: [{ xAxisLabel: "Jan" }],
+    };
+    expect(schema.safeParse(bad).success).toBe(false);
+  });
 });

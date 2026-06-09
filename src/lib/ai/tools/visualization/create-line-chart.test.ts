@@ -97,4 +97,44 @@ describe("createLineChartTool inputSchema validation", () => {
     };
     expect(schema.safeParse(many).success).toBe(true);
   });
+
+  it("rejects when xAxisLabel is missing", () => {
+    const bad = {
+      ...validData,
+      data: [{ series: [{ seriesName: "Sales", value: 100 }] }],
+    };
+    expect(schema.safeParse(bad).success).toBe(false);
+  });
+
+  it("rejects when series item is missing seriesName", () => {
+    const bad = {
+      ...validData,
+      data: [{ xAxisLabel: "W1", series: [{ value: 100 }] }],
+    };
+    expect(schema.safeParse(bad).success).toBe(false);
+  });
+
+  it("accepts zero value in series", () => {
+    const data = {
+      ...validData,
+      data: [{ xAxisLabel: "W1", series: [{ seriesName: "Sales", value: 0 }] }],
+    };
+    expect(schema.safeParse(data).success).toBe(true);
+  });
+
+  it("accepts negative values in series", () => {
+    const data = {
+      ...validData,
+      data: [{ xAxisLabel: "W1", series: [{ seriesName: "Loss", value: -50 }] }],
+    };
+    expect(schema.safeParse(data).success).toBe(true);
+  });
+
+  it("accepts empty series array per data point", () => {
+    const data = {
+      ...validData,
+      data: [{ xAxisLabel: "W1", series: [] }],
+    };
+    expect(schema.safeParse(data).success).toBe(true);
+  });
 });

@@ -102,4 +102,95 @@ describe("auditMcpInvocation", () => {
       }),
     );
   });
+
+  it("insert is called exactly once per invocation", async () => {
+    await auditMcpInvocation({
+      userId: "u-1",
+      toolName: "search",
+      outcome: "success",
+    });
+    expect(mockPgDb.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("teamId is stored as null when not provided", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: valuesMock,
+    });
+    await auditMcpInvocation({
+      userId: "u-1",
+      toolName: "fetch",
+      outcome: "success",
+    });
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: null }),
+    );
+  });
+
+  it("durationMs is stored as null when not provided", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: valuesMock,
+    });
+    await auditMcpInvocation({
+      userId: "u-1",
+      toolName: "fetch",
+      outcome: "success",
+    });
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ durationMs: null }),
+    );
+  });
+
+  it("durationMs is passed through when provided", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: valuesMock,
+    });
+    await auditMcpInvocation({
+      userId: "u-1",
+      toolName: "fetch",
+      outcome: "success",
+      durationMs: 123,
+    });
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ durationMs: 123 }),
+    );
+  });
+
+  it("never throws when DB rejects with a non-Error value", async () => {
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: vi.fn().mockRejectedValue("string error"),
+    });
+    await expect(
+      auditMcpInvocation({ userId: "u-1", toolName: "fetch", outcome: "error" }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("outcome='success' is stored correctly", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: valuesMock,
+    });
+    await auditMcpInvocation({ userId: "u-2", toolName: "search", outcome: "success" });
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "success" }),
+    );
+  });
+
+  it("explicit teamId=null is stored as null", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: valuesMock,
+    });
+    await auditMcpInvocation({
+      userId: "u-3",
+      teamId: null,
+      toolName: "write",
+      outcome: "success",
+    });
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: null }),
+    );
+  });
 });
