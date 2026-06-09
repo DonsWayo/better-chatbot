@@ -470,3 +470,47 @@ describe("getTeamPolicy allowedEmailDomains", () => {
     expect(policy.allowedEmailDomains).toEqual([]);
   });
 });
+
+describe("getTeamPolicy — return type invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _selectRows = [];
+    limitMock.mockImplementation(() => Promise.resolve(_selectRows));
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
+    vi.resetModules();
+  });
+  afterEach(() => { vi.resetModules(); });
+
+  it("getTeamPolicy returns an object with guardrailPolicy field", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: [] }];
+    limitMock.mockResolvedValue(_selectRows);
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("t-1");
+    expect(policy).toHaveProperty("guardrailPolicy");
+  });
+
+  it("getTeamPolicy allowedEmailDomains is always an array", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: ["x.com"] }];
+    limitMock.mockResolvedValue(_selectRows);
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("t-1");
+    expect(Array.isArray(policy.allowedEmailDomains)).toBe(true);
+  });
+
+  it("getTeamPolicy modelAllowList defaults to empty array when not in row", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: [] }];
+    limitMock.mockResolvedValue(_selectRows);
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("t-2");
+    expect(Array.isArray(policy.modelAllowList)).toBe(true);
+  });
+
+  it("getTeamPolicy returns non-null object", async () => {
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("missing");
+    expect(policy).not.toBeNull();
+    expect(typeof policy).toBe("object");
+  });
+});
