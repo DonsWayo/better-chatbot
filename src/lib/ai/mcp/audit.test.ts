@@ -233,3 +233,38 @@ describe("auditMcpInvocation — additional", () => {
     expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ durationMs: 0 }));
   });
 });
+
+describe("auditMcpInvocation — response invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+  });
+
+  it("always resolves to undefined regardless of toolName", async () => {
+    const result = await auditMcpInvocation({ userId: "u-inv", toolName: "any_tool", outcome: "success" });
+    expect(result).toBeUndefined();
+  });
+
+  it("insert called exactly once regardless of DB error type", async () => {
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({
+      values: vi.fn().mockRejectedValue(new Error("timeout")),
+    });
+    await auditMcpInvocation({ userId: "u-inv", toolName: "t", outcome: "error" });
+    expect(mockPgDb.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves to undefined even when durationMs is 0", async () => {
+    const result = await auditMcpInvocation({ userId: "u-inv", toolName: "t", outcome: "success", durationMs: 0 });
+    expect(result).toBeUndefined();
+  });
+
+  it("insert receives a plain object not a primitive", async () => {
+    const valuesMock = vi.fn().mockResolvedValue([]);
+    (mockPgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesMock });
+    await auditMcpInvocation({ userId: "u-obj", toolName: "tool", outcome: "success" });
+    const arg = valuesMock.mock.calls[0][0];
+    expect(typeof arg).toBe("object");
+    expect(arg).not.toBeNull();
+  });
+});

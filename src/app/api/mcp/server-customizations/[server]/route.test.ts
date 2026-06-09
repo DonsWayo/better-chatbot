@@ -230,3 +230,38 @@ describe("POST /api/mcp/server-customizations/[server] — additional", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/mcp/server-customizations/[server] — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("DELETE response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("DELETE 200 body has success:true", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    deleteMcpServerCustomizationMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+});

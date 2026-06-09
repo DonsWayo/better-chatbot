@@ -233,3 +233,37 @@ describe("GET /api/health — response invariants", () => {
     expect(typeof body.status).toBe("string");
   });
 });
+
+describe("GET /api/health — edge cases", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("liveness status is always exactly 'ok'", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    const body = await res.json();
+    expect(body.status).toBe("ok");
+  });
+
+  it("readiness DB called exactly once when ?ready param present", async () => {
+    pgDbExecuteMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    expect(pgDbExecuteMock).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(200);
+  });
+
+  it("503 body status is 'error' not 'fail'", async () => {
+    pgDbExecuteMock.mockRejectedValueOnce(new Error("timeout"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health?ready"));
+    const body = await res.json();
+    expect(body.status).toBe("error");
+  });
+
+  it("liveness returns 200 without querying DB", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest("http://localhost:3001/api/health"));
+    expect(res.status).toBe(200);
+    expect(pgDbExecuteMock).not.toHaveBeenCalled();
+  });
+});

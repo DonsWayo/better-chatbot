@@ -232,3 +232,39 @@ describe("PATCH /api/admin/teams/[id] — response shape", () => {
     expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
   });
 });
+
+describe("PATCH /api/admin/teams/[id] — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdateTeamPolicy.mockResolvedValue(undefined);
+  });
+
+  it("rejects when guardrailPolicy is an invalid enum value", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ guardrailPolicy: "off" }), makeParams("team-1") as any);
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts both allowImageGen and allowVision in same patch", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ allowImageGen: true, allowVision: true }), makeParams("team-patch") as any);
+    expect(res.status).toBe(200);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-patch", { allowImageGen: true, allowVision: true });
+  });
+
+  it("team-id from params is forwarded verbatim to updateTeamPolicy", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ guardrailPolicy: "strict" }), makeParams("exact-team-id") as any);
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("exact-team-id", expect.anything());
+  });
+
+  it("never calls updateTeamPolicy when body parsing fails validation", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { PATCH } = await import("./route");
+    await PATCH(makeRequest({ modelAllowList: ["not-a-real-model"] }), makeParams("team-1") as any);
+    expect(mockUpdateTeamPolicy).not.toHaveBeenCalled();
+  });
+});
