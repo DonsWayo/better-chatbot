@@ -214,3 +214,35 @@ describe("POST /api/chat/title — stream options", () => {
     expect(handleErrorMock).toHaveBeenCalledWith(err);
   });
 });
+
+describe("POST /api/chat/title — response invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("returns a Response instance for authenticated request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hello", threadId: "t1" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for unauthenticated request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hello", threadId: "t1" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "m", threadId: "t" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("streamText not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hello", threadId: "t1" }));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+});

@@ -213,3 +213,30 @@ describe("toolNodeValidate", () => {
     expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow("Tool node must have a model");
   });
 });
+
+describe("node validators — shared invariants", () => {
+  it("validateSchema returns no errors for empty schema properties", () => {
+    const { validateSchema } = require("./node-validate");
+    const result = validateSchema({ type: "object", properties: {} });
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
+  });
+
+  it("httpNodeValidate throws for missing url", () => {
+    const { httpNodeValidate } = require("./node-validate");
+    const node = { id: "n1", type: "http", data: { url: "", method: "GET", headers: [], bodyParams: [], queryParams: [] } };
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow();
+  });
+
+  it("llmNodeValidate throws for missing model", () => {
+    const { llmNodeValidate } = require("./node-validate");
+    const node = { id: "n1", type: "llm", data: { model: null, systemPrompt: "", userPrompt: "" } };
+    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow();
+  });
+
+  it("templateNodeValidate throws for missing template", () => {
+    const { templateNodeValidate } = require("./node-validate");
+    const node = { id: "n1", type: "template", data: { template: "" } };
+    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).toThrow();
+  });
+});
