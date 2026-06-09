@@ -30,7 +30,7 @@ spec:
         - name: migrate
           image: {{ include "asafe-ai.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["node", "scripts/standalone-migrate.cjs"]
+          command: ["node", "scripts/standalone-migrate.mjs"]
           envFrom:
             - secretRef:
                 name: {{ .Values.existingSecret }}
