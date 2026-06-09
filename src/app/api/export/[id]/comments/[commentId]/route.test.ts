@@ -98,4 +98,48 @@ describe("DELETE /api/export/[id]/comments/[commentId]", () => {
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
+
+  it("403 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(false);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("500 response body has error field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockRejectedValueOnce(new Error("unexpected failure"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("deleteComment called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkCommentAccess called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkCommentAccessMock.mockResolvedValueOnce(true);
+    deleteCommentMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(checkCommentAccessMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls deleteComment when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1", commentId: "c-1" }) });
+    expect(deleteCommentMock).not.toHaveBeenCalled();
+  });
 });

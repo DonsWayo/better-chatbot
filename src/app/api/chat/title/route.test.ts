@@ -100,4 +100,30 @@ describe("POST /api/chat/title", () => {
     await POST(makeRequest({ message: "Why is the sky blue?", threadId: "t1" }));
     expect(capturedPrompt).toBe("Why is the sky blue?");
   });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ message: "hi", threadId: "t1" }));
+    expect(res.status).toBe(401);
+    const text = await res.text();
+    expect(text).toBe("Unauthorized");
+  });
+
+  it("never calls streamText when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hi", threadId: "t1" }));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("streamText called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    streamTextMock.mockReturnValueOnce({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ message: "hello", threadId: "t1" }));
+    expect(streamTextMock).toHaveBeenCalledTimes(1);
+  });
 });
