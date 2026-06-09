@@ -169,3 +169,68 @@ describe("MemoryCache", () => {
     }
   });
 });
+
+describe("MemoryCache — overwrite and edge cases", () => {
+  let cache: MemoryCache;
+
+  beforeEach(() => {
+    cache = new MemoryCache();
+  });
+
+  afterEach(() => {
+    cache.clear();
+  });
+
+  test("overwriting a key replaces the value", async () => {
+    await cache.set("key", "first");
+    await cache.set("key", "second");
+    expect(await cache.get("key")).toBe("second");
+  });
+
+  test("has returns false for expired key", async () => {
+    vi.useFakeTimers();
+    try {
+      await cache.set("short", "v", 50);
+      vi.advanceTimersByTime(51);
+      expect(await cache.has("short")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("delete on non-existent key does not throw", async () => {
+    await expect(cache.delete("ghost")).resolves.not.toThrow();
+  });
+
+  test("getAll after clear returns empty map", async () => {
+    await cache.set("k1", "v1");
+    await cache.set("k2", "v2");
+    await cache.clear();
+    const all = await cache.getAll();
+    expect(all.size).toBe(0);
+  });
+
+  test("multiple sets of same key do not grow cache size", async () => {
+    await cache.set("k", "a");
+    await cache.set("k", "b");
+    await cache.set("k", "c");
+    const all = await cache.getAll();
+    expect(all.size).toBe(1);
+    expect(all.get("k")).toBe("c");
+  });
+
+  test("stores number values correctly", async () => {
+    await cache.set("num", 42);
+    expect(await cache.get("num")).toBe(42);
+  });
+
+  test("stores boolean values correctly", async () => {
+    await cache.set("bool", false);
+    expect(await cache.get("bool")).toBe(false);
+  });
+
+  test("stores null values correctly", async () => {
+    await cache.set("nil", null);
+    expect(await cache.get("nil")).toBeNull();
+  });
+});
