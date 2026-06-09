@@ -234,3 +234,33 @@ describe("buildUserSystemPrompt — additional", () => {
     expect(prompt).toContain("SearchBot");
   });
 });
+
+describe("buildMcpServerCustomizationsSystemPrompt — additional", () => {
+  it("returns non-empty string when a server has a prompt", () => {
+    const result = buildMcpServerCustomizationsSystemPrompt({
+      "s1": { name: "Server1", id: "s1", prompt: "Custom server instructions." },
+    });
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("returns empty string for empty object input", () => {
+    const result = buildMcpServerCustomizationsSystemPrompt({});
+    expect(result).toBe("");
+  });
+
+  it("skips servers with no prompt and no tool prompts", () => {
+    const result = buildMcpServerCustomizationsSystemPrompt({
+      "s1": { name: "Silent", id: "s1", prompt: "", tools: {} },
+    });
+    expect(result).toBe("");
+  });
+
+  it("includes tool name when tool prompt is non-empty", () => {
+    const result = buildMcpServerCustomizationsSystemPrompt({
+      "s1": { name: "ToolSrv", id: "s1", prompt: "", tools: { my_tool: "Use sparingly." } },
+    });
+    expect(result).toContain("my_tool");
+    expect(result).toContain("Use sparingly.");
+  });
+});
