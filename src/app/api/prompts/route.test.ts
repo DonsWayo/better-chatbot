@@ -134,3 +134,63 @@ describe("GET /api/prompts — guard chains", () => {
     expect(Array.isArray(body)).toBe(true);
   });
 });
+
+describe("GET /api/prompts — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET();
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/prompts — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body has error field", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ title: "T", content: "C" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("never calls dbInsert when title is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ content: "C" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls dbInsert when content is missing", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ title: "T" }));
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ title: "T", content: "C" }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dbInsert called exactly once on valid POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-1", title: "T", content: "C" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ title: "T", content: "C" }));
+    expect(dbInsertMock).toHaveBeenCalledTimes(1);
+  });
+});

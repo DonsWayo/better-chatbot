@@ -133,3 +133,72 @@ describe("GET /api/archive/[id]/items — guard chains", () => {
     expect(body).toHaveLength(0);
   });
 });
+
+describe("GET /api/archive/[id]/items — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("never calls getArchiveById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getArchiveByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 body is an array", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    getArchiveItemsMock.mockResolvedValueOnce([]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+  });
+});
+
+describe("POST /api/archive/[id]/items — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("401 body is text 'Unauthorized'", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("never calls getArchiveById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getArchiveByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("addItemToArchive called exactly once on success", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
+    addItemToArchiveMock.mockResolvedValueOnce({ id: "ai-1", archiveId: "a-1", itemId: "item-1" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(addItemToArchiveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
