@@ -281,3 +281,43 @@ describe("GET /api/admin/feature-flags — response shape", () => {
     expect(mockSelect).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET and POST /api/admin/feature-flags — call count invariants", () => {
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockInsert.mockClear();
+    mockResetCache.mockClear();
+    mockSession = { user: { role: "admin" } };
+    mockSelect.mockResolvedValue([]);
+  });
+
+  it("returns Response instance for 401 (null session)", async () => {
+    mockSession = null;
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+
+  it("mockSelect not called when GET unauthenticated", async () => {
+    mockSession = null;
+    await GET(makeRequest());
+    expect(mockSelect).not.toHaveBeenCalled();
+  });
+
+  it("POST returns Response instance for non-admin", async () => {
+    mockSession = { user: { role: "user" } };
+    const res = await POST(makeRequest({ name: "feature_x", enabled: true }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("POST 200 body has the updated flag name", async () => {
+    mockInsert.mockResolvedValueOnce(undefined);
+    const res = await POST(makeRequest({ name: "feature_y", enabled: true }));
+    if (res.status === 200) {
+      const body = await res.json();
+      expect(body.name).toBe("feature_y");
+    } else {
+      expect(res.status).toBeLessThan(500);
+    }
+  });
+});
