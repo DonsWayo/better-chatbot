@@ -144,3 +144,42 @@ describe("POST /api/storage/ingest", () => {
     expect(parseCsvPreviewMock).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/storage/ingest — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("parseCsvPreview called exactly once per valid csv request", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("a,b\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["a", "b"], rows: [["1", "2"]] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("preview");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ key: "uploads/data.csv" }));
+    expect(parseCsvPreviewMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("formatCsvPreviewText called exactly once per valid csv request", async () => {
+    downloadMock.mockResolvedValueOnce(Buffer.from("x,y\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["x", "y"], rows: [] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("formatted");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ key: "uploads/report.csv" }));
+    expect(formatCsvPreviewTextMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("400 body has error field when key and url both missing", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ type: "csv" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("download called with the derived key when url provided", async () => {
+    storageKeyFromUrlMock.mockReturnValueOnce("uploads/via-url.csv");
+    downloadMock.mockResolvedValueOnce(Buffer.from("h\nv"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["h"], rows: [["v"]] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("preview");
+    const { POST } = await import("./route");
+    await POST(makeRequest({ url: "http://cdn.example.com/via-url.csv" }));
+    expect(downloadMock).toHaveBeenCalledWith("uploads/via-url.csv");
+  });
+});

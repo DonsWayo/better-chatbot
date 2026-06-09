@@ -136,3 +136,41 @@ describe("DELETE /api/export/[id]", () => {
     expect(checkAccessMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("DELETE /api/export/[id] — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never calls deleteById when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    expect(deleteByIdMock).not.toHaveBeenCalled();
+  });
+
+  it("500 body error contains db error message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteByIdMock.mockRejectedValueOnce(new Error("specific timeout error"));
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-err" }) });
+    const body = await res.json();
+    expect(body.error).toContain("specific timeout error");
+  });
+
+  it("200 body has success:true on valid delete", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    deleteByIdMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "ex-ok" }) });
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+});
