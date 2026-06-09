@@ -185,3 +185,25 @@ describe("ArchiveCreateSchema and ArchiveUpdateSchema — data shape", () => {
     expect(r.success).toBe(false);
   });
 });
+
+describe("ArchiveCreateSchema and ArchiveUpdateSchema — null/undefined invariants", () => {
+  it("ArchiveCreateSchema rejects null input", () => {
+    const r = ArchiveCreateSchema.safeParse(null);
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveUpdateSchema rejects null input", () => {
+    const r = ArchiveUpdateSchema.safeParse(null);
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveCreateSchema rejects undefined input", () => {
+    const r = ArchiveCreateSchema.safeParse(undefined);
+    expect(r.success).toBe(false);
+  });
+
+  it("ArchiveUpdateSchema accepts empty object (all optional)", () => {
+    const r = ArchiveUpdateSchema.safeParse({});
+    expect(r.success).toBe(true);
+  });
+});

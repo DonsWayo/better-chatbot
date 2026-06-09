@@ -184,3 +184,23 @@ describe("customModelProvider — additional edge cases", () => {
     expect(ANTHROPIC_FILE_MIME_TYPES.size).toBeGreaterThan(0);
   });
 });
+
+describe("MIME type sets — membership invariants", () => {
+  it("OPENAI_FILE_MIME_TYPES contains image/png", () => {
+    expect(OPENAI_FILE_MIME_TYPES.has("image/png")).toBe(true);
+  });
+
+  it("GEMINI_FILE_MIME_TYPES contains image/jpeg", () => {
+    expect(GEMINI_FILE_MIME_TYPES.has("image/jpeg")).toBe(true);
+  });
+
+  it("ANTHROPIC_FILE_MIME_TYPES contains image/jpeg", () => {
+    expect(ANTHROPIC_FILE_MIME_TYPES.has("image/jpeg")).toBe(true);
+  });
+
+  it("each MIME type set has more than 1 entry", () => {
+    expect(OPENAI_FILE_MIME_TYPES.size).toBeGreaterThan(1);
+    expect(GEMINI_FILE_MIME_TYPES.size).toBeGreaterThan(1);
+    expect(ANTHROPIC_FILE_MIME_TYPES.size).toBeGreaterThan(1);
+  });
+});

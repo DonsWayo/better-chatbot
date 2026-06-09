@@ -186,3 +186,25 @@ describe("createUINode — invariants", () => {
     }
   });
 });
+
+describe("createUINode — output schema invariants", () => {
+  it("defaultLLMNodeOutputSchema is a non-null object", () => {
+    expect(defaultLLMNodeOutputSchema).not.toBeNull();
+    expect(typeof defaultLLMNodeOutputSchema).toBe("object");
+  });
+
+  it("defaultTemplateNodeOutputSchema is a non-null object", () => {
+    expect(defaultTemplateNodeOutputSchema).not.toBeNull();
+    expect(typeof defaultTemplateNodeOutputSchema).toBe("object");
+  });
+
+  it("LLM node has a data property", () => {
+    const node = createUINode(NodeKind.LLM);
+    expect(node).toHaveProperty("data");
+  });
+
+  it("Input node has a data property", () => {
+    const node = createUINode(NodeKind.Input);
+    expect(node).toHaveProperty("data");
+  });
+});
