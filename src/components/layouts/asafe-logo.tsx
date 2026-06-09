@@ -2,29 +2,27 @@ import Image from "next/image";
 
 /**
  * A-SAFE brand lockup, theme-adaptive.
- * - light theme: color lockup (yellow mark + dark wordmark)
- * - dark theme:  all-yellow lockup
- * Height is controlled by the caller via `className` (e.g. "h-10").
+ *
+ * Renders the crisp yellow "A" mark (SVG) next to a hand-typeset "A-SAFE"
+ * wordmark. The wordmark uses the foreground color so it adapts to the
+ * light/dark theme automatically. The tagline-bearing PNG is intentionally
+ * not used here — it is illegible at sidebar size.
+ *
+ * Height is controlled by the caller via `className` (e.g. "h-6"); the mark
+ * scales to match.
  */
-export function AsafeLogo({ className = "h-9" }: { className?: string }) {
+export function AsafeLogo({ className = "h-6" }: { className?: string }) {
   return (
-    <>
+    <span className={`flex items-center gap-2 ${className}`}>
       <Image
-        src="/brand/logo.png"
+        src="/brand/mark.svg"
         alt="A-SAFE"
-        width={970}
-        height={276}
+        width={1080}
+        height={1080}
         priority
-        className={`w-auto dark:hidden ${className}`}
+        className="h-full w-auto"
       />
-      <Image
-        src="/brand/logo-dark.png"
-        alt="A-SAFE"
-        width={980}
-        height={246}
-        priority
-        className={`hidden w-auto dark:block ${className}`}
-      />
-    </>
+      <span className="font-bold tracking-tight text-foreground">A-SAFE</span>
+    </span>
   );
 }

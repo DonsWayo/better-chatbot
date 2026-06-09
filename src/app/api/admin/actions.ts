@@ -1,30 +1,38 @@
 "use server";
 
-import { validatedActionWithAdminPermission } from "lib/action-utils";
-import { headers } from "next/headers";
+import { DEFAULT_USER_ROLE, userRolesInfo } from "app-types/roles";
 import { auth } from "auth/server";
-import { getSession } from "lib/auth/server";
+import { validatedActionWithAdminPermission } from "lib/action-utils";
 import { upsertFeatureFlag } from "lib/admin/feature-flags";
 import {
+  type McpConnectionTestResult,
+  testMcpServerConnection,
+} from "lib/admin/mcp-connection-test";
+import {
+  type PatchMcpServerInput,
+  type RegisterMcpServerInput,
+  deleteMcpServer,
   registerMcpServer,
   updateMcpServer,
-  deleteMcpServer,
-  type RegisterMcpServerInput,
-  type PatchMcpServerInput,
 } from "lib/admin/mcp-servers";
 import { resetUserRateLimit } from "lib/admin/rate-limit";
-import { grantUserModel, revokeUserModelGrant, listUserModelGrants } from "lib/admin/user-grants";
-import { eraseUserData } from "lib/compliance/gdpr";
-import { DEFAULT_USER_ROLE, userRolesInfo } from "app-types/roles";
 import {
-  UpdateUserRoleSchema,
-  UpdateUserRoleActionState,
-  UpdateUserBanStatusSchema,
-  UpdateUserBanStatusActionState,
-} from "./validations";
+  grantUserModel,
+  listUserModelGrants,
+  revokeUserModelGrant,
+} from "lib/admin/user-grants";
+import { getSession } from "lib/auth/server";
+import { eraseUserData } from "lib/compliance/gdpr";
 import logger from "lib/logger";
-import { getTranslations } from "next-intl/server";
 import { getUser } from "lib/user/server";
+import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
+import {
+  UpdateUserBanStatusActionState,
+  UpdateUserBanStatusSchema,
+  UpdateUserRoleActionState,
+  UpdateUserRoleSchema,
+} from "./validations";
 
 export const updateUserRolesAction = validatedActionWithAdminPermission(
   UpdateUserRoleSchema,
@@ -130,7 +138,10 @@ export const updateUserBanStatusAction = validatedActionWithAdminPermission(
 
 // ── Feature flags ────────────────────────────────────────────────────────────
 
-export async function toggleFeatureFlagAction(name: string, enabled: boolean): Promise<void> {
+export async function toggleFeatureFlagAction(
+  name: string,
+  enabled: boolean,
+): Promise<void> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");
@@ -139,17 +150,49 @@ export async function toggleFeatureFlagAction(name: string, enabled: boolean): P
 
 // ── Company MCP servers ──────────────────────────────────────────────────────
 
+export interface RegisterCompanyMcpServerResult {
+  server: Awaited<ReturnType<typeof registerMcpServer>>;
+  connection: McpConnectionTestResult;
+}
+
 export async function registerCompanyMcpServerAction(
-  input: Omit<RegisterMcpServerInput, "userId">,
-) {
+  input: Omit<
+    RegisterMcpServerInput,
+    "userId" | "lastConnectionStatus" | "toolInfo"
+  >,
+): Promise<RegisterCompanyMcpServerResult> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");
-  if (input.scope === "team" && !input.teamId) throw new Error("teamId required when scope=team");
-  return registerMcpServer({ ...input, userId: session.user.id });
+  if (
+    input.scope === "team" &&
+    (!input.teamIds || input.teamIds.length === 0)
+  ) {
+    throw new Error("At least one team is required when scope=team");
+  }
+
+  // Probe the server before persisting so the admin gets immediate feedback on
+  // whether it actually works (handshake + tool listing).
+  const connection = await testMcpServerConnection(input.config);
+
+  const server = await registerMcpServer({
+    ...input,
+    userId: session.user.id,
+    lastConnectionStatus: connection.ok
+      ? "connected"
+      : connection.needsAuth
+        ? null
+        : "error",
+    toolInfo: connection.ok ? (connection.toolInfo ?? null) : null,
+  });
+
+  return { server, connection };
 }
 
-export async function updateCompanyMcpServerAction(id: string, patch: PatchMcpServerInput) {
+export async function updateCompanyMcpServerAction(
+  id: string,
+  patch: PatchMcpServerInput,
+) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");
@@ -168,7 +211,9 @@ export async function deleteCompanyMcpServerAction(id: string): Promise<void> {
 
 // ── User rate-limit reset ────────────────────────────────────────────────────
 
-export async function resetUserRateLimitAction(userId: string): Promise<number> {
+export async function resetUserRateLimitAction(
+  userId: string,
+): Promise<number> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");
@@ -181,7 +226,8 @@ export async function eraseUserDataAction(userId: string) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");
-  if (userId === session.user.id) throw new Error("Cannot erase your own account.");
+  if (userId === session.user.id)
+    throw new Error("Cannot erase your own account.");
   return eraseUserData(userId);
 }
 
@@ -205,7 +251,10 @@ export async function grantUserModelAction(
   await grantUserModel(userId, modelId, session.user.id, expiresAt);
 }
 
-export async function revokeUserModelGrantAction(grantId: string, userId: string): Promise<void> {
+export async function revokeUserModelGrantAction(
+  grantId: string,
+  userId: string,
+): Promise<void> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");

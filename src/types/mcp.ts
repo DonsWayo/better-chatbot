@@ -9,6 +9,11 @@ import { z } from "zod";
 export const MCPRemoteConfigZodSchema = z.object({
   url: z.string().url().describe("The URL of the SSE endpoint"),
   headers: z.record(z.string(), z.string()).optional(),
+  // Optional OAuth (SSO) client credentials for servers that require
+  // authorization. When present, the client performs an OAuth handshake
+  // instead of relying solely on static headers.
+  oauthClientId: z.string().optional(),
+  oauthClientSecret: z.string().optional(),
 });
 
 export const MCPStdioConfigZodSchema = z.object({

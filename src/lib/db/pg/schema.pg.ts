@@ -1,29 +1,29 @@
+import { TipTapMentionJsonContent } from "@/types/util";
+import { UIMessage } from "ai";
 import { Agent } from "app-types/agent";
-import { UserPreferences } from "app-types/user";
+import { ChatMetadata } from "app-types/chat";
 import { MCPServerConfig, MCPToolInfo } from "app-types/mcp";
+import { UserPreferences } from "app-types/user";
+import { DBEdge, DBNode, DBWorkflow } from "app-types/workflow";
 import { relations, sql } from "drizzle-orm";
+import { isNotNull } from "drizzle-orm";
 import {
-  pgTable,
-  text,
-  timestamp,
+  boolean,
+  customType,
+  index,
+  integer,
   json,
   jsonb,
-  uuid,
-  boolean,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
   unique,
   uniqueIndex,
+  uuid,
   varchar,
-  index,
-  numeric,
-  integer,
-  customType,
-  primaryKey,
 } from "drizzle-orm/pg-core";
-import { isNotNull } from "drizzle-orm";
-import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
-import { UIMessage } from "ai";
-import { ChatMetadata } from "app-types/chat";
-import { TipTapMentionJsonContent } from "@/types/util";
 
 export const ChatThreadTable = pgTable("chat_thread", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -103,8 +103,15 @@ export const McpServerTable = pgTable("mcp_server", {
   lastConnectionStatus: varchar("last_connection_status", {
     enum: ["connected", "error"],
   }),
-  scope: varchar("scope", { enum: ["personal", "org", "team"] }).notNull().default("personal"),
-  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "set null" }),
+  scope: varchar("scope", { enum: ["personal", "org", "team"] })
+    .notNull()
+    .default("personal"),
+  // Legacy single-team pointer; kept in sync with teamIds[0] for back-compat.
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+    onDelete: "set null",
+  }),
+  // A team-scoped MCP server may be shared with one OR multiple teams.
+  teamIds: uuid("team_ids").array(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -394,26 +401,31 @@ export type BookmarkEntity = typeof BookmarkTable.$inferSelect;
 // Wave 3 – Team / Budget / Usage tables (ADR-0002, ADR-0003)
 // ---------------------------------------------------------------------------
 
-export const AsafeTeamTable = pgTable(
-  "asafe_team",
-  {
-    id: uuid("id").primaryKey().notNull().defaultRandom(),
-    name: varchar("name", { length: 255 }).notNull(),
-    slug: varchar("slug", { length: 100 }).notNull().unique(),
-    description: text("description"),
-    // W9: per-team guardrail posture and multimodal feature gates
-    guardrailPolicy: varchar("guardrail_policy", { length: 20 }).notNull().default("standard"),
-    allowImageGen: boolean("allow_image_gen").notNull().default(false),
-    allowVision: boolean("allow_vision").notNull().default(false),
-    allowSpeech: boolean("allow_speech").notNull().default(false),
-    // W4: model allow-list — empty array = all approved models allowed
-    modelAllowList: jsonb("model_allow_list").$type<string[]>().notNull().default([]),
-    // W5+: email domain allow-list — empty array = any email domain allowed
-    allowedEmailDomains: jsonb("allowed_email_domains").$type<string[]>().notNull().default([]),
-    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  },
-);
+export const AsafeTeamTable = pgTable("asafe_team", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  // W9: per-team guardrail posture and multimodal feature gates
+  guardrailPolicy: varchar("guardrail_policy", { length: 20 })
+    .notNull()
+    .default("standard"),
+  allowImageGen: boolean("allow_image_gen").notNull().default(false),
+  allowVision: boolean("allow_vision").notNull().default(false),
+  allowSpeech: boolean("allow_speech").notNull().default(false),
+  // W4: model allow-list — empty array = all approved models allowed
+  modelAllowList: jsonb("model_allow_list")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  // W5+: email domain allow-list — empty array = any email domain allowed
+  allowedEmailDomains: jsonb("allowed_email_domains")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const AsafeTeamMemberTable = pgTable(
   "asafe_team_member",
@@ -426,7 +438,9 @@ export const AsafeTeamMemberTable = pgTable(
       .notNull()
       .references(() => UserTable.id, { onDelete: "cascade" }),
     role: varchar("role", { length: 20 }).notNull().default("member"),
-    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [unique().on(table.teamId, table.userId)],
 );
@@ -448,8 +462,12 @@ export const AsafeUsageEventTable = pgTable(
     tier: varchar("tier", { length: 20 }),
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
-    costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
-    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6 })
+      .notNull()
+      .default("0"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [
     index("asafe_usage_event_user_id_idx").on(table.userId),
@@ -458,34 +476,36 @@ export const AsafeUsageEventTable = pgTable(
   ],
 );
 
-export const AsafeTeamBudgetTable = pgTable(
-  "asafe_team_budget",
-  {
-    id: uuid("id").primaryKey().notNull().defaultRandom(),
-    teamId: uuid("team_id")
-      .notNull()
-      .unique()
-      .references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
-    periodStart: timestamp("period_start").notNull(),
-    periodEnd: timestamp("period_end").notNull(),
-    budgetUsd: numeric("budget_usd", { precision: 12, scale: 2 }).notNull(),
-    usedUsd: numeric("used_usd", { precision: 12, scale: 6 }).notNull().default("0"),
-    alertThresholdPct: integer("alert_threshold_pct").notNull().default(80),
-    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  },
-);
+export const AsafeTeamBudgetTable = pgTable("asafe_team_budget", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  teamId: uuid("team_id")
+    .notNull()
+    .unique()
+    .references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  budgetUsd: numeric("budget_usd", { precision: 12, scale: 2 }).notNull(),
+  usedUsd: numeric("used_usd", { precision: 12, scale: 6 })
+    .notNull()
+    .default("0"),
+  alertThresholdPct: integer("alert_threshold_pct").notNull().default(80),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 // Relations
 
-export const AsafeTeamRelations = relations(AsafeTeamTable, ({ many, one }) => ({
-  members: many(AsafeTeamMemberTable),
-  usageEvents: many(AsafeUsageEventTable),
-  budget: one(AsafeTeamBudgetTable, {
-    fields: [AsafeTeamTable.id],
-    references: [AsafeTeamBudgetTable.teamId],
+export const AsafeTeamRelations = relations(
+  AsafeTeamTable,
+  ({ many, one }) => ({
+    members: many(AsafeTeamMemberTable),
+    usageEvents: many(AsafeUsageEventTable),
+    budget: one(AsafeTeamBudgetTable, {
+      fields: [AsafeTeamTable.id],
+      references: [AsafeTeamBudgetTable.teamId],
+    }),
   }),
-}));
+);
 
 export const AsafeTeamMemberRelations = relations(
   AsafeTeamMemberTable,
@@ -537,8 +557,12 @@ export type AsafeTeamBudgetEntity = typeof AsafeTeamBudgetTable.$inferSelect;
 
 const vector = (name: string, dimensions: number) =>
   customType<{ data: number[]; driverData: string }>({
-    dataType() { return `vector(${dimensions})`; },
-    toDriver(value) { return JSON.stringify(value); },
+    dataType() {
+      return `vector(${dimensions})`;
+    },
+    toDriver(value) {
+      return JSON.stringify(value);
+    },
     fromDriver(value) {
       if (typeof value === "string") return JSON.parse(value);
       return value as number[];
@@ -547,32 +571,55 @@ const vector = (name: string, dimensions: number) =>
 
 export const AsafeMcpInvocationLogTable = pgTable("asafe_mcp_invocation_log", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => UserTable.id, { onDelete: "cascade" }),
-  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "set null" }),
-  mcpServerId: uuid("mcp_server_id").references(() => McpServerTable.id, { onDelete: "set null" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => UserTable.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+    onDelete: "set null",
+  }),
+  mcpServerId: uuid("mcp_server_id").references(() => McpServerTable.id, {
+    onDelete: "set null",
+  }),
   toolName: varchar("tool_name", { length: 200 }).notNull(),
   outcome: varchar("outcome", { enum: ["success", "error"] }).notNull(),
   durationMs: integer("duration_ms"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const AsafeKnowledgeCollectionTable = pgTable("asafe_knowledge_collection", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
-  visibility: varchar("visibility", { enum: ["team", "org"] }).notNull().default("org"),
-  createdBy: uuid("created_by").references(() => UserTable.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+export const AsafeKnowledgeCollectionTable = pgTable(
+  "asafe_knowledge_collection",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "cascade",
+    }),
+    visibility: varchar("visibility", { enum: ["team", "org"] })
+      .notNull()
+      .default("org"),
+    createdBy: uuid("created_by").references(() => UserTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+);
 
 export const EMBEDDING_DIMENSION = 1536; // text-embedding-3-small; pinned — see ADR-0007
 
 export const AsafeDocumentChunkTable = pgTable("asafe_document_chunk", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
-  collectionId: uuid("collection_id").notNull().references(() => AsafeKnowledgeCollectionTable.id, { onDelete: "cascade" }),
-  sourceRef: text("source_ref").notNull(),        // filename, URL, archive item ID, etc.
+  collectionId: uuid("collection_id")
+    .notNull()
+    .references(() => AsafeKnowledgeCollectionTable.id, {
+      onDelete: "cascade",
+    }),
+  sourceRef: text("source_ref").notNull(), // filename, URL, archive item ID, etc.
   chunkIndex: integer("chunk_index").notNull(),
   chunkText: text("chunk_text").notNull(),
   embedding: vector("embedding", EMBEDDING_DIMENSION).notNull(),
@@ -580,47 +627,89 @@ export const AsafeDocumentChunkTable = pgTable("asafe_document_chunk", {
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const asafeMcpInvocationLogRelations = relations(AsafeMcpInvocationLogTable, ({ one }) => ({
-  user: one(UserTable, { fields: [AsafeMcpInvocationLogTable.userId], references: [UserTable.id] }),
-  team: one(AsafeTeamTable, { fields: [AsafeMcpInvocationLogTable.teamId], references: [AsafeTeamTable.id] }),
-  mcpServer: one(McpServerTable, { fields: [AsafeMcpInvocationLogTable.mcpServerId], references: [McpServerTable.id] }),
-}));
+export const asafeMcpInvocationLogRelations = relations(
+  AsafeMcpInvocationLogTable,
+  ({ one }) => ({
+    user: one(UserTable, {
+      fields: [AsafeMcpInvocationLogTable.userId],
+      references: [UserTable.id],
+    }),
+    team: one(AsafeTeamTable, {
+      fields: [AsafeMcpInvocationLogTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+    mcpServer: one(McpServerTable, {
+      fields: [AsafeMcpInvocationLogTable.mcpServerId],
+      references: [McpServerTable.id],
+    }),
+  }),
+);
 
-export const asafeKnowledgeCollectionRelations = relations(AsafeKnowledgeCollectionTable, ({ one, many }) => ({
-  team: one(AsafeTeamTable, { fields: [AsafeKnowledgeCollectionTable.teamId], references: [AsafeTeamTable.id] }),
-  chunks: many(AsafeDocumentChunkTable),
-}));
+export const asafeKnowledgeCollectionRelations = relations(
+  AsafeKnowledgeCollectionTable,
+  ({ one, many }) => ({
+    team: one(AsafeTeamTable, {
+      fields: [AsafeKnowledgeCollectionTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+    chunks: many(AsafeDocumentChunkTable),
+  }),
+);
 
-export const asafeDocumentChunkRelations = relations(AsafeDocumentChunkTable, ({ one }) => ({
-  collection: one(AsafeKnowledgeCollectionTable, { fields: [AsafeDocumentChunkTable.collectionId], references: [AsafeKnowledgeCollectionTable.id] }),
-}));
+export const asafeDocumentChunkRelations = relations(
+  AsafeDocumentChunkTable,
+  ({ one }) => ({
+    collection: one(AsafeKnowledgeCollectionTable, {
+      fields: [AsafeDocumentChunkTable.collectionId],
+      references: [AsafeKnowledgeCollectionTable.id],
+    }),
+  }),
+);
 
-export type AsafeMcpInvocationLogEntity = typeof AsafeMcpInvocationLogTable.$inferSelect;
-export type AsafeKnowledgeCollectionEntity = typeof AsafeKnowledgeCollectionTable.$inferSelect;
-export type AsafeDocumentChunkEntity = typeof AsafeDocumentChunkTable.$inferSelect;
+export type AsafeMcpInvocationLogEntity =
+  typeof AsafeMcpInvocationLogTable.$inferSelect;
+export type AsafeKnowledgeCollectionEntity =
+  typeof AsafeKnowledgeCollectionTable.$inferSelect;
+export type AsafeDocumentChunkEntity =
+  typeof AsafeDocumentChunkTable.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Wave 9 – Response feedback (ADR-0009 quality loop)
 // ---------------------------------------------------------------------------
 
-export const AsafeMessageFeedbackTable = pgTable("asafe_message_feedback", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  messageId: text("message_id").notNull(),       // ChatMessage id (text, not uuid)
-  threadId: text("thread_id").notNull(),
-  userId: uuid("user_id").notNull().references(() => UserTable.id, { onDelete: "cascade" }),
-  rating: varchar("rating", { enum: ["up", "down"] }).notNull(),
-  comment: text("comment"),
-  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (t) => [
-  uniqueIndex("uniq_feedback_user_msg").on(t.userId, t.messageId),
-]);
+export const AsafeMessageFeedbackTable = pgTable(
+  "asafe_message_feedback",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    messageId: text("message_id").notNull(), // ChatMessage id (text, not uuid)
+    threadId: text("thread_id").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    rating: varchar("rating", { enum: ["up", "down"] }).notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [uniqueIndex("uniq_feedback_user_msg").on(t.userId, t.messageId)],
+);
 
-export const asafeMessageFeedbackRelations = relations(AsafeMessageFeedbackTable, ({ one }) => ({
-  user: one(UserTable, { fields: [AsafeMessageFeedbackTable.userId], references: [UserTable.id] }),
-}));
+export const asafeMessageFeedbackRelations = relations(
+  AsafeMessageFeedbackTable,
+  ({ one }) => ({
+    user: one(UserTable, {
+      fields: [AsafeMessageFeedbackTable.userId],
+      references: [UserTable.id],
+    }),
+  }),
+);
 
-export type AsafeMessageFeedbackEntity = typeof AsafeMessageFeedbackTable.$inferSelect;
+export type AsafeMessageFeedbackEntity =
+  typeof AsafeMessageFeedbackTable.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Wave 9 – Shared prompt library (ADR-0009)
@@ -632,21 +721,37 @@ export const AsafePromptTemplateTable = pgTable("asafe_prompt_template", {
   description: text("description"),
   content: text("content").notNull(),
   category: varchar("category", { length: 100 }),
-  authorId: uuid("author_id").references(() => UserTable.id, { onDelete: "set null" }),
-  teamId: uuid("team_id").references(() => AsafeTeamTable.id, { onDelete: "cascade" }),
-  visibility: varchar("visibility", { enum: ["private", "team", "org"] }).notNull().default("private"),
+  authorId: uuid("author_id").references(() => UserTable.id, {
+    onDelete: "set null",
+  }),
+  teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+    onDelete: "cascade",
+  }),
+  visibility: varchar("visibility", { enum: ["private", "team", "org"] })
+    .notNull()
+    .default("private"),
   isFeatured: boolean("is_featured").notNull().default(false),
   usageCount: integer("usage_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const asafePromptTemplateRelations = relations(AsafePromptTemplateTable, ({ one }) => ({
-  author: one(UserTable, { fields: [AsafePromptTemplateTable.authorId], references: [UserTable.id] }),
-  team: one(AsafeTeamTable, { fields: [AsafePromptTemplateTable.teamId], references: [AsafeTeamTable.id] }),
-}));
+export const asafePromptTemplateRelations = relations(
+  AsafePromptTemplateTable,
+  ({ one }) => ({
+    author: one(UserTable, {
+      fields: [AsafePromptTemplateTable.authorId],
+      references: [UserTable.id],
+    }),
+    team: one(AsafeTeamTable, {
+      fields: [AsafePromptTemplateTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+  }),
+);
 
-export type AsafePromptTemplateEntity = typeof AsafePromptTemplateTable.$inferSelect;
+export type AsafePromptTemplateEntity =
+  typeof AsafePromptTemplateTable.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Wave 1 – Postgres-backed KV cache (replaces Redis)
@@ -665,9 +770,7 @@ export const AsafeRateLimitBucketTable = pgTable(
     windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
     count: integer("count").notNull().default(1),
   },
-  (t) => [
-    primaryKey({ columns: [t.userId, t.windowStart] }),
-  ],
+  (t) => [primaryKey({ columns: [t.userId, t.windowStart] })],
 );
 
 // ── W8 Compliance Audit Log ──────────────────────────────────────────────────
@@ -682,7 +785,9 @@ export const AsafeAuditLogTable = pgTable("asafe_audit_log", {
   // Serialised details — kept minimal (no raw prompt content; content hash only)
   details: jsonb("details").notNull().default("{}"),
   // Immutable timestamp — use now() at DB level so app clock skew can't falsify it
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type AsafeAuditLogEntity = typeof AsafeAuditLogTable.$inferSelect;
@@ -694,10 +799,13 @@ export const AsafeGuardrailEventTable = pgTable("asafe_guardrail_event", {
   userId: text("user_id").notNull(),
   blocked: boolean("blocked").notNull().default(false),
   firings: jsonb("firings").notNull().default("[]"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-export type AsafeGuardrailEventEntity = typeof AsafeGuardrailEventTable.$inferSelect;
+export type AsafeGuardrailEventEntity =
+  typeof AsafeGuardrailEventTable.$inferSelect;
 
 // ── W5 Per-user model grants ─────────────────────────────────────────────────
 // Admins can grant a specific user access to a model that their team's
@@ -711,7 +819,9 @@ export const AsafeUserModelGrantTable = pgTable(
     modelId: text("model_id").notNull(),
     grantedBy: text("granted_by").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     index("idx_user_model_grant_user_id").on(t.userId),
@@ -719,14 +829,17 @@ export const AsafeUserModelGrantTable = pgTable(
   ],
 );
 
-export type AsafeUserModelGrantEntity = typeof AsafeUserModelGrantTable.$inferSelect;
+export type AsafeUserModelGrantEntity =
+  typeof AsafeUserModelGrantTable.$inferSelect;
 
 // ── W12 Feature Flags (kill switch + future toggles) ─────────────────────────
 
 export const AsafeFeatureFlagTable = pgTable("asafe_feature_flag", {
   name: text("name").primaryKey(), // e.g. "kill_switch", "compression_enabled"
   enabled: boolean("enabled").notNull().default(false),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type AsafeFeatureFlagEntity = typeof AsafeFeatureFlagTable.$inferSelect;
@@ -739,7 +852,9 @@ export const AsafeAupAcceptanceTable = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
     aupVersion: text("aup_version").notNull().default("1.0"),
-    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     unique("uq_aup_user_version").on(t.userId, t.aupVersion),
@@ -747,4 +862,5 @@ export const AsafeAupAcceptanceTable = pgTable(
   ],
 );
 
-export type AsafeAupAcceptanceEntity = typeof AsafeAupAcceptanceTable.$inferSelect;
+export type AsafeAupAcceptanceEntity =
+  typeof AsafeAupAcceptanceTable.$inferSelect;
