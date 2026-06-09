@@ -214,3 +214,38 @@ describe("GET /api/admin/feature-flags — additional", () => {
     expect(Array.isArray(body.flags)).toBe(true);
   });
 });
+
+describe("POST /api/admin/feature-flags — additional", () => {
+  beforeEach(() => {
+    mockSession = { user: { role: "admin" } };
+    mockSelect.mockClear();
+    mockInsert.mockClear();
+    mockResetCache.mockClear();
+  });
+
+  it("response is always a Response instance", async () => {
+    mockInsert.mockResolvedValue(undefined);
+    const res = await POST(makeRequest({ name: "kill_switch", enabled: true }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body has name field on success", async () => {
+    mockInsert.mockResolvedValue(undefined);
+    const res = await POST(makeRequest({ name: "feature_x", enabled: false }));
+    const body = await res.json();
+    expect(body).toHaveProperty("name");
+  });
+
+  it("200 body name matches the posted name", async () => {
+    mockInsert.mockResolvedValue(undefined);
+    const res = await POST(makeRequest({ name: "feature_unique_99", enabled: true }));
+    const body = await res.json();
+    expect(body.name).toBe("feature_unique_99");
+  });
+
+  it("mockInsert called exactly once per valid POST", async () => {
+    mockInsert.mockResolvedValue(undefined);
+    await POST(makeRequest({ name: "flag_once", enabled: false }));
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+  });
+});

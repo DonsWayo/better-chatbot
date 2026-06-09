@@ -213,3 +213,36 @@ describe("GET /api/admin/usage/export — guard chains", () => {
     expect(mockSelect).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GET /api/admin/usage/export — response shape", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("response is always a Response instance for 401", async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 403", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for valid admin request", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("CSV header row has timestamp and model columns", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    const res = await GET(makeRequest());
+    const text = await res.text();
+    const header = text.split("\n")[0];
+    expect(header).toContain("timestamp");
+    expect(header).toContain("model");
+  });
+});

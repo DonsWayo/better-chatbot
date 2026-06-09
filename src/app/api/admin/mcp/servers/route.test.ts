@@ -218,3 +218,39 @@ describe("GET /api/admin/mcp/servers — additional", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("POST /api/admin/mcp/servers — additional", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 201", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbInsertReturningMock.mockResolvedValue([{ id: "srv-rsp", name: "Srv", scope: "org" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Srv", scope: "org", config: { url: "https://mcp.example.com/sse" } }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("201 body has server property", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbInsertReturningMock.mockResolvedValue([{ id: "srv-body", name: "Tool", scope: "org" }]);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com/sse" } }));
+    const body = await res.json();
+    expect(body).toHaveProperty("server");
+  });
+
+  it("400 body has error field for invalid scope", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ scope: "invalid" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+});

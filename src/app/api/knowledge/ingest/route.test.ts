@@ -218,3 +218,43 @@ describe("POST /api/knowledge/ingest — additional", () => {
     expect(dbSelectMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/knowledge/ingest — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance for 401", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "hello" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("response is always a Response instance for 200", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    ingestDocumentMock.mockResolvedValueOnce(3);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "content" }));
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("200 body chunks is a number", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    ingestDocumentMock.mockResolvedValueOnce(7);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-1", text: "data" }));
+    const body = await res.json();
+    expect(typeof body.chunks).toBe("number");
+  });
+
+  it("200 body has collectionId field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-abc" }]);
+    ingestDocumentMock.mockResolvedValueOnce(2);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ collectionId: "col-abc", text: "text" }));
+    const body = await res.json();
+    expect(body).toHaveProperty("collectionId");
+  });
+});
