@@ -158,3 +158,36 @@ describe("MCP Config Diff", () => {
     });
   });
 });
+
+describe("detectConfigChanges — additional invariants", () => {
+  it("always returns an array", () => {
+    const changes = detectConfigChanges({}, {});
+    expect(Array.isArray(changes)).toBe(true);
+  });
+
+  it("returns three changes when one added, one removed, one updated", () => {
+    const prev: Record<string, MCPServerConfig> = {
+      a: { url: "https://a.com" },
+      b: { command: "py" },
+    };
+    const next: Record<string, MCPServerConfig> = {
+      a: { url: "https://a-new.com" },
+      c: { url: "https://c.com" },
+    };
+    const changes = detectConfigChanges(prev, next);
+    expect(changes).toHaveLength(3);
+  });
+
+  it("each change object has type, key, and value properties", () => {
+    const changes = detectConfigChanges({}, { s: { url: "https://s.com" } });
+    expect(changes[0]).toHaveProperty("type");
+    expect(changes[0]).toHaveProperty("key");
+    expect(changes[0]).toHaveProperty("value");
+  });
+
+  it("remove change value matches the original config", () => {
+    const cfg: MCPServerConfig = { command: "node" };
+    const changes = detectConfigChanges({ srv: cfg }, {});
+    expect(changes[0].value).toEqual(cfg);
+  });
+});

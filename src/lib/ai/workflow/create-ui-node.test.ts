@@ -159,3 +159,30 @@ describe("defaultTemplateNodeOutputSchema", () => {
     expect(defaultTemplateNodeOutputSchema.properties?.template).toMatchObject({ type: "string" });
   });
 });
+
+describe("createUINode — invariants", () => {
+  it("node.data.id always matches node.id", () => {
+    for (const kind of [NodeKind.Input, NodeKind.LLM, NodeKind.Output]) {
+      const node = createUINode(kind);
+      expect(node.data.id).toBe(node.id);
+    }
+  });
+
+  it("outputSchema type is always 'object'", () => {
+    for (const kind of [NodeKind.Input, NodeKind.LLM, NodeKind.Output, NodeKind.Tool]) {
+      const node = createUINode(kind);
+      expect(node.data.outputSchema.type).toBe("object");
+    }
+  });
+
+  it("generated ids are unique across independent calls", () => {
+    const ids = Array.from({ length: 5 }, () => createUINode(NodeKind.Input).id);
+    expect(new Set(ids).size).toBe(5);
+  });
+
+  it("all node types have type property equal to 'default'", () => {
+    for (const kind of [NodeKind.Input, NodeKind.LLM, NodeKind.Condition]) {
+      expect(createUINode(kind).type).toBe("default");
+    }
+  });
+});
