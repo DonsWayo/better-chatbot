@@ -246,3 +246,34 @@ describe("GET /api/admin/usage/export — response shape", () => {
     expect(header).toContain("model");
   });
 });
+
+describe("GET /api/admin/usage/export — edge cases", () => {
+  it("returns 401 for regular user with extra query params", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    const res = await GET(makeRequest({ days: "7" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a Response instance for empty data set", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    const res = await GET(makeRequest());
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("content-type header contains text/csv for admin", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    const res = await GET(makeRequest());
+    const ct = res.headers.get("content-type");
+    expect(ct).toContain("text/csv");
+  });
+
+  it("CSV response body is a string", async () => {
+    mockSession.mockResolvedValue(adminSession);
+    mockSelect.mockReturnValue(makeChain([]));
+    const res = await GET(makeRequest());
+    const text = await res.text();
+    expect(typeof text).toBe("string");
+  });
+});

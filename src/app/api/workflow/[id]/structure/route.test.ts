@@ -244,3 +244,40 @@ describe("POST /api/workflow/[id]/structure — additional", () => {
     expect(body.success).toBe(true);
   });
 });
+
+describe("POST /api/workflow/[id]/structure — response shape", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns a Response instance for 401 (unauthenticated)", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("returns a Response instance for 401 (no access)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("saveStructure called exactly once on successful POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(saveStructureMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("checkAccess called exactly once on authenticated POST", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValueOnce(true);
+    saveStructureMock.mockResolvedValueOnce(undefined);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    expect(checkAccessMock).toHaveBeenCalledTimes(1);
+  });
+});

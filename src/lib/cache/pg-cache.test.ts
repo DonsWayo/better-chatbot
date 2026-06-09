@@ -244,3 +244,41 @@ describe("PgCache — additional operations", () => {
     );
   });
 });
+
+describe("PgCache — status and invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbRef.select.mockReturnValue(selectChain);
+    mockDbRef.insert.mockReturnValue(insertChain);
+    mockDbRef.delete.mockReturnValue(deleteChain);
+    limitMock.mockResolvedValue([]);
+    onConflictDoUpdateMock.mockResolvedValue(undefined);
+    deleteWhereMock.mockResolvedValue(undefined);
+  });
+
+  it("get() returns undefined when no record found", async () => {
+    limitMock.mockResolvedValue([]);
+    const cache = new PgCache();
+    const result = await cache.get("missing-key");
+    expect(result).toBeUndefined();
+  });
+
+  it("set() calls db.insert exactly once", async () => {
+    const cache = new PgCache();
+    await cache.set("k", "v");
+    expect(mockDbRef.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("delete() calls db.delete exactly once", async () => {
+    const cache = new PgCache();
+    await cache.delete("k");
+    expect(mockDbRef.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it("has() returns false when select returns empty array", async () => {
+    limitMock.mockResolvedValue([]);
+    const cache = new PgCache();
+    const result = await cache.has("not-there");
+    expect(result).toBe(false);
+  });
+});
