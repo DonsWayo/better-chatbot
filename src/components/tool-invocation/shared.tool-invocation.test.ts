@@ -66,4 +66,17 @@ describe("sanitizeCssVariableName — return type invariants", () => {
     const input = "Hello World!";
     expect(sanitizeCssVariableName(input).length).toBeLessThanOrEqual(input.length);
   });
+
+  it("slash character is replaced with underscore", () => {
+    expect(sanitizeCssVariableName("foo/bar")).toBe("foo_bar");
+  });
+
+  it("result does not contain uppercase letters", () => {
+    const result = sanitizeCssVariableName("AbCdEfG");
+    expect(result).toBe(result.toLowerCase());
+  });
+
+  it("numbers at start are preserved", () => {
+    expect(sanitizeCssVariableName("123abc")).toBe("123abc");
+  });
 });

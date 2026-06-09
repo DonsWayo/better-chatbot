@@ -117,4 +117,29 @@ describe("GET /api/export", () => {
     const res = await GET();
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectSummaryByExporterId when session user has no id", async () => {
+    getSessionMock.mockResolvedValue({ user: {} });
+    await GET();
+    expect(chatExportRepositoryMock.selectSummaryByExporterId).not.toHaveBeenCalled();
+  });
+
+  it("each returned export has an id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    chatExportRepositoryMock.selectSummaryByExporterId.mockResolvedValue([
+      { id: "exp-1" },
+      { id: "exp-2" },
+    ]);
+    const res = await GET();
+    const body = await res.json() as { id: string }[];
+    for (const exp of body) {
+      expect(exp).toHaveProperty("id");
+    }
+  });
 });

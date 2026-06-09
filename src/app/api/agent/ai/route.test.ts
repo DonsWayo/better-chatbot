@@ -158,4 +158,28 @@ describe("POST /api/agent/ai", () => {
       expect.objectContaining({ model: expect.anything() }),
     );
   });
+
+  it("passes schema to streamObject", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ message: "test" }));
+    expect(streamObjectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ schema: expect.anything() }),
+    );
+  });
+
+  it("passes system to streamObject", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    await POST(makeRequest({ message: "test" }));
+    expect(streamObjectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ system: expect.any(String) }),
+    );
+  });
+
+  it("response comes from toTextStreamResponse", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    const customResp = new Response("custom-stream", { status: 200, headers: { "x-tag": "yes" } });
+    streamObjectMock.mockReturnValue({ toTextStreamResponse: () => customResp });
+    const res = await POST(makeRequest({ message: "test" }));
+    expect(res.headers.get("x-tag")).toBe("yes");
+  });
 });

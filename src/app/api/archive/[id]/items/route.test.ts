@@ -137,4 +137,26 @@ describe("POST /api/archive/[id]/items", () => {
     const res = await POST(makeRequest({ itemId: "t-1" }), makeContext("arch-1"));
     expect(res.status).toBe(500);
   });
+
+  it("does not call addItemToArchive when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await POST(makeRequest({ itemId: "t-1" }), makeContext("arch-1"));
+    expect(archiveRepositoryMock.addItemToArchive).not.toHaveBeenCalled();
+  });
+
+  it("calls addItemToArchive exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    archiveRepositoryMock.getArchiveById.mockResolvedValue(ARCHIVE);
+    archiveRepositoryMock.addItemToArchive.mockResolvedValue({ id: "ai-1" });
+    await POST(makeRequest({ itemId: "t-1" }), makeContext("arch-1"));
+    expect(archiveRepositoryMock.addItemToArchive).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("GET /api/archive/[id]/items — extra coverage", () => {
+  it("does not call getArchiveItems when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET(new Request("http://x"), makeContext("arch-1"));
+    expect(archiveRepositoryMock.getArchiveItems).not.toHaveBeenCalled();
+  });
 });
