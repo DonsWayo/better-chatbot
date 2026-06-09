@@ -77,4 +77,29 @@ describe("DELETE /api/admin/users/[id]/reset-rate-limit", () => {
     // chain.where should be called with the eq filter
     expect(chain.where).toHaveBeenCalledOnce();
   });
+
+  it("returns 403 for editor role", async () => {
+    mockSession.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const res = await DELETE({} as never, { params: makeParams("user-1") });
+    expect(res.status).toBe(403);
+  });
+
+  it("never calls db.delete when unauthenticated", async () => {
+    mockSession.mockResolvedValue(null);
+    await DELETE({} as never, { params: makeParams("user-1") });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("never calls db.delete when not admin", async () => {
+    mockSession.mockResolvedValue(regularSession);
+    await DELETE({} as never, { params: makeParams("user-1") });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("401 body has error field", async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await DELETE({} as never, { params: makeParams("user-1") });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });

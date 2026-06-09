@@ -50,6 +50,24 @@ describe("GET /api/mcp/tool-customizations/[server]/[tool]", () => {
     const body = await res.json();
     expect(body).toEqual({});
   });
+
+  it("returns customization data when found", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const custom = { mcpServerId: "srv-1", toolName: "search", prompt: "Be thorough" };
+    selectMock.mockResolvedValueOnce(custom);
+    const { GET } = await import("./route");
+    const res = await GET({} as Request, { params: Promise.resolve({ server: "srv-1", tool: "search" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.prompt).toBe("Be thorough");
+  });
+
+  it("never calls select when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET({} as Request, { params: Promise.resolve({ server: "srv-1", tool: "search" }) });
+    expect(selectMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/mcp/tool-customizations/[server]/[tool]", () => {
@@ -76,5 +94,23 @@ describe("POST /api/mcp/tool-customizations/[server]/[tool]", () => {
     const body = await res.json();
     expect(body.prompt).toBe("Search thoroughly");
     expect(serverCacheDeleteMock).toHaveBeenCalled();
+  });
+
+  it("never calls upsert when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "x" }), {
+      params: Promise.resolve({ server: "srv-1", tool: "search" }),
+    });
+    expect(upsertToolCustomizationMock).not.toHaveBeenCalled();
+  });
+
+  it("never invalidates cache when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "x" }), {
+      params: Promise.resolve({ server: "srv-1", tool: "search" }),
+    });
+    expect(serverCacheDeleteMock).not.toHaveBeenCalled();
   });
 });
