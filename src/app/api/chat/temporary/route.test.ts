@@ -201,3 +201,36 @@ describe("POST /api/chat/temporary — response shape", () => {
     expect(getModelMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("POST /api/chat/temporary — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getSession called exactly once per POST", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getModel not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(getModelMock).not.toHaveBeenCalled();
+  });
+
+  it("streamText not called when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 401 Response when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [] }));
+    expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(401);
+  });
+});

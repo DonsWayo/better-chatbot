@@ -202,3 +202,33 @@ describe("hasAcceptedAup — response type invariants", () => {
     expect(typeof result).toBe("boolean");
   });
 });
+
+describe("hasAcceptedAup and recordAupAcceptance — call count invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); selectLimitMock.mockResolvedValue([]); });
+
+  it("selectMock called exactly once per hasAcceptedAup", async () => {
+    const { hasAcceptedAup } = await import("./aup");
+    await hasAcceptedAup("u-1");
+    expect(selectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("insertMock called exactly once per recordAupAcceptance", async () => {
+    const { recordAupAcceptance } = await import("./aup");
+    await recordAupAcceptance("u-1");
+    expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("hasAcceptedAup returns true when DB has a row", async () => {
+    selectLimitMock.mockResolvedValueOnce([{ userId: "u-1" }]);
+    const { hasAcceptedAup } = await import("./aup");
+    const result = await hasAcceptedAup("u-1");
+    expect(result).toBe(true);
+  });
+
+  it("hasAcceptedAup returns false when DB has no row", async () => {
+    selectLimitMock.mockResolvedValueOnce([]);
+    const { hasAcceptedAup } = await import("./aup");
+    const result = await hasAcceptedAup("u-no-row");
+    expect(result).toBe(false);
+  });
+});
