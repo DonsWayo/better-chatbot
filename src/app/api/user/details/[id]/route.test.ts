@@ -183,3 +183,32 @@ describe("GET /api/user/details/[id] — additional", () => {
     expect(typeof body).toBe("object");
   });
 });
+
+describe("GET /api/user/details/[id] — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("response is always a Response instance", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("canManageUser called before getUser", async () => {
+    const callOrder: string[] = [];
+    getSessionMock.mockResolvedValue({ user: { id: "a1" } });
+    canManageUserMock.mockImplementationOnce(async () => { callOrder.push("manage"); return true; });
+    getUserMock.mockImplementationOnce(async () => { callOrder.push("get"); return { id: "u-1" }; });
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(callOrder[0]).toBe("manage");
+    expect(callOrder[1]).toBe("get");
+  });
+
+  it("returns 401 when session has user:null", async () => {
+    getSessionMock.mockResolvedValue({ user: null });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    expect(res.status).toBe(401);
+  });
+});
