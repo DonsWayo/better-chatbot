@@ -291,3 +291,36 @@ describe("getDashboardStats — edge cases", () => {
     expect(stats.guardrailFiringsLast24h).toBe(7);
   });
 });
+
+describe("getDashboardStats — return type invariants", () => {
+  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+
+  it("getDashboardStats returns a non-null object", async () => {
+    setupMocks([[{ total: 0 }], [{ total: 0 }], [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }], [{ total: 0 }], []]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(stats).not.toBeNull();
+    expect(typeof stats).toBe("object");
+  });
+
+  it("totalUsers is a number", async () => {
+    setupMocks([[{ total: 5 }], [{ total: 0 }], [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }], [{ total: 0 }], []]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(typeof stats.totalUsers).toBe("number");
+  });
+
+  it("totalTeams is a number", async () => {
+    setupMocks([[{ total: 0 }], [{ total: 3 }], [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }], [{ total: 0 }], []]);
+    const { getDashboardStats } = await import("./dashboard");
+    const stats = await getDashboardStats();
+    expect(typeof stats.totalTeams).toBe("number");
+  });
+
+  it("selectMock called at least once", async () => {
+    setupMocks([[{ total: 0 }], [{ total: 0 }], [{ requests: 0, costUsd: null }], [{ requests: 0, costUsd: null }], [{ total: 0 }], []]);
+    const { getDashboardStats } = await import("./dashboard");
+    await getDashboardStats();
+    expect(selectMock).toHaveBeenCalled();
+  });
+});
