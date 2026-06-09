@@ -76,4 +76,37 @@ describe("wouldCreateCycle", () => {
     ];
     expect(wouldCreateCycle({ source: "A", target: "end" }, edges)).toBe(false);
   });
+
+  it("detects cycle when fan-out converges back to origin", () => {
+    const edges: Edge[] = [
+      { source: "A", target: "B", id: "e1" },
+      { source: "A", target: "C", id: "e2" },
+    ];
+    // C → A creates a cycle (A reachable from itself via A→C→A)
+    expect(wouldCreateCycle({ source: "C", target: "A" }, edges)).toBe(true);
+  });
+
+  it("returns false when duplicate edge direction is proposed", () => {
+    const edges: Edge[] = [{ source: "A", target: "B", id: "e1" }];
+    // Adding A→B again doesn't create a cycle
+    expect(wouldCreateCycle({ source: "A", target: "B" }, edges)).toBe(false);
+  });
+
+  it("handles deeply nested graph without cycle", () => {
+    const edges: Edge[] = Array.from({ length: 10 }, (_, i) => ({
+      source: `N${i}`,
+      target: `N${i + 1}`,
+      id: `e${i}`,
+    }));
+    expect(wouldCreateCycle({ source: `N${10}`, target: `N${11}` }, edges)).toBe(false);
+  });
+
+  it("detects cycle in deeply nested graph (close the loop)", () => {
+    const edges: Edge[] = Array.from({ length: 10 }, (_, i) => ({
+      source: `N${i}`,
+      target: `N${i + 1}`,
+      id: `e${i}`,
+    }));
+    expect(wouldCreateCycle({ source: `N${10}`, target: "N0" }, edges)).toBe(true);
+  });
 });

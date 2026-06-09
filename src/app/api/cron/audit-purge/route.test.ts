@@ -79,4 +79,25 @@ describe("POST /api/cron/audit-purge", () => {
     await POST(makeRequest("test-secret"));
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
+
+  it("never calls db.delete when unauthorized", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("never calls db.delete with wrong secret", async () => {
+    const { POST } = await import("./route");
+    await POST(makeRequest("wrong-secret"));
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 with deleted and cutoff fields", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest("test-secret"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty("deleted");
+    expect(body).toHaveProperty("cutoff");
+  });
 });

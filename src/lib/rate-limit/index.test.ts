@@ -78,4 +78,39 @@ describe("checkRateLimit (Postgres-backed)", () => {
     );
     consoleSpy.mockRestore();
   });
+
+  it("count equals limit → remaining=0, allowed=true", async () => {
+    const limit = 5;
+    const { valuesFn } = makeInsertChain(limit); // count = limit exactly
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-4", limit, 60_000);
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(0);
+  });
+
+  it("resetAt is in the future", async () => {
+    const before = Date.now();
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-5", 10, 60_000);
+    expect(result.resetAt).toBeGreaterThan(before);
+  });
+
+  it("calls insert exactly once per call", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    const insertSpy = (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    await checkRateLimit("user-6", 10, 60_000);
+    expect(insertSpy).toHaveBeenCalledOnce();
+  });
+
+  it("returns the provided limit in result", async () => {
+    const { valuesFn } = makeInsertChain(1);
+    (pgDb.insert as ReturnType<typeof vi.fn>).mockReturnValue({ values: valuesFn });
+
+    const result = await checkRateLimit("user-7", 25, 60_000);
+    expect(result.limit).toBe(25);
+  });
 });

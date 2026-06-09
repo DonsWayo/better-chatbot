@@ -78,4 +78,76 @@ describe("eraseUserData", () => {
     await eraseUserData("user-xyz");
     expect(dbExecuteMock).toHaveBeenCalledOnce();
   });
+
+  it("sets email to erased tombstone containing userId", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("user-789");
+    expect(dbUpdateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ email: expect.stringContaining("user-789") }),
+    );
+  });
+
+  it("sets image to null in update", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u1");
+    expect(dbUpdateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ image: null }),
+    );
+  });
+
+  it("tablesCleared includes all cascade-deleted tables", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    const result = await eraseUserData("u1");
+    const cascadeTables = ["asafe_usage_event", "asafe_user_model_grant", "asafe_aup_acceptance", "asafe_team_member"];
+    for (const table of cascadeTables) {
+      expect(result.tablesCleared, `missing: ${table}`).toContain(table);
+    }
+  });
+
+  it("calls db.delete 5 times (5 cascade tables)", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u1");
+    expect(dbDeleteMock).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("exportUserData", () => {
+  beforeEach(() => { vi.clearAllMocks(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+
+  it("returns object with correct shape", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("user-export-1");
+    expect(result).toHaveProperty("exportedAt");
+    expect(result).toHaveProperty("userId");
+    expect(result).toHaveProperty("profile");
+    expect(result).toHaveProperty("chatThreads");
+    expect(result).toHaveProperty("usageEvents");
+    expect(result).toHaveProperty("auditEntries");
+  });
+
+  it("returns userId matching the input", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("user-export-2");
+    expect(result.userId).toBe("user-export-2");
+  });
+
+  it("returns profile as null when user not found (empty select)", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("nonexistent");
+    expect(result.profile).toBeNull();
+  });
+
+  it("returns arrays for all collection fields", async () => {
+    const { exportUserData } = await import("./gdpr");
+    const result = await exportUserData("u1");
+    expect(Array.isArray(result.chatThreads)).toBe(true);
+    expect(Array.isArray(result.usageEvents)).toBe(true);
+    expect(Array.isArray(result.auditEntries)).toBe(true);
+    expect(Array.isArray(result.teamMemberships)).toBe(true);
+    expect(Array.isArray(result.modelGrants)).toBe(true);
+  });
 });

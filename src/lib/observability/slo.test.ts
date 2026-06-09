@@ -77,4 +77,20 @@ describe("SLO metrics — behaviour", () => {
   it("rateLimitActivations.inc() callable with team_id label", () => {
     expect(() => rateLimitActivations.inc({ team_id: "team-1" })).not.toThrow();
   });
+
+  it("activeRequests.set() callable with numeric value", () => {
+    expect(() => activeRequests.set(0)).not.toThrow();
+  });
+
+  it("providerFallbackTotal.inc() callable with provider label", () => {
+    expect(() =>
+      providerFallbackTotal.inc({ provider: "anthropic", model: "claude-opus-4.8" }),
+    ).not.toThrow();
+  });
+
+  it("ttftMs.observe() accepts multiple different latencies", () => {
+    const labels = { provider: "openrouter", model: "gpt-5.1", task_class: "code" };
+    expect(() => ttftMs.observe(labels, 100)).not.toThrow();
+    expect(() => ttftMs.observe(labels, 2000)).not.toThrow();
+  });
 });
