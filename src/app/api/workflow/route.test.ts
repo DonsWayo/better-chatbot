@@ -144,3 +144,56 @@ describe("POST /api/workflow — update existing", () => {
     );
   });
 });
+
+describe("GET /api/workflow — additional invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("calls selectAll exactly once per request", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectAll.mockResolvedValue([]);
+    await GET();
+    expect(workflowRepositoryMock.selectAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call selectAll when no session", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET();
+    expect(workflowRepositoryMock.selectAll).not.toHaveBeenCalled();
+  });
+
+  it("each workflow in response has an id field", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    workflowRepositoryMock.selectAll.mockResolvedValue([
+      { id: "wf-a", name: "Workflow A" },
+      { id: "wf-b", name: "Workflow B" },
+    ]);
+    const res = await GET();
+    const body = await res.json();
+    for (const wf of body) {
+      expect(wf).toHaveProperty("id");
+    }
+  });
+});
+
+describe("POST /api/workflow — create invariants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does not call save when canCreateWorkflow returns false", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateWorkflowMock.mockResolvedValue(false);
+    await POST(makeRequest({ name: "My Workflow" }));
+    expect(workflowRepositoryMock.save).not.toHaveBeenCalled();
+  });
+
+  it("calls save exactly once when authorized", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canCreateWorkflowMock.mockResolvedValue(true);
+    workflowRepositoryMock.save.mockResolvedValue({ id: "wf-1" });
+    await POST(makeRequest({ name: "My Workflow" }));
+    expect(workflowRepositoryMock.save).toHaveBeenCalledTimes(1);
+  });
+});

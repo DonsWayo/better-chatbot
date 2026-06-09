@@ -135,4 +135,20 @@ describe("POST /api/storage/ingest", () => {
     const body = await res.json();
     expect(body.text).toBe("name | age\nAlice | 30");
   });
+
+  it("calls download exactly once per request", async () => {
+    await POST(makeRequest({ key: "uploads/data.csv" }));
+    expect(serverFileStorageMock.download).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls parseCsvPreview exactly once per request", async () => {
+    await POST(makeRequest({ key: "uploads/data.csv" }));
+    expect(parseCsvPreviewMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("response has ok: true on success", async () => {
+    const res = await POST(makeRequest({ key: "uploads/data.csv" }));
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
 });

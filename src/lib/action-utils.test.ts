@@ -200,3 +200,44 @@ describe("action-utils — guard invariants", () => {
     expect(result).toHaveProperty("success", false);
   });
 });
+
+describe("action-utils — schema coercion", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("validatedAction coerces multiple fields correctly", async () => {
+    const schema = z.object({
+      count: z.string().transform(Number),
+      label: z.string(),
+    });
+    const mockAction = vi.fn().mockResolvedValue({ ok: true });
+    const wrapped = validatedAction(schema, mockAction);
+    const fd = new FormData();
+    fd.set("count", "5");
+    fd.set("label", "hello");
+    await wrapped({}, fd);
+    expect(mockAction).toHaveBeenCalledWith({ count: 5, label: "hello" }, fd);
+  });
+
+  it("validatedActionWithUser returns action result on success", async () => {
+    const user = { id: "u3", name: "Carol", email: "c@d.com", role: "user" };
+    vi.mocked(getSession).mockResolvedValue(mockSession(user));
+    const schema = z.object({ x: z.string() });
+    const wrapped = validatedActionWithUser(schema, async () => ({ answer: 42 }));
+    const fd = new FormData();
+    fd.set("x", "v");
+    const result = await wrapped({}, fd);
+    expect(result).toEqual({ answer: 42 });
+  });
+
+  it("validatedAction returns result immediately without extra processing", async () => {
+    const schema = z.object({ n: z.string() });
+    const sentinel = { unique: "sentinel-value-12345" };
+    const wrapped = validatedAction(schema, async () => sentinel);
+    const fd = new FormData();
+    fd.set("n", "test");
+    const result = await wrapped({}, fd);
+    expect(result).toBe(sentinel);
+  });
+});

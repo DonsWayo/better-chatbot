@@ -146,4 +146,34 @@ describe("GET /api/user/details/[id]", () => {
     );
     expect(canManageUserMock).toHaveBeenCalledTimes(1);
   });
+
+  it("getSession is called exactly once per request", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call canManageUser when session is null", async () => {
+    getSessionMock.mockResolvedValue(null);
+    await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    expect(canManageUserMock).not.toHaveBeenCalled();
+  });
+
+  it("500 error message falls back when error has no message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    canManageUserMock.mockRejectedValue({});
+    const res = await GET(
+      new Request("http://x") as Parameters<typeof GET>[0],
+      makeContext("user-1"),
+    );
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Failed to get user details");
+  });
 });

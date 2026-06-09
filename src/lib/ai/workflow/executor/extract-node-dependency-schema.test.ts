@@ -177,3 +177,35 @@ describe("extractNodeDependencySchema", () => {
     });
   });
 });
+
+describe("extractNodeDependencySchema — result invariants", () => {
+  it("always returns type: 'object'", () => {
+    const node = makeInputNode("n1");
+    const result = extractNodeDependencySchema({ targetId: "n1", nodes: [node] });
+    expect(result.type).toBe("object");
+  });
+
+  it("always returns a result with a properties field", () => {
+    const result = extractNodeDependencySchema({ targetId: "x", nodes: [] });
+    expect(result).toHaveProperty("properties");
+  });
+
+  it("properties field is always an object", () => {
+    const node = makeInputNode("n2");
+    const result = extractNodeDependencySchema({ targetId: "n2", nodes: [node] });
+    expect(typeof result.properties).toBe("object");
+    expect(result.properties).not.toBeNull();
+  });
+
+  it("output node with keyed field uses source schema type when available", () => {
+    const sourceNode = makeLLMNode("src", {
+      type: "object",
+      properties: { val: { type: "number" } },
+    } as ObjectJsonSchema7);
+    const outputNode = makeOutputNode("out", [
+      { key: "myNum", source: { nodeId: "src", path: ["val"] } },
+    ]);
+    const result = extractNodeDependencySchema({ targetId: "out", nodes: [sourceNode, outputNode] });
+    expect(result.properties?.myNum).toEqual({ type: "number" });
+  });
+});

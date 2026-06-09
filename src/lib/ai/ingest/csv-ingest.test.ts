@@ -125,3 +125,32 @@ describe("buildCsvIngestionPreviewParts — call count invariants", () => {
     expect(download).not.toHaveBeenCalled();
   });
 });
+
+describe("buildCsvIngestionPreviewParts — content invariants", () => {
+  it("part text contains the csv header row", async () => {
+    const download = vi.fn(async () => Buffer.from("col1,col2\n1,2\n", "utf8"));
+    const parts = await buildCsvIngestionPreviewParts([attachmentFactory()], download);
+    expect(parts[0].text).toContain("col1");
+    expect(parts[0].text).toContain("col2");
+  });
+
+  it("processes multiple csv attachments producing one part each", async () => {
+    const download = vi.fn(async () => Buffer.from("a,b\n1,2\n", "utf8"));
+    const attachments = [
+      attachmentFactory({ url: "https://x.com/f1.csv" }),
+      attachmentFactory({ url: "https://x.com/f2.csv" }),
+    ];
+    const parts = await buildCsvIngestionPreviewParts(attachments, download);
+    expect(parts).toHaveLength(2);
+  });
+
+  it("returns empty array when all attachments fail download", async () => {
+    const download = vi.fn(async () => { throw new Error("fail"); });
+    const attachments = [
+      attachmentFactory({ url: "https://x.com/f1.csv" }),
+      attachmentFactory({ url: "https://x.com/f2.csv" }),
+    ];
+    const parts = await buildCsvIngestionPreviewParts(attachments, download);
+    expect(parts).toHaveLength(0);
+  });
+});
