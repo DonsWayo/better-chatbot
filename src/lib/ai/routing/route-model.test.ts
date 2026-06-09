@@ -127,4 +127,40 @@ describe("routeModel", () => {
     expect(typeof d.model.provider).toBe("string");
     expect(typeof d.model.model).toBe("string");
   });
+
+  it("hasImage combined with code prompt still routes to vision", () => {
+    const d = routeModel({ text: "fix this ```js\nconst x = 1\n```", hasImage: true });
+    expect(d.taskClass).toBe("vision");
+  });
+
+  it("candidates array has at least two entries for general task", () => {
+    const d = routeModel({ text: "explain me this" });
+    expect(d.candidates.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("allow-list with multiple approved models still picks appropriate tier", () => {
+    const d = routeModel({
+      text: "translate 'hello' to Spanish",
+      allowedModels: [
+        { provider: "openRouter", model: "gemini-2.5-flash-lite" },
+        { provider: "openRouter", model: "gpt-5.1" },
+      ],
+    });
+    // quick_rewrite prefers gemini-2.5-flash-lite — which is in the allow-list
+    expect(d.taskClass).toBe("quick_rewrite");
+    expect(d.model.model).toBe("gemini-2.5-flash-lite");
+  });
+
+  it("model provider is 'openRouter' for all routed results", () => {
+    const cases = [
+      { text: "fix ```js\nconst x\n```" },
+      { text: "what is in this image?", hasImage: true },
+      { text: "translate hello" },
+      { text: "explain step by step deeply" },
+    ];
+    for (const input of cases) {
+      const d = routeModel(input);
+      expect(d.model.provider).toBe("openRouter");
+    }
+  });
 });

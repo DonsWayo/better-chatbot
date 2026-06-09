@@ -147,4 +147,26 @@ describe("GET /api/local-files/[key] — dev mode", () => {
     const calledPath = readFileMock.mock.calls[0][0] as string;
     expect(calledPath).not.toContain("..");
   });
+
+  it("readFile called exactly once per valid dev request", async () => {
+    readFileMock.mockResolvedValueOnce(Buffer.from("data"));
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ key: "file.png" }) });
+    expect(readFileMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("404 body has error field on ENOENT", async () => {
+    readFileMock.mockRejectedValueOnce(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "missing.pdf" }) });
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
+
+  it("returns Response instance for existing file", async () => {
+    readFileMock.mockResolvedValueOnce(Buffer.from("content"));
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ key: "file.txt" }) });
+    expect(res).toBeInstanceOf(Response);
+  });
 });
