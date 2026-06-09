@@ -87,4 +87,40 @@ describe("POST /api/mcp/server-customizations/[server]", () => {
     expect(body.prompt).toBe("Be brief");
     expect(serverCacheDeleteMock).toHaveBeenCalled();
   });
+
+  it("never calls upsert when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "test" }), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
+
+  it("cache is invalidated with a key derived from the user id", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-cache-test" } });
+    upsertMock.mockResolvedValueOnce({ mcpServerId: "srv-42", prompt: "test" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ prompt: "test" }), { params: Promise.resolve({ server: "srv-42" }) });
+    expect(serverCacheDeleteMock).toHaveBeenCalledWith(expect.stringContaining("u-cache-test"));
+  });
+});
+
+describe("GET /api/mcp/server-customizations/[server] — guard chains", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls selectByUserIdAndMcpServerId when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(selectByUserIdAndMcpServerIdMock).not.toHaveBeenCalled();
+  });
+
+  it("passes both userId and serverId to selectByUserIdAndMcpServerId", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u99" } });
+    selectByUserIdAndMcpServerIdMock.mockResolvedValueOnce(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ server: "srv-x" }) });
+    expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "u99", mcpServerId: "srv-x" }),
+    );
+  });
 });

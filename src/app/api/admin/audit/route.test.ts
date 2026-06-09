@@ -89,4 +89,36 @@ describe("GET /api/admin/audit", () => {
     expect(body.page).toBe(2);
     expect(body.limit).toBe(25);
   });
+
+  it("never calls getAuditLog when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(mockGetAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("never calls getAuditLog when role is not admin", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "editor" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(mockGetAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("returns rows array and total in 200 response", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.rows)).toBe(true);
+    expect(typeof body.total).toBe("number");
+  });
+
+  it("defaults page to 1 when not provided", async () => {
+    mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    const body = await res.json();
+    expect(body.page).toBe(1);
+  });
 });

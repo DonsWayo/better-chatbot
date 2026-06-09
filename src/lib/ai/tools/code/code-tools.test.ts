@@ -88,4 +88,36 @@ describe("pythonExecutionTool", () => {
     const r = pythonExecutionTool.inputSchema.safeParse({});
     expect(r.success).toBe(false);
   });
+
+  it("has a defined inputSchema", () => {
+    expect(pythonExecutionTool.inputSchema).toBeDefined();
+  });
+
+  it("rejects non-string code value", () => {
+    const r = pythonExecutionTool.inputSchema.safeParse({ code: 42 });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("js vs python schemas — distinction", () => {
+  it("jsExecutionSchema and pythonExecutionSchema are different objects", () => {
+    expect(jsExecutionSchema).not.toBe(pythonExecutionSchema);
+  });
+
+  it("both schemas require 'code'", () => {
+    expect(jsExecutionSchema.required).toContain("code");
+    expect(pythonExecutionSchema.required).toContain("code");
+  });
+
+  it("both tools are client-side with no execute", () => {
+    expect(jsExecutionTool.execute).toBeUndefined();
+    expect(pythonExecutionTool.execute).toBeUndefined();
+  });
+
+  it("both tools have descriptions mentioning their language", () => {
+    const jsDesc = jsExecutionTool.description?.toLowerCase() ?? "";
+    const pyDesc = pythonExecutionTool.description?.toLowerCase() ?? "";
+    expect(jsDesc.includes("javascript") || jsDesc.includes("js")).toBe(true);
+    expect(pyDesc.includes("python")).toBe(true);
+  });
 });
