@@ -82,4 +82,29 @@ describe("POST /api/storage/upload-url", () => {
     expect(body.key).toBe("uploads/file.pdf");
     expect(body.sourceUrl).toBe("http://cdn/uploads/file.pdf");
   });
+
+  it("never calls checkStorageAction when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest());
+    expect(checkStorageActionMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls createUploadUrl when storage misconfigured", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: false, error: "No driver", solution: "" });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ filename: "test.jpg" }));
+    expect(createUploadUrlMock).not.toHaveBeenCalled();
+  });
+
+  it("response for fallback case has fallbackUrl pointing to /api/storage/upload", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
+    createUploadUrlMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ filename: "file.csv" }));
+    const body = await res.json();
+    expect(body.fallbackUrl).toBe("/api/storage/upload");
+  });
 });

@@ -82,3 +82,41 @@ describe("formatCsvPreviewText", () => {
     expect(text).toContain("Alice");
   });
 });
+
+describe("parseCsvPreview — advanced", () => {
+  it("handles single-column CSV", () => {
+    const csv = "id\n1\n2\n3\n";
+    const res = parseCsvPreview(Buffer.from(csv));
+    expect(res.header).toEqual(["id"]);
+    expect(res.columns).toBe(1);
+    expect(res.rows).toHaveLength(3);
+  });
+
+  it("respects maxCols limit", () => {
+    const csv = "a,b,c,d,e\n1,2,3,4,5\n";
+    const res = parseCsvPreview(Buffer.from(csv), { maxCols: 3 });
+    expect(res.header).toHaveLength(3);
+    expect(res.rows[0]).toHaveLength(3);
+  });
+
+  it("handles empty cells", () => {
+    const csv = "a,b\n,value\n";
+    const res = parseCsvPreview(Buffer.from(csv));
+    expect(res.rows[0]).toEqual(["", "value"]);
+  });
+
+  it("returns correct columns count matching header length", () => {
+    const csv = "x,y,z\n1,2,3\n";
+    const res = parseCsvPreview(Buffer.from(csv));
+    expect(res.columns).toBe(3);
+    expect(res.header).toHaveLength(3);
+  });
+
+  it("markdownTable has header and data rows", () => {
+    const csv = "name,score\nBob,99\n";
+    const res = parseCsvPreview(Buffer.from(csv));
+    expect(res.markdownTable).toContain("| name | score |");
+    expect(res.markdownTable).toContain("Bob");
+    expect(res.markdownTable).toContain("99");
+  });
+});

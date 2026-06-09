@@ -81,4 +81,50 @@ describe("POST /api/admin/teams", () => {
     expect(body.team).toEqual(TEAM);
     expect(createTeamMock).toHaveBeenCalledWith("Beta", "A fine team");
   });
+
+  it("returns 403 for editor role", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "Gamma" }));
+    expect(res.status).toBe(403);
+  });
+
+  it("never calls createTeam when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Delta" }));
+    expect(createTeamMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls createTeam for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ name: "Epsilon" }));
+    expect(createTeamMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/admin/teams — guard chain", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("never calls getAdminTeams when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getAdminTeamsMock).not.toHaveBeenCalled();
+  });
+
+  it("never calls getAdminTeams for non-admin", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { GET } = await import("./route");
+    await GET(makeRequest());
+    expect(getAdminTeamsMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for editor", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "e1", role: "editor" } });
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(403);
+  });
 });

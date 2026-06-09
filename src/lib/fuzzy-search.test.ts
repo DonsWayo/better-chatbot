@@ -82,3 +82,41 @@ describe("fuzzySearch — single-character queries", () => {
     expect(result.some((i) => i.id === "a")).toBe(true);
   });
 });
+
+describe("fuzzySearch — result structure", () => {
+  it("result items have id and label fields", () => {
+    const result = fuzzySearch(items, "web");
+    for (const item of result) {
+      expect(typeof item.id).toBe("string");
+      expect(typeof item.label).toBe("string");
+    }
+  });
+
+  it("does not return duplicates", () => {
+    const result = fuzzySearch(items, "web");
+    const ids = result.map((i) => i.id);
+    const unique = new Set(ids);
+    expect(unique.size).toBe(ids.length);
+  });
+
+  it("returns a subset (not more than input)", () => {
+    const result = fuzzySearch(items, "web");
+    expect(result.length).toBeLessThanOrEqual(items.length);
+  });
+});
+
+describe("fuzzySearch — label scoring", () => {
+  it("finds Calculator when querying 'calc'", () => {
+    const result = fuzzySearch(items, "calc");
+    expect(result.some((i) => i.id === "calculator")).toBe(true);
+  });
+
+  it("finds File Manager when querying 'file'", () => {
+    const result = fuzzySearch(items, "file");
+    expect(result.some((i) => i.id === "file-manager")).toBe(true);
+  });
+
+  it("returns empty for query matching nothing", () => {
+    expect(fuzzySearch(items, "zzzzz")).toHaveLength(0);
+  });
+});
