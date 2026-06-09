@@ -19,7 +19,7 @@ vi.mock("lib/db/repository", () => ({
   mcpServerCustomizationRepository: {
     selectByUserIdAndMcpServerId: selectByUserIdAndMcpServerIdMock,
     upsertMcpServerCustomization: upsertMock,
-    deleteMcpServerCustomization: deleteMcpServerCustomizationMock,
+    deleteMcpServerCustomizationByMcpServerIdAndUserId: deleteMcpServerCustomizationMock,
   },
 }));
 vi.mock("lib/cache", () => ({ serverCache: { delete: serverCacheDeleteMock } }));
@@ -122,5 +122,76 @@ describe("GET /api/mcp/server-customizations/[server] — guard chains", () => {
     expect(selectByUserIdAndMcpServerIdMock).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u99", mcpServerId: "srv-x" }),
     );
+  });
+
+  it("GET 401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("getSession called exactly once per GET", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { GET } = await import("./route");
+    await GET(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DELETE /api/mcp/server-customizations/[server]", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("returns 401 when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(res.status).toBe(401);
+  });
+
+  it("401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
+  });
+
+  it("deletes customization and returns success when authenticated", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    deleteMcpServerCustomizationMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    const res = await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  it("never calls delete when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(deleteMcpServerCustomizationMock).not.toHaveBeenCalled();
+  });
+
+  it("cache is invalidated after delete", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-del-cache" } });
+    deleteMcpServerCustomizationMock.mockResolvedValueOnce(undefined);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-99" }) });
+    expect(serverCacheDeleteMock).toHaveBeenCalledWith(expect.stringContaining("u-del-cache"));
+  });
+
+  it("getSession called exactly once per DELETE", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { DELETE } = await import("./route");
+    await DELETE(makeRequest(), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST 401 body is plain text Unauthorized", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ prompt: "test" }), { params: Promise.resolve({ server: "srv-1" }) });
+    expect(await res.text()).toBe("Unauthorized");
   });
 });
