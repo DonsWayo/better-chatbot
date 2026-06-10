@@ -67,11 +67,14 @@ export function ToolDetailPopupContent({
   title,
   serverId,
   onUpdate,
+  inline = false,
 }: {
   onUpdate?: () => void;
   tool: MCPToolInfo;
   title?: ReactNode;
   serverId: string;
+  // Skip Radix Dialog primitives when rendered outside a Dialog.
+  inline?: boolean;
 }) {
   const t = useTranslations();
 
@@ -136,13 +139,29 @@ export function ToolDetailPopupContent({
       });
   };
   return (
-    <div className="flex flex-col overflow-y-auto h-[70vh]">
-      <DialogHeader>
-        <DialogTitle>{title || tool.name}</DialogTitle>
-        <DialogDescription className="text-xs text-muted-foreground mt-4">
-          {tool.description}
-        </DialogDescription>
-      </DialogHeader>
+    <div
+      className={cn(
+        "flex flex-col overflow-y-auto",
+        inline ? "max-h-[70vh]" : "h-[70vh]",
+      )}
+    >
+      {inline ? (
+        <div className="flex flex-col gap-1">
+          <h4 className="text-lg leading-none font-semibold">
+            {title || tool.name}
+          </h4>
+          <p className="text-xs text-muted-foreground mt-4">
+            {tool.description}
+          </p>
+        </div>
+      ) : (
+        <DialogHeader>
+          <DialogTitle>{title || tool.name}</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-4">
+            {tool.description}
+          </DialogDescription>
+        </DialogHeader>
+      )}
       <Separator className="my-4" />
       <div>
         <div className="flex items-center mb-1">

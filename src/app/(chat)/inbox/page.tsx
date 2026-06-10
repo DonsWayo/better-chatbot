@@ -121,7 +121,9 @@ export default async function InboxPage() {
           <Inbox className="size-5 text-[#9a7b00] dark:text-[#FFC72C]" />
         </span>
         <div>
-          <h1 className="text-lg font-semibold">{t("title")}</h1>
+          <h1 className="font-display text-lg font-semibold tracking-tight">
+            {t("title")}
+          </h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>

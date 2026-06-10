@@ -1,16 +1,16 @@
 import type { DashboardStats } from "lib/admin/dashboard";
 import type { BudgetAlertItem } from "lib/admin/teams";
+import {
+  AlertTriangle,
+  Building2,
+  DollarSign,
+  MessageSquare,
+  ShieldAlert,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
 import { BudgetAlertsWidget } from "./budget-alerts-widget";
-import Link from "next/link";
-import {
-  Users,
-  Building2,
-  MessageSquare,
-  DollarSign,
-  ShieldAlert,
-  AlertTriangle,
-} from "lucide-react";
 
 interface StatCardProps {
   title: string;
@@ -19,18 +19,49 @@ interface StatCardProps {
   icon: React.ReactNode;
   href?: string;
   warning?: boolean;
+  mono?: boolean;
 }
 
-function StatCard({ title, value, sub, icon, href, warning }: StatCardProps) {
+function StatCard({
+  title,
+  value,
+  sub,
+  icon,
+  href,
+  warning,
+  mono,
+}: StatCardProps) {
   const inner = (
-    <Card className={warning ? "border-yellow-400 dark:border-yellow-600" : ""}>
+    <Card
+      className={
+        href
+          ? "h-full transition-all duration-150 ease-[cubic-bezier(0.2,0.9,0.3,1.2)] hover:bg-muted/40 active:scale-[0.98]"
+          : "h-full"
+      }
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className={`text-muted-foreground ${warning ? "text-yellow-500" : ""}`}>{icon}</div>
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        {warning ? (
+          <span className="flex items-center justify-center rounded-full bg-amber-500/15 p-1.5 text-amber-600 dark:text-amber-400">
+            {icon}
+          </span>
+        ) : (
+          <div className="text-muted-foreground">{icon}</div>
+        )}
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        <p
+          className={`text-2xl font-semibold tabular-nums ${mono ? "font-mono" : ""}`}
+        >
+          {value}
+        </p>
+        {sub && (
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+            {sub}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -46,13 +77,21 @@ interface AdminDashboardProps {
 export function AdminDashboard({ stats, budgetAlerts }: AdminDashboardProps) {
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        <p className="text-sm text-muted-foreground">Platform health at a glance.</p>
+      <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-500">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          Overview
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Platform health at a glance.
+        </p>
       </div>
 
       {/* KPI grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4" data-testid="admin-kpi-grid">
+      <div
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-500"
+        style={{ animationDelay: "40ms" }}
+        data-testid="admin-kpi-grid"
+      >
         <StatCard
           title="Total Users"
           value={stats.totalUsers.toLocaleString()}
@@ -78,6 +117,7 @@ export function AdminDashboard({ stats, budgetAlerts }: AdminDashboardProps) {
           sub={`$${stats.costLast7dUsd.toFixed(2)} in 7d`}
           icon={<DollarSign className="h-4 w-4" />}
           href="/admin/usage"
+          mono
         />
         <StatCard
           title="Guardrail Firings (24h)"
@@ -97,7 +137,10 @@ export function AdminDashboard({ stats, budgetAlerts }: AdminDashboardProps) {
       </div>
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-500"
+        style={{ animationDelay: "80ms" }}
+      >
         {[
           { label: "Users", href: "/admin/users" },
           { label: "Teams", href: "/admin/teams" },
@@ -111,7 +154,7 @@ export function AdminDashboard({ stats, budgetAlerts }: AdminDashboardProps) {
           <Link
             key={l.href}
             href={l.href}
-            className="rounded-md border px-3 py-2 text-center hover:bg-muted transition-colors font-medium"
+            className="rounded-xl border px-3 py-2 text-center font-medium transition-all duration-150 ease-[cubic-bezier(0.2,0.9,0.3,1.2)] hover:bg-muted active:scale-[0.98]"
           >
             {l.label}
           </Link>
@@ -119,7 +162,14 @@ export function AdminDashboard({ stats, budgetAlerts }: AdminDashboardProps) {
       </div>
 
       {/* Budget alerts */}
-      {budgetAlerts.length > 0 && <BudgetAlertsWidget alerts={budgetAlerts} />}
+      {budgetAlerts.length > 0 && (
+        <div
+          className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-500"
+          style={{ animationDelay: "120ms" }}
+        >
+          <BudgetAlertsWidget alerts={budgetAlerts} />
+        </div>
+      )}
     </div>
   );
 }

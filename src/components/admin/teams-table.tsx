@@ -1,18 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "ui/table";
+import { Plus, Users } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Button } from "ui/button";
-import { Input } from "ui/input";
 import {
   Dialog,
   DialogContent,
@@ -22,11 +15,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "ui/dialog";
-import { Plus, Users } from "lucide-react";
-import Link from "next/link";
+import { Input } from "ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "ui/table";
 
-import { AdminTeamListItem } from "lib/admin/teams";
 import { createTeamAction } from "@/app/(chat)/(admin)/admin/teams/(list)/actions";
+import { AdminTeamListItem } from "lib/admin/teams";
 
 interface TeamsTableProps {
   teams: AdminTeamListItem[];
@@ -136,8 +136,12 @@ export function TeamsTable({ teams }: TeamsTableProps) {
             <TableRow className="hover:bg-transparent">
               <TableHead className="font-semibold">Name</TableHead>
               <TableHead className="font-semibold">Slug</TableHead>
-              <TableHead className="font-semibold">Members</TableHead>
-              <TableHead className="font-semibold">Budget Used / Total</TableHead>
+              <TableHead className="font-semibold text-right">
+                Members
+              </TableHead>
+              <TableHead className="font-semibold text-right">
+                Budget Used / Total
+              </TableHead>
               <TableHead className="font-semibold">Created</TableHead>
             </TableRow>
           </TableHeader>
@@ -177,12 +181,12 @@ export function TeamsTable({ teams }: TeamsTableProps) {
                     </code>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
+                    <div className="flex items-center justify-end gap-1 text-sm tabular-nums">
                       <Users className="h-3.5 w-3.5 text-muted-foreground" />
                       {team.memberCount}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm text-right font-mono tabular-nums">
                     {team.budgetUsd != null ? (
                       <span>
                         <span className="font-medium">

@@ -118,13 +118,13 @@ export function MCPOverview() {
     params.set("name", mcp.name);
     params.set("config", JSON.stringify(mcp.config));
 
-    window.location.href = `/mcp/create?${params.toString()}`;
+    window.location.href = `/settings/connectors/create?${params.toString()}`;
   };
 
   return (
     <div className="flex flex-col gap-4">
       <Link
-        href="/mcp/create"
+        href="/settings/connectors/create"
         className="rounded-lg overflow-hidden cursor-pointer p-12 text-center relative group transition-all duration-300 "
       >
         <div className="flex flex-col items-center justify-center space-y-4 my-20">

@@ -1,10 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -12,17 +8,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useObjectState } from "@/hooks/use-object-state";
+import Link from "next/link";
+import { useState } from "react";
 
-import { Loader } from "lucide-react";
-import { safe } from "ts-safe";
+import { SocialAuthenticationProvider } from "app-types/authentication";
 import { authClient } from "auth/client";
+import { Loader } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { safe } from "ts-safe";
 import { GithubIcon } from "ui/github-icon";
 import { GoogleIcon } from "ui/google-icon";
-import { useTranslations } from "next-intl";
 import { MicrosoftIcon } from "ui/microsoft-icon";
-import { SocialAuthenticationProvider } from "app-types/authentication";
 
 export default function SignIn({
   emailAndPasswordEnabled,
@@ -73,9 +73,9 @@ export default function SignIn({
   };
   return (
     <div className="w-full h-full flex flex-col p-4 md:p-8 justify-center">
-      <Card className="w-full md:max-w-md bg-background border-none mx-auto shadow-none animate-in fade-in duration-1000">
+      <Card className="w-full md:max-w-md bg-background border-none mx-auto shadow-none animate-in fade-in slide-in-from-bottom-2 duration-500">
         <CardHeader className="my-4">
-          <CardTitle className="text-2xl text-center my-1">
+          <CardTitle className="font-display text-2xl text-center my-1 tracking-tight">
             {t("title")}
           </CardTitle>
           <CardDescription className="text-center text-muted-foreground">

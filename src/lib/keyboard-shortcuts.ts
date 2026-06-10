@@ -73,15 +73,6 @@ const lastMessageCopyShortcut: Shortcut = {
   },
 };
 
-const openChatPreferencesShortcut: Shortcut = {
-  description: "openChatPreferences",
-  shortcut: {
-    key: "L",
-    command: true,
-    shift: true,
-  },
-};
-
 const deleteThreadShortcut: Shortcut = {
   description: "deleteThread",
   shortcut: {
@@ -101,7 +92,6 @@ const openShortcutsPopupShortcut: Shortcut = {
 export const Shortcuts = {
   openNewChat: openNewChatShortcut,
   openCommandPalette: openCommandPaletteShortcut,
-  openChatPreferences: openChatPreferencesShortcut,
   toggleTemporaryChat: toggleTemporaryChatShortcut,
   toggleVoiceChat: toggleVoiceChatShortcut,
   toggleSidebar: toggleSidebarShortcut,

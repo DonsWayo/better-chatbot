@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "ui/card";
-import { Badge } from "ui/badge";
 import { toggleFeatureFlagAction } from "@/app/api/admin/actions";
-import { Switch } from "ui/switch";
-import { useTranslations } from "next-intl";
 import { AlertTriangle, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState, useTransition } from "react";
+import { Badge } from "ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "ui/card";
+import { Switch } from "ui/switch";
 
 interface FeatureFlag {
   name: string;
@@ -31,7 +37,10 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
   const t = useTranslations("Admin.FeatureFlags");
   const [flags, setFlags] = useState<FeatureFlag[]>(initialFlags);
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const handleToggle = (name: string, newValue: boolean) => {
     startTransition(async () => {
@@ -49,7 +58,10 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
           setMessage({ text: t("flagUpdated"), type: "success" });
         }
       } else {
-        setMessage({ text: "Failed to update flag. Please try again.", type: "error" });
+        setMessage({
+          text: "Failed to update flag. Please try again.",
+          type: "error",
+        });
       }
       setTimeout(() => setMessage(null), 5_000);
     });
@@ -59,17 +71,20 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
   const otherFlags = flags.filter((f) => f.name !== "kill_switch");
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div>
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {t("title")}
+        </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Operator controls for platform-wide behaviour. Changes take effect within 5 seconds.
+          Operator controls for platform-wide behaviour. Changes take effect
+          within 5 seconds.
         </p>
       </div>
 
       {message && (
         <div
-          className={`rounded-md px-4 py-3 text-sm font-medium ${
+          className={`rounded-xl px-4 py-3 text-sm font-medium ${
             message.type === "error"
               ? "bg-destructive/10 text-destructive"
               : "bg-green-500/10 text-green-700 dark:text-green-400"
@@ -99,10 +114,15 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
                 )}
                 <CardTitle className="text-base">{t("killSwitch")}</CardTitle>
                 <Badge
-                  variant={killSwitch.enabled ? "destructive" : "secondary"}
+                  variant="secondary"
+                  className={
+                    killSwitch.enabled
+                      ? "rounded-full border-transparent bg-red-500/15 text-red-600 dark:text-red-400"
+                      : "rounded-full"
+                  }
                   data-testid="kill-switch-badge"
                 >
-                  {killSwitch.enabled ? "ACTIVE" : "inactive"}
+                  {killSwitch.enabled ? "active" : "inactive"}
                 </Badge>
               </div>
               <Switch
@@ -139,7 +159,7 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
             {otherFlags.map((flag) => (
               <div
                 key={flag.name}
-                className="flex items-center justify-between rounded-md border px-4 py-3"
+                className="flex items-center justify-between rounded-xl border px-4 py-3"
               >
                 <div>
                   <p className="text-sm font-medium">{flag.name}</p>
@@ -152,7 +172,14 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={flag.enabled ? "default" : "secondary"}>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      flag.enabled
+                        ? "rounded-full border-transparent bg-green-500/15 text-green-600 dark:text-green-400"
+                        : "rounded-full"
+                    }
+                  >
                     {flag.enabled ? "on" : "off"}
                   </Badge>
                   <Switch
@@ -169,7 +196,9 @@ export function FeatureFlagsPanel({ initialFlags }: FeatureFlagsPanelProps) {
       )}
 
       {flags.length === 0 && (
-        <p className="text-muted-foreground text-sm">No feature flags configured.</p>
+        <p className="text-muted-foreground text-sm">
+          No feature flags configured.
+        </p>
       )}
     </div>
   );

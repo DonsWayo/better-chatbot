@@ -1,3 +1,4 @@
+import { Skeleton } from "ui/skeleton";
 import {
   Table,
   TableBody,
@@ -6,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "ui/table";
-import { Skeleton } from "ui/skeleton";
 
 export function TeamsTableSkeleton() {
   const skeletonRows = Array.from({ length: 6 }, (_, i) => i);
@@ -24,8 +24,12 @@ export function TeamsTableSkeleton() {
             <TableRow className="hover:bg-transparent">
               <TableHead className="font-semibold">Name</TableHead>
               <TableHead className="font-semibold">Slug</TableHead>
-              <TableHead className="font-semibold">Members</TableHead>
-              <TableHead className="font-semibold">Budget Used / Total</TableHead>
+              <TableHead className="font-semibold text-right">
+                Members
+              </TableHead>
+              <TableHead className="font-semibold text-right">
+                Budget Used / Total
+              </TableHead>
               <TableHead className="font-semibold">Created</TableHead>
             </TableRow>
           </TableHeader>
@@ -48,11 +52,11 @@ export function TeamsTableSkeleton() {
                   />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-8" />
+                  <Skeleton className="h-4 w-8 ml-auto" />
                 </TableCell>
                 <TableCell>
                   <Skeleton
-                    className={`h-4 ${index % 2 === 0 ? "w-24" : "w-32"}`}
+                    className={`h-4 ml-auto ${index % 2 === 0 ? "w-24" : "w-32"}`}
                   />
                 </TableCell>
                 <TableCell>

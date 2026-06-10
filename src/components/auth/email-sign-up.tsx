@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { existsByEmailAction, signUpAction } from "@/app/api/auth/actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -11,15 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useObjectState } from "@/hooks/use-object-state";
+import { UserZodSchema } from "app-types/user";
 import { cn } from "lib/utils";
-import { ChevronLeft, Loader, Check, X } from "lucide-react";
+import { Check, ChevronLeft, Loader, X } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { safe } from "ts-safe";
-import { UserZodSchema } from "app-types/user";
-import { existsByEmailAction, signUpAction } from "@/app/api/auth/actions";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 
 export default function EmailSignUp({
   isFirstUser,
@@ -115,7 +115,7 @@ export default function EmailSignUp({
   return (
     <Card className="w-full md:max-w-md bg-background border-none mx-auto gap-0 shadow-none animate-in fade-in duration-1000">
       <CardHeader>
-        <CardTitle className="text-2xl text-center ">
+        <CardTitle className="font-display text-2xl text-center tracking-tight">
           {isFirstUser ? t("Auth.SignUp.titleAdmin") : t("Auth.SignUp.title")}
         </CardTitle>
         <CardDescription className="py-12">

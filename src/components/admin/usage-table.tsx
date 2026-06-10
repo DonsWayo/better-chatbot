@@ -1,5 +1,8 @@
 "use client";
 
+import type { getUsageSummary } from "lib/admin/teams";
+import { Download } from "lucide-react";
+import { Button } from "ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
 import {
   Table,
@@ -9,9 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "ui/table";
-import { Button } from "ui/button";
-import { Download } from "lucide-react";
-import type { getUsageSummary } from "lib/admin/teams";
 
 interface UsageTableProps {
   data: Awaited<ReturnType<typeof getUsageSummary>>;
@@ -34,7 +34,11 @@ export function UsageTable({ data }: UsageTableProps) {
     <div className="space-y-6 w-full">
       <div className="flex justify-end">
         <a href={`/api/admin/usage/export?days=${days}`} download>
-          <Button variant="outline" size="sm" data-testid="usage-export-csv-btn">
+          <Button
+            variant="outline"
+            size="sm"
+            data-testid="usage-export-csv-btn"
+          >
             <Download className="size-4 mr-2" />
             Export CSV ({days}d)
           </Button>
@@ -49,7 +53,7 @@ export function UsageTable({ data }: UsageTableProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-semibold tabular-nums">
               {(totals?.totalRequests ?? 0).toLocaleString()}
             </p>
           </CardContent>
@@ -62,7 +66,7 @@ export function UsageTable({ data }: UsageTableProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-semibold font-mono tabular-nums">
               {formatCostTotal(totals?.totalCostUsd)}
             </p>
           </CardContent>
@@ -75,7 +79,7 @@ export function UsageTable({ data }: UsageTableProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">Last {days} days</p>
+            <p className="text-2xl font-semibold">Last {days} days</p>
           </CardContent>
         </Card>
       </div>
@@ -89,10 +93,18 @@ export function UsageTable({ data }: UsageTableProps) {
               <TableRow className="hover:bg-transparent">
                 <TableHead className="font-semibold">Model</TableHead>
                 <TableHead className="font-semibold">Provider</TableHead>
-                <TableHead className="font-semibold text-right">Requests</TableHead>
-                <TableHead className="font-semibold text-right">Prompt Tokens</TableHead>
-                <TableHead className="font-semibold text-right">Completion Tokens</TableHead>
-                <TableHead className="font-semibold text-right">Cost USD</TableHead>
+                <TableHead className="font-semibold text-right">
+                  Requests
+                </TableHead>
+                <TableHead className="font-semibold text-right">
+                  Prompt Tokens
+                </TableHead>
+                <TableHead className="font-semibold text-right">
+                  Completion Tokens
+                </TableHead>
+                <TableHead className="font-semibold text-right">
+                  Cost USD
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -144,8 +156,12 @@ export function UsageTable({ data }: UsageTableProps) {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="font-semibold">Task Class</TableHead>
-                <TableHead className="font-semibold text-right">Requests</TableHead>
-                <TableHead className="font-semibold text-right">Cost USD</TableHead>
+                <TableHead className="font-semibold text-right">
+                  Requests
+                </TableHead>
+                <TableHead className="font-semibold text-right">
+                  Cost USD
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,7 +179,9 @@ export function UsageTable({ data }: UsageTableProps) {
                   <TableRow key={`${row.taskClass ?? "unknown"}-${i}`}>
                     <TableCell className="font-medium">
                       {row.taskClass ?? (
-                        <span className="text-muted-foreground italic">unclassified</span>
+                        <span className="text-muted-foreground italic">
+                          unclassified
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-right text-sm">

@@ -5,9 +5,14 @@ import { SidebarGroupContent } from "ui/sidebar";
 import { Tooltip } from "ui/tooltip";
 
 import { appStore } from "@/app/store";
+import {
+  canCreateAgent,
+  canCreateWorkflow,
+  canEditWorkflow,
+} from "lib/auth/client-permissions";
 import { Shortcuts, getShortcutKeyList } from "lib/keyboard-shortcuts";
 import { fetcher } from "lib/utils";
-import { Inbox, SearchIcon, Waypoints } from "lucide-react";
+import { Blocks, Inbox, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,11 +20,22 @@ import useSWR from "swr";
 import { SidebarGroup } from "ui/sidebar";
 import { WriteIcon } from "ui/write-icon";
 
-export function AppSidebarMenus() {
+export function AppSidebarMenus({
+  userRole,
+}: {
+  userRole?: string | null;
+}) {
   const router = useRouter();
   const t = useTranslations("");
   const { setOpenMobile } = useSidebar();
   const appStoreMutate = appStore((state) => state.mutate);
+
+  // Studio is the single role-gated builder home — only builders/admins see
+  // it (docs/design/information-architecture.md §1).
+  const canSeeStudio =
+    canCreateAgent(userRole) ||
+    canCreateWorkflow(userRole) ||
+    canEditWorkflow(userRole);
 
   // Pending-approvals badge for the always-visible Inbox item.
   const { data: approvalCount } = useSWR<{ pending: number }>(
@@ -91,19 +107,6 @@ export function AppSidebarMenus() {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        {/* MCP management lives under Admin → MCP Catalog; /mcp stays routable */}
-        <SidebarMenu>
-          <Tooltip>
-            <SidebarMenuItem>
-              <Link href="/workflow">
-                <SidebarMenuButton className="font-semibold">
-                  <Waypoints className="size-4" />
-                  {t("Layout.workflow")}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </Tooltip>
-        </SidebarMenu>
         {/* Inbox is always rendered for everyone — the one door to approvals,
             run history and routines (docs/design/information-architecture.md §5). */}
         <SidebarMenu>
@@ -127,6 +130,22 @@ export function AppSidebarMenus() {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
+        {/* Studio — builders/admins only; sits between Inbox and the pinned
+            Agents section (docs/design/information-architecture.md §1). */}
+        {canSeeStudio && (
+          <SidebarMenu>
+            <Tooltip>
+              <SidebarMenuItem>
+                <Link href="/studio" data-testid="sidebar-studio-link">
+                  <SidebarMenuButton className="font-semibold">
+                    <Blocks className="size-4" />
+                    {t("Layout.studio")}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            </Tooltip>
+          </SidebarMenu>
+        )}
       </SidebarGroupContent>
     </SidebarGroup>
   );

@@ -1,21 +1,13 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import type { AsafeKnowledgeCollectionEntity } from "lib/db/pg/schema.pg";
 import { ArrowLeft, FileText, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "ui/table";
+import { useRouter } from "next/navigation";
+import { useRef, useState, useTransition } from "react";
+import { Badge } from "ui/badge";
 import { Button } from "ui/button";
-import { Textarea } from "ui/textarea";
-import { Input } from "ui/input";
 import {
   Dialog,
   DialogContent,
@@ -24,9 +16,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "ui/dialog";
-import { Badge } from "ui/badge";
+import { Input } from "ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
-import type { AsafeKnowledgeCollectionEntity } from "lib/db/pg/schema.pg";
+import { Textarea } from "ui/textarea";
 
 interface DocumentEntry {
   id: string;
@@ -86,8 +86,8 @@ export function KnowledgeCollectionDetail({
     const isText = activeTab === "text";
     const text = isText ? textContent.trim() : (fileContent ?? "");
     const sourceRef = isText
-      ? (textSourceRef.trim() || "manual")
-      : (fileName || "upload");
+      ? textSourceRef.trim() || "manual"
+      : fileName || "upload";
 
     if (!text) return;
 
@@ -111,7 +111,10 @@ export function KnowledgeCollectionDetail({
       setDocuments((prev) => {
         const existing = prev.findIndex((d) => d.sourceRef === sourceRef);
         const entry: DocumentEntry = {
-          id: btoa(sourceRef).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+          id: btoa(sourceRef)
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, ""),
           sourceRef,
           chunkCount: data.chunks,
           createdAt: new Date().toISOString(),
@@ -146,9 +149,7 @@ export function KnowledgeCollectionDetail({
   };
 
   const canIngest =
-    activeTab === "text"
-      ? textContent.trim().length > 0
-      : fileContent !== null;
+    activeTab === "text" ? textContent.trim().length > 0 : fileContent !== null;
 
   return (
     <div className="space-y-6 w-full">
@@ -161,8 +162,10 @@ export function KnowledgeCollectionDetail({
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-xl font-semibold truncate">{collection.name}</h2>
-            <Badge variant={collection.visibility === "org" ? "default" : "secondary"}>
+            <h2 className="font-display text-xl font-semibold tracking-tight truncate">
+              {collection.name}
+            </h2>
+            <Badge variant="secondary" className="rounded-full">
               {collection.visibility === "org" ? "Org-wide" : "Team only"}
             </Badge>
           </div>
@@ -200,7 +203,8 @@ export function KnowledgeCollectionDetail({
                   colSpan={4}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  No documents ingested yet. Click &quot;Ingest Document&quot; to add one.
+                  No documents ingested yet. Click &quot;Ingest Document&quot;
+                  to add one.
                 </TableCell>
               </TableRow>
             ) : (
@@ -240,20 +244,34 @@ export function KnowledgeCollectionDetail({
       </div>
 
       {/* Ingest dialog */}
-      <Dialog open={showUpload} onOpenChange={(v) => { setShowUpload(v); if (!v) resetUploadForm(); }}>
+      <Dialog
+        open={showUpload}
+        onOpenChange={(v) => {
+          setShowUpload(v);
+          if (!v) resetUploadForm();
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Ingest Document</DialogTitle>
             <DialogDescription>
-              Add text or a file to the <strong>{collection.name}</strong> collection.
-              Existing chunks for the same source ref will be replaced.
+              Add text or a file to the <strong>{collection.name}</strong>{" "}
+              collection. Existing chunks for the same source ref will be
+              replaced.
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "text" | "file")}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as "text" | "file")}
+          >
             <TabsList className="w-full">
-              <TabsTrigger value="text" className="flex-1">Paste Text</TabsTrigger>
-              <TabsTrigger value="file" className="flex-1">Upload File</TabsTrigger>
+              <TabsTrigger value="text" className="flex-1">
+                Paste Text
+              </TabsTrigger>
+              <TabsTrigger value="file" className="flex-1">
+                Upload File
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="text" className="space-y-3 pt-2">
@@ -287,7 +305,10 @@ export function KnowledgeCollectionDetail({
               <div
                 className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    fileInputRef.current?.click();
+                }}
                 tabIndex={0}
                 role="button"
                 aria-label="Upload text file"
@@ -322,7 +343,10 @@ export function KnowledgeCollectionDetail({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setShowUpload(false); resetUploadForm(); }}
+              onClick={() => {
+                setShowUpload(false);
+                resetUploadForm();
+              }}
               disabled={isIngesting}
             >
               Cancel

@@ -2,10 +2,10 @@ import {
   ChatExportCommentWithUser,
   ChatExportWithUser,
 } from "app-types/chat-export";
-import { PreviewMessage } from "../message";
+import { formatDate } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
-import { formatDate } from "date-fns";
+import { PreviewMessage } from "../message";
 
 import Particles from "ui/particles";
 import Comments from "./comments";
@@ -28,7 +28,10 @@ export default function ChatPreview({
 
       <div className="flex flex-col gap-2 overflow-y-auto pb-20">
         <div className="w-full mx-auto max-w-3xl px-6 py-8">
-          <h1 className="text-3xl font-bold mb-2" data-testid="export-title">
+          <h1
+            className="font-display text-3xl font-semibold tracking-tight mb-2"
+            data-testid="export-title"
+          >
             {thread.title}
           </h1>
           <div className="text-xs text-muted-foreground flex items-center gap-2">

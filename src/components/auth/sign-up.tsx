@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -9,14 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { cn } from "lib/utils";
-import { useTranslations } from "next-intl";
 import { SocialAuthenticationProvider } from "app-types/authentication";
-import SocialProviders from "./social-providers";
-import { Mail } from "lucide-react";
 import { authClient } from "auth/client";
-import { toast } from "sonner";
+import { cn } from "lib/utils";
+import { Mail } from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { startTransition } from "react";
+import { toast } from "sonner";
+import SocialProviders from "./social-providers";
 
 export default function SignUpPage({
   emailAndPasswordEnabled,
@@ -40,7 +40,7 @@ export default function SignUpPage({
   return (
     <Card className="w-full md:max-w-md bg-background border-none mx-auto shadow-none">
       <CardHeader>
-        <CardTitle className="text-2xl text-center ">
+        <CardTitle className="font-display text-2xl text-center tracking-tight">
           {isFirstUser ? t("Auth.SignUp.titleAdmin") : t("Auth.SignUp.title")}
         </CardTitle>
         <CardDescription className="text-center">

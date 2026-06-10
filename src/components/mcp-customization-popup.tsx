@@ -2,8 +2,6 @@
 
 import { ReactNode, useMemo, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -38,40 +36,21 @@ import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import { ToolDetailPopupContent } from "./tool-detail-popup";
 import { ExamplePlaceholder } from "ui/example-placeholder";
 import { Input } from "ui/input";
-import { appStore } from "@/app/store";
-import { useShallow } from "zustand/shallow";
 
-export function McpCustomizationPopup() {
-  const [mcpCustomizationPopup, appStoreMutate] = appStore(
-    useShallow((state) => [state.mcpCustomizationPopup, state.mutate]),
-  );
-
-  return (
-    <Dialog
-      open={!!mcpCustomizationPopup}
-      onOpenChange={(open) => {
-        if (!open) {
-          appStoreMutate({ mcpCustomizationPopup: undefined });
-        }
-      }}
-    >
-      <DialogContent className="sm:max-w-[800px] fixed p-10 overflow-hidden">
-        {mcpCustomizationPopup ? (
-          <McpServerCustomizationContent
-            mcpServerInfo={mcpCustomizationPopup}
-          />
-        ) : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
+// The global McpCustomizationPopup was retired; this content now renders
+// inline on each connector row (Settings › Connectors › [id]).
+// docs/design/information-architecture.md §2.
 
 export function McpServerCustomizationContent({
   mcpServerInfo: { id, name, toolInfo, error },
   title,
+  inline = false,
 }: {
   mcpServerInfo: MCPServerInfo & { id: string };
   title?: ReactNode;
+  // When rendered outside a Dialog (e.g. inline on a connector row) the
+  // Radix Dialog title/description primitives must not be used.
+  inline?: boolean;
 }) {
   const t = useTranslations();
 
@@ -168,6 +147,7 @@ export function McpServerCustomizationContent({
       <ToolDetailPopupContent
         tool={selectedTool}
         serverId={id}
+        inline={inline}
         onUpdate={refreshMcpToolCustomizations}
         title={
           <div className="flex flex-col">
@@ -186,14 +166,28 @@ export function McpServerCustomizationContent({
   }
 
   return (
-    <div className="flex flex-col overflow-y-auto h-[70vh]">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 mb-2">
-          {title || name}{" "}
-          {error ? <p className="text-xs text-destructive">error</p> : null}
-        </DialogTitle>
-        <DialogDescription>{/*  */}</DialogDescription>
-      </DialogHeader>
+    <div
+      className={cn(
+        "flex flex-col overflow-y-auto",
+        inline ? "max-h-[70vh]" : "h-[70vh]",
+      )}
+    >
+      {inline ? (
+        <div className="flex flex-col mb-2">
+          <h4 className="flex items-center gap-2 text-lg leading-none font-semibold">
+            {title || name}{" "}
+            {error ? <p className="text-xs text-destructive">error</p> : null}
+          </h4>
+        </div>
+      ) : (
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 mb-2">
+            {title || name}{" "}
+            {error ? <p className="text-xs text-destructive">error</p> : null}
+          </DialogTitle>
+          <DialogDescription>{/*  */}</DialogDescription>
+        </DialogHeader>
+      )}
       <div className="flex items-center">
         <h5 className="mr-auto flex items-center py-2">
           <Tooltip>

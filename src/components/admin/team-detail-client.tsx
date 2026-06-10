@@ -1,45 +1,30 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "ui/table";
-import { Button } from "ui/button";
-import { Input } from "ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "ui/card";
-import { ArrowLeft, Trash2, UserPlus, DollarSign, ShieldCheck, BarChart3, Settings, Pencil } from "lucide-react";
-import Link from "next/link";
 import {
   addTeamMemberAction,
-  removeTeamMemberAction,
-  setBudgetAction,
-  setModelAllowListAction,
-  setEmailDomainsAction,
-  setPolicyAction,
-  renameTeamAction,
   deleteTeamAction,
+  removeTeamMemberAction,
+  renameTeamAction,
+  setBudgetAction,
+  setEmailDomainsAction,
+  setModelAllowListAction,
+  setPolicyAction,
   updateMemberRoleAction,
 } from "@/app/(chat)/(admin)/admin/teams/[id]/actions";
+import { format } from "date-fns";
+import {
+  ArrowLeft,
+  BarChart3,
+  DollarSign,
+  Pencil,
+  Settings,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +36,30 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "ui/alert-dialog";
+import { Button } from "ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "ui/card";
+import { Input } from "ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "ui/table";
 
 type Role = "admin" | "editor" | "member";
 
@@ -75,8 +84,16 @@ interface Budget {
 const APPROVED_MODELS = [
   { id: "gpt-5.1", label: "GPT-5.1", note: "balanced" },
   { id: "claude-opus-4.8", label: "Claude Opus 4.8", note: "frontier" },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", note: "fast & multilingual" },
-  { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", note: "cheapest" },
+  {
+    id: "gemini-2.5-flash",
+    label: "Gemini 2.5 Flash",
+    note: "fast & multilingual",
+  },
+  {
+    id: "gemini-2.5-flash-lite",
+    label: "Gemini 2.5 Flash Lite",
+    note: "cheapest",
+  },
 ] as const;
 
 interface UsageRow {
@@ -106,7 +123,6 @@ interface TeamDetailClientProps {
   team: Team;
 }
 
-
 export function TeamDetailClient({ team }: TeamDetailClientProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -123,11 +139,19 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setIsSavingRename(true);
     setRenameError(null);
     try {
-      await renameTeamAction(team.id, newName.trim(), newDescription.trim() || null);
+      await renameTeamAction(
+        team.id,
+        newName.trim(),
+        newDescription.trim() || null,
+      );
       setIsRenaming(false);
-      startTransition(() => { router.refresh(); });
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err) {
-      setRenameError(err instanceof Error ? err.message : "Failed to rename team");
+      setRenameError(
+        err instanceof Error ? err.message : "Failed to rename team",
+      );
     } finally {
       setIsSavingRename(false);
     }
@@ -157,11 +181,16 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   // Role change state
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
 
-  const handleRoleChange = async (memberId: string, newRole: "admin" | "editor" | "member") => {
+  const handleRoleChange = async (
+    memberId: string,
+    newRole: "admin" | "editor" | "member",
+  ) => {
     setUpdatingRoleId(memberId);
     try {
       await updateMemberRoleAction(memberId, team.id, newRole);
-      startTransition(() => { router.refresh(); });
+      startTransition(() => {
+        router.refresh();
+      });
     } finally {
       setUpdatingRoleId(null);
     }
@@ -169,7 +198,10 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
   // Per-team usage state (fetched client-side to avoid blocking SSR)
   const [usageRows, setUsageRows] = useState<UsageRow[]>([]);
-  const [usageTotals, setUsageTotals] = useState<{ totalRequests: number; totalCostUsd: string | null } | null>(null);
+  const [usageTotals, setUsageTotals] = useState<{
+    totalRequests: number;
+    totalCostUsd: string | null;
+  } | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
 
   useEffect(() => {
@@ -184,8 +216,12 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   }, [team.id]);
 
   // Team policy state (guardrail + feature toggles)
-  const [guardrailPolicy, setGuardrailPolicy] = useState(team.guardrailPolicy ?? "standard");
-  const [allowImageGen, setAllowImageGen] = useState(team.allowImageGen ?? false);
+  const [guardrailPolicy, setGuardrailPolicy] = useState(
+    team.guardrailPolicy ?? "standard",
+  );
+  const [allowImageGen, setAllowImageGen] = useState(
+    team.allowImageGen ?? false,
+  );
   const [allowVision, setAllowVision] = useState(team.allowVision ?? false);
   const [allowSpeech, setAllowSpeech] = useState(team.allowSpeech ?? false);
   const [isSavingPolicy, setIsSavingPolicy] = useState(false);
@@ -198,22 +234,31 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setPolicySuccess(false);
     try {
       await setPolicyAction(team.id, {
-        guardrailPolicy: guardrailPolicy as "strict" | "standard" | "permissive",
+        guardrailPolicy: guardrailPolicy as
+          | "strict"
+          | "standard"
+          | "permissive",
         allowImageGen,
         allowVision,
         allowSpeech,
       });
       setPolicySuccess(true);
-      startTransition(() => { router.refresh(); });
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err) {
-      setPolicyError(err instanceof Error ? err.message : "Failed to save policy");
+      setPolicyError(
+        err instanceof Error ? err.message : "Failed to save policy",
+      );
     } finally {
       setIsSavingPolicy(false);
     }
   };
 
   // Email domain allow-list state
-  const [emailDomains, setEmailDomains] = useState<string[]>(team.allowedEmailDomains ?? []);
+  const [emailDomains, setEmailDomains] = useState<string[]>(
+    team.allowedEmailDomains ?? [],
+  );
   const [newDomain, setNewDomain] = useState("");
   const [isSavingDomains, setIsSavingDomains] = useState(false);
   const [domainsError, setDomainsError] = useState<string | null>(null);
@@ -237,23 +282,31 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     try {
       await setEmailDomainsAction(team.id, emailDomains);
       setDomainsSuccess(true);
-      startTransition(() => { router.refresh(); });
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err) {
-      setDomainsError(err instanceof Error ? err.message : "Failed to save domains");
+      setDomainsError(
+        err instanceof Error ? err.message : "Failed to save domains",
+      );
     } finally {
       setIsSavingDomains(false);
     }
   };
 
   // Model allow-list state
-  const [selectedModels, setSelectedModels] = useState<string[]>(team.modelAllowList ?? []);
+  const [selectedModels, setSelectedModels] = useState<string[]>(
+    team.modelAllowList ?? [],
+  );
   const [isSavingModels, setIsSavingModels] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [modelsSuccess, setModelsSuccess] = useState(false);
 
   const handleToggleModel = (modelId: string) => {
     setSelectedModels((prev) =>
-      prev.includes(modelId) ? prev.filter((id) => id !== modelId) : [...prev, modelId],
+      prev.includes(modelId)
+        ? prev.filter((id) => id !== modelId)
+        : [...prev, modelId],
     );
   };
 
@@ -264,9 +317,13 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     try {
       await setModelAllowListAction(team.id, selectedModels);
       setModelsSuccess(true);
-      startTransition(() => { router.refresh(); });
+      startTransition(() => {
+        router.refresh();
+      });
     } catch (err) {
-      setModelsError(err instanceof Error ? err.message : "Failed to save model list");
+      setModelsError(
+        err instanceof Error ? err.message : "Failed to save model list",
+      );
     } finally {
       setIsSavingModels(false);
     }
@@ -277,9 +334,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   const thirtyDaysOut = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
-  const [budgetUsd, setBudgetUsd] = useState(
-    team.budget?.budgetUsd ?? "",
-  );
+  const [budgetUsd, setBudgetUsd] = useState(team.budget?.budgetUsd ?? "");
   const [periodStart, setPeriodStart] = useState(
     team.budget
       ? new Date(team.budget.periodStart).toISOString().slice(0, 10)
@@ -365,7 +420,10 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               className="text-2xl font-semibold bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setIsRenaming(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape") setIsRenaming(false);
+              }}
               autoFocus
               data-testid="rename-team-input"
             />
@@ -374,24 +432,46 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               placeholder="Description (optional)"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setIsRenaming(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape") setIsRenaming(false);
+              }}
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleRename} disabled={!newName.trim() || isSavingRename} data-testid="save-rename-btn">
+              <Button
+                size="sm"
+                onClick={handleRename}
+                disabled={!newName.trim() || isSavingRename}
+                data-testid="save-rename-btn"
+              >
                 {isSavingRename ? "Saving…" : "Save"}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => { setIsRenaming(false); setNewName(team.name); setNewDescription(team.description ?? ""); }}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setIsRenaming(false);
+                  setNewName(team.name);
+                  setNewDescription(team.description ?? "");
+                }}
+              >
                 Cancel
               </Button>
             </div>
-            {renameError && <p className="text-sm text-destructive">{renameError}</p>}
+            {renameError && (
+              <p className="text-sm text-destructive">{renameError}</p>
+            )}
           </div>
         ) : (
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h1 className="text-2xl font-semibold">{team.name}</h1>
+              <h1 className="font-display text-2xl font-semibold tracking-tight">
+                {team.name}
+              </h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{team.slug}</code>
+                <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                  {team.slug}
+                </code>
                 {team.description && <span>{team.description}</span>}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -399,22 +479,34 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={() => setIsRenaming(true)} data-testid="rename-team-btn">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRenaming(true)}
+                data-testid="rename-team-btn"
+              >
                 <Pencil className="h-3.5 w-3.5 mr-1" />
                 Rename
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" data-testid="delete-team-btn">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    data-testid="delete-team-btn"
+                  >
                     <Trash2 className="h-3.5 w-3.5 mr-1" />
                     Delete
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete &quot;{team.name}&quot;?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      Delete &quot;{team.name}&quot;?
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete the team and remove all members. This action cannot be undone.
+                      This will permanently delete the team and remove all
+                      members. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -451,11 +543,13 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Requests</p>
-                  <p className="text-lg font-bold">{usageTotals.totalRequests.toLocaleString()}</p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {usageTotals.totalRequests.toLocaleString()}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Cost</p>
-                  <p className="text-lg font-bold">
+                  <p className="text-lg font-semibold font-mono tabular-nums">
                     ${Number(usageTotals.totalCostUsd ?? 0).toFixed(2)}
                   </p>
                 </div>
@@ -463,11 +557,18 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               {usageRows.length > 0 && (
                 <div className="rounded-md border divide-y text-sm">
                   {usageRows.map((r, i) => (
-                    <div key={`${r.model}-${i}`} className="flex items-center justify-between px-3 py-1.5">
+                    <div
+                      key={`${r.model}-${i}`}
+                      className="flex items-center justify-between px-3 py-1.5"
+                    >
                       <code className="text-xs">{r.model}</code>
                       <div className="text-right">
-                        <span className="text-xs text-muted-foreground mr-2">{r.requests.toLocaleString()} req</span>
-                        <span className="text-xs font-mono">${Number(r.totalCostUsd ?? 0).toFixed(4)}</span>
+                        <span className="text-xs text-muted-foreground mr-2">
+                          {r.requests.toLocaleString()} req
+                        </span>
+                        <span className="text-xs font-mono">
+                          ${Number(r.totalCostUsd ?? 0).toFixed(4)}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -475,7 +576,9 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No usage data for this team in the last 30 days.</p>
+            <p className="text-sm text-muted-foreground">
+              No usage data for this team in the last 30 days.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -518,15 +621,15 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
                   team.members.map((m) => (
                     <TableRow key={m.memberId}>
                       <TableCell className="pl-6">
-                        <span className="font-medium">
-                          {m.userName ?? "—"}
-                        </span>
+                        <span className="font-medium">{m.userName ?? "—"}</span>
                       </TableCell>
                       <TableCell className="text-sm">{m.userEmail}</TableCell>
                       <TableCell>
                         <Select
                           value={m.role}
-                          onValueChange={(v) => handleRoleChange(m.memberId, v as Role)}
+                          onValueChange={(v) =>
+                            handleRoleChange(m.memberId, v as Role)
+                          }
                           disabled={updatingRoleId === m.memberId}
                         >
                           <SelectTrigger className="h-7 w-28 text-xs">
@@ -623,7 +726,8 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             Model Allow-List
           </CardTitle>
           <CardDescription>
-            Restrict this team to specific models. Empty selection = all approved models allowed.
+            Restrict this team to specific models. Empty selection = all
+            approved models allowed.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -659,8 +763,12 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           >
             {isSavingModels ? "Saving…" : "Save Model List"}
           </Button>
-          {modelsError && <p className="text-sm text-destructive">{modelsError}</p>}
-          {modelsSuccess && <p className="text-sm text-green-600">Model list saved.</p>}
+          {modelsError && (
+            <p className="text-sm text-destructive">{modelsError}</p>
+          )}
+          {modelsSuccess && (
+            <p className="text-sm text-green-600">Model list saved.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -672,7 +780,8 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             Team Policy
           </CardTitle>
           <CardDescription>
-            Configure guardrail strictness and which AI capabilities are enabled for this team.
+            Configure guardrail strictness and which AI capabilities are enabled
+            for this team.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -685,13 +794,22 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               onValueChange={(v) => setGuardrailPolicy(v)}
               disabled={isSavingPolicy}
             >
-              <SelectTrigger className="w-full sm:w-56" data-testid="guardrail-select">
+              <SelectTrigger
+                className="w-full sm:w-56"
+                data-testid="guardrail-select"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="strict">Strict — block sensitive topics</SelectItem>
-                <SelectItem value="standard">Standard — balanced filtering</SelectItem>
-                <SelectItem value="permissive">Permissive — minimal filtering</SelectItem>
+                <SelectItem value="strict">
+                  Strict — block sensitive topics
+                </SelectItem>
+                <SelectItem value="standard">
+                  Standard — balanced filtering
+                </SelectItem>
+                <SelectItem value="permissive">
+                  Permissive — minimal filtering
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -702,9 +820,24 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             </p>
             {(
               [
-                { key: "allowImageGen", label: "Image generation", value: allowImageGen, set: setAllowImageGen },
-                { key: "allowVision",   label: "Vision (image input)", value: allowVision, set: setAllowVision },
-                { key: "allowSpeech",  label: "Speech / audio", value: allowSpeech, set: setAllowSpeech },
+                {
+                  key: "allowImageGen",
+                  label: "Image generation",
+                  value: allowImageGen,
+                  set: setAllowImageGen,
+                },
+                {
+                  key: "allowVision",
+                  label: "Vision (image input)",
+                  value: allowVision,
+                  set: setAllowVision,
+                },
+                {
+                  key: "allowSpeech",
+                  label: "Speech / audio",
+                  value: allowSpeech,
+                  set: setAllowSpeech,
+                },
               ] as const
             ).map(({ key, label, value, set }) => (
               <label
@@ -732,8 +865,12 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           >
             {isSavingPolicy ? "Saving…" : "Save Policy"}
           </Button>
-          {policyError && <p className="text-sm text-destructive">{policyError}</p>}
-          {policySuccess && <p className="text-sm text-green-600">Policy saved.</p>}
+          {policyError && (
+            <p className="text-sm text-destructive">{policyError}</p>
+          )}
+          {policySuccess && (
+            <p className="text-sm text-green-600">Policy saved.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -745,7 +882,8 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             Email Domain Allow-List
           </CardTitle>
           <CardDescription>
-            Restrict membership to users with specific email domains. Empty = any domain allowed.
+            Restrict membership to users with specific email domains. Empty =
+            any domain allowed.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -773,7 +911,8 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              No domain restrictions — any email domain can be added as a member.
+              No domain restrictions — any email domain can be added as a
+              member.
             </p>
           )}
 
@@ -783,7 +922,9 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               placeholder="example.com"
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddDomain(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddDomain();
+              }}
               className="flex-1"
               disabled={isSavingDomains}
               data-testid="domain-input"
@@ -806,8 +947,12 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           >
             {isSavingDomains ? "Saving…" : "Save Domains"}
           </Button>
-          {domainsError && <p className="text-sm text-destructive">{domainsError}</p>}
-          {domainsSuccess && <p className="text-sm text-green-600">Domain list saved.</p>}
+          {domainsError && (
+            <p className="text-sm text-destructive">{domainsError}</p>
+          )}
+          {domainsSuccess && (
+            <p className="text-sm text-green-600">Domain list saved.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -835,17 +980,18 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Used</span>
                 <span>
-                  ${parseFloat(team.budget.usedUsd).toFixed(4)}
-                  {" "}
+                  ${parseFloat(team.budget.usedUsd).toFixed(4)}{" "}
                   <span className="text-muted-foreground text-xs">
-                    ({Math.min(
+                    (
+                    {Math.min(
                       100,
                       Math.round(
                         (parseFloat(team.budget.usedUsd) /
                           parseFloat(team.budget.budgetUsd)) *
                           100,
                       ),
-                    )}%)
+                    )}
+                    %)
                   </span>
                 </span>
               </div>
@@ -906,7 +1052,9 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
 
           <Button
             onClick={handleSaveBudget}
-            disabled={!budgetUsd.trim() || !periodStart || !periodEnd || isSavingBudget}
+            disabled={
+              !budgetUsd.trim() || !periodStart || !periodEnd || isSavingBudget
+            }
             className="w-full sm:w-auto"
           >
             {isSavingBudget ? "Saving…" : "Save Budget"}

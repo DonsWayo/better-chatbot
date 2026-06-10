@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { grantUserModelAction, revokeUserModelGrantAction } from "@/app/api/admin/actions";
+import {
+  grantUserModelAction,
+  revokeUserModelGrantAction,
+} from "@/app/api/admin/actions";
+import { format, isAfter } from "date-fns";
+import { KeyRound, Loader2, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Badge } from "ui/badge";
 import { Button } from "ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
-import { Badge } from "ui/badge";
 import {
   Select,
   SelectContent,
@@ -12,9 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "ui/select";
-import { KeyRound, Trash2, Loader2, Plus } from "lucide-react";
-import { format, isAfter } from "date-fns";
-import { toast } from "sonner";
 
 const APPROVED_MODELS = [
   { id: "gpt-5.1", label: "GPT-5.1" },
@@ -54,7 +57,9 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
     }
   };
 
-  useEffect(() => { fetchGrants(); }, [userId]);
+  useEffect(() => {
+    fetchGrants();
+  }, [userId]);
 
   const handleGrant = async () => {
     if (!selectedModel) return;
@@ -63,7 +68,9 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
       await grantUserModelAction(userId, selectedModel);
       toast.success(`Model access granted: ${selectedModel}`);
       setSelectedModel("");
-      startTransition(() => { fetchGrants(); });
+      startTransition(() => {
+        fetchGrants();
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to grant model");
     } finally {
@@ -76,7 +83,9 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
     try {
       await revokeUserModelGrantAction(grantId, userId);
       toast.success(`Grant revoked: ${modelId}`);
-      startTransition(() => { fetchGrants(); });
+      startTransition(() => {
+        fetchGrants();
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to revoke");
     } finally {
@@ -97,33 +106,44 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
       </CardHeader>
       <CardContent className="pb-4 space-y-3">
         <p className="text-xs text-muted-foreground">
-          Override the team's model allow-list for this user. Grants are per-model and optional expiry.
+          Override the team's model allow-list for this user. Grants are
+          per-model and optional expiry.
         </p>
 
         {/* Grant list */}
         {loading ? (
           <p className="text-xs text-muted-foreground italic">Loading…</p>
         ) : grants.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No model grants.</p>
+          <p className="text-xs text-muted-foreground italic">
+            No model grants.
+          </p>
         ) : (
           <div className="space-y-2">
             {grants.map((g) => (
               <div
                 key={g.id}
-                className="flex items-center justify-between rounded-md border px-3 py-1.5"
+                className="flex items-center justify-between rounded-xl border px-3 py-1.5"
                 data-testid={`grant-row-${g.modelId}`}
               >
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <code className="text-xs font-medium">{g.modelId}</code>
                     {isExpired(g.expiresAt) && (
-                      <Badge variant="destructive" className="text-xs py-0">expired</Badge>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs py-0 rounded-full border-transparent bg-red-500/15 text-red-600 dark:text-red-400"
+                      >
+                        expired
+                      </Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Granted {format(new Date(g.createdAt), "MMM d, yyyy")}
                     {g.expiresAt && !isExpired(g.expiresAt) && (
-                      <> · expires {format(new Date(g.expiresAt), "MMM d, yyyy")}</>
+                      <>
+                        {" "}
+                        · expires {format(new Date(g.expiresAt), "MMM d, yyyy")}
+                      </>
                     )}
                   </p>
                 </div>
@@ -149,7 +169,11 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
 
         {/* Add grant */}
         <div className="flex gap-2">
-          <Select value={selectedModel} onValueChange={setSelectedModel} disabled={granting}>
+          <Select
+            value={selectedModel}
+            onValueChange={setSelectedModel}
+            disabled={granting}
+          >
             <SelectTrigger className="flex-1" data-testid="grant-model-select">
               <SelectValue placeholder="Select model…" />
             </SelectTrigger>
@@ -167,7 +191,11 @@ export function UserModelGrants({ userId }: UserModelGrantsProps) {
             disabled={!selectedModel || granting}
             data-testid="grant-model-btn"
           >
-            {granting ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+            {granting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
           </Button>
         </div>
       </CardContent>

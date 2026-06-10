@@ -81,6 +81,25 @@ export function AppHeader() {
         />
       );
     }
+    // Studio builder editors return to Studio (the gallery/list tabs).
+    if (currentPaths.startsWith("/agent/")) {
+      return (
+        <BackButton
+          data-testid="studio-agent-back-button"
+          returnUrl="/studio"
+          title={t("Studio.backToStudio")}
+        />
+      );
+    }
+    if (currentPaths.startsWith("/workflow/")) {
+      return (
+        <BackButton
+          data-testid="studio-workflow-back-button"
+          returnUrl="/studio?tab=workflows"
+          title={t("Studio.backToStudio")}
+        />
+      );
+    }
   }, [currentPaths, searchParams]);
 
   return (

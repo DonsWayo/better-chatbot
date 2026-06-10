@@ -22,7 +22,7 @@ export function BudgetAlertsWidget({ alerts }: BudgetAlertsWidgetProps) {
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           Budget Alerts
           {alerting.length > 0 && (
-            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+            <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
               {alerting.length} at risk
             </span>
           )}
@@ -54,10 +54,8 @@ export function BudgetAlertsWidget({ alerts }: BudgetAlertsWidgetProps) {
                     aria-hidden="true"
                   >
                     <div
-                      className={`h-full rounded-full transition-all ${
-                        item.alert
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        item.alert ? "bg-amber-500" : "bg-green-500"
                       }`}
                       style={{
                         width: `${Math.min(item.utilizationRatio * 100, 100)}%`,
@@ -67,14 +65,14 @@ export function BudgetAlertsWidget({ alerts }: BudgetAlertsWidgetProps) {
                   <span
                     className={`text-sm font-mono w-14 text-right ${
                       item.alert
-                        ? "text-yellow-600 dark:text-yellow-400 font-semibold"
+                        ? "text-amber-600 dark:text-amber-400 font-semibold"
                         : "text-muted-foreground"
                     }`}
                   >
                     {formatPercent(item.utilizationRatio)}
                   </span>
                   {item.alert && (
-                    <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
                       Warning
                     </span>
                   )}

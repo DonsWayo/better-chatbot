@@ -226,19 +226,18 @@ export function CompanyMcpTable({
                 <TableRow key={server.id}>
                   <TableCell className="font-medium">{server.name}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={server.scope === "org" ? "default" : "secondary"}
-                    >
+                    <Badge variant="secondary" className="rounded-full">
                       {server.scope === "org" ? "Org-wide" : "Team"}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {server.lastConnectionStatus ? (
                       <Badge
-                        variant={
+                        variant="secondary"
+                        className={
                           server.lastConnectionStatus === "connected"
-                            ? "default"
-                            : "destructive"
+                            ? "rounded-full border-transparent bg-green-500/15 text-green-600 dark:text-green-400"
+                            : "rounded-full border-transparent bg-red-500/15 text-red-600 dark:text-red-400"
                         }
                       >
                         {server.lastConnectionStatus}
@@ -255,14 +254,14 @@ export function CompanyMcpTable({
                       data-testid={`toggle-server-${server.id}`}
                     >
                       {server.enabled ? (
-                        <ToggleRight className="h-5 w-5 text-primary" />
+                        <ToggleRight className="h-5 w-5 text-green-600 dark:text-green-400" />
                       ) : (
                         <ToggleLeft className="h-5 w-5 text-muted-foreground" />
                       )}
                       <span
                         className={
                           server.enabled
-                            ? "text-primary font-medium"
+                            ? "text-green-600 dark:text-green-400 font-medium"
                             : "text-muted-foreground"
                         }
                       >

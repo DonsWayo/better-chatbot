@@ -69,7 +69,7 @@ export function AppSidebar({
 
       <SidebarContent className="mt-2 overflow-hidden relative">
         <div className="flex flex-col overflow-y-auto">
-          <AppSidebarMenus />
+          <AppSidebarMenus userRole={userRole} />
           <AppSidebarAgents userRole={userRole} />
           <AppSidebarRuns />
           <AppSidebarThreads />

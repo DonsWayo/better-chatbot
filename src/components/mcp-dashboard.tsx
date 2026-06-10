@@ -80,7 +80,7 @@ export default function MCPDashboard({ message, user }: MCPDashboardProps) {
     const params = new URLSearchParams();
     params.set("name", mcp.name);
     params.set("config", JSON.stringify(mcp.config));
-    router.push(`/mcp/create?${params.toString()}`);
+    router.push(`/settings/connectors/create?${params.toString()}`);
   };
 
   const particle = useMemo(() => {
@@ -190,7 +190,7 @@ export default function MCPDashboard({ message, user }: MCPDashboardProps) {
                 </Link>
               )}
               {canCreate && (
-                <Link href="/mcp/create">
+                <Link href="/settings/connectors/create">
                   <Button
                     className="font-semibold bg-input/20"
                     variant="outline"

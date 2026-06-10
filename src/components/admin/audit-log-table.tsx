@@ -1,8 +1,20 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
 import { format } from "date-fns";
+import type { AuditLogRow } from "lib/admin/audit";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback } from "react";
+import { Badge } from "ui/badge";
+import { Button } from "ui/button";
+import { Input } from "ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "ui/select";
 import {
   Table,
   TableBody,
@@ -11,27 +23,19 @@ import {
   TableHeader,
   TableRow,
 } from "ui/table";
-import { Button } from "ui/button";
-import { Input } from "ui/input";
-import { Badge } from "ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "ui/select";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { AuditLogRow } from "lib/admin/audit";
 
-const EVENT_TYPE_BADGE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  chat_request: "outline",
-  rag_retrieval: "secondary",
-  tool_call: "secondary",
-  guardrail_firing: "destructive",
-  admin_action: "default",
-  user_erasure: "destructive",
-  aup_accepted: "outline",
+// Calm Industrial: status pills are tinted (10–15% alpha bg), never filled washes.
+const EVENT_TYPE_BADGE_CLASS: Record<string, string> = {
+  chat_request: "",
+  rag_retrieval: "border-transparent bg-secondary text-secondary-foreground",
+  tool_call: "border-transparent bg-secondary text-secondary-foreground",
+  guardrail_firing:
+    "border-transparent bg-red-500/15 text-red-600 dark:text-red-400",
+  admin_action:
+    "border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  user_erasure:
+    "border-transparent bg-red-500/15 text-red-600 dark:text-red-400",
+  aup_accepted: "",
 };
 
 interface AuditLogTableProps {
@@ -48,7 +52,14 @@ interface AuditLogTableProps {
   };
 }
 
-export function AuditLogTable({ rows, total, page, limit, eventTypes, filters }: AuditLogTableProps) {
+export function AuditLogTable({
+  rows,
+  total,
+  page,
+  limit,
+  eventTypes,
+  filters,
+}: AuditLogTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -84,9 +95,14 @@ export function AuditLogTable({ rows, total, page, limit, eventTypes, filters }:
           </label>
           <Select
             value={filters.eventType ?? "__all__"}
-            onValueChange={(v) => navigate({ eventType: v === "__all__" ? undefined : v })}
+            onValueChange={(v) =>
+              navigate({ eventType: v === "__all__" ? undefined : v })
+            }
           >
-            <SelectTrigger className="w-44" data-testid="audit-event-type-filter">
+            <SelectTrigger
+              className="w-44"
+              data-testid="audit-event-type-filter"
+            >
               <SelectValue placeholder="All events" />
             </SelectTrigger>
             <SelectContent>
@@ -110,7 +126,7 @@ export function AuditLogTable({ rows, total, page, limit, eventTypes, filters }:
             data-testid="audit-user-filter"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                navigate({ userId: (e.currentTarget.value || undefined) });
+                navigate({ userId: e.currentTarget.value || undefined });
               }
             }}
           />
@@ -154,7 +170,10 @@ export function AuditLogTable({ rows, total, page, limit, eventTypes, filters }:
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="text-center py-10 text-muted-foreground"
+                >
                   No audit events found.
                 </TableCell>
               </TableRow>
@@ -166,8 +185,8 @@ export function AuditLogTable({ rows, total, page, limit, eventTypes, filters }:
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={EVENT_TYPE_BADGE[row.eventType] ?? "outline"}
-                      className="text-xs font-mono"
+                      variant="outline"
+                      className={`text-xs font-mono rounded-full ${EVENT_TYPE_BADGE_CLASS[row.eventType] ?? ""}`}
                     >
                       {row.eventType}
                     </Badge>
@@ -175,9 +194,13 @@ export function AuditLogTable({ rows, total, page, limit, eventTypes, filters }:
                   <TableCell className="text-sm">
                     <div className="space-y-0.5">
                       {row.userEmail && (
-                        <div className="font-medium text-xs">{row.userEmail}</div>
+                        <div className="font-medium text-xs">
+                          {row.userEmail}
+                        </div>
                       )}
-                      <code className="text-xs text-muted-foreground">{row.userId}</code>
+                      <code className="text-xs text-muted-foreground">
+                        {row.userId}
+                      </code>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">

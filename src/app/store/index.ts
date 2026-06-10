@@ -48,12 +48,9 @@ export interface AppState {
   }[];
   chatModel?: ChatModel;
   openShortcutsPopup: boolean;
-  openChatPreferences: boolean;
-  openUserSettings: boolean;
   openCommandPalette: boolean;
   /** Draft text handed to the new-chat composer (e.g. Cmd-K "Ask A-SAFE AI"). */
   pendingChatDraft?: string;
-  mcpCustomizationPopup?: MCPServerInfo & { id: string };
   temporaryChat: {
     isOpen: boolean;
     instructions: string;
@@ -87,7 +84,6 @@ const initialState: AppState = {
   currentThreadId: null,
   toolChoice: "auto",
   allowedMcpServers: undefined,
-  openUserSettings: false,
   allowedAppDefaultToolkit: [
     AppDefaultToolkit.Code,
     AppDefaultToolkit.Visualization,
@@ -96,10 +92,8 @@ const initialState: AppState = {
   toolPresets: [],
   chatModel: undefined,
   openShortcutsPopup: false,
-  openChatPreferences: false,
   openCommandPalette: false,
   pendingChatDraft: undefined,
-  mcpCustomizationPopup: undefined,
   temporaryChat: {
     isOpen: false,
     instructions: "",

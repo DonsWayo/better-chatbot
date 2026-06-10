@@ -1,10 +1,10 @@
-import { archiveRepository, chatRepository } from "lib/db/repository";
-import { getSession } from "auth/server";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Card, CardContent, CardHeader } from "ui/card";
-import { MessageCircleXIcon } from "lucide-react";
 import { ArchiveActionsClient } from "@/app/(chat)/archive/[id]/archive-actions-client";
+import { getSession } from "auth/server";
+import { archiveRepository, chatRepository } from "lib/db/repository";
+import { MessageCircleXIcon } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Card, CardContent, CardHeader } from "ui/card";
 import { Separator } from "ui/separator";
 
 import LightRays from "ui/light-rays";
@@ -112,7 +112,9 @@ export default async function ArchivePage({
         {/* Archive Header */}
         <div className="mb-8 z-50">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold">{archive.name}</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">
+              {archive.name}
+            </h1>
             <div className="flex-1" />
             <p className="text-xs text-muted-foreground mr-2">
               Created {formatTimeAgo(archive.createdAt)}

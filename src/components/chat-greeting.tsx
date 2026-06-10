@@ -1,12 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useMemo } from "react";
-import { FlipWords } from "ui/flip-words";
-import { useTranslations } from "next-intl";
-import useSWR from "swr";
 import { BasicUser } from "app-types/user";
+import { motion } from "framer-motion";
 import { fetcher } from "lib/utils";
+import { useTranslations } from "next-intl";
+import { useMemo } from "react";
+import useSWR from "swr";
+import { FlipWords } from "ui/flip-words";
 
 function getGreetingByTime() {
   const hour = new Date().getHours();
@@ -45,7 +45,7 @@ export const ChatGreeting = () => {
       transition={{ delay: 0.3 }}
     >
       <div className="rounded-xl p-6 flex flex-col gap-2 leading-relaxed text-center">
-        <h1 className="text-2xl md:text-3xl">
+        <h1 className="font-display text-2xl md:text-3xl tracking-tight">
           {word ? <FlipWords words={[word]} className="text-foreground" /> : ""}
         </h1>
       </div>

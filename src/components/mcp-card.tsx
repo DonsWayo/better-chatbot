@@ -33,7 +33,6 @@ import { ToolDetailPopup } from "./tool-detail-popup";
 import { useTranslations } from "next-intl";
 import { Separator } from "ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
-import { appStore } from "@/app/store";
 import { isString } from "lib/utils";
 import { redriectMcpOauth } from "lib/ai/mcp/oauth-redirect";
 import { BasicUser } from "app-types/user";
@@ -48,7 +47,6 @@ export const MCPCard = memo(function MCPCard({
   name,
   toolInfo,
   visibility,
-  enabled,
   userId,
   user,
   userName,
@@ -57,7 +55,6 @@ export const MCPCard = memo(function MCPCard({
   const [isProcessing, setIsProcessing] = useState(false);
   const [visibilityChangeLoading, setVisibilityChangeLoading] = useState(false);
   const t = useTranslations("MCP");
-  const appStoreMutate = appStore((state) => state.mutate);
   const { mutate } = useSWRConfig();
   const isOwner = userId === user?.id;
   const canChangeVisibility = useMemo(
@@ -166,30 +163,23 @@ export const MCPCard = memo(function MCPCard({
             </div>
           </>
         )}
+        {/* Per-server instructions + tool customizations now live inline on
+            the connector's settings row (the global popup was retired). */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={isDisabled}
-              onClick={() =>
-                appStoreMutate({
-                  mcpCustomizationPopup: {
-                    id,
-                    name,
-                    config,
-                    status,
-                    toolInfo,
-                    error,
-                    visibility,
-                    enabled,
-                    userId,
-                  },
-                })
-              }
-            >
-              <Settings2 className="size-3.5" />
-            </Button>
+            {isDisabled ? (
+              <div>
+                <Button variant="ghost" size="icon" disabled>
+                  <Settings2 className="size-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Link href={`/settings/connectors/${encodeURIComponent(id)}`}>
+                <Button variant="ghost" size="icon">
+                  <Settings2 className="size-3.5" />
+                </Button>
+              </Link>
+            )}
           </TooltipTrigger>
           <TooltipContent>
             <p>{t("mcpServerCustomization")}</p>
@@ -206,7 +196,7 @@ export const MCPCard = memo(function MCPCard({
               </div>
             ) : (
               <Link
-                href={`/mcp/test/${encodeURIComponent(id)}`}
+                href={`/settings/connectors/test/${encodeURIComponent(id)}`}
                 className="cursor-pointer hidden sm:block"
               >
                 <Button variant="ghost" size="icon">
@@ -244,7 +234,9 @@ export const MCPCard = memo(function MCPCard({
           isOwner={isOwner}
           canChangeVisibility={canChangeVisibility}
           editHref={
-            isOwner ? `/mcp/modify/${encodeURIComponent(id)}` : undefined
+            isOwner
+              ? `/settings/connectors/${encodeURIComponent(id)}`
+              : undefined
           }
           onVisibilityChange={
             canChangeVisibility ? handleVisibilityChange : undefined

@@ -4,15 +4,12 @@ import { cookies } from "next/headers";
 import { SidebarProvider } from "ui/sidebar";
 
 import { AppPopupProvider } from "@/components/layouts/app-popup-provider";
-import { UserDetailContent } from "@/components/user/user-detail/user-detail-content";
-import { UserDetailContentSkeleton } from "@/components/user/user-detail/user-detail-content-skeleton";
 import { getSession } from "lib/auth/server";
 import { COOKIE_KEY_SIDEBAR_STATE } from "lib/const";
 import { SWRConfigProvider } from "./swr-config";
 
 import { AupModal } from "@/components/compliance/aup-modal";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 export const experimental_ppr = true;
 
 export default async function ChatLayout({
@@ -28,14 +25,7 @@ export default async function ChatLayout({
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
       <SWRConfigProvider user={session.user}>
-        <AppPopupProvider
-          user={session.user}
-          userSettingsComponent={
-            <Suspense fallback={<UserDetailContentSkeleton />}>
-              <UserDetailContent view="user" />
-            </Suspense>
-          }
-        />
+        <AppPopupProvider user={session.user} />
         <AppSidebar user={session.user} />
         <AupModal />
         <main className="relative bg-background  w-full flex flex-col h-screen">
