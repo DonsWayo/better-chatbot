@@ -598,5 +598,24 @@
     "createRoutine": "ルーチンを作成",
     "routineCreated": "ルーチンをスケジュールしました",
     "routineDeleted": "ルーチンを削除しました"
+  },
+  "Teamspaces": {
+    "folders": "フォルダ",
+    "newFolder": "新しいフォルダ",
+    "folderName": "フォルダ名",
+    "selectTeam": "チームを選択",
+    "personal": "個人",
+    "create": "作成",
+    "cancel": "キャンセル",
+    "rename": "名前を変更",
+    "renameFolder": "フォルダ名を変更",
+    "delete": "削除",
+    "folderCreated": "フォルダを作成しました",
+    "folderRenamed": "フォルダ名を変更しました",
+    "folderDeleted": "フォルダを削除しました",
+    "emptyFolder": "このフォルダにはまだ会話がありません",
+    "noFolders": "まだフォルダがありません",
+    "team": "チーム",
+    "sharedWithTeamReadOnly": "{team}と共有 · 読み取り専用"
   }
 }

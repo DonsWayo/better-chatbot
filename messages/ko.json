@@ -613,5 +613,24 @@
     "createRoutine": "루틴 만들기",
     "routineCreated": "루틴이 예약되었습니다",
     "routineDeleted": "루틴이 삭제되었습니다"
+  },
+  "Teamspaces": {
+    "folders": "폴더",
+    "newFolder": "새 폴더",
+    "folderName": "폴더 이름",
+    "selectTeam": "팀 선택",
+    "personal": "개인",
+    "create": "만들기",
+    "cancel": "취소",
+    "rename": "이름 변경",
+    "renameFolder": "폴더 이름 변경",
+    "delete": "삭제",
+    "folderCreated": "폴더가 생성되었습니다",
+    "folderRenamed": "폴더 이름이 변경되었습니다",
+    "folderDeleted": "폴더가 삭제되었습니다",
+    "emptyFolder": "이 폴더에는 아직 대화가 없습니다",
+    "noFolders": "아직 폴더가 없습니다",
+    "team": "팀",
+    "sharedWithTeamReadOnly": "{team}과(와) 공유됨 · 읽기 전용"
   }
 }

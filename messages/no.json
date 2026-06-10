@@ -901,5 +901,24 @@
     "createRoutine": "Opprett rutine",
     "routineCreated": "Rutine planlagt",
     "routineDeleted": "Rutine slettet"
+  },
+  "Teamspaces": {
+    "folders": "Mapper",
+    "newFolder": "Ny mappe",
+    "folderName": "Mappenavn",
+    "selectTeam": "Velg et team",
+    "personal": "Personlig",
+    "create": "Opprett",
+    "cancel": "Avbryt",
+    "rename": "Gi nytt navn",
+    "renameFolder": "Gi mappen nytt navn",
+    "delete": "Slett",
+    "folderCreated": "Mappe opprettet",
+    "folderRenamed": "Mappen har fått nytt navn",
+    "folderDeleted": "Mappe slettet",
+    "emptyFolder": "Ingen samtaler i denne mappen ennå",
+    "noFolders": "Ingen mapper ennå",
+    "team": "team",
+    "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet"
   }
 }

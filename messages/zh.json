@@ -600,5 +600,24 @@
     "createRoutine": "创建例行任务",
     "routineCreated": "例行任务已安排",
     "routineDeleted": "例行任务已删除"
+  },
+  "Teamspaces": {
+    "folders": "文件夹",
+    "newFolder": "新建文件夹",
+    "folderName": "文件夹名称",
+    "selectTeam": "选择团队",
+    "personal": "个人",
+    "create": "创建",
+    "cancel": "取消",
+    "rename": "重命名",
+    "renameFolder": "重命名文件夹",
+    "delete": "删除",
+    "folderCreated": "文件夹已创建",
+    "folderRenamed": "文件夹已重命名",
+    "folderDeleted": "文件夹已删除",
+    "emptyFolder": "此文件夹中还没有对话",
+    "noFolders": "还没有文件夹",
+    "team": "团队",
+    "sharedWithTeamReadOnly": "与{team}共享 · 只读"
   }
 }

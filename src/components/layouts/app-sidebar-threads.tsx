@@ -1,7 +1,27 @@
 "use client";
 
-import { SidebarGroupLabel, SidebarMenuSub } from "ui/sidebar";
+import {
+  deleteThreadsAction,
+  deleteUnarchivedThreadsAction,
+} from "@/app/api/chat/actions";
+import { appStore } from "@/app/store";
+import { useMounted } from "@/hooks/use-mounted";
+import { fetcher } from "lib/utils";
+import { ChevronDown, ChevronUp, MoreHorizontal, Trash } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import useSWR, { mutate } from "swr";
+import { Button } from "ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "ui/dropdown-menu";
+import { handleErrorWithToast } from "ui/shared-toast";
+import { SidebarGroupLabel, SidebarMenuSub } from "ui/sidebar";
 import {
   SidebarMenuAction,
   SidebarMenuButton,
@@ -10,34 +30,15 @@ import {
 } from "ui/sidebar";
 import { SidebarGroupContent, SidebarMenu, SidebarMenuItem } from "ui/sidebar";
 import { SidebarGroup } from "ui/sidebar";
-import { ThreadDropdown } from "../thread-dropdown";
-import { ChevronDown, ChevronUp, MoreHorizontal, Trash } from "lucide-react";
-import { useMounted } from "@/hooks/use-mounted";
-import { appStore } from "@/app/store";
-import { Button } from "ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "ui/dropdown-menu";
-import {
-  deleteThreadsAction,
-  deleteUnarchivedThreadsAction,
-} from "@/app/api/chat/actions";
-import { fetcher } from "lib/utils";
-import { toast } from "sonner";
 import { useShallow } from "zustand/shallow";
-import { useRouter } from "next/navigation";
-import useSWR, { mutate } from "swr";
-import { handleErrorWithToast } from "ui/shared-toast";
-import { useMemo, useState } from "react";
+import { ThreadDropdown } from "../thread-dropdown";
 
+import { SidebarFolders } from "@/components/teamspaces/sidebar-folders";
+import { ChatThread } from "app-types/chat";
+import { deduplicateByKey, groupBy } from "lib/utils";
 import { useTranslations } from "next-intl";
 import { TextShimmer } from "ui/text-shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
-import { deduplicateByKey, groupBy } from "lib/utils";
-import { ChatThread } from "app-types/chat";
 
 type ThreadGroup = {
   label: string;
@@ -172,35 +173,40 @@ export function AppSidebarThreads() {
 
   if (isLoading || threadList?.length === 0)
     return (
-      <SidebarGroup>
-        <SidebarGroupContent className="group-data-[collapsible=icon]:hidden group/threads">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarGroupLabel className="">
-                <h4 className="text-xs text-muted-foreground">
-                  {t("recentChats")}
-                </h4>
-              </SidebarGroupLabel>
+      <>
+        <SidebarFolders />
+        <SidebarGroup>
+          <SidebarGroupContent className="group-data-[collapsible=icon]:hidden group/threads">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarGroupLabel className="">
+                  <h4 className="text-xs text-muted-foreground">
+                    {t("recentChats")}
+                  </h4>
+                </SidebarGroupLabel>
 
-              {isLoading ? (
-                Array.from({ length: 12 }).map(
-                  (_, index) => mounted && <SidebarMenuSkeleton key={index} />,
-                )
-              ) : (
-                <div className="px-2 py-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {t("noConversationsYet")}
-                  </p>
-                </div>
-              )}
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+                {isLoading ? (
+                  Array.from({ length: 12 }).map(
+                    (_, index) =>
+                      mounted && <SidebarMenuSkeleton key={index} />,
+                  )
+                ) : (
+                  <div className="px-2 py-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {t("noConversationsYet")}
+                    </p>
+                  </div>
+                )}
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </>
     );
 
   return (
     <>
+      <SidebarFolders />
       {threadGroupByDate.map((group, index) => {
         const isFirst = index === 0;
         return (

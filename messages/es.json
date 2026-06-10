@@ -960,5 +960,24 @@
     "createRoutine": "Crear rutina",
     "routineCreated": "Rutina programada",
     "routineDeleted": "Rutina eliminada"
+  },
+  "Teamspaces": {
+    "folders": "Carpetas",
+    "newFolder": "Nueva carpeta",
+    "folderName": "Nombre de la carpeta",
+    "selectTeam": "Selecciona un equipo",
+    "personal": "Personal",
+    "create": "Crear",
+    "cancel": "Cancelar",
+    "rename": "Renombrar",
+    "renameFolder": "Renombrar carpeta",
+    "delete": "Eliminar",
+    "folderCreated": "Carpeta creada",
+    "folderRenamed": "Carpeta renombrada",
+    "folderDeleted": "Carpeta eliminada",
+    "emptyFolder": "Aún no hay conversaciones en esta carpeta",
+    "noFolders": "Aún no hay carpetas",
+    "team": "equipo",
+    "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura"
   }
 }

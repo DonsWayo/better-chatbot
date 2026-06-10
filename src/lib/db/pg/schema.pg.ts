@@ -33,6 +33,14 @@ export const ChatThreadTable = pgTable("chat_thread", {
   userId: uuid("user_id")
     .notNull()
     .references(() => UserTable.id, { onDelete: "cascade" }),
+  // Teamspaces phase 1: optional folder placement + sharing visibility.
+  // "team" = read-only visible to members of the containing folder's team.
+  folderId: uuid("folder_id").references(() => FolderTable.id, {
+    onDelete: "set null",
+  }),
+  visibility: varchar("visibility", { enum: ["private", "team"] })
+    .notNull()
+    .default("private"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -462,6 +470,41 @@ export const AsafeTeamMemberTable = pgTable(
   },
   (table) => [unique().on(table.teamId, table.userId)],
 );
+
+// ── Teamspaces (phase 1) ─────────────────────────────────────────────────────
+// Notion-style folders. teamId null = personal folder; teamId set = a team
+// folder whose threads with visibility "team" are readable (read-only) by
+// every member of that team.
+export const FolderTable = pgTable(
+  "folder",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    name: text("name").notNull(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => FolderTable.id, {
+      onDelete: "cascade",
+    }),
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    ownerId: uuid("owner_id").notNull(),
+    visibility: varchar("visibility", { enum: ["private", "team"] })
+      .notNull()
+      .default("private"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("folder_owner_id_idx").on(table.ownerId),
+    index("folder_team_id_idx").on(table.teamId),
+    index("folder_parent_id_idx").on(table.parentId),
+  ],
+);
+
+export type FolderEntity = typeof FolderTable.$inferSelect;
 
 export const AsafeUsageEventTable = pgTable(
   "asafe_usage_event",
