@@ -120,3 +120,20 @@ Seeding the picker is the inverse (`fromLegacyVisibilityColumn`): `public` →
 the picker simply opens at the inferred base level and the grant list does the
 rest.) A future migration that widens the enum to store the literal value will
 make this mapping a no-op.
+
+## Where shared things appear
+
+Visibility is enforced in the repository queries, not just the resolver, so
+shared entities surface in the same lists as public ones:
+
+- **Agents** (`/agents` and the chat agent dropdown): besides your own and
+  company (`public`) agents, the list includes agents another user shared with
+  you by grant and agents whose `teamIds` overlap one of your teams. Opening
+  one performs the same check (`checkAccess`); destructive operations (edit,
+  delete) additionally require an `edit`- or `manage`-capability grant.
+- **Workflows** (Studio list and the tool-mention picker): identical wiring —
+  grant or team overlap makes a published workflow listable and executable;
+  writing to it needs `edit`/`manage`.
+
+A grant alone never bypasses entitlements: the model allow-list, tool gates
+and budgets still apply to whoever runs the shared agent or workflow.

@@ -1,4 +1,18 @@
-import { and, desc, eq, inArray, not, or, sql } from "drizzle-orm";
+import { ObjectJsonSchema7 } from "app-types/util";
+import {
+  DBEdge,
+  DBNode,
+  DBWorkflow,
+  WorkflowRepository,
+  WorkflowSummary,
+} from "app-types/workflow";
+import { SQL, and, desc, eq, inArray, not, or, sql } from "drizzle-orm";
+import { createUINode } from "lib/ai/workflow/create-ui-node";
+import {
+  convertUINodeToDBNode,
+  defaultObjectJsonSchema,
+} from "lib/ai/workflow/shared.workflow";
+import { NodeKind } from "lib/ai/workflow/workflow.interface";
 import { pgDb } from "../db.pg";
 import {
   UserTable,
@@ -6,20 +20,20 @@ import {
   WorkflowNodeDataTable,
   WorkflowTable,
 } from "../schema.pg";
-import {
-  DBWorkflow,
-  DBEdge,
-  DBNode,
-  WorkflowRepository,
-  WorkflowSummary,
-} from "app-types/workflow";
-import { NodeKind } from "lib/ai/workflow/workflow.interface";
-import { createUINode } from "lib/ai/workflow/create-ui-node";
-import {
-  convertUINodeToDBNode,
-  defaultObjectJsonSchema,
-} from "lib/ai/workflow/shared.workflow";
-import { ObjectJsonSchema7 } from "app-types/util";
+
+// Unified visibility model (docs/design/visibility-model.md): a workflow is
+// also visible to a user when a `shared` grant names them or when its
+// teamIds overlap one of their teams (same wiring as agent-repository).
+const hasGrant = (userId: string): SQL =>
+  sql`EXISTS (SELECT 1 FROM entity_grant eg
+        WHERE eg.entity_type = 'workflow'
+          AND eg.entity_id = ${WorkflowTable.id}
+          AND eg.grantee_user_id = ${userId})`;
+
+const inSharedTeam = (userId: string): SQL =>
+  sql`EXISTS (SELECT 1 FROM asafe_team_member tm
+        WHERE tm.user_id = ${userId}
+          AND ${WorkflowTable.teamIds} @> to_jsonb(ARRAY[tm.team_id::text]))`;
 
 export const pgWorkflowRepository: WorkflowRepository = {
   async selectToolByIds(ids) {
@@ -83,6 +97,8 @@ export const pgWorkflowRepository: WorkflowRepository = {
           or(
             eq(WorkflowTable.userId, userId),
             not(eq(WorkflowTable.visibility, "private")),
+            hasGrant(userId),
+            inSharedTeam(userId),
           ),
         ),
       );
@@ -108,6 +124,8 @@ export const pgWorkflowRepository: WorkflowRepository = {
         or(
           inArray(WorkflowTable.visibility, ["public", "readonly"]),
           eq(WorkflowTable.userId, userId),
+          hasGrant(userId),
+          inSharedTeam(userId),
         ),
       )
       .orderBy(desc(WorkflowTable.createdAt));
@@ -126,6 +144,18 @@ export const pgWorkflowRepository: WorkflowRepository = {
       .select({
         visibility: WorkflowTable.visibility,
         userId: WorkflowTable.userId,
+        hasGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = 'workflow'
+            AND eg.entity_id = ${WorkflowTable.id}
+            AND eg.grantee_user_id = ${userId})`,
+        hasEditGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = 'workflow'
+            AND eg.entity_id = ${WorkflowTable.id}
+            AND eg.grantee_user_id = ${userId}
+            AND eg.capability IN ('edit', 'manage'))`,
+        inTeam: sql<boolean>`EXISTS (SELECT 1 FROM asafe_team_member tm
+          WHERE tm.user_id = ${userId}
+            AND ${WorkflowTable.teamIds} @> to_jsonb(ARRAY[tm.team_id::text]))`,
       })
       .from(WorkflowTable)
       .where(and(eq(WorkflowTable.id, workflowId)));
@@ -134,9 +164,13 @@ export const pgWorkflowRepository: WorkflowRepository = {
     }
     if (userId == workflow.userId) return true;
     if (workflow.visibility === "private") {
-      return false;
+      // shared grants / team membership open read access; writes need an
+      // edit-capable grant.
+      if (readOnly) return workflow.hasGrant || workflow.inTeam;
+      return workflow.hasEditGrant;
     }
-    if (workflow.visibility == "readonly" && !readOnly) return false;
+    if (workflow.visibility == "readonly" && !readOnly)
+      return workflow.hasEditGrant;
     return true;
   },
   async delete(id) {
