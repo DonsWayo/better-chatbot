@@ -5,6 +5,9 @@ import { getSession } from "auth/server";
 import { canManageMCPServer } from "lib/auth/permissions";
 import logger from "lib/logger";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
   _request: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -15,6 +18,13 @@ export async function GET(
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!UUID_RE.test(params.id)) {
+      return NextResponse.json(
+        { error: "MCP server not found" },
+        { status: 404 },
+      );
     }
 
     const mcpServer = await pgMcpRepository.selectById(params.id);
@@ -56,6 +66,12 @@ export async function DELETE(
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!UUID_RE.test(params.id)) {
+      return NextResponse.json(
+        { error: "MCP server not found" },
+        { status: 404 },
+      );
     }
     const mcpServer = await pgMcpRepository.selectById(params.id);
     if (!mcpServer) {

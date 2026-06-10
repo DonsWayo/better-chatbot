@@ -1,4 +1,5 @@
 import { test, expect, BrowserContext, Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 import { TEST_USERS } from "../constants/test-users";
 import {
   createKnowledgeCollection,
@@ -9,6 +10,13 @@ let _c = 0;
 function uid(): string {
   _c++;
   return `${_c}-${process.pid}`;
+}
+
+// Chat thread/message ids are persisted into uuid columns, so they must be
+// valid UUIDs — non-UUID ids crash the insert with a 500 before the route's
+// RAG handling runs (which is what these tests actually exercise).
+function chatUuid(): string {
+  return randomUUID();
 }
 
 test.describe.serial("RAG collection integration", () => {
@@ -76,8 +84,8 @@ test.describe.serial("RAG collection integration", () => {
     });
     const page = await ctx.newPage();
 
-    const chatId = uid();
-    const msgId = uid();
+    const chatId = chatUuid();
+    const msgId = chatUuid();
 
     const response = await page.request.post("/api/chat", {
       headers: { "Content-Type": "application/json" },
@@ -108,8 +116,8 @@ test.describe.serial("RAG collection integration", () => {
     });
     const page = await ctx.newPage();
 
-    const chatId = uid();
-    const msgId = uid();
+    const chatId = chatUuid();
+    const msgId = chatUuid();
 
     const response = await page.request.post("/api/chat", {
       headers: { "Content-Type": "application/json" },
@@ -139,8 +147,8 @@ test.describe.serial("RAG collection integration", () => {
     });
     const page = await ctx.newPage();
 
-    const chatId = uid();
-    const msgId = uid();
+    const chatId = chatUuid();
+    const msgId = chatUuid();
 
     const response = await page.request.post("/api/chat", {
       headers: { "Content-Type": "application/json" },

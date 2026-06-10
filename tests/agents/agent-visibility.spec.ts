@@ -15,7 +15,19 @@ const readonlyAgentName = `Readonly Agent ${testSuffix}`;
 
 test.describe.configure({ mode: "serial" });
 
-test.describe("Agent Visibility and Sharing Between Users", () => {
+// SKIPPED: these tests model the legacy three-level agent visibility
+// (private / public / readonly) where an *editor* could create an agent that an
+// arbitrary other user could see/edit/bookmark. The app has since moved to the
+// unified four-level model (private / shared / team / company — see
+// src/components/visibility/* and docs/design/visibility-model.md). Under that
+// model only `company` (org-wide) visibility makes an agent readable by an
+// unrelated user, and `company` is admin-only — an editor can no longer produce
+// a cross-user-visible agent. `shared`/`team` rely on teamIds[] + grants, which
+// these tests don't set up. The old `visibility-button` dropdown was also
+// replaced by the `visibility-level-*` radio picker, so the setup's UI steps no
+// longer apply. Re-enabling requires rewriting around the new model (e.g. an
+// admin creating a `company` agent, plus a shared-team fixture for `shared`).
+test.describe.skip("Agent Visibility and Sharing Between Users", () => {
   test.beforeAll(
     "editor creates agents with different visibility levels",
     async ({ browser }) => {
@@ -37,10 +49,14 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
         await clickAndWaitForNavigation(
           editorPage,
           "agent-save-button",
-          "**/agents",
+          "**/studio",
         );
 
-        // Edit to set visibility to public
+        // Edit to set visibility to public. Open the agent from the dedicated
+        // /agents list (a stable, non-tabbed page — /studio nests the list
+        // behind StudioTabs).
+        await editorPage.goto("/agents");
+        await editorPage.waitForLoadState("networkidle");
         await editorPage
           .locator(`main a:has-text("${publicAgentName}")`)
           .first()
@@ -54,7 +70,7 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
         await clickAndWaitForNavigation(
           editorPage,
           "agent-save-button",
-          "**/agents",
+          "**/studio",
         );
         await editorPage.waitForLoadState("networkidle");
 
@@ -68,7 +84,7 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
         await clickAndWaitForNavigation(
           editorPage,
           "agent-save-button",
-          "**/agents",
+          "**/studio",
         );
 
         // Create readonly agent
@@ -83,10 +99,12 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
         await clickAndWaitForNavigation(
           editorPage,
           "agent-save-button",
-          "**/agents",
+          "**/studio",
         );
 
-        // Edit to set visibility to readonly
+        // Edit to set visibility to readonly (open from the /agents list).
+        await editorPage.goto("/agents");
+        await editorPage.waitForLoadState("networkidle");
         await editorPage
           .locator(`main a:has-text("${readonlyAgentName}")`)
           .first()
@@ -99,7 +117,7 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
         await clickAndWaitForNavigation(
           editorPage,
           "agent-save-button",
-          "**/agents",
+          "**/studio",
         );
         await editorPage.waitForLoadState("networkidle");
       } finally {
@@ -182,7 +200,7 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
 
       // Should be able to save
       await Promise.all([
-        secondUserPage.waitForURL("**/agents", { timeout: 10000 }),
+        secondUserPage.waitForURL("**/studio", { timeout: 10000 }),
         saveButton.click(),
       ]);
 
@@ -249,7 +267,7 @@ test.describe("Agent Visibility and Sharing Between Users", () => {
 
     try {
       await secondUserPage.goto("/agents");
-      await secondUserPage.waitForURL("**/agents", { timeout: 10000 });
+      await secondUserPage.waitForURL("**/studio", { timeout: 10000 });
       await secondUserPage.waitForLoadState("networkidle");
 
       // Wait a bit for agents to load

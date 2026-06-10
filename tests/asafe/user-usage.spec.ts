@@ -16,7 +16,9 @@ test.describe("User self-service usage view (/settings)", () => {
     });
     const page = await ctx.newPage();
 
-    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+    // The settings hub is now tabbed: the self-service usage view lives at
+    // /settings/usage (the bare /settings redirects to /settings/general).
+    await page.goto(`${BASE}/settings/usage`, { waitUntil: "networkidle" });
 
     // Page should load
     await expect(page).not.toHaveURL(/login|unauthorized/);
@@ -36,7 +38,7 @@ test.describe("User self-service usage view (/settings)", () => {
     });
     const page = await ctx.newPage();
 
-    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/settings/usage`, { waitUntil: "networkidle" });
 
     // Wait for loading to complete (spinner gone)
     await page.waitForTimeout(1000);
@@ -57,7 +59,7 @@ test.describe("User self-service usage view (/settings)", () => {
     });
     const page = await ctx.newPage();
 
-    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/settings/data`, { waitUntil: "networkidle" });
 
     const content = await page.textContent("body");
     expect(content).toMatch(/Data.*Privacy|Privacy.*Data|data portability/i);
@@ -102,7 +104,7 @@ test.describe("User self-service usage view (/settings)", () => {
     });
     const page = await ctx.newPage();
 
-    await page.goto(`${BASE}/settings`, { waitUntil: "networkidle" });
+    await page.goto(`${BASE}/settings/usage`, { waitUntil: "networkidle" });
     await expect(page).not.toHaveURL(/login|unauthorized/);
 
     const usageSection = page.getByTestId("my-usage-section");

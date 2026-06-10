@@ -10,14 +10,11 @@ test.describe("User Signup", () => {
     const testName = `Signup Test User ${uniqueSuffix}`;
     const testPassword = "SignupTest123";
 
-    // Navigate to sign-up page
-    await page.goto("/sign-up");
-
-    // Click on email signup option
-    await page.getByRole("link", { name: /email/i }).click();
-
-    // Should navigate to email signup page
-    await page.waitForURL("**/sign-up/email");
+    // The multi-step email sign-up form lives at /sign-up/email. (The bare
+    // /sign-up entry no longer exposes a separate "email" link to click — with
+    // no social providers configured it renders the email step directly.)
+    await page.goto("/sign-up/email");
+    await page.waitForLoadState("networkidle");
 
     // Step 1: Email
     await page.locator("#email").fill(testEmail);

@@ -5,14 +5,14 @@ test.describe("Agent Access Spec", () => {
   test.use({ storageState: TEST_USERS.admin.authFile });
 
   test("should access agents page when authenticated", async ({ page }) => {
+    // The agents gallery is now the Agents tab of Studio; /agents redirects
+    // there (the redirect is kept so inbound links survive).
     await page.goto("/agents");
     await page.waitForLoadState("networkidle");
 
-    // Should stay on agents page
-    const currentUrl = page.url();
-    expect(currentUrl).toContain("/agents");
+    expect(page.url()).toContain("/studio");
 
-    // Should see agents page content
+    // Should see the agents gallery content (rendered in the Studio Agents tab).
     await expect(page.getByTestId("agents-title")).toBeVisible();
   });
 

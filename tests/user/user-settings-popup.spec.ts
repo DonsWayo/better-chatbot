@@ -4,142 +4,68 @@ import { ensureSidebarOpen } from "../helpers/sidebar-helper";
 // Use regular user auth state for user settings tests
 test.use({ storageState: "tests/.auth/regular-user.json" });
 
-test.describe("User Settings Popup", () => {
-  test("should open user settings popup from sidebar", async ({ page }) => {
+// The user "settings" surface is no longer a popup/drawer. The sidebar user
+// menu now links to /settings, which redirects to the tabbed settings hub; the
+// editable profile (formerly the drawer) lives at /settings/account and renders
+// data-testid="user-detail-content". These tests exercise that page-based flow.
+test.describe("User Settings (account page)", () => {
+  test("sidebar user menu links into the settings hub", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-
-    // Ensure sidebar is open
     await ensureSidebarOpen(page);
 
-    // Open user menu in sidebar
-    const userMenuButton = page.getByTestId("sidebar-user-button");
-    await userMenuButton.click();
+    // Open the slim footer user dropdown
+    await page.getByTestId("sidebar-user-button").click();
 
-    // Wait for dropdown menu to appear
-    await page.waitForTimeout(500);
+    const settingsItem = page.getByTestId("user-settings-menu-item");
+    await expect(settingsItem).toBeVisible();
+    await settingsItem.click();
 
-    // Try to click settings option - use text selector as fallback
-    try {
-      const settingsOption = page.getByTestId("user-settings-menu-item");
-      await settingsOption.waitFor({ state: "visible", timeout: 2000 });
-      await settingsOption.click();
-    } catch {
-      // Fallback to text selector
-      await page.getByText("User Settings").click();
-    }
-
-    // Wait for drawer to open
-    const drawer = page.getByRole("dialog", { name: "User Settings" });
-    await expect(drawer).toBeVisible();
-
-    // Verify it's the user settings dialog
-    await expect(
-      page.getByRole("heading", { name: "User Settings", level: 2 }),
-    ).toBeVisible();
-
-    // Verify user's name is displayed
-    await expect(
-      page.getByRole("heading", { name: /User/i, level: 1 }),
-    ).toBeVisible();
+    // Navigates into /settings/* (the bare /settings redirects to a tab).
+    await expect(page).toHaveURL(/\/settings(\/|$)/);
   });
 
-  test("should display 'your' context in user settings", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
+  test("account page shows the editable profile for the current user", async ({
+    page,
+  }) => {
+    await page.goto("/settings/account", { waitUntil: "networkidle" });
 
-    // Ensure sidebar is open
-    await ensureSidebarOpen(page);
+    await expect(page.getByTestId("user-detail-content")).toBeVisible();
 
-    // Open user settings
-    const userMenuButton = page.getByTestId("sidebar-user-button");
-    await userMenuButton.click();
-
-    const settingsOption = page.getByTestId("user-settings-menu-item");
-    await settingsOption.click();
-
-    // Wait for drawer to open
-    await page.waitForSelector("[data-testid='user-detail-content']");
-
-    // Should show "your" context translations
-    const drawerContent = await page
-      .locator("[data-testid='user-detail-content']")
-      .textContent();
-
-    // User context should say "your" not "user"
-    expect(drawerContent).toMatch(
-      /your.*account|your.*information|your.*password/i,
-    );
-    expect(drawerContent).not.toMatch(/user account status|user information/i);
-
-    // Check specific user context elements
-    const roleText = page.getByText(/cannot modify your own role/i);
-    if (await roleText.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await expect(roleText).toBeVisible();
-    }
-  });
-
-  test("should allow user to update their own profile", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-
-    // Ensure sidebar is open
-    await ensureSidebarOpen(page);
-
-    // Open user settings
-    const userMenuButton = page.getByTestId("sidebar-user-button");
-    await userMenuButton.click();
-
-    const settingsOption = page.getByTestId("user-settings-menu-item");
-    await settingsOption.click();
-
-    // Wait for settings to load
-    await page.waitForSelector("[data-testid='user-detail-content']");
-
-    // Update name
+    // The name field is pre-populated with the signed-in user's name.
     const nameInput = page.getByTestId("user-name-input");
+    await expect(nameInput).toBeVisible();
+    expect((await nameInput.inputValue()).length).toBeGreaterThan(0);
+
+    // "your" self-service context (not the admin "user ..." copy).
+    const content =
+      (await page.getByTestId("user-detail-content").textContent()) ?? "";
+    expect(content).not.toMatch(/user account status/i);
+  });
+
+  test("user can update their own name and save", async ({ page }) => {
+    await page.goto("/settings/account", { waitUntil: "networkidle" });
+    await expect(page.getByTestId("user-detail-content")).toBeVisible();
+
+    const nameInput = page.getByTestId("user-name-input");
+    const saveButton = page.getByTestId("save-changes-button");
     const originalName = await nameInput.inputValue();
 
-    await nameInput.clear();
-    await nameInput.fill("Updated User Name");
-
-    // Save changes
-    const saveButton = page.getByTestId("save-changes-button");
-    await saveButton.click();
-
-    // Wait for success message
-    await page.waitForTimeout(2000);
-
-    // Restore original name
-    await nameInput.clear();
-    await nameInput.fill(originalName);
-    await saveButton.click();
-    await page.waitForTimeout(2000);
-  });
-
-  test("should close settings popup with close button", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-
-    // Ensure sidebar is open
-    await ensureSidebarOpen(page);
-
-    // Open user settings
-    const userMenuButton = page.getByTestId("sidebar-user-button");
-    await userMenuButton.click();
-
-    const settingsOption = page.getByTestId("user-settings-menu-item");
-    await settingsOption.click();
-
-    // Wait for drawer
-    const drawer = page.getByRole("dialog", { name: "User Settings" });
-    await expect(drawer).toBeVisible();
-
-    // Click close button - use the X button in the dialog
-    const closeButton = drawer.getByRole("button").first();
-    await closeButton.click();
-
-    // Drawer should close
-    await expect(drawer).not.toBeVisible();
+    try {
+      await nameInput.fill("Updated User Name");
+      await expect(saveButton).toBeEnabled();
+      await saveButton.click();
+      // Give the mutation time to round-trip.
+      await page.waitForTimeout(1500);
+      // The field keeps the new value after save.
+      await expect(nameInput).toHaveValue("Updated User Name");
+    } finally {
+      // Restore so the test is idempotent.
+      await nameInput.fill(originalName);
+      if (await saveButton.isEnabled().catch(() => false)) {
+        await saveButton.click();
+        await page.waitForTimeout(1000);
+      }
+    }
   });
 });

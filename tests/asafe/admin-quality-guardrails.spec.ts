@@ -35,8 +35,15 @@ test.describe("Admin Quality dashboard (/admin/quality)", () => {
 
     await page.goto(`${BASE}/admin/quality`, { waitUntil: "networkidle" });
 
-    // Should not land on quality page — redirected or 403
-    expect(page.url()).not.toContain("/admin/quality");
+    // The admin layout gates non-admins via requireAdminPermission() →
+    // unauthorized(), which renders the Next.js unauthorized boundary at the
+    // SAME url (no redirect). Assert the dashboard content is absent.
+    await expect(
+      page.getByText("Satisfaction rate", { exact: false }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByText(/unauthorized|forbidden|not authorized/i).first(),
+    ).toBeVisible();
 
     await ctx.close();
   });
@@ -51,7 +58,12 @@ test.describe("Admin Quality dashboard (/admin/quality)", () => {
 
     await page.goto(`${BASE}/admin/quality`, { waitUntil: "networkidle" });
 
-    expect(page.url()).not.toContain("/admin/quality");
+    await expect(
+      page.getByText("Satisfaction rate", { exact: false }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByText(/unauthorized|forbidden|not authorized/i).first(),
+    ).toBeVisible();
 
     await ctx.close();
   });
@@ -66,10 +78,14 @@ test.describe("Admin Quality dashboard (/admin/quality)", () => {
 
     await page.goto(`${BASE}/admin/quality`, { waitUntil: "networkidle" });
 
-    // Three stat cards: Thumbs up, Thumbs down, Satisfaction rate
-    const cards = page.locator('[class*="CardContent"]');
-    const count = await cards.count();
-    expect(count).toBeGreaterThanOrEqual(3);
+    // Three stat cards labelled Thumbs up / Thumbs down / Satisfaction rate.
+    // (The previous `[class*="CardContent"]` selector never matched — shadcn's
+    // CardContent does not include that string in its className.)
+    await expect(page.getByText("Thumbs up", { exact: true })).toBeVisible();
+    await expect(page.getByText("Thumbs down", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Satisfaction rate", { exact: true }),
+    ).toBeVisible();
 
     await ctx.close();
   });
@@ -102,7 +118,14 @@ test.describe("Admin Guardrails events (/admin/guardrails)", () => {
 
     await page.goto(`${BASE}/admin/guardrails`, { waitUntil: "networkidle" });
 
-    expect(page.url()).not.toContain("/admin/guardrails");
+    // Non-admins hit the unauthorized boundary (rendered at the same url). The
+    // guardrails log heading must be absent and the unauthorized notice present.
+    await expect(
+      page.getByRole("heading", { name: /guardrail/i }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByText(/unauthorized|forbidden|not authorized/i).first(),
+    ).toBeVisible();
 
     await ctx.close();
   });

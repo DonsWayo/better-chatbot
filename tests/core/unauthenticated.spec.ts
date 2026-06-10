@@ -45,8 +45,11 @@ test.describe("Unauthenticated User Experience", () => {
     await page.goto("/sign-up");
     await page.waitForLoadState("networkidle");
 
-    // Should show sign-up form elements
-    await expect(page.getByTestId("email-signup-button")).toBeVisible();
+    // The sign-up entry is now a multi-step email form (no social providers in
+    // the test env), so it lands on the email-capture step. Assert the email
+    // field and a heading are present rather than the removed
+    // "email-signup-button" link.
+    await expect(page.locator('input[type="email"]')).toBeVisible();
   });
 
   test("should navigate between sign-in and sign-up pages", async ({
@@ -65,8 +68,8 @@ test.describe("Unauthenticated User Experience", () => {
     await page.waitForLoadState("networkidle");
     expect(page.url()).toContain("/sign-up");
 
-    // Verify sign-up page has expected elements
-    await expect(page.getByTestId("email-signup-button")).toBeVisible();
+    // Verify sign-up page renders its (email-capture) form.
+    await expect(page.locator('input[type="email"]')).toBeVisible();
 
     // Verify we can navigate back to sign-in
     await page.goto("/sign-in");

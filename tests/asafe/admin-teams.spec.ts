@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
-import { ensureSidebarOpen } from "../helpers/sidebar-helper";
+import {
+  ensureSidebarOpen,
+  ensureAdminSidebarReady,
+} from "../helpers/sidebar-helper";
 
 // No REST API exists for /api/admin/teams — teams are managed via server actions.
 // These tests focus on page-level access control and sidebar visibility.
@@ -19,9 +22,13 @@ test.describe("Admin Teams Page - Access Control", () => {
     // Should stay on the teams page (no redirect to / or /sign-in)
     expect(page.url()).toContain("/admin/teams");
 
-    // Should NOT see an unauthorized error
-    await expect(page.getByText("401")).not.toBeVisible();
-    await expect(page.getByText("403")).not.toBeVisible();
+    // The teams list rendered its admin-only "New Team" control, which proves
+    // the page loaded for an admin and was not replaced by the unauthorized
+    // boundary. (A substring match on "401"/"403" is unsafe — team names contain
+    // timestamps that can include those digits.)
+    await expect(
+      page.getByRole("button", { name: /new team/i }),
+    ).toBeVisible();
 
     await context.close();
   });
@@ -37,13 +44,12 @@ test.describe("Admin Teams Page - Access Control", () => {
     await page.goto("/admin/teams", { waitUntil: "networkidle" });
     await page.waitForLoadState("networkidle");
 
-    // Next.js unauthorized() renders a 401 page; the URL may stay or redirect
-    // Accept either a 401 text on the page or a redirect away from /admin/teams
-    const url = page.url();
-    const has401 = await page.getByText("401").isVisible().catch(() => false);
-    const redirectedAway = !url.includes("/admin/teams");
-
-    expect(has401 || redirectedAway).toBeTruthy();
+    // Non-admins hit requireAdminPermission() → unauthorized(): the admin-only
+    // "New Team" control must NOT render (whether the boundary keeps the URL or
+    // redirects away).
+    await expect(
+      page.getByRole("button", { name: /new team/i }),
+    ).not.toBeVisible();
 
     await context.close();
   });
@@ -59,11 +65,9 @@ test.describe("Admin Teams Page - Access Control", () => {
     await page.goto("/admin/teams", { waitUntil: "networkidle" });
     await page.waitForLoadState("networkidle");
 
-    const url = page.url();
-    const has401 = await page.getByText("401").isVisible().catch(() => false);
-    const redirectedAway = !url.includes("/admin/teams");
-
-    expect(has401 || redirectedAway).toBeTruthy();
+    await expect(
+      page.getByRole("button", { name: /new team/i }),
+    ).not.toBeVisible();
 
     await context.close();
   });
@@ -80,7 +84,7 @@ test.describe("Admin Sidebar - Teams link visibility", () => {
 
     // Navigate to an admin page so the sidebar sub-items expand
     await page.goto("/admin/teams", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
     // The sub-item link has data-testid="admin-sidebar-link-teams"
     await expect(page.getByTestId("admin-sidebar-link-teams")).toBeVisible();
@@ -98,13 +102,14 @@ test.describe("Admin Sidebar - Teams link visibility", () => {
 
     // Start at the admin root so the sub-items render
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
     // Click the Teams sub-item
-    await page.getByTestId("admin-sidebar-link-teams").click();
-    await page.waitForLoadState("networkidle");
+    const teamsLink = page.getByTestId("admin-sidebar-link-teams");
+    await expect(teamsLink).toBeVisible();
+    await teamsLink.click();
 
-    expect(page.url()).toContain("/admin/teams");
+    await expect(page).toHaveURL(/\/admin\/teams/);
 
     await context.close();
   });

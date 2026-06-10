@@ -27,38 +27,42 @@ test.describe("Resource Permissions - Regular User", () => {
     page,
     browser,
   }) => {
-    // First, create an agent as an editor to ensure we have something to test
-    const editorContext = await browser.newContext({
-      storageState: TEST_USERS.editor.authFile,
+    // Create an org-wide-visible agent as ADMIN so an unrelated regular user can
+    // see it. Under the unified visibility model (private / shared / team /
+    // company), only `company` (org-wide) makes an agent readable by an
+    // arbitrary user, and `company` is admin-only — an editor can no longer
+    // produce a cross-user-visible agent. The picker is now the
+    // `visibility-level-*` radio control on the edit page (the old
+    // visibility-button dropdown was removed).
+    const adminContext = await browser.newContext({
+      storageState: TEST_USERS.admin.authFile,
     });
-    const editorPage = await editorContext.newPage();
+    const adminPage = await adminContext.newPage();
 
-    // Create a test agent with unique name
     const testAgentName = `Test Agent ${Date.now()}`;
-    await editorPage.goto("/agent/new");
-    await editorPage.getByTestId("agent-name-input").fill(testAgentName);
-    await editorPage
+    await adminPage.goto("/agent/new");
+    await adminPage.getByTestId("agent-name-input").fill(testAgentName);
+    await adminPage
       .getByTestId("agent-description-input")
       .fill("Test agent for permissions");
 
-    // Save first, then edit to change visibility
-    await editorPage.getByTestId("agent-save-button").click();
-    await editorPage.waitForURL("**/agents");
+    // Save first (lands on /studio), then re-open to set org-wide visibility.
+    await adminPage.getByTestId("agent-save-button").click();
+    await adminPage.waitForURL("**/studio");
 
-    // Navigate back to the agent to set visibility
-    await editorPage
+    await adminPage.goto("/agents");
+    await adminPage.waitForLoadState("networkidle");
+    await adminPage
       .locator(`main a:has-text("${testAgentName}")`)
       .first()
       .click();
-    await editorPage.waitForURL(/\/agent\/[^\/]+$/);
+    await adminPage.waitForURL(/\/agent\/[^\/]+$/);
 
-    // Set visibility to public so regular user can see it
-    await editorPage.getByTestId("visibility-button").click();
-    await editorPage.getByTestId("visibility-public").click();
-
-    await editorPage.getByTestId("agent-save-button").click();
-    await editorPage.waitForURL("**/agents");
-    await editorContext.close();
+    // Select org-wide ("company") visibility, then save.
+    await adminPage.getByTestId("visibility-level-company").click();
+    await adminPage.getByTestId("agent-save-button").click();
+    await adminPage.waitForURL("**/studio");
+    await adminContext.close();
 
     // Now test as regular user
     await page.goto("/agents");
@@ -188,14 +192,15 @@ test.describe("Resource Permissions - Editor User", () => {
 
   test("should be able to navigate to MCP creation", async ({ page }) => {
     await page.goto("/mcp");
+    await page.waitForLoadState("networkidle");
 
     // Click add MCP server button
     const addButton = page.getByRole("button", { name: /add mcp server/i });
     if (await addButton.isVisible()) {
       await addButton.click();
 
-      // Should navigate to MCP creation page
-      await expect(page).toHaveURL("/mcp/create");
+      // The MCP create form moved to Settings › Connectors.
+      await expect(page).toHaveURL(/\/settings\/connectors\/create/);
     }
   });
 
@@ -208,11 +213,13 @@ test.describe("Resource Permissions - Editor User", () => {
     await page.getByTestId("agent-name-input").fill(agentName);
     await page.getByTestId("agent-description-input").fill("Test description");
 
-    await clickAndWaitForNavigation(page, "agent-save-button", "**/agents");
+    // Saving an agent now lands on /studio.
+    await clickAndWaitForNavigation(page, "agent-save-button", "**/studio");
 
+    // Re-open the agent from the dedicated (non-tabbed) /agents list.
+    await page.goto("/agents");
+    await page.waitForLoadState("networkidle");
     await page.locator(`main a:has-text("${agentName}")`).first().click();
-
-    // Wait for navigation
     await page.waitForURL(/\/agent\/[^\/]+$/);
 
     // Should see edit button on own agent
@@ -222,18 +229,23 @@ test.describe("Resource Permissions - Editor User", () => {
   test("editor can create private MCP servers but not feature them", async ({
     page,
   }) => {
+    // The personal MCP suite moved under Settings › Connectors; /mcp redirects
+    // there. The dashboard still shows the "MCP Servers" heading for editors.
     await page.goto("/mcp");
+    await page.waitForLoadState("networkidle");
 
-    // Should see "MCP Servers" title as editor (not "Available MCP Servers")
-    await expect(page.locator("h1")).toContainText("MCP Servers");
+    // Scope to the level-1 heading by accessible name — the connectors layout
+    // renders more than one <h1>, so a bare locator("h1") is ambiguous.
+    await expect(
+      page.getByRole("heading", { level: 1, name: /MCP Servers/i }),
+    ).toBeVisible();
 
-    // Click add MCP server button
+    // Click add MCP server button → the connectors create page.
     const addButton = page.getByTestId("add-mcp-server-button");
     await expect(addButton).toBeVisible();
     await addButton.click();
 
-    // Should navigate to MCP creation page
-    await expect(page).toHaveURL("/mcp/create");
+    await expect(page).toHaveURL(/\/settings\/connectors\/create/);
 
     // Editor should NOT see visibility options
     await expect(page.getByTestId("mcp-visibility-select")).not.toBeVisible();
@@ -298,17 +310,20 @@ test.describe("Resource Permissions - Admin User", () => {
 
   test("admin can create and feature MCP servers", async ({ page }) => {
     await page.goto("/mcp");
+    await page.waitForLoadState("networkidle");
 
-    // Should see "MCP Servers" title as admin
-    await expect(page.locator("h1")).toContainText("MCP Servers");
+    // /mcp redirects to Settings › Connectors; the dashboard heading still reads
+    // "MCP Servers" for admins. Scope to the level-1 heading by name.
+    await expect(
+      page.getByRole("heading", { level: 1, name: /MCP Servers/i }),
+    ).toBeVisible();
 
-    // Click add MCP server button
+    // Click add MCP server button → the connectors create page.
     const addButton = page.getByTestId("add-mcp-server-button");
     await expect(addButton).toBeVisible();
     await addButton.click();
 
-    // Should navigate to MCP creation page
-    await expect(page).toHaveURL("/mcp/create");
+    await expect(page).toHaveURL(/\/settings\/connectors\/create/);
 
     // Admin SHOULD see visibility/sharing options
     const visibilitySelect = page.getByTestId("mcp-visibility-select");
@@ -423,11 +438,15 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
     });
     const adminPage = await adminContext.newPage();
 
+    // The personal MCP suite now lives under Settings › Connectors (/mcp
+    // redirects there; the create form is /settings/connectors/create; saving
+    // returns to /settings/connectors).
     await adminPage.goto("/mcp");
+    await adminPage.waitForLoadState("networkidle");
 
     // Admin creates a shared MCP server
     await adminPage.getByTestId("add-mcp-server-button").click();
-    await adminPage.waitForURL("/mcp/create");
+    await adminPage.waitForURL(/\/settings\/connectors\/create/);
 
     const sharedServerName = `shared-mcp-${Date.now()}`;
     await adminPage
@@ -462,7 +481,7 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
       const saveButton = adminPage.getByRole("button", { name: /save/i });
       await expect(saveButton).toBeEnabled({ timeout: 5000 });
       await saveButton.click();
-      await adminPage.waitForURL("/mcp");
+      await adminPage.waitForURL(/\/settings\/connectors/);
     }
 
     // Step 2: Editor creates a private MCP server
@@ -472,9 +491,10 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
     const editorPage = await editorContext.newPage();
 
     await editorPage.goto("/mcp");
+    await editorPage.waitForLoadState("networkidle");
 
     await editorPage.getByTestId("add-mcp-server-button").click();
-    await editorPage.waitForURL("/mcp/create");
+    await editorPage.waitForURL(/\/settings\/connectors\/create/);
 
     const privateServerName = `private-mcp-${Date.now()}`;
     await editorPage
@@ -501,7 +521,7 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
     const saveButton = editorPage.getByRole("button", { name: /save/i });
     await expect(saveButton).toBeEnabled({ timeout: 5000 });
     await saveButton.click();
-    await editorPage.waitForURL("/mcp");
+    await editorPage.waitForURL(/\/settings\/connectors/);
 
     // Editor should see their server in "My MCP Servers"
     await expect(editorPage.locator("text=/My MCP Servers/i")).toBeVisible();
@@ -513,9 +533,12 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
     const userPage = await userContext.newPage();
 
     await userPage.goto("/mcp");
+    await userPage.waitForLoadState("networkidle");
 
-    // User should see "Available MCP Servers" not "MCP Servers"
-    await expect(userPage.locator("h1")).toContainText("Available MCP Servers");
+    // A basic user sees the read-only "Available MCP Servers" heading.
+    await expect(
+      userPage.getByRole("heading", { level: 1, name: /Available MCP Servers/i }),
+    ).toBeVisible();
 
     // User should NOT see create button
     await expect(

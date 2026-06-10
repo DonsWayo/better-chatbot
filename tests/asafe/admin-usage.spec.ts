@@ -40,11 +40,12 @@ test("regular user: /admin/usage redirects away from /admin", async ({
   await page.goto("/admin/usage", { waitUntil: "networkidle" });
   await page.waitForLoadState("networkidle");
 
-  const url = page.url();
-  expect(
-    url,
-    `Regular user must be redirected away from /admin/usage but stayed at ${url}`,
-  ).not.toContain("/admin");
+  // The admin layout gates non-admins via requireAdminPermission() →
+  // unauthorized(), which renders the Next.js unauthorized boundary at the SAME
+  // url (no redirect). Assert the block rather than a navigation away.
+  await expect(
+    page.getByText(/unauthorized|forbidden|not authorized/i).first(),
+  ).toBeVisible();
 
   await ctx.close();
 });
@@ -60,11 +61,10 @@ test("editor user: /admin/usage redirects away from /admin", async ({
   await page.goto("/admin/usage", { waitUntil: "networkidle" });
   await page.waitForLoadState("networkidle");
 
-  const url = page.url();
-  expect(
-    url,
-    `Editor must be redirected away from /admin/usage but stayed at ${url}`,
-  ).not.toContain("/admin");
+  // Same unauthorized() boundary as the regular-user case — no redirect.
+  await expect(
+    page.getByText(/unauthorized|forbidden|not authorized/i).first(),
+  ).toBeVisible();
 
   await ctx.close();
 });

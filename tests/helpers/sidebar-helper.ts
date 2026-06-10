@@ -52,3 +52,16 @@ export async function ensureSidebarOpen(page: Page) {
     throw new Error("Could not open sidebar");
   }
 }
+
+/**
+ * Ensures the dedicated admin console sidebar (AdminSidebar) is mounted and
+ * ready. Unlike the daily sidebar it has no collapse toggle and is always
+ * rendered, so we just wait for its root to be attached rather than clicking a
+ * toggle (which does not exist on /admin/*).
+ */
+export async function ensureAdminSidebarReady(page: Page) {
+  await page.getByTestId("admin-sidebar").waitFor({
+    state: "visible",
+    timeout: 10000,
+  });
+}

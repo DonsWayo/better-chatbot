@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
-import { ensureSidebarOpen } from "../helpers/sidebar-helper";
+import {
+  ensureSidebarOpen,
+  ensureAdminSidebarReady,
+} from "../helpers/sidebar-helper";
 
 let _c = 0;
 function uid(): string {
@@ -21,7 +24,7 @@ test.describe("Admin sidebar link visibility", () => {
     const page = await ctx.newPage();
 
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
     const count = await page
       .getByTestId("admin-sidebar-link-teams")
@@ -40,7 +43,7 @@ test.describe("Admin sidebar link visibility", () => {
     const page = await ctx.newPage();
 
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
     const count = await page
       .getByTestId("admin-sidebar-link-usage")
@@ -59,7 +62,7 @@ test.describe("Admin sidebar link visibility", () => {
     const page = await ctx.newPage();
 
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
     const count = await page
       .getByTestId("admin-sidebar-link-knowledge")
@@ -78,12 +81,15 @@ test.describe("Admin sidebar link visibility", () => {
     const page = await ctx.newPage();
 
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
-    await page.getByTestId("admin-sidebar-link-teams").click();
-    await page.waitForLoadState("networkidle");
+    const teamsLink = page.getByTestId("admin-sidebar-link-teams");
+    await expect(teamsLink).toBeVisible();
+    await teamsLink.click();
 
-    expect(page.url()).toContain("/admin/teams");
+    // Use a polling URL assertion so client-side navigation is awaited reliably
+    // (a one-shot url() check races link hydration).
+    await expect(page).toHaveURL(/\/admin\/teams/);
 
     await ctx.close();
   });
@@ -97,7 +103,7 @@ test.describe("Admin sidebar link visibility", () => {
     const page = await ctx.newPage();
 
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
     const count = await page
       .getByTestId("admin-sidebar-link-feature-flags")
@@ -116,12 +122,13 @@ test.describe("Admin sidebar link visibility", () => {
     const page = await ctx.newPage();
 
     await page.goto("/admin", { waitUntil: "networkidle" });
-    await ensureSidebarOpen(page);
+    await ensureAdminSidebarReady(page);
 
-    await page.getByTestId("admin-sidebar-link-feature-flags").click();
-    await page.waitForLoadState("networkidle");
+    const ffLink = page.getByTestId("admin-sidebar-link-feature-flags");
+    await expect(ffLink).toBeVisible();
+    await ffLink.click();
 
-    expect(page.url()).toContain("/admin/feature-flags");
+    await expect(page).toHaveURL(/\/admin\/feature-flags/);
     // Kill switch card should be visible
     await expect(page.getByTestId("kill-switch-card")).toBeVisible();
 

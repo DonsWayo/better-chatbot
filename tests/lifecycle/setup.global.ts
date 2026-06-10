@@ -1,5 +1,6 @@
 import { execSync } from "child_process";
 import { getUserCount } from "../helpers/clear-users";
+import { seedComplianceForTestUsers } from "../helpers/seed-compliance";
 
 async function globalSetup() {
   // Skip seeding if we're running first-user tests
@@ -24,6 +25,11 @@ async function globalSetup() {
   } else {
     console.log("✅ Test users already exist");
   }
+
+  // Satisfy the compliance gates the app now enforces (email verification +
+  // AUP acceptance) so sign-in succeeds and the AUP modal does not intercept
+  // clicks during authenticated tests.
+  await seedComplianceForTestUsers();
 }
 
 export default globalSetup;

@@ -7,6 +7,9 @@ import {
 } from "../utils/test-helpers";
 import { TEST_USERS } from "../constants/test-users";
 
+// Saving an agent now lands on /studio (the role-gated builder home with the
+// Agents + Workflows tabs), which renders the same AgentsList as /agents. The
+// previous post-save target /agents is stale.
 async function createAgent(
   page: Page,
   name: string,
@@ -17,7 +20,7 @@ async function createAgent(
   await page.getByTestId("agent-name-input").fill(name);
   await page.getByTestId("agent-description-input").fill(description);
 
-  await clickAndWaitForNavigation(page, "agent-save-button", "**/agents");
+  await clickAndWaitForNavigation(page, "agent-save-button", "**/studio");
 }
 
 test.describe("Agent Creation and Sharing Workflow", () => {
@@ -32,7 +35,7 @@ test.describe("Agent Creation and Sharing Workflow", () => {
     );
 
     // Verify we're on agents list
-    expect(page.url()).toContain("/agents");
+    expect(page.url()).toContain("/studio");
   });
 
   test("should show created agent on agents page", async ({ page }) => {
@@ -41,7 +44,7 @@ test.describe("Agent Creation and Sharing Workflow", () => {
     await createAgent(page, agentName, "Should appear in agent list");
 
     // We should already be on agents page after creation
-    expect(page.url()).toContain("/agents");
+    expect(page.url()).toContain("/studio");
 
     // Check if agent appears in the page - more specific selector
     await expect(
@@ -90,7 +93,7 @@ test.describe("Agent Creation and Sharing Workflow", () => {
       .fill("Updated description after editing");
 
     // Save changes
-    await clickAndWaitForNavigation(page, "agent-save-button", "**/agents");
+    await clickAndWaitForNavigation(page, "agent-save-button", "**/studio");
 
     // Check the updated agent appears using the unique name
     await expect(
@@ -152,7 +155,7 @@ test.describe("Agent Creation and Sharing Workflow", () => {
         "You are a helpful assistant that specializes in testing and quality assurance.",
       );
 
-    await clickAndWaitForNavigation(page, "agent-save-button", "**/agents");
-    expect(page.url()).toContain("/agents");
+    await clickAndWaitForNavigation(page, "agent-save-button", "**/studio");
+    expect(page.url()).toContain("/studio");
   });
 });

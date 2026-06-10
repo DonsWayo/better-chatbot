@@ -55,7 +55,13 @@ test.describe("Permissions", () => {
 
     await context.close();
   });
-  test("ensure admin sidebar link is visible to admin", async ({ browser }) => {
+  // The entry into the admin console moved from a dedicated sidebar link into
+  // the slim sidebar user dropdown (admin-only, data-testid
+  // "admin-console-menu-item", linking to /admin which redirects to
+  // /admin/users). Open the dropdown via the user button to inspect it.
+  test("admin sees the Admin console item in the user menu", async ({
+    browser,
+  }) => {
     const context = await browser.newContext({
       storageState: TEST_USERS.admin.authFile,
     });
@@ -63,10 +69,13 @@ test.describe("Permissions", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
-    await expect(page.getByTestId("admin-sidebar-link")).toBeVisible();
+    await page.getByTestId("sidebar-user-button").click();
+    await expect(
+      page.getByTestId("admin-console-menu-item"),
+    ).toBeVisible();
     await context.close();
   });
-  test("ensure admin sidebar link is not visible to editor", async ({
+  test("editor does NOT see the Admin console item in the user menu", async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -76,10 +85,13 @@ test.describe("Permissions", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
-    await expect(page.getByTestId("admin-sidebar-link")).not.toBeVisible();
+    await page.getByTestId("sidebar-user-button").click();
+    await expect(
+      page.getByTestId("admin-console-menu-item"),
+    ).not.toBeVisible();
     await context.close();
   });
-  test("ensure admin sidebar link is not visible to regular user", async ({
+  test("regular user does NOT see the Admin console item in the user menu", async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -89,10 +101,13 @@ test.describe("Permissions", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
-    await expect(page.getByTestId("admin-sidebar-link")).not.toBeVisible();
+    await page.getByTestId("sidebar-user-button").click();
+    await expect(
+      page.getByTestId("admin-console-menu-item"),
+    ).not.toBeVisible();
     await context.close();
   });
-  test("ensure admin sidebar link goes to users page and shows user menu", async ({
+  test("Admin console item navigates into the admin users page", async ({
     browser,
   }) => {
     const context = await browser.newContext({
@@ -102,10 +117,14 @@ test.describe("Permissions", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
-    await page.getByTestId("admin-sidebar-link").click();
-    await page.waitForLoadState("networkidle");
+    await page.getByTestId("sidebar-user-button").click();
+    const adminItem = page.getByTestId("admin-console-menu-item");
+    await expect(adminItem).toBeVisible();
+    await adminItem.click();
+    // The menu item links to /admin (the admin console Dashboard home). The
+    // admin sidebar — including its Users sub-link — renders there.
+    await expect(page).toHaveURL(/\/admin(\/|$)/);
     await expect(page.getByTestId("admin-sidebar-link-users")).toBeVisible();
-    expect(page.url()).toContain("/admin/users");
     await context.close();
   });
 });
