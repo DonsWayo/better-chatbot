@@ -534,5 +534,24 @@
     "Quality": {
       "title": "Qualité"
     }
+  },
+  "Runs": {
+    "title": "Exécutions",
+    "running": "En cours",
+    "queued": "En file d'attente",
+    "awaitingApproval": "En attente d'approbation",
+    "paused": "En pause",
+    "completed": "Terminée",
+    "failed": "Échouée",
+    "cancelled": "Annulée",
+    "cancelRun": "Annuler l'exécution",
+    "started": "Début",
+    "ended": "Fin",
+    "cost": "Coût",
+    "steps": "Étapes",
+    "input": "Entrée",
+    "output": "Sortie",
+    "back": "Retour",
+    "noStepsYet": "Aucune étape pour l'instant"
   }
 }

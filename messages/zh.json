@@ -536,5 +536,24 @@
     "Quality": {
       "title": "质量"
     }
+  },
+  "Runs": {
+    "title": "运行",
+    "running": "运行中",
+    "queued": "排队中",
+    "awaitingApproval": "等待审批",
+    "paused": "已暂停",
+    "completed": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消",
+    "cancelRun": "取消运行",
+    "started": "开始",
+    "ended": "结束",
+    "cost": "费用",
+    "steps": "步骤",
+    "input": "输入",
+    "output": "输出",
+    "back": "返回",
+    "noStepsYet": "暂无步骤"
   }
 }

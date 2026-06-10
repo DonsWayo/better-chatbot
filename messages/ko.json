@@ -549,5 +549,24 @@
     "Quality": {
       "title": "품질"
     }
+  },
+  "Runs": {
+    "title": "실행",
+    "running": "실행 중",
+    "queued": "대기 중",
+    "awaitingApproval": "승인 대기 중",
+    "paused": "일시 중지",
+    "completed": "완료",
+    "failed": "실패",
+    "cancelled": "취소됨",
+    "cancelRun": "실행 취소",
+    "started": "시작",
+    "ended": "종료",
+    "cost": "비용",
+    "steps": "단계",
+    "input": "입력",
+    "output": "출력",
+    "back": "뒤로",
+    "noStepsYet": "아직 단계가 없습니다"
   }
 }

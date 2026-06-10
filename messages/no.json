@@ -837,5 +837,24 @@
     "noInstructions": "Ingen",
     "localServersNotAvailableTitle": "Lokale MCP-servere er ikke tilgjengelige",
     "localServersNotAvailableOnThisDeployment": "Lokale (stdio) MCP-servere støttes ikke i denne distribusjonen. Koble til en ekstern MCP-server-URL i stedet — lokale servere er kun tilgjengelige i skrivebordsappen."
+  },
+  "Runs": {
+    "title": "Kjøringer",
+    "running": "Kjører",
+    "queued": "I kø",
+    "awaitingApproval": "Venter på godkjenning",
+    "paused": "Pauset",
+    "completed": "Fullført",
+    "failed": "Mislyktes",
+    "cancelled": "Avbrutt",
+    "cancelRun": "Avbryt kjøring",
+    "started": "Startet",
+    "ended": "Avsluttet",
+    "cost": "Kostnad",
+    "steps": "Steg",
+    "input": "Inndata",
+    "output": "Utdata",
+    "back": "Tilbake",
+    "noStepsYet": "Ingen steg ennå"
   }
 }

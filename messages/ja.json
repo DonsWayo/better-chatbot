@@ -534,5 +534,24 @@
     "Quality": {
       "title": "品質"
     }
+  },
+  "Runs": {
+    "title": "実行",
+    "running": "実行中",
+    "queued": "待機中",
+    "awaitingApproval": "承認待ち",
+    "paused": "一時停止",
+    "completed": "完了",
+    "failed": "失敗",
+    "cancelled": "キャンセル済み",
+    "cancelRun": "実行をキャンセル",
+    "started": "開始",
+    "ended": "終了",
+    "cost": "コスト",
+    "steps": "ステップ",
+    "input": "入力",
+    "output": "出力",
+    "back": "戻る",
+    "noStepsYet": "まだステップがありません"
   }
 }

@@ -1,11 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
 import Particles from "ui/particles";
+import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
 
 import { AppSidebarAgents } from "./app-sidebar-agents";
 import { AppSidebarMenus } from "./app-sidebar-menus";
+import { AppSidebarRuns } from "./app-sidebar-runs";
 import { AppSidebarThreads } from "./app-sidebar-threads";
 import { AsafeLogo } from "./asafe-logo";
 import { SidebarHeaderShared } from "./sidebar-header";
@@ -64,6 +65,7 @@ export function AppSidebar({
         <div className="flex flex-col overflow-y-auto">
           <AppSidebarMenus user={user} />
           <AppSidebarAgents userRole={userRole} />
+          <AppSidebarRuns />
           <AppSidebarThreads />
         </div>
       </SidebarContent>

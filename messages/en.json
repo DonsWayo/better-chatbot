@@ -896,5 +896,24 @@
     "featuredDescription": "Featured for all users to use",
     "localServersNotAvailableTitle": "Local MCP servers not available",
     "localServersNotAvailableOnThisDeployment": "Local (stdio) MCP servers are not supported on this deployment. Connect to a remote MCP server URL instead — local servers are only available in the desktop app."
+  },
+  "Runs": {
+    "title": "Runs",
+    "running": "Running",
+    "queued": "Queued",
+    "awaitingApproval": "Awaiting approval",
+    "paused": "Paused",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled",
+    "cancelRun": "Cancel run",
+    "started": "Started",
+    "ended": "Ended",
+    "cost": "Cost",
+    "steps": "Steps",
+    "input": "Input",
+    "output": "Output",
+    "back": "Back",
+    "noStepsYet": "No steps yet"
   }
 }
