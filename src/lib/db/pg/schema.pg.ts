@@ -533,6 +533,9 @@ export const AsafePresenceTable = pgTable(
     }).notNull(),
     contextId: text("context_id").notNull(),
     lastSeenAt: timestamp("last_seen_at").notNull().default(sql`now()`),
+    // Electric phase 4: true while the user is actively composing in the
+    // context; cleared by the next non-typing heartbeat.
+    typing: boolean("typing").notNull().default(false),
   },
   (table) => [
     unique("asafe_presence_user_context_unique").on(
