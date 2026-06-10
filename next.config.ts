@@ -1,3 +1,4 @@
+import { createMDX } from "fumadocs-mdx/next";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -21,5 +22,8 @@ export default () => {
     },
   };
   const withNextIntl = createNextIntlPlugin();
-  return withNextIntl(nextConfig);
+  // Fumadocs MDX (docs at /docs) — compiles content/docs/** into the
+  // generated .source folder. Minimal wrapper per the manual install guide.
+  const withMDX = createMDX();
+  return withMDX(withNextIntl(nextConfig));
 };

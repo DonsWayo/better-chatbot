@@ -1,0 +1,63 @@
+---
+title: Observability & the kill switch
+description: /api/metrics, /api/health, SLO instrumentation, and the org-wide kill switch.
+---
+
+Wave 12 (ADR-0012) wired the platform into A-SAFE's existing Prometheus/Grafana and
+Sentry — no competing stack. The code lives in `src/lib/observability/`.
+
+## /api/metrics — Prometheus scrape
+
+`GET /api/metrics` serves the `prom-client` registry. Optionally protected with a bearer
+token: when `METRICS_AUTH_TOKEN` is set, requests must send
+`Authorization: Bearer <token>` (401 otherwise). The endpoint is excluded from the auth
+proxy so Prometheus can scrape it; Grafana dashboards live in `docs/grafana/`.
+
+Notable series:
+
+| Metric | Source |
+|---|---|
+| `budget_utilization` gauge | [`recordUsage`](/docs/governance/budgets-and-usage) per team. |
+| `guardrail_firings_total{category,action,posture}` / `guardrail_blocks_total{posture}` | [Guardrails](/docs/governance/guardrails). |
+| Kill-switch activation counter | `slo.ts` (`killSwitchActivations`). |
+| Request/SLO instrumentation | `src/lib/observability/slo.ts`. |
+
+## /api/health — probes
+
+| Call | Meaning |
+|---|---|
+| `GET /api/health` | **Liveness** — process is up. `{ status, version, uptime }`. |
+| `GET /api/health?ready` | **Readiness** — also runs `select 1` against Postgres; 503 with `{ checks: { db: "error" } }` on failure. Used by the k8s readinessProbe. |
+
+Both report `APP_VERSION` (set from the image tag in deploys). Both endpoints are public
+(excluded from the auth proxy) by design.
+
+## Kill switch
+
+The fast operator control during incidents — **no code deploy required**
+(`src/lib/observability/kill-switch.ts`):
+
+- **Env**: `ASAFE_KILL_SWITCH=1` → active immediately, no DB round-trip.
+- **DB flag**: the `asafe_feature_flag` row `{ name: "kill_switch", enabled: true }`,
+  togglable from the admin Feature Flags page.
+
+Behavior:
+
+- Checked **per chat request** — active switch rejects with 503.
+- Checked **on every worker tick** before claiming sessions — background
+  [routines](/docs/agent-platform/routines) pause org-wide within seconds.
+- The DB flag is cached in-process for 5 seconds (bounded staleness, no per-request DB
+  hit), and reads **fail open** — inference is never blocked because the flag couldn't be
+  read.
+- Activations increment a Prometheus counter for alerting.
+
+## Sentry
+
+`@sentry/nextjs` is wired but inert without `SENTRY_DSN` /
+`NEXT_PUBLIC_SENTRY_DSN`; trace sampling defaults to 0. Errors carry the release version.
+
+## Logging
+
+Structured logging via the shared `logger` module; the
+[audit trail](/docs/governance/audit-and-compliance) is separate and append-only —
+operational logs never substitute for it.

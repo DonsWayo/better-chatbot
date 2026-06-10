@@ -1,0 +1,63 @@
+---
+title: Model entitlements
+description: ERP-style layered model access — an org base list, team overrides, and per-user grants.
+---
+
+Model access resolves through **three layers, most specific wins** (ADR-0009), in
+`src/lib/admin/model-policy.ts` and `src/lib/admin/user-grants.ts`:
+
+<Mermaid
+  chart={`flowchart LR
+    O["Org base list\n(app setting: org_base_model_allow_list)"] --> T["Team override\n(replace OR inherit ± add/remove)"]
+    T --> U["User grants\n(additive, optionally expiring)"]
+    U --> E["Effective allow-list\nfor this request"]`}
+/>
+
+## Layer 1 — org base
+
+A single org-wide allow-list stored under the app-settings key
+`org_base_model_allow_list` (`getOrgBaseModelAllowList` / `setOrgBaseModelAllowList`).
+`null` means **unrestricted** — every registered model is allowed.
+
+## Layer 2 — team override
+
+Each team can carry a `modelPolicy` in one of two modes (`resolveModelAllowList`):
+
+| Mode | Behavior |
+|---|---|
+| `replace` | The team's list **replaces** the org base entirely. |
+| `inherit` | Start from the org base, then apply `add: []` and `remove: []` deltas. |
+
+A legacy per-team `modelAllowList` column is still honored — it is treated as
+`{ mode: "replace" }` when no structured policy exists. `resolveTeamModelAllowList(teamId)`
+returns the effective team list; unknown teams fall back to the org base, and **DB errors
+fail open per layer** (an outage never locks every model).
+
+## Layer 3 — user grants
+
+`asafe_user_model_grant` rows give individual users **additive** access to specific
+models, with optional expiry (`expiresAt`) and provenance (`grantedBy`). Expired grants
+are excluded at read time; results are cached for 30 seconds and invalidated on write
+(`getUserModelGrants`).
+
+The same org → team → user layering is reused for
+[autonomy caps](/docs/agent-platform/approvals-and-autonomy#one-resolver-the-entitlements-pattern) and is the
+designated pattern for future tool-level entitlements — **one resolver, no parallel
+permission systems**.
+
+## Where it's enforced
+
+- The **model picker** only offers entitled models; "Auto"
+  ([routing](/docs/architecture#request-path-chat)) only selects among them.
+- The **chat route** re-validates server-side — picking a model is a UI affordance, not
+  the access check.
+- The **desktop opencode gateway** resolves models through the same layers and rejects
+  non-entitled models — see [Governed coding](/docs/desktop/governed-coding).
+- Visibility never bypasses entitlements: a `company`-visible workflow still runs under
+  the *invoking user's* model allow-list (see [Visibility](/docs/collaboration/visibility)).
+
+## Admin surface
+
+Admins manage the org base list, per-team policies, and user grants from the admin area
+(`/admin`), including expiring trial grants ("give this analyst the frontier model for two
+weeks"). All changes land in the [audit log](/docs/governance/audit-and-compliance).

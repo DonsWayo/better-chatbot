@@ -1,0 +1,11 @@
+{
+  "title": "Agent platform",
+  "pages": [
+    "index",
+    "sessions-and-steps",
+    "approvals-and-autonomy",
+    "routines",
+    "revisions-and-publishing",
+    "runs-and-triage"
+  ]
+}

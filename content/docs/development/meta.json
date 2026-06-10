@@ -1,0 +1,9 @@
+{
+  "title": "Development",
+  "pages": [
+    "getting-started",
+    "server-actions-vs-routes",
+    "testing",
+    "migrations"
+  ]
+}

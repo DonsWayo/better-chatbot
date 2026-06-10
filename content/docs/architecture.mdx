@@ -1,0 +1,101 @@
+---
+title: Architecture
+description: The stack, the Postgres-only posture, and the Definition → Revision → Session → Steps model.
+---
+
+## Stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Framework | **Next.js 16** (App Router) + React 19, TypeScript strict | Server Actions for UI mutations, routes for streaming/external consumers — see [the mandatory rule](/docs/development/server-actions-vs-routes). |
+| AI | **AI SDK v5** (`streamText`, `wrapLanguageModel` middleware) | All chat inference routes through **OpenRouter** (zero-data-retention config, ADR-0001). The `customModelProvider.getModel` seam in `src/app/api/chat/route.ts` keeps transport swappable. |
+| Database | **Postgres only** (Drizzle ORM, single schema file `src/lib/db/pg/schema.pg.ts`) | Postgres deliberately wears several hats: OLTP, job queue (`FOR UPDATE SKIP LOCKED`), vectors (pgvector, ADR-0007), and later Electric logical replication. |
+| Hosting | **AWS EKS** (EU region) via Helm | ALB ingress, HPA, External Secrets Operator, pre-upgrade migration Job — see [Deployment](/docs/operations/deployment). ADR-0006. |
+| Identity | **Better Auth** + Microsoft Entra ID OIDC | Group-claim → role/team mapping (ADR-0005). |
+| UI | shadcn/Radix + Tailwind v4, Zustand, SWR | One UI kit; design rules in [Design language](/docs/design-language). |
+| Observability | Prometheus (`/api/metrics`), Sentry, `/api/health` | See [Observability](/docs/operations/observability). |
+| Tests | Vitest (5,500+ cases) + Playwright e2e | See [Testing](/docs/development/testing). |
+
+Redis is optional — used only for multi-instance MCP config synchronization; everything
+stateful lives in Postgres.
+
+## The unifying model: Definition → Revision → Session → Steps
+
+One governance and execution layer sits under both conversational agents and node-graph
+workflows (`docs/design/agent-platform.md`):
+
+<Mermaid
+  chart={`flowchart LR
+    D["Definition\n(agent or workflow)"] --> R["Revision\n(immutable version,\npublish lifecycle)"]
+    R --> S["Session\n(one governed execution,\npinned revision)"]
+    S --> T["Steps\n(checkpoints,\nresume keys)"]
+    S -.-> A["Approval requests"]
+    S -.-> C["Cost / budget meter"]
+    S -.-> AU["Audit trail\n(actorType)"]`}
+/>
+
+- A **Definition** is what users edit: an agent's config or a workflow's node graph.
+- A **[Revision](/docs/agent-platform/revisions-and-publishing)** freezes a definition into an
+  immutable, versioned snapshot with a `draft → pending_review → published → archived` lifecycle.
+- A **[Session](/docs/agent-platform/sessions-and-steps)** is one governed execution of a
+  pinned revision — chat turns, workflow runs, routines, webhooks, and desktop opencode
+  coding sessions are all *sessions of some revision*.
+- **Steps** are per-node/per-turn checkpoint rows; they make runs resumable, attributable,
+  and transcript-able.
+
+One Runs drawer, one audit trail, one budget meter. This mirrors Claude Managed Agents
+(agent → version → session) but is Postgres-native and team-governed.
+
+## Request path (chat)
+
+<Mermaid
+  chart={`flowchart TD
+    U[User message] --> KS{Kill switch?}
+    KS -- active --> R503[503]
+    KS -- off --> AUP{AUP accepted?}
+    AUP -- no --> Gate[AUP modal]
+    AUP -- yes --> B{Budget check}
+    B -- blocked --> R402[402 + who to contact]
+    B -- ok --> RT[Routing: task class -> model tier]
+    RT --> CMP[Compression middleware]
+    CMP --> GR[Guardrails middleware]
+    GR --> M[Model via OpenRouter]
+    M --> OUT[Stream to user]
+    OUT --> UE[usage_event + budget increment]
+    OUT --> AL[audit log]`}
+/>
+
+Key seams (verified against the code):
+
+- **Model resolution / routing** — `customModelProvider.getModel(chatModel)` in
+  `src/app/api/chat/route.ts`; the deterministic router (`src/lib/ai/routing/route-model.ts`)
+  infers a task class (`code`, `reasoning`, `quick_rewrite`, `long_context`, `vision`,
+  `tool_use`, `general`) and picks a model tier per policy (ADR-0004). "Auto" is the
+  default picker option; an explicit user choice bypasses routing.
+- **Middleware order** — `request → compression → guardrails → raw model` (ADR-0011):
+  compression (`src/lib/ai/compression`) shrinks context *before* guardrails
+  (`src/lib/ai/guardrails`) scan it, both applied with `wrapLanguageModel`.
+- **Budgets** — `checkBudget` before inference, `recordUsage` after
+  (`src/lib/ai/budget`); see [Budgets & usage](/docs/governance/budgets-and-usage).
+- **Kill switch** — env or DB flag, checked per request and on every worker claim; see
+  [Observability](/docs/operations/observability#kill-switch).
+
+## Agent-platform data model
+
+| Table | Purpose |
+|---|---|
+| `agent_revision` | Immutable version of an agent (`conversational`) or workflow; polymorphic `sourceId`, `configSnapshot` jsonb, publish lifecycle, multi-team `teamIds[]` + `orgWide`. |
+| `agent_session` | One execution: `kind` (`workflow`/`conversational`/`opencode`), pinned `revisionId`, `teamId`, `userId`, `originSurface` (`web`/`desktop`/`schedule`/`webhook`/`api`), `mode` (`interactive`/`plan`/`autopilot`), `status`, `costSoFar`, `parentSessionId` (sub-agent tree), `heartbeatAt`. |
+| `agent_step` | Checkpoint per node/turn; upserted on `(sessionId, stepIndex)` — the resume key. |
+| `approval_request` | Human gate: payload (plan/diff), `requestedRole` (`owner`/`team-admin`/`admin`), decision audit. |
+| `workflow_schedule` | Routines: cron + timezone, `revisionPin` (`latest`/`pinned`), `inputTemplate`, `nextRunAt` due index. |
+| `folder` | Teamspace tree for [collaboration](/docs/collaboration/teamspaces). |
+
+Invariants: **sessions pin a revision** (publishing v7 never mutates an in-flight v6 run),
+and `parentSessionId` gives sub-agents for free — cost rolls up and the Runs drawer shows
+the tree.
+
+## Further reading
+
+- [Decision records](/docs/decisions) — the ADRs behind each of these choices.
+- [Project history](/docs/history) — the 12 delivery waves.

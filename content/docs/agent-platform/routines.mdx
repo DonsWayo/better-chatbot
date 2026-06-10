@@ -1,0 +1,80 @@
+---
+title: Routines (scheduled automations)
+description: The workflow_schedule table, the dependency-free cron engine, the worker tick, and the kill switch.
+---
+
+Routines turn a workflow into a recurring, governed automation: "build me a weekly
+pipeline digest" becomes a cron-scheduled session that runs every Monday, visible to the
+team, charged to the team's budget.
+
+## workflow_schedule
+
+One row per routine (`src/lib/db/pg/schema.pg.ts`):
+
+| Column | Meaning |
+|---|---|
+| `workflowId` | The workflow definition to run. |
+| `revisionPin` | `latest` (track the latest **published** revision) or `pinned` (stay on `pinnedRevisionId`). |
+| `cronExpr`, `timezone` | Standard 5-field cron + IANA timezone (default UTC). |
+| `enabled` | Toggle; also the per-routine kill switch. |
+| `inputTemplate` | The input payload each run starts from. |
+| `teamId`, `createdBy` | Governance + budget attribution. |
+| `lastRunAt`, `nextRunAt` | Scheduling state; `(enabled, nextRunAt)` is indexed as the due-queue. |
+
+CRUD + claiming live in `src/lib/agent-platform/scheduler.ts` (`createSchedule`,
+`updateSchedule`, `setScheduleEnabled`, `deleteSchedule`, `listSchedulesForUser`,
+`listSchedulesForTeam`, `claimDueSchedules`). Mutations are Server Actions
+(`src/app/api/agent-platform/schedule-actions.ts`).
+
+## The cron engine
+
+`src/lib/agent-platform/cron.ts` is a **tiny, dependency-free cron engine**:
+
+- Standard 5 fields (minute, hour, day-of-month, month, day-of-week) with `*`, lists,
+  ranges, and steps (`*/5`, `1-10/2`).
+- **Vixie-cron day semantics**: when *both* day-of-month and day-of-week are restricted,
+  the match is an OR; otherwise both must match.
+- **Timezone-aware**: `UTC` uses exact Date arithmetic; any other IANA zone reads the wall
+  clock via `Intl.DateTimeFormat`. DST edges are handled conservatively — wall times
+  skipped by spring-forward never fire that day; times repeated by fall-back fire on their
+  first (earlier UTC) occurrence only.
+
+`validateCronExpression` rejects bad expressions at creation time (`CronError`), and
+`computeNextRun` maintains `nextRunAt`.
+
+## How a routine actually runs
+
+<Mermaid
+  chart={`sequenceDiagram
+    participant T as Tick (worker loop or /api/hooks/agent-tick)
+    participant S as workflow_schedule
+    participant Q as agent_session (queued)
+    participant W as Worker
+    T->>S: claimDueSchedules() — enabled AND nextRunAt <= now
+    S-->>T: due schedules (nextRunAt advanced)
+    T->>Q: createSession(originSurface: "schedule", pinned revision)
+    W->>Q: FOR UPDATE SKIP LOCKED claim
+    W->>W: execute nodes, step rows checkpointed
+    W-->>Q: completed / failed / awaiting_approval`}
+/>
+
+Two tick ingresses exist (both call the same `tickOnce()`):
+
+1. **The worker Deployment** (`pnpm worker:agents`, Helm `worker.enabled`) — a long-running
+   loop, interval `AGENT_WORKER_INTERVAL_MS` (default 5s).
+2. **`POST /api/hooks/agent-tick`** — for an external scheduler (EKS CronJob, curl).
+   Auth: `x-asafe-cron-secret` header must match `ASAFE_CRON_SECRET`; the route returns
+   503 when the env var is unset and 401 on a wrong secret.
+
+## Safety rails
+
+- **Kill switch**: the worker checks `isKillSwitchActive()` on every tick before claiming —
+  flipping the `kill_switch` feature flag (or `ASAFE_KILL_SWITCH=1`) pauses all background
+  execution org-wide in seconds. See [Observability](/docs/operations/observability#kill-switch).
+- **Revision pinning**: a routine pinned to a revision is immune to later edits;
+  `latest` only ever tracks *published* (reviewed) revisions — see
+  [Revisions & publishing](/docs/agent-platform/revisions-and-publishing).
+- **Budget attribution**: scheduled sessions charge `teamId`'s budget like any other
+  session and stop at the [hard cap](/docs/governance/budgets-and-usage).
+- Findings land in the [Triage inbox](/docs/agent-platform/runs-and-triage); empty runs
+  are designed to auto-archive so the inbox stays signal-only.

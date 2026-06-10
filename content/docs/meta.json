@@ -1,0 +1,17 @@
+{
+  "title": "asafe-ai",
+  "pages": [
+    "index",
+    "architecture",
+    "decisions",
+    "history",
+    "design-language",
+    "agent-platform",
+    "governance",
+    "mcp",
+    "collaboration",
+    "desktop",
+    "operations",
+    "development"
+  ]
+}

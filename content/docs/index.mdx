@@ -1,0 +1,67 @@
+---
+title: Overview
+description: What asafe-ai is, the north star it is built around, and the surfaces it ships on.
+---
+
+## What asafe-ai is
+
+**asafe-ai** is A-SAFE's governed internal AI platform: a self-hosted web **and** desktop
+chat platform for ~800 employees with intelligent model routing, per-team budgets,
+self-serve usage visibility, company MCP servers and tools, and company-knowledge RAG.
+Single sign-on (Microsoft Entra ID), centrally administered, running on A-SAFE's own AWS
+infrastructure.
+
+It is a **fork of [`cgoinglove/better-chatbot`](https://github.com/cgoinglove/better-chatbot)**
+(MIT) — the platform builds *on top of* the upstream chat/MCP/workflow/agent foundation and
+adds the enterprise layers upstream lacks: routing, budgets, RAG, SSO posture, guardrails,
+compliance, compression, a desktop client, and the agent platform.
+
+## North star
+
+> The 12-month destination: one mission-control surface where departments assign, watch,
+> and audit autonomous workflows — chat is the ingress, but the **session** is the
+> governed, auditable, budget-charged unit of value.
+
+The funding pitch is **cost-controlled substitution**: replace per-seat ChatGPT
+Enterprise/Copilot sprawl with metered, budget-governed OpenRouter spend, with the Usage
+dashboard CSV as the monthly CFO artifact. Every employee gets task-routed intelligence
+with zero model-choice anxiety, while IT keeps one policy surface — entitlements, budgets,
+audit — instead of five shadow-AI subscriptions.
+
+Three principles fall out of that (see the [decision log](/docs/decisions)):
+
+1. **The session is the unit of value**, persisted in Postgres with checkpointed steps —
+   auditability, budgets, and resilience all hang off [`agent_session`](/docs/agent-platform/sessions-and-steps).
+2. **Governance before autonomy** — every autonomy feature is gated on its governance
+   floor (budget hard-stop, kill switch, audit attribution) and ships disabled by default.
+3. **One entitlement resolver for everything** — models, autonomy, tools, and desktop
+   policy all resolve **org → team → user** through the
+   [same layering](/docs/governance/model-entitlements); no parallel permission systems.
+
+## Surfaces
+
+| Surface | What it is |
+|---|---|
+| **Web** | The Next.js app — chat, agents, workflows, the Runs rail, Triage, admin. The default for most employees. |
+| **[Desktop](/docs/desktop)** | An Electron **thin client** that loads the same web UI (no UI fork). Adds native niceties, `asafe://` deep links, and — gated behind ADR-0010 — local stdio MCP and a governed coding (opencode) surface. |
+
+## Regulatory posture
+
+A-SAFE is an EU employer-deployer, so two regimes are GA gates, not nice-to-haves:
+
+- **GDPR** — data residency (EU), data-subject rights, processor DPAs, retention.
+- **EU AI Act (deployer, Art. 26)** — human oversight, logging, Art. 50 transparency
+  (users are told they are talking to AI). The platform is classified **limited-risk**;
+  it is deliberately kept out of high-risk "employment decision" use.
+
+The compliance machinery lives in [Governance → Audit & compliance](/docs/governance/audit-and-compliance),
+including the [Acceptable Use Policy gate](/docs/governance/audit-and-compliance#aup-gate) every
+user accepts before first use.
+
+## Where to go next
+
+- [Architecture](/docs/architecture) — the stack and the Definition → Revision → Session → Steps model.
+- [Agent platform](/docs/agent-platform) — sessions, approvals, routines, revisions, runs.
+- [Governance](/docs/governance/model-entitlements) — entitlements, budgets, guardrails, audit.
+- [Operations](/docs/operations/deployment) — EKS/Helm deploy, env vars, observability.
+- [Development](/docs/development/getting-started) — local setup, tests, conventions.

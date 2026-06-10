@@ -1,0 +1,69 @@
+---
+title: MCP overview & transport policy
+description: How asafe-ai connects to Model Context Protocol servers, and why cloud deployments are remote-only.
+---
+
+asafe-ai inherits upstream's first-class MCP support (`src/lib/ai/mcp/`) — client manager,
+OAuth, tool loading into the chat loop — and adds the enterprise layer on top: a curated
+[catalog](/docs/mcp/catalog) with team scoping, connection probing, and a strict transport
+policy.
+
+## Transport policy: cloud is remote-only
+
+Like claude.ai on the web, **cloud deployments only allow remote MCP servers**
+(HTTP/SSE URLs). Local `stdio` servers spawn arbitrary processes *on the server*, so they
+are rejected at client-creation time with a clear message pointing users at the desktop
+app.
+
+The flag (`src/lib/const.ts`):
+
+```ts
+export const IS_MCP_SERVER_REMOTE_ONLY =
+  IS_VERCEL_ENV || !(IS_DESKTOP_APP || MCP_ALLOW_LOCAL_SERVERS || IS_DEV);
+```
+
+| Context | stdio allowed? |
+|---|---|
+| Cloud / EKS production | **No** — remote-only. |
+| Desktop app (`DESKTOP_APP=1`, set by the Electron build) | Yes — local tools run on the user's machine (see [Desktop](/docs/desktop)). |
+| Local dev (`IS_DEV`) | Yes. |
+| Self-hosted single-user opt-in (`MCP_ALLOW_LOCAL_SERVERS=true`) | Yes — trusted machines only. |
+
+## Server config shape
+
+`src/types/mcp.ts` defines two config variants (Zod-validated):
+
+```ts
+// Remote (the only kind allowed in cloud)
+{ url: string, headers?: Record<string,string>,
+  oauthClientId?: string, oauthClientSecret?: string }
+
+// Stdio (desktop / dev only)
+{ command: string, args?: string[], env?: Record<string,string> }
+```
+
+- **Static headers** cover token-style auth (e.g. `Authorization: Bearer …`).
+- **OAuth/SSO**: when `oauthClientId`/`oauthClientSecret` are present the client performs
+  a full OAuth handshake instead of relying on static headers — this is how per-user SSO
+  on company connectors works, so the assistant inherits *the user's* permissions, never
+  a service account's (the GDPR data-minimization default).
+
+## Related knobs
+
+| Env var | Effect |
+|---|---|
+| `NOT_ALLOW_ADD_MCP_SERVERS=1` | Disallow ad-hoc server additions entirely (catalog-only posture). |
+| `MCP_MAX_TOTAL_TIMEOUT` | Max tool-call duration in ms (long-running tools). |
+| `FILE_BASED_MCP_CONFIG=true` | File-based config storage backend instead of DB. |
+| `REDIS_URL` | Optional — real-time MCP config sync across multiple app instances (polling otherwise). |
+
+## Tool customizations
+
+Users can attach per-server and per-tool **instruction customizations**
+(`/api/mcp/tool-customizations/[server]` and `…/[server]/[tool]`): extra prompt guidance
+injected when that tool is loaded, e.g. "always answer with our Jira project key
+conventions". Customizations are per-user and do not change the server's actual tool
+schema.
+
+Guardrails treat all MCP tool output as **untrusted input** — see
+[Guardrails](/docs/governance/guardrails#untrusted-tool-output).

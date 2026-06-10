@@ -1,0 +1,59 @@
+---
+title: Guardrails & DLP
+description: Runtime input/output scanning at the model-middleware seam — PII, secrets, prompt-injection posture.
+---
+
+Guardrails (Wave 7, ADR-0008) sit between users and models as **in-app middleware at the
+`wrapLanguageModel` seam** — for an internal tool 800 people paste real company data into,
+this is a regulatory requirement, not a nice-to-have. Target risks are the OWASP LLM Top
+10: prompt injection (LLM01), sensitive-data leakage (LLM02), excessive agency (LLM06),
+system-prompt leakage (LLM07).
+
+## Placement
+
+```
+request → compression → guardrails → raw model
+```
+
+Compression (ADR-0011, `src/lib/ai/compression`) runs **outside** guardrails so the
+scanner sees the reduced context. Both are AI SDK `LanguageModelMiddleware`s applied at
+the `streamText` seam in the chat route.
+
+## Two stages
+
+The implementation lives in `src/lib/ai/guardrails`:
+
+- **Input stage** (`scanInput`) — before any provider egress: PII detection (emails,
+  phones, national IDs including Spanish DNI/NIE, card numbers), secret/credential
+  detection, proprietary-code/keyword blocking. The action is policy-driven:
+  **redact | mask | block | warn**.
+- **Output stage** (`scanOutput`) — before returning to the user: content-safety
+  filtering and system-prompt-leakage prevention.
+
+Patterns live in `patterns.ts`; per-team postures resolve via `resolvePolicy` in
+`policies.ts` (strictness is configuration, not code). The team's guardrail posture also
+selects the [compression level](/docs/decisions) (strict teams compress aggressively).
+
+## Untrusted tool output
+
+Tool/MCP/RAG outputs are treated as **untrusted** (prompt-injection defense): they are
+isolated/labelled, and high-agency tool actions go through a confirmation gate — the same
+excessive-agency control that backs
+[per-action consent on the desktop bridge](/docs/desktop#local-mcp-bridge-roadmap).
+
+## Telemetry & audit
+
+Every firing is recorded twice:
+
+1. **Prometheus** — `guardrail_firings_total{category, action, posture}` and
+   `guardrail_blocks_total{posture}` counters
+   ([/api/metrics](/docs/operations/observability)).
+2. **Postgres** — an `asafe_guardrail_event` row (user, blocked flag, firings JSON) that
+   feeds the admin Guardrails page and the [audit story](/docs/governance/audit-and-compliance).
+
+## Kill switch & flag
+
+- `ASAFE_GUARDRAILS_ENABLED` — guardrails are **on by default**; set to `"false"` to
+  disable (dev only — never in production).
+- The org-wide [kill switch](/docs/operations/observability#kill-switch) remains the
+  blunt instrument above guardrails: it stops all inference outright.

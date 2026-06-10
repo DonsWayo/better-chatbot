@@ -1,0 +1,61 @@
+---
+title: Teamspaces & sharing
+description: Notion-style folder trees, read-only shared threads (phase 1), and the ElectricSQL phasing plan.
+---
+
+The collaboration model is **Notion, not Claude Projects**: shared folder trees
+("teamspaces") owned by a team, with conversations living inside folders and permissions
+inheriting downward (teamspace → folder → thread). Entitlement checks on content still
+apply at every level.
+
+## Phase 1 — folders + read-only shared threads (shipped)
+
+Implemented in `src/lib/teamspaces/folders.ts` (the `folder` table +
+`ChatThreadTable.folderId`). The access rules, verbatim from the module's source of
+truth:
+
+- A folder with `teamId = null` is a **personal folder**, visible only to its owner. A
+  folder with `teamId` set is a **team folder**, visible to every member of that team.
+- **Moving a thread into a team folder sets the thread's visibility to `team`**; moving
+  it out (to a personal folder or no folder) resets it to `private`. Visibility `team`
+  without a containing team folder is inert — nobody but the owner can read it.
+- A `team`-visible thread is readable **read-only** by members of the containing folder's
+  team. **Only the thread owner can ever write.**
+- Folder management (rename/delete) is allowed for the folder owner or an admin of the
+  folder's team.
+
+Folders nest (`parentId`), and agents/workflows/schedules are designed to live in folders
+too — folder membership becomes invoke permission, with the org catalog as the
+admin-curated top level. Runs inside a shared folder are visible to members
+([Runs & Triage](/docs/agent-platform/runs-and-triage#visibility-of-runs)).
+
+## The write path never moves
+
+A standing architectural rule: realtime sync, when it arrives, is **strictly
+read-path-only**. Every write goes through the server layer
+([Server Actions for UI mutations, routes for streaming](/docs/development/server-actions-vs-routes)) —
+never through a sync layer — so [guardrails](/docs/governance/guardrails),
+[budgets](/docs/governance/budgets-and-usage), and
+[audit](/docs/governance/audit-and-compliance) are never bypassed, and each human message
+in a future multiplayer chat is attributed, audited, and budget-charged under its
+author's identity.
+
+## ElectricSQL phasing plan
+
+<Mermaid
+  chart={`flowchart LR
+    P1["Phase 1 (now)\nRead-only thread snapshots\nfolders, team visibility\nno Electric"] --> P2["Phase 2\nElectric sidecar in Helm\nPostgres logical replication\nread-path shapes: Runs rail,\nfolder trees, Triage badges"] --> P3["Phase 3\nFull multiplayer:\nlive shared conversations,\npresence, shared model stream"]`}
+/>
+
+1. **Phase 1 (shipped)** — link-shared read-only thread snapshots with private/team
+   visibility. Team checks recipient membership *and* the entitlement/KB scope of the
+   thread's content. No new infrastructure.
+2. **Phase 2** — an Electric sidecar Deployment in the Helm chart reading Postgres
+   logical replication (no Redis), with shapes scoped by folder/team membership. Powers
+   the live Runs rail, folder trees, Triage unread counts, and desktop badges.
+3. **Phase 3** — full multiplayer: several humans + the agent in one thread, presence and
+   typing indicators, everyone seeing the model stream — only after phase 2 proves the
+   sync layer in production.
+
+**Cut-line discipline**: under schedule pressure Electric is dropped *before* the
+Compliance API or role packs — snapshots before sync.

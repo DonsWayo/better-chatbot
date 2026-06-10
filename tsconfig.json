@@ -31,6 +31,7 @@
       "logger": ["./src/lib/logger.ts"],
       "lib/*": ["./src/lib/*"],
       "load-env": ["./src/lib/load-env.ts"],
+      "collections/*": ["./.source/*"],
       "@/*": ["./src/*"]
     }
   },

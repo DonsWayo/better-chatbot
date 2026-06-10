@@ -1,0 +1,76 @@
+---
+title: Deployment (EKS / Helm)
+description: The Helm chart, the worker Deployment, migrations on rollout, and the agent-tick ingress.
+---
+
+Two supported run paths (ADR-0006; `deploy/README.md`):
+
+- **Local development → docker-compose** (`pnpm docker-compose:up`) — kept green for
+  every contributor; migrations + MCP init run on boot.
+- **Staging / production → AWS EKS** via the Helm chart in `deploy/helm/asafe-ai`
+  (plain manifests in `deploy/k8s/` for environments without Helm).
+
+## Cluster prerequisites (owned by IT)
+
+EKS (EU region) with the AWS Load Balancer Controller; External Secrets Operator + a
+`ClusterSecretStore` for AWS Secrets Manager; ECR; **cloud-native Postgres on EKS** using
+the AI-native image (pgvector + pgvectorscale + timescaledb) via a Postgres operator —
+*not* RDS/Aurora; ElastiCache Redis; S3 + IRSA; `metrics-server` for the HPA.
+
+## Chart anatomy
+
+| Template | Purpose |
+|---|---|
+| `deployment.yaml` | The Next.js app (standalone output). Readiness probes hit [`/api/health?ready`](/docs/operations/observability). |
+| `hpa.yaml` | Autoscaling 2–6 replicas at 70% CPU. |
+| `ingress.yaml` | ALB ingress. |
+| `migrate-job.yaml` | **Pre-upgrade Helm hook** — runs DB migrations *once per release*; app pods set `DISABLE_DB_MIGRATE_ON_BOOT=true` so replicas never race on migration. |
+| `worker-deployment.yaml` | The detached [agent worker](#agent-worker). |
+| `configmap.yaml` / secrets | Non-sensitive config in the chart's `config:` block; secrets synced from AWS Secrets Manager. |
+
+```bash
+helm upgrade --install asafe-ai ./helm/asafe-ai \
+  --namespace asafe-ai \
+  --set image.repository="$ECR/asafe-ai" --set image.tag="$TAG" \
+  --set ingress.host=asafe-ai.internal.asafe.example \
+  --set config.BETTER_AUTH_URL=https://asafe-ai.internal.asafe.example
+```
+
+## Agent worker
+
+The [agent-platform worker](/docs/agent-platform/sessions-and-steps#the-worker-process) runs as
+its **own Deployment** (`worker.enabled`, default `false`) using the *same image* with a
+worker entrypoint: `node scripts/agent-worker.mjs` (the Dockerfile esbuild-bundles
+`scripts/agent-worker.ts` into the standalone output). It serves no HTTP, so liveness is
+an exec probe (can the container still fork a node process); stuck sessions are covered by
+the [heartbeat reclaim](/docs/agent-platform/sessions-and-steps#heartbeat-reclaim--state-outlives-compute)
+path regardless.
+
+Alternative tick ingress: drive `POST /api/hooks/agent-tick` from an external CronJob with
+the `x-asafe-cron-secret` header (`ASAFE_CRON_SECRET` env) — each call runs exactly one
+tick. Housekeeping crons (`/api/cron/audit-purge`, `/api/cron/budget-reset`) follow the
+same external-scheduler pattern.
+
+## Migrations — and the journal-repair story
+
+Migrations are **plain SQL files** in `src/lib/db/migrations/pg/` (0000–0035, journal
+in `meta/_journal.json`), applied by `pnpm db:migrate` (or the Helm pre-upgrade Job /
+migrate-on-boot locally).
+
+Two operational lessons are baked into the current process:
+
+1. **The journal is the source of truth — verify it.** At one point the journal stopped
+   at 0021 while SQL files existed through 0029: eight migrations silently never ran,
+   surfacing as runtime errors like `column model_allow_list does not exist`. The fix was
+   appending the missing journal entries; the lesson is to check
+   `SELECT * FROM drizzle.__drizzle_migrations` against the journal when a "missing
+   column" appears in a deployed environment.
+2. **`drizzle-kit generate` is currently broken** for this repo — the meta snapshots have
+   a parent-pointer collision. Until snapshots are regenerated, migrations are
+   **hand-written SQL + a hand-appended journal entry** (the 0030 pattern). See the
+   [migration how-to](/docs/development/migrations).
+
+## docker-compose (local/prod-parity)
+
+`docker/compose.yml` runs app + Postgres (+ Redis). `pnpm docker-compose:up` builds and
+starts; CI smoke-runs compose so the path stays green.

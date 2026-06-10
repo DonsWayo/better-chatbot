@@ -1,0 +1,104 @@
+---
+title: Desktop app
+description: The Electron thin client — frameless chrome, splash, asafe:// deep links, the CDP testing workflow, and the local MCP bridge roadmap.
+---
+
+The desktop app (`desktop/`, Wave 10, ADR-0010 — **Electron, not Tauri**) is a **thin
+client**: it loads the exact same Next.js web UI served at `ASAFE_APP_URL`. There is no UI
+fork — feature parity with the web is automatic. The web UI can detect it via
+`window.asafeDesktop.isDesktop === true`.
+
+```
+┌────────────────────────────────────────────────┐
+│  Electron BrowserWindow                         │
+│  ┌──────────────────────────────────────────┐  │
+│  │  Next.js web UI  (loaded from APP_URL)   │  │
+│  └──────────────────────────────────────────┘  │
+│  main.ts  ←── IPC ──→  preload.ts (contextBridge)
+└────────────────────────────────────────────────┘
+```
+
+## Native niceties
+
+- **Frameless chrome** on macOS/Windows (`framelessOptions()` in `desktop/src/main.ts`) —
+  the Claude-Desktop "calm" look; Linux keeps the native frame because frameless UX is
+  inconsistent across window managers.
+- **Splash window** (`desktop/src/splash.ts`): the main window stays hidden until
+  ready-to-show *and* a minimum splash duration has elapsed — no white flash.
+- Persistent window size/position, native application menu, single-instance lock (a
+  second launch focuses the existing window), auto-update from an internal feed
+  (`ASAFE_UPDATE_URL`; disabled when unset).
+
+## SSO
+
+Enterprise SSO is handled by the web app's existing auth flow; the desktop defers to it.
+Cross-origin IdP redirects are intercepted (`setWindowOpenHandler` + `will-navigate`) and
+opened in the **system browser**; after the IdP callback the BrowserWindow reloads the
+authenticated UI. A seamless `asafe://auth/callback?code=…` deep-link PKCE flow is the
+planned upgrade (requires `state` validation and Security review).
+
+## asafe:// deep links
+
+The app registers the `asafe://` custom protocol; the OS activates the app and `main.ts`
+relays the URL to the renderer via the preload bridge (`onDeepLink` listener). Current and
+planned uses:
+
+| Link | Purpose |
+|---|---|
+| `asafe://auth/callback?code=…` | SSO deep-link callback (planned). |
+| `asafe://chat/<id>` | "Continue on desktop" teleport/handoff chip — free because state is server-side Postgres. |
+| `asafe://agent/run?agentId=…&prompt=…` | Assign-from-anywhere: Teams/Outlook/intranet links launching pre-filled sessions (roadmap). |
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `ASAFE_APP_URL` | `http://localhost:3000` | The web app to load; also the base for the opencode gateway. |
+| `ASAFE_UPDATE_URL` | unset | electron-updater feed; auto-update disabled when unset. |
+| `ASAFE_DESKTOP_OPENCODE` | unset (disabled) | `1` opts in to [governed coding](/docs/desktop/governed-coding). Default deny per ADR-0010. |
+| `ASAFE_OPENCODE_BIN` | PATH lookup | Absolute path to the `opencode` binary. |
+| `ASAFE_SESSION_TOKEN` | unset | User's session token, passed to the opencode server for gateway auth. |
+| `ASAFE_CDP_PORT` | `9222` in dev | CDP port for automated testing (never auto-enabled in packaged builds). |
+
+## Testing workflow (Electron MCP over CDP)
+
+In development the app exposes a Chrome DevTools Protocol endpoint (port 9222,
+auto-enabled when not packaged) so AI tooling can drive it — the desktop equivalent of
+Playwright MCP on web. The team uses `@laststance/electron-mcp-server` (~44 granular
+`electron_*` tools: screenshot, click, fill, wait, eval, logs, storage):
+
+```bash
+claude mcp add electron --scope user -e SECURITY_LEVEL=development -- \
+  npx -y @laststance/electron-mcp-server@latest
+```
+
+Start the desktop app in dev, then drive it (`electron_take_screenshot`,
+`electron_click_by_text`, `read_electron_logs`, …) — the MCP auto-discovers the app on
+ports 9222–9225. For packaged-build e2e, set `ASAFE_CDP_PORT=9222` explicitly.
+
+## Local MCP bridge (roadmap)
+
+The differentiator vs web: **bridging local stdio MCP servers** (filesystem, Kubernetes,
+constrained shell) into the chat session — the Claude Desktop model, scaffolded in
+`desktop/src/mcp-bridge.ts` but **not yet implemented**. The
+[transport policy](/docs/mcp#transport-policy-cloud-is-remote-only) reserves stdio for
+exactly this surface.
+
+**ADR-0010 security gates — non-negotiable before any local-execution code ships:**
+
+1. **Entitlement check** (ADR-0009): default-deny; only users/teams granted
+   `desktop:local-mcp` can activate the bridge.
+2. **Per-action user consent**: a native dialog shows tool name, arguments, and impact
+   before *every* local execution (excessive-agency control).
+3. **Guardrail filtering**: tool inputs/outputs pass the
+   [DLP layer](/docs/governance/guardrails) before reaching the agent.
+4. **Audit logging**: every local invocation logged centrally (team, user, tool, args
+   hash, outcome).
+5. **Formal Security review** of the local execution model.
+
+The blueprint adds a sequencing rule: a **signed, server-distributed policy plane ships
+before the bridge** — Electron pulls a signed policy document (allowed stdio servers,
+filesystem roots, egress rules) that local config can never widen, enforced in the bridge
+process itself; `.mcpb` manifests, no sideloading. Two architecture options are recorded
+(loopback gateway over authenticated tunnel vs local companion process); the decision is
+made at build time in ADR-0010.

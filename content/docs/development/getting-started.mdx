@@ -1,0 +1,68 @@
+---
+title: Getting started
+description: Local setup, the daily commands, and the stack conventions that keep the fork close to upstream.
+---
+
+## Setup
+
+```bash
+pnpm install                 # postinstall generates helper files
+cp .env.example .env         # or: pnpm initial:env
+pnpm docker:pg               # local Postgres (or point POSTGRES_URL anywhere)
+pnpm db:migrate              # apply SQL migrations
+pnpm dev                     # Next.js on http://localhost:3000
+```
+
+Required minimum env: `POSTGRES_URL`, `BETTER_AUTH_SECRET`, `OPENROUTER_API_KEY` — see the
+[env reference](/docs/operations/environment-variables). Useful extras:
+
+```bash
+pnpm admin:create            # create a super admin user
+pnpm worker:agents           # the detached agent worker (routines/autopilot)
+pnpm docker-compose:up       # full local stack (app + Postgres [+ Redis])
+```
+
+## Daily commands
+
+| Command | What |
+|---|---|
+| `pnpm check` | The full gate: `lint:fix` (Biome) + `check-types` (tsc) + `test` (Vitest). |
+| `pnpm test` / `pnpm test:watch` | Unit tests ([philosophy](/docs/development/testing)). |
+| `pnpm test:e2e` | Playwright (seed users with `pnpm test:e2e:seed`). |
+| `pnpm db:migrate` | Apply migrations ([how-to](/docs/development/migrations)). |
+| `pnpm lint:fix` / `pnpm format` | Biome lint/format. |
+
+## Conventions (do not introduce new tooling)
+
+- **TypeScript strict**, no `any`. Zod v4 for validation; request/response schemas in
+  `src/types/` (`app-types/*` alias).
+- **Drizzle + Postgres** — all schema changes in the single `src/lib/db/pg/schema.pg.ts`.
+- **Zustand** for state, **SWR** for client data fetching, **shadcn/Radix + Tailwind v4**
+  for UI (one kit; follow the [design language](/docs/design-language)).
+- **AI SDK v5 only**; inference through OpenRouter (ADR-0001).
+- **Server Actions vs routes** — read [the mandatory rule](/docs/development/server-actions-vs-routes)
+  before adding any endpoint.
+- **Stay close to upstream**: prefer additive modules over editing core files so upstream
+  `better-chatbot` updates keep merging; keep unavoidable core diffs minimal and
+  commented. Retain the upstream MIT license/attribution.
+- **No secrets in code** — `.env.example` is the contract; never log tokens or PII.
+- **Observability**: new request paths emit metrics/traces to the existing
+  Prometheus/Sentry stack.
+
+## Repository tour
+
+```text
+src/app/(chat)/        # the user surface: chat, runs, triage, workflows, agents
+src/app/(auth)/        # sign-in/up
+src/app/admin/…        # operator surface (users, teams, MCP, flags, compliance)
+src/app/api/           # routes: chat stream, runs, compliance, metrics, health, hooks
+src/lib/ai/            # models, routing, budget, guardrails, compression, mcp, workflow, tools
+src/lib/agent-platform/# sessions, worker, approvals, autonomy, scheduler, revisions
+src/lib/admin/         # model policy, user grants, mcp catalog, audit, teams
+src/lib/compliance/    # audit/gdpr/aup
+src/lib/observability/ # metrics, slo, kill switch
+src/lib/teamspaces/    # folders + shared threads
+deploy/                # Helm chart + k8s manifests
+desktop/               # the Electron thin client (own package)
+docs/                  # blueprints, ADRs, wave specs, design docs (sources for these pages)
+```

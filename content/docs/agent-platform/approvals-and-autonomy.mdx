@@ -1,0 +1,65 @@
+---
+title: Approvals & autonomy
+description: The human approval gate and the interactive / plan / autopilot ladder, resolved through org → team → user layering.
+---
+
+## The approval gate
+
+Workflows can contain an **approval node**. When the executor reaches one it:
+
+1. writes an `approval_request` row (the payload is what the approver sees — a numbered
+   plan, a diff, a summary),
+2. sets the session to `awaiting_approval`,
+3. **releases the worker** — zero compute is consumed while waiting.
+
+An approval decision (a Server Action in `src/app/api/agent-platform/approvals`) re-queues
+the session, and any worker resumes it from the
+[step checkpoint](/docs/agent-platform/sessions-and-steps#agent_step--resumable-checkpoints).
+
+`approval_request` columns that matter (`src/lib/db/pg/schema.pg.ts`):
+
+| Column | Meaning |
+|---|---|
+| `payload` | Plan / diff / payload summary shown to the approver. |
+| `requestedRole` | Who may decide: `owner` \| `team-admin` (default) \| `admin`. |
+| `status` | `pending` \| `approved` \| `rejected`. |
+| `decidedBy`, `reason`, `decidedAt` | The decision audit. |
+
+The lifecycle lives in `src/lib/agent-platform/approvals.ts` (`createApprovalRequest`,
+`markSessionAwaitingApproval`, `decideApproval`, `canDecide`,
+`listPendingApprovalsForUser`). Approvals are **social**: `requestedRole: "team-admin"`
+means any admin of the session's team can approve — pending requests surface in web
+[Triage](/docs/agent-platform/runs-and-triage) (and, on the roadmap, the desktop "My Work"
+tray).
+
+## Autonomy: interactive / plan / autopilot
+
+Every session runs in one of three modes (`src/lib/agent-platform/autonomy.ts`):
+
+| Mode | Behavior |
+|---|---|
+| `interactive` | The default and the floor for plain users — a human is in the loop for every side effect. |
+| `plan` | A plan-then-approve flow: an approval node is auto-injected before side-effecting tools. |
+| `autopilot` | Detached, unattended execution — only grantable once the team's **governance floor** exists (budget hard-stop on, kill-switch coverage, guardrail severity cap). |
+
+### One resolver, the entitlements pattern
+
+Autonomy is resolved through the **same org → team → user layering** as
+[model entitlements](/docs/governance/model-entitlements) — deliberately *not* a parallel
+permission system. Caps are stored as app-settings keys:
+
+- `org_autonomy_cap` — the org-wide ceiling (default `interactive`),
+- `team_autonomy_cap:<teamId>` — per-team cap,
+- `user_autonomy_cap:<userId>` — per-user cap.
+
+`resolveAutonomyCap` walks the layers and `clampMode` clamps a requested mode to the
+effective cap — a user asking for `autopilot` in a team capped at `plan` runs in `plan`.
+The ordering is `interactive (0) < plan (1) < autopilot (2)`; the most specific layer
+wins, but **never above the org ceiling**.
+
+## Cost preview
+
+Before any expensive run (multi-agent, Best-of-N, scheduled autopilot), the UI states the
+cost plainly — "~$0.40 · charged to Engineering budget" — wired to
+[`src/lib/ai/budget`](/docs/governance/budgets-and-usage). Cost transparency before
+consequence is both a [design rule](/docs/design-language) and a governance control.

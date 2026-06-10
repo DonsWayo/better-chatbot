@@ -1,0 +1,69 @@
+---
+title: Server Actions vs API routes
+description: The mandatory decision matrix — violations introduce silent duplication and must be caught in review.
+---
+
+This is the most important Next.js architectural rule in the codebase (`docs/CLAUDE.md`).
+
+## Decision matrix
+
+| Scenario | Pattern |
+|---|---|
+| Internal UI mutation (button, form, dialog) | **Server Action only** — no route. |
+| Data fetching in a client component (SWR/useEffect) | **Route only** — no action. |
+| Data fetching in a server component | **Direct lib call** — no route, no action. |
+| Streaming response (chat, agent, workflow execute) | **Route only**. |
+| File download (GDPR export, CSV) | **Route only**. |
+| External consumer (webhook, cron, third-party) | **Route + Action** — both call the same shared lib function. |
+
+## The shared-code pattern
+
+When both a route and an action must exist, neither holds the logic:
+
+```ts
+// 1. Shared logic in lib/ (no "use server", no auth)
+// lib/admin/feature-flags.ts
+export async function upsertFeatureFlag(name: string, enabled: boolean) { /* ... */ }
+
+// 2. Route handler — thin auth wrapper + HTTP shape
+// app/api/admin/feature-flags/route.ts
+export async function POST(req: Request) {
+  const session = await getSession();
+  if (session?.user.role !== "admin")
+    return Response.json({ error: "Forbidden" }, { status: 403 });
+  const { name, enabled } = await req.json();
+  await upsertFeatureFlag(name, enabled);
+  return Response.json({ name, enabled });
+}
+
+// 3. Server Action — thin auth wrapper + revalidation
+// app/api/admin/actions.ts  ("use server" at top)
+export async function toggleFeatureFlagAction(name: string, enabled: boolean) {
+  const session = await getSession();
+  if (session?.user.role !== "admin") throw new Error("Forbidden");
+  await upsertFeatureFlag(name, enabled);
+}
+```
+
+## Not allowed
+
+- A client component calling `fetch("/api/…")` for a mutation that has (or should have) a
+  Server Action equivalent.
+- A route handler duplicating logic already in an `actions.ts` file (or vice versa)
+  without extracting a shared lib function.
+- A new `route.ts` for an internal-UI-only mutation — add to `actions.ts` instead.
+
+## SWR + Server Actions
+
+SWR needs a URL key, so **GET routes for client-side data fetching are correct and stay**
+(e.g. `GET /api/runs` behind the [Runs rail](/docs/agent-platform/runs-and-triage)).
+After a Server Action mutation, call `mutate("/api/the-route")` to invalidate the SWR
+cache — do not re-fetch inside the action.
+
+## Worked example in the codebase
+
+The [agent platform](/docs/agent-platform) follows the rule end to end: approvals,
+publishes, and schedule toggles are Server Actions (`src/app/api/agent-platform/*-actions.ts`);
+the runs list/detail for SWR are GET routes (`src/app/api/runs`); the external cron tick
+is a secret-authenticated route (`/api/hooks/agent-tick`); and all of them call the same
+`src/lib/agent-platform/` functions.

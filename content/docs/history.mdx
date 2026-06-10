@@ -1,0 +1,41 @@
+---
+title: Project history (waves)
+description: The twelve delivery waves that took the better-chatbot fork to a governed enterprise platform.
+---
+
+The build was strictly phased into **waves** (`docs/wave-*.md`), each self-contained with
+goals, tasks, and acceptance criteria. The MVP cut line was the end of Wave 3; Waves 7 and
+8 are **GA gates** — as an EU employer-deployer, A-SAFE does not roll out company-wide
+without them.
+
+| Wave | One-liner |
+|---|---|
+| **1 — Foundation & fork** | Stand up the forked `better-chatbot` as `asafe-ai`, self-hosted, talking to models through OpenRouter, usable by a pilot group. |
+| **2 — Intelligent routing** | Task-aware routing chooses the model per request ("Auto" by default), with safe fallback to explicit user choice. |
+| **3 — Teams, budgets & usage** *(MVP cut line)* | Teams, enforceable monthly team budgets, per-request usage metering, self-serve usage views, admin spend dashboard. |
+| **4 — Identity & admin** | Microsoft Entra SSO for ~800 employees, claim → team/role auto-assignment, per-team model allow-lists and admin controls. |
+| **5 — Company MCP & tools** | A curated central registry of approved MCP servers with per-team access control — see [MCP](/docs/mcp). |
+| **6 — Company knowledge (RAG)** | pgvector embeddings + hybrid retrieval over approved company documents, with citations (ADR-0007). |
+| **7 — Security & guardrails** *(GA gate)* | DLP/PII redaction, secret blocking, prompt-injection and system-prompt-leakage defenses at the middleware seam — see [Guardrails](/docs/governance/guardrails). |
+| **8 — Compliance, audit & lifecycle** *(GA gate)* | Complete audit trail, retention, GDPR data-subject handling, EU AI Act deployer posture, SCIM lifecycle — see [Audit & compliance](/docs/governance/audit-and-compliance). |
+| **9 — Productivity & collaboration** | Shared prompt library, shared agents catalog, feedback, Spanish + English UI, personalization. |
+| **10 — Desktop** | The Electron thin client (ADR-0010 superseded the original Tauri plan) — see [Desktop](/docs/desktop). |
+| **11 — Compression & performance** | Context-compression middleware cascade (ADR-0011) to cut token cost at scale. |
+| **12 — Production & rollout** | Hardening, SLOs, kill switch, observability, the EKS hosting decision, GA sign-off (`docs/w12-ga-signoff.md`). |
+
+## After the waves: the agent platform
+
+Post-GA work follows `docs/next-gen-platform-blueprint.md` and
+`docs/design/agent-platform.md`, in build order:
+
+```
+#21 session + step + Runs drawer        ← the spine
+ ├─ #24 approval node + autonomy resolver + cost preview
+ ├─ #22 schedules + SKIP LOCKED worker + /schedule + Triage
+ ├─ #19 revisions/publish gates + NL workflow generation
+ ├─ #17 folders/teamspaces → snapshots → Electric → multiplayer
+ └─ #25 opencode desktop sessions surface here too
+```
+
+All of #21, #24, #22, #19 and teamspaces phase 1 (#17) are landed — they are documented
+under [Agent platform](/docs/agent-platform) and [Collaboration](/docs/collaboration/visibility).

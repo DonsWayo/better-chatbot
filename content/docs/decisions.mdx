@@ -1,0 +1,42 @@
+---
+title: Decision records (ADRs)
+description: Summaries of the architecturally significant decisions, with links to the full records in docs/adr/.
+---
+
+The full records live in the repository under
+[`docs/adr/`](https://github.com/cgoinglove/better-chatbot/tree/main/docs/adr). An ADR is
+written when a decision is cross-cutting, hard to reverse, touches the schema or the core
+request path, or needs Security/Legal/IT/Finance sign-off (ADR-0000).
+
+| ADR | Decision (one paragraph) | Status |
+|---|---|---|
+| **0000 — Record architecture decisions** | Lightweight Markdown ADRs in `docs/adr/`, one per decision, only for architecturally significant choices. | Accepted |
+| **0001 — Inference posture & transport** | Route *all* inference through **OpenRouter with zero-data-retention**, expose a short approved model list, and keep the `customModelProvider.getModel` seam transport-agnostic so a move to direct EU providers (Azure OpenAI EU, Bedrock EU, Vertex EU) is config, not a rewrite. Posture re-opened with Security at Wave 4. | Proposed |
+| **0002 — Team & tenancy model** | Custom `team` / `team_member` tables with a `team_id` FK threaded into every team-scoped table; extend the existing permission model with `team-admin` rather than adopting the Better Auth organization plugin. v1: one home team per user, resolved once per request. | Proposed |
+| **0003 — Budget enforcement & cost accounting** | `usage_event` + `team_budget` + `model_price` tables; **our own price table is the cost source of truth** (OpenRouter's number is a cross-check). Soft-warn at 80%, hard-block at 100%, per-team `allow_overage` override. | Proposed |
+| **0004 — Intelligent routing** | A **deterministic rules engine** (task class + tools/vision/length + team allow-list → model + rationale string, both recorded). "Auto" is the default picker entry; manual choice bypasses routing; an LLM-classifier tier stays behind a flag. | Proposed |
+| **0005 — Enterprise SSO & identity lifecycle** | **Microsoft Entra ID via OIDC** through Better Auth (not SAML); auto-provision on first login with group/department-claim → team mapping; SCIM 2.0 (or IdP webhooks) for joiner/mover/leaver; break-glass local admin retained. | Accepted |
+| **0006 — Hosting & EU data residency** | **AWS EKS from day one** (Helm chart, ALB ingress, HPA, migration Job); local dev stays docker-compose; database is self-managed cloud-native Postgres on EKS (EU) with an AI-native image (pgvector + pgvectorscale + timescaledb) — not RDS/Aurora/Neon/Vercel. | Accepted |
+| **0007 — RAG / pgvector architecture** | pgvector ≥ 0.8 with an `embedding` table scoped by `team_id` + visibility, HNSW cosine index, hybrid retrieval (vector + SQL permission filter with iterative scans). Embedding model hosted + multilingual; **dimension pinned at creation** (currently `openai/text-embedding-3-small`, 1536-dim). | Proposed |
+| **0008 — Guardrails & DLP placement** | Guardrails as **in-app middleware at the `wrapLanguageModel` seam**: input stage (PII/secret/proprietary-code detection with redact/mask/block/warn per team) before provider egress, output stage (content safety, system-prompt-leakage) before the user. Tool/MCP/RAG outputs treated as untrusted. | Proposed |
+| **0009 — Fine-grained entitlements** | A capability model resolved per request, layering most-specific-wins: `global defaults ⊕ team policy ⊕ user override`; privileged capabilities default-deny for plain users. Taxonomy spans `model.select`/`model.allow`, tools, MCP, multimodal, workflows/agents. | Accepted |
+| **0010 — Desktop: Electron** | **Electron, not Tauri** (supersedes the Wave 10 Tauri spec). v1 = thin client + native niceties; v2 = local stdio MCP bridge gated on entitlements, guardrails, per-action consent, audit, and a formal Security review. See [Desktop](/docs/desktop). | Accepted |
+| **0011 — Context compression** | A three-strategy cascade as `LanguageModelMiddleware` (`request → compression → guardrails → model`): tool-output truncation → old-assistant truncation → history drop, with aggressiveness tied to the team's guardrail posture. | Accepted |
+| **0012 — Production SLOs, kill switch & rollout** | SLO targets, the org-wide [kill switch](/docs/operations/observability#kill-switch), and the staged rollout plan to GA. | Accepted |
+
+## Deliberately deferred
+
+Real choices that are low-risk to defer (they don't touch the schema or core request
+path): the compression engine implementation (TS vs sidecar — resolved as TS in Wave 11),
+the LLM routing-classifier tier, desktop packaging details, and self-hosted embeddings
+(`bge-m3` on vLLM, post-GA).
+
+## The platform decision log
+
+From the next-gen blueprint (`docs/next-gen-platform-blueprint.md`):
+
+1. **Session is the unit of value**, persisted in Postgres with checkpointed steps, chaos-tested.
+2. **Governance before autonomy, GitHub-style** — every autonomy feature gated on its floor; the Compliance API ships early to earn IT sign-off.
+3. **One entitlement resolver for everything** — org → team → user, no parallel permission systems.
+4. **Adoption beats sophistication** — role packs, `/schedule`, a quarterly non-engineering hero routine before infrastructure sophistication.
+5. **Cut Electric/desktop-bridge before Compliance API/role packs** under schedule pressure.

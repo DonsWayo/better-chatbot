@@ -1,0 +1,59 @@
+---
+title: Budgets & usage
+description: Per-team monthly budgets, per-request usage metering, and cost preview before expensive operations.
+---
+
+Budget governance (Wave 3, ADR-0003) is what made the platform safe to expand: 100% of
+inference spend is attributed to a team and a user, and every team has an enforceable
+monthly budget.
+
+## The flow
+
+`src/lib/ai/budget` exposes three primitives used around every inference call:
+
+| Function | When | What |
+|---|---|---|
+| `checkBudget` | **Before** inference | Returns `{ allowed }` or a 402-style reason naming who to contact. |
+| `recordUsage` | **After** inference (fire-and-forget) | Inserts a `usage_event` row and increments the team budget's used amount; also feeds the `budgetUtilizationGauge` Prometheus metric. |
+| `estimateCostUsd` | Anytime | Computes cost from a per-model price table (USD per 1M prompt/completion tokens, with a conservative default for unknown models). |
+
+## Data model
+
+- **`usage_event`** — one row per request: user, team, model, input/output tokens,
+  computed cost, task class (from [routing](/docs/architecture#request-path-chat)), thread
+  ref, timestamp. This is the ledger behind the Usage dashboard and the
+  [Compliance usage API](/docs/governance/audit-and-compliance#compliance-api).
+- **`team_budget`** — team, period (calendar month, UTC), limit, used amount, currency,
+  and an `allow_overage` flag.
+
+Per ADR-0003, **the platform's own price table is the source of truth** for cost;
+OpenRouter's reported cost is captured alongside as a cross-check — so the ledger keeps
+working if transport ever moves to direct providers.
+
+## Enforcement policy
+
+Configurable per team, with safe defaults:
+
+- **Soft warn at 80%** of the monthly budget — banner + response metadata.
+- **Hard block at 100%** — the request is refused with a clear message naming who to
+  contact.
+- **`allow_overage`** converts the block into a logged warning for teams that need it.
+
+Budget hard-stop is also a **governance floor**: a team cannot be granted
+[autopilot autonomy](/docs/agent-platform/approvals-and-autonomy) until its hard-stop is on, and
+the blueprint's policy floors include "budget hard-stop pauses team automations".
+
+## Cost preview
+
+Before any expensive operation — multi-agent runs, Best-of-N, scheduled autopilot — the UI
+shows the estimate and the charged budget up front: *"~$0.40 · charged to Engineering
+budget"*. Agent sessions carry a live `costSoFar` meter that rolls up through the
+[sub-agent tree](/docs/agent-platform/sessions-and-steps), so the Runs rail always shows
+what a run has cost so far.
+
+## Self-serve visibility
+
+Users see their own usage and the remaining team budget without asking anyone; admins get
+an org-wide spend dashboard and the monthly CSV export that anchors the
+cost-substitution pitch. Aggregates for auditors are served by
+[`GET /api/admin/compliance/usage`](/docs/governance/audit-and-compliance#compliance-api).

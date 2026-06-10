@@ -1,0 +1,69 @@
+---
+title: Governed coding (opencode)
+description: The embedded opencode server — a local coding agent whose model calls route through asafe-ai's gateway.
+---
+
+Per the platform blueprint, asafe-ai does **not** build code/PR agents — engineering uses
+its native tooling. The one exception is the desktop: it embeds the open-source
+[opencode](https://opencode.ai) server (`@opencode-ai/sdk`) as a **governed coding
+surface**. Engineers get a local coding agent on their own machine, but its **model calls
+route through the asafe OpenRouter gateway** — so coding sessions inherit the same
+[model entitlements](/docs/governance/model-entitlements),
+[budgets](/docs/governance/budgets-and-usage), and
+[audit trail](/docs/governance/audit-and-compliance) as chat. The desktop never holds
+provider API keys.
+
+> **Status:** lifecycle management is implemented (`desktop/src/opencode-manager.ts`) and
+> **disabled by default** (ADR-0010). There is no chat/coding UI yet, and the web-side
+> gateway endpoint is documented contract, not code.
+
+## How it works
+
+```
+Electron main process (opencode-manager.ts)
+  └─ gate check: ASAFE_DESKTOP_OPENCODE=1  AND  policy.allowSpawn   ← default deny
+  └─ locates `opencode` (ASAFE_OPENCODE_BIN, else PATH) — "unavailable" if absent
+  └─ spawns `opencode serve --port 0 --hostname 127.0.0.1`
+       env OPENCODE_CONFIG_CONTENT = scoped provider config (never touches user config):
+         provider.asafe → @ai-sdk/openai-compatible
+           baseURL = ${ASAFE_APP_URL}/api/gateway/openrouter
+           apiKey  = {env:ASAFE_SESSION_TOKEN}
+  └─ parses the chosen port from stdout → endpoint http://127.0.0.1:<port>
+  └─ crash restart cap (3), SIGTERM on app quit (SIGKILL after 5s)
+```
+
+The renderer controls it via `window.asafeDesktop.opencode.status() / .start() / .stop()`.
+Lifecycle states: `stopped` → `starting` → `running`, plus `unavailable` (gate closed or
+binary missing — a helpful message, never a throw) and `error` (spawn failure or restart
+cap exhausted).
+
+## Gateway contract (web side — to be implemented)
+
+| Aspect | Contract |
+|---|---|
+| Endpoint | `${ASAFE_APP_URL}/api/gateway/openrouter` |
+| Protocol | OpenAI-compatible chat completions (`POST <baseURL>/chat/completions`, streaming SSE) — opencode's provider plugin is `@ai-sdk/openai-compatible`. |
+| Auth | `Authorization: Bearer <ASAFE_SESSION_TOKEN>` — the user's **web session token**, not a provider key. The gateway validates the session. |
+| Models | Resolved server-side through the [layered entitlements](/docs/governance/model-entitlements); non-entitled models are rejected. The desktop ships an empty model map until the gateway exposes a listing. |
+| Budgets/audit | Usage metered against the same org/team budgets as chat (ADR-0003); audit events carry `originSurface: "opencode"` — and opencode runs are `agent_session` rows of kind `opencode`, so they appear in the [Runs rail](/docs/agent-platform/runs-and-triage) too. |
+
+## Security posture
+
+- **Disabled by default** — without `ASAFE_DESKTOP_OPENCODE=1` the manager is inert:
+  nothing is probed, spawned, or written.
+- The env opt-in is **interim**: a signed, server-distributed policy plane replaces it
+  before GA (`defineOpencodePolicy()` is the seam). The env var then becomes a local
+  opt-in ANDed with the signed policy — never a bypass.
+- The opencode server binds **loopback only** (`127.0.0.1`, OS-assigned port).
+- Governance config is injected via `OPENCODE_CONFIG_CONTENT` (highest-precedence runtime
+  override) — the user's global/project opencode config is never modified.
+
+## Enabling it (dev only)
+
+```bash
+# In desktop/:
+ASAFE_DESKTOP_OPENCODE=1 \
+ASAFE_OPENCODE_BIN=/usr/local/bin/opencode \
+ASAFE_APP_URL=http://localhost:3000 \
+pnpm dev
+```

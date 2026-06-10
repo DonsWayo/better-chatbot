@@ -1,0 +1,85 @@
+---
+title: Audit & compliance
+description: Agent-attributed audit logging, the read-only Compliance API, and the Acceptable Use Policy gate.
+---
+
+Wave 8 made the platform legally deployable to ~800 EU employees: a complete audit trail,
+defined retention, GDPR data-subject handling, and EU AI Act deployer posture. The code
+lives in `src/lib/admin/audit.ts`, `src/lib/compliance/`, and the routes below.
+
+## Agent-attributed audit (`actorType`)
+
+Every audit row carries:
+
+- **`actorType`** — `human` | `agent`: whether a person or an autonomous execution caused
+  the event (the single highest-compliance-value migration in the blueprint).
+- **`agentSessionId`** — links agent-caused events back to their
+  [session transcript](/docs/agent-platform/runs-and-triage#runsid--permanent-transcripts).
+
+Session starts, steps, approvals, and steers are all logged; admin actions (entitlement
+changes, MCP catalog edits, budget changes) land in the same trail. Retention is enforced
+by the `audit-purge` cron route (`src/app/api/cron/audit-purge`).
+
+## Compliance API
+
+Read-only REST endpoints for auditors and SIEM export — **admin-only** (401 without a
+session, 403 without the admin role). All date params are ISO strings.
+
+### `GET /api/admin/compliance/usage`
+
+Aggregated usage events for auditors.
+
+| Query param | Meaning |
+|---|---|
+| `from`, `to` | ISO date range (400 on invalid dates). |
+| `teamId`, `userId` | Optional filters. |
+
+```json
+{
+  "byModel": [{ "model": "...", "requests": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0 }],
+  "byTeam":  [{ "teamId": "...", "teamName": "...", "requests": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0 }],
+  "total":   { "requests": 0, "inputTokens": 0, "outputTokens": 0, "costUsd": 0 }
+}
+```
+
+### `GET /api/admin/compliance/audit`
+
+The audit trail, paginated.
+
+| Query param | Meaning |
+|---|---|
+| `from`, `to` | ISO date range. |
+| `userId`, `teamId`, `eventType`, `agentSessionId` | Optional filters. |
+| `actorType` | `human` \| `agent` (400 on any other value). |
+| `limit` | Default 100, max 1000. |
+| `offset` | Default 0. |
+
+Response: `{ "items": [...], "total": n, "limit": n, "offset": n }`.
+
+### `GET /api/admin/compliance/export`
+
+The same filters as `/audit`, streamed as a **CSV attachment**
+(`asafe-compliance-<from>-<to>.csv`) with columns
+`id, created_at, actor_type, agent_session_id, user_id, user_email, team_id, event_type, details`.
+The export is capped (`COMPLIANCE_EXPORT_MAX_ROWS`); when the cap is hit a trailing
+`# truncated` comment row is appended so the consumer knows the window was larger.
+
+## AUP gate
+
+Every user must accept the **Acceptable Use Policy** before first use
+(`src/lib/compliance/aup.ts`, `src/app/api/compliance/aup`):
+
+- `CURRENT_AUP_VERSION` (currently `"1.0"`) is versioned — **bumping the string forces
+  re-acceptance** for everyone after a policy update.
+- `POST /api/compliance/aup` records acceptance (unique per user + version);
+  `GET` reports the current state. Acceptance checks are cached for 60s.
+- The AUP carries the EU AI Act Art. 50 transparency notice (you are interacting with AI)
+  and the explicit boundary that the tool must not be used for high-risk employment
+  decisions (hiring/performance/disciplinary).
+
+## GDPR
+
+`src/lib/compliance/gdpr.ts` backs data-subject handling (access/export/erasure); data
+residency is EU-only by [hosting decision](/docs/operations/deployment) (ADR-0006), and
+the inference path is zero-data-retention OpenRouter (ADR-0001). Identity lifecycle
+(joiner/mover/leaver) is owned by the SSO layer (ADR-0005).

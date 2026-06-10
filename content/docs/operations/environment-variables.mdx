@@ -1,0 +1,77 @@
+---
+title: Environment variables
+description: The env contract (.env.example) — inference, database, SSO, MCP, storage, observability, deployment.
+---
+
+`.env.example` is the contract; new env vars must be documented there. Sensitive values
+live in the `asafe-ai-secrets` Secret on EKS (synced from AWS Secrets Manager).
+
+## Inference (ADR-0001)
+
+| Variable | Notes |
+|---|---|
+| `OPENROUTER_API_KEY` | **The only inference key required** — all chat inference routes through OpenRouter. |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `XAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY`, `OLLAMA_BASE_URL` | Optional, multimodal-only (dormant image-gen/voice features) — **not** the chat path. Leave unset for the pilot. |
+| `E2E_DEFAULT_MODEL` | Optional default model (`provider/model`). |
+
+## Database & auth
+
+| Variable | Notes |
+|---|---|
+| `POSTGRES_URL` | Postgres connection string (`pnpm docker:pg` for local). |
+| `BETTER_AUTH_SECRET` | Generate with `npx @better-auth/cli@latest secret`. |
+| `BETTER_AUTH_URL` | The URL the app is reached at. |
+
+## SSO & identity (ADR-0005, Wave 4)
+
+| Variable | Notes |
+|---|---|
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` / `MICROSOFT_TENANT_ID` | Microsoft Entra ID — the chosen enterprise SSO. |
+| `ASAFE_ENTRA_ADMIN_GROUP_IDS` / `ASAFE_ENTRA_EDITOR_GROUP_IDS` | Comma-separated Entra group object IDs mapped to roles. |
+| `ASAFE_DEFAULT_SSO_ROLE` | Role for new SSO users not matched by any group (`admin`\|`editor`\|`user`). |
+| `GITHUB_CLIENT_ID/SECRET`, `GOOGLE_CLIENT_ID/SECRET` | Optional social logins. |
+| `DISABLE_EMAIL_SIGN_IN`, `DISABLE_EMAIL_SIGN_UP`, `DISABLE_SIGN_UP` | Sign-in surface hardening. |
+
+## MCP ([transport policy](/docs/mcp))
+
+| Variable | Notes |
+|---|---|
+| `MCP_ALLOW_LOCAL_SERVERS` | `true` permits stdio servers on a trusted single-user machine. Cloud stays remote-only. |
+| `DESKTOP_APP` | Set automatically by the Electron build — never set manually. |
+| `NOT_ALLOW_ADD_MCP_SERVERS` | `1` = catalog-only posture. |
+| `MCP_MAX_TOTAL_TIMEOUT` | Max MCP tool-call ms. |
+| `FILE_BASED_MCP_CONFIG` | File-based MCP config backend (default `false`). |
+| `REDIS_URL` | Optional — multi-instance MCP config sync. |
+
+## Tools, storage
+
+| Variable | Notes |
+|---|---|
+| `BRAVE_API_KEY` / `EXA_API_KEY` | Web search (`@web`) and URL content extraction. |
+| `FILE_STORAGE_TYPE` | `s3` (production default, ADR-0006) or `vercel-blob`. |
+| `FILE_STORAGE_S3_BUCKET` / `_REGION` / `_ENDPOINT` / `_FORCE_PATH_STYLE` / `_PUBLIC_BASE_URL` | S3 settings; AWS creds discovered via env/profile/IAM role (IRSA on EKS). |
+
+## RAG & performance
+
+| Variable | Notes |
+|---|---|
+| `ASAFE_EMBEDDING_MODEL` | Default `openai/text-embedding-3-small` (1536-dim, via OpenRouter). **The dimension is pinned in the schema** — changing it requires a migration + full re-embed (ADR-0007). |
+| `ASAFE_COMPRESSION_ENABLED` | Context-compression middleware toggle (ADR-0011). |
+| `ASAFE_RATE_LIMIT_RPM` | Chat requests per user per minute (default 60). |
+
+## Observability & operations
+
+| Variable | Notes |
+|---|---|
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` / `*_TRACES_SAMPLE_RATE` | Sentry; no-op when unset. |
+| `METRICS_AUTH_TOKEN` | Optional bearer token protecting [`/api/metrics`](/docs/operations/observability). |
+| `APP_VERSION` | Surfaced by `/api/health` and `/api/metrics`; set from the image tag in deploys. |
+| `ASAFE_KILL_SWITCH` | `1` = [kill switch](/docs/operations/observability#kill-switch) active, no DB round-trip. |
+| `ASAFE_CRON_SECRET` | Shared secret for `POST /api/hooks/agent-tick` (503 when unset). |
+| `AGENT_WORKER_INTERVAL_MS` | Worker tick interval (default 5000). |
+| `ASAFE_WORKER_ONESHOT` | `1` = run one tick and exit (bundle smoke test). |
+| `ASAFE_GUARDRAILS_ENABLED` | `"false"` disables [guardrails](/docs/governance/guardrails) (dev only). |
+| `DISABLE_DB_MIGRATE_ON_BOOT` | `true` on EKS app pods (the Helm Job migrates); unset locally → migrate-on-boot. |
+| `NEXT_STANDALONE_OUTPUT` | Build standalone output for the container image. |
+
+Desktop-specific variables are documented on the [Desktop page](/docs/desktop#environment-variables).

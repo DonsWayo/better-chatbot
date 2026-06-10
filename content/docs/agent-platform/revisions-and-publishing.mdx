@@ -1,0 +1,60 @@
+---
+title: Revisions & publishing
+description: Immutable agent/workflow versions, the review-gated publish lifecycle, and NL workflow generation.
+---
+
+## agent_revision — immutable versions
+
+Every published-or-drafted version of an agent (`conversational`) or workflow is one row
+in `agent_revision` (`src/lib/db/pg/schema.pg.ts`):
+
+| Column | Meaning |
+|---|---|
+| `kind` + `sourceId` | Polymorphic pointer to the agent/workflow definition (FK-less by convention). |
+| `version` | Monotonic per `(kind, sourceId)` — unique-indexed. |
+| `configSnapshot` | The **frozen full definition**: the agent row, or `{ workflow, nodes, edges }`. |
+| `status` | `draft` → `pending_review` → `published` → `archived`. |
+| `authorId`, `approvedBy`, `changelog` | Provenance + review audit. |
+| `teamIds[]`, `orgWide` | Multi-team visibility — the same pattern as the [MCP catalog](/docs/mcp/catalog). `null` teamIds = personal; org-wide is admin-only. |
+
+Two invariants:
+
+- **At most one `published` revision per `(kind, sourceId)`** — publishing v7 archives v6.
+- **[Sessions](/docs/agent-platform/sessions-and-steps) pin a revision** — in-flight runs
+  are never mutated by a publish; [routines](/docs/agent-platform/routines) choose pinned
+  vs track-latest-published.
+
+## Publish lifecycle
+
+<Mermaid
+  chart={`stateDiagram-v2
+    [*] --> draft : saveDraft
+    draft --> pending_review : submitForReview
+    pending_review --> published : approve (team owner / admin)
+    pending_review --> draft : reject
+    published --> archived : newer revision published
+`}
+/>
+
+Review is by team-owner/admin; **org-wide publish is admin-only** (the same curation gate
+as `company` visibility everywhere — see [Visibility](/docs/collaboration/visibility)).
+Mutations are Server Actions in `src/app/api/agent-platform/revision-actions.ts`; the
+logic lives in `src/lib/agent-platform/revisions.ts`.
+
+## NL workflow generation ("Cowork-lite")
+
+The chat tool `generate_workflow` (`src/lib/ai/tools/workflow-gen/generate-workflow.ts`)
+turns a natural-language description into a runnable workflow draft:
+
+1. The model emits graph JSON **constrained by a Zod schema of the existing node
+   vocabulary** (input / llm / condition / tool / http / template / output / approval).
+2. The graph is validated by the same `allNodeValidate` the visual builder uses
+   (`src/lib/ai/workflow/node-validate.ts`).
+3. The result is saved as a **draft revision** via `createDraftRevision` — then the React
+   Flow builder opens for visual editing and the normal publish flow applies.
+
+> **The model drafts; it never publishes.** Generation can only ever produce a `draft`
+> revision in the user's own scope — review gates are unskippable by construction.
+
+The `approval` node type pauses a run in Postgres until a human approves the numbered
+plan — see [Approvals & autonomy](/docs/agent-platform/approvals-and-autonomy).

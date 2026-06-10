@@ -1,0 +1,11 @@
+/*
+ * Docs-only stylesheet (imported by src/app/docs/layout.tsx, never by the
+ * app shell). We use fumadocs-ui's PRECOMPILED stylesheet rather than its
+ * Tailwind v4 source preset: the preset requires tailwindcss >= 4.3 (it
+ * relies on `inset-s-*` utilities) while this repo pins tailwindcss 4.1.x
+ * for the app. The compiled sheet is self-contained (no @apply/@theme), is
+ * route-scoped to /docs, keys dark mode off the `.dark` class set by the
+ * app's next-themes provider, and uses `--color-fd-*` variables that cannot
+ * collide with the app theme in src/app/globals.css.
+ */
+@import "fumadocs-ui/style.css";

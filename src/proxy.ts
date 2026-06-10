@@ -28,6 +28,7 @@ export const config = {
   matcher: [
     // asafe-ai: /api/health + /api/metrics must stay public (k8s probes + Prometheus scrape — ADR-0006).
     // asafe-ai: also exclude static brand/image assets so they load on the unauthenticated sign-in page.
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/auth|api/health|api/metrics|export|sign-in|sign-up|.*\\.(?:png|svg|jpg|jpeg|webp|gif|ico|mp4|webm|ogg)$).*)",
+    // asafe-ai: /docs (+ its /api/search index) is the platform documentation — readable without a session.
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/auth|api/health|api/metrics|api/search|docs|export|sign-in|sign-up|.*\\.(?:png|svg|jpg|jpeg|webp|gif|ico|mp4|webm|ogg)$).*)",
   ],
 };

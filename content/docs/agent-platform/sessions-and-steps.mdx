@@ -1,0 +1,87 @@
+---
+title: Sessions & steps
+description: The agent_session / agent_step spine — checkpointing, the SKIP LOCKED worker, and heartbeat reclaim.
+---
+
+## agent_session — one governed execution
+
+Every execution is a row in `agent_session` (`src/lib/db/pg/schema.pg.ts`):
+
+| Column | Meaning |
+|---|---|
+| `kind` | `workflow` \| `conversational` \| `opencode` |
+| `definitionId` | Polymorphic pointer into the agent/workflow tables (intentionally FK-less). |
+| `revisionId` | The **pinned immutable revision** this run executes. |
+| `teamId`, `userId` | Who runs it and which budget it charges. |
+| `originSurface` | `web` \| `desktop` \| `schedule` \| `webhook` \| `api` — powers Triage filtering and audit. |
+| `mode` | `interactive` \| `plan` \| `autopilot` — see [Approvals & autonomy](/docs/agent-platform/approvals-and-autonomy). |
+| `status` | `queued` → `running` → (`awaiting_approval` \| `paused`) → `completed` \| `failed` \| `cancelled` |
+| `costSoFar` | Live cost meter; rolls up through `parentSessionId`. |
+| `parentSessionId` | Sub-agent tree (self-reference). |
+| `heartbeatAt` | Worker-liveness stamp for detached runs. |
+
+Lifecycle helpers live in `src/lib/agent-platform/sessions.ts`: `createSession`,
+`startSession`, `completeSession`, `failSession`, `cancelSession`, `touchHeartbeat`,
+`recordStep`, plus the read queries (`listSessionsForUser`, `listActiveSessionsForTeam`,
+`getSessionWithSteps`).
+
+## agent_step — resumable checkpoints
+
+Each node execution (or conversational turn) writes a step row, **upserted on
+`(sessionId, stepIndex)`** — that unique pair is the resume key:
+
+- `NODE_START` inserts the row as `running`;
+- `NODE_END` flips it to `completed`/`failed` with the output payload and `costUsd`.
+
+`persistent-executor.ts` achieves this by subscribing to the existing workflow executor's
+`NODE_START`/`NODE_END` events — one wrapper, and every run gains transcripts, cost
+attribution, and resumability. It also touches the session heartbeat on every node event.
+
+## Interactive vs detached runtime
+
+- **Interactive (chat):** the existing chat route streams as before; step persistence
+  rides along via the executor subscription.
+- **Detached (routines / autopilot / webhooks):** a dedicated worker claims work straight
+  from Postgres — no Redis, no external queue:
+
+```sql
+-- claimQueuedSession() in src/lib/agent-platform/worker.ts (simplified)
+UPDATE agent_session SET status = 'running', heartbeat_at = now()
+WHERE id = (
+  SELECT id FROM agent_session
+  WHERE status = 'queued'
+     OR (status = 'running'
+         AND heartbeat_at IS NOT NULL
+         AND heartbeat_at < now() - make_interval(secs => :stale))
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+)
+RETURNING *;
+```
+
+### Heartbeat reclaim — "state outlives compute"
+
+A `running` session whose heartbeat is older than the stale threshold is considered
+orphaned (its worker died) and is **reclaimed by the same claim query**. The reclaiming
+worker hydrates completed nodes from the step rows and resumes from the checkpoint. The
+claim itself flips the row to `running` and stamps the heartbeat, so no other worker can
+double-take it. The blueprint requires chaos-testing pod kills in EKS staging before
+Routines GA so this is a verified property, not a slogan.
+
+### The worker process
+
+`scripts/agent-worker.ts` (run with `pnpm worker:agents`) starts `startWorkerLoop` with a
+tick interval (`AGENT_WORKER_INTERVAL_MS`, default 5000ms). Each `tickOnce()`:
+
+1. claims due schedules → queues sessions ([Routines](/docs/agent-platform/routines)),
+2. claims and executes up to N sessions,
+3. returns `{ scheduled, executed, failed }`.
+
+It shuts down gracefully on SIGTERM (finishes the in-flight tick), supports
+`ASAFE_WORKER_ONESHOT=1` for a single-tick smoke test, and **checks the
+[kill switch](/docs/operations/observability#kill-switch) on every claim** — an org-wide
+pause lands in seconds. In production it runs as its own Helm Deployment (same image,
+worker entrypoint) — see [Deployment](/docs/operations/deployment#agent-worker).
+
+Alternatively, an external scheduler can drive ticks over HTTP via
+`POST /api/hooks/agent-tick` (header `x-asafe-cron-secret`, env `ASAFE_CRON_SECRET`).

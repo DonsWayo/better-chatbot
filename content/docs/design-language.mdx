@@ -1,0 +1,60 @@
+---
+title: Design language — Calm Industrial
+description: The codified UI/UX rules every asafe-ai surface follows — rationed yellow, precise type, motion that absorbs.
+---
+
+A-SAFE makes industrial safety equipment: **calm, engineered, impossible to misread**. The
+interface mirrors the product philosophy — *flexible polymer, not rigid steel*: soft radii
+and motion that absorbs, with engineered precision underneath. The authoritative source is
+`docs/design/ui-language.md`; inspirations: Linear (rationed accent), simple-ai.dev
+(generous radii), Claude Desktop (frameless calm), Notion (sharing model), Raycast
+(keyboard-first density).
+
+## Two registers
+
+- **Zen register** (end users): almost nothing on screen — New Chat, the composer, their work.
+- **Operator register** (admins/editors): density allowed, but the same calm bones.
+
+## Color — rationed yellow
+
+| Role | Value | Rule |
+|---|---|---|
+| Accent | `#FFC72C` (`--primary`) | **One filled yellow element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
+| Accent hover | `#F0B400` | Darker, never lighter. |
+| Ink | `#1A1A1A` | Text on yellow is always near-black. |
+| Neutrals | Warm gray scale | Everything else; 1px low-alpha borders. |
+| Status | Green ok / amber waiting / red failed | Only inside status pills, never as washes. |
+
+Backgrounds get atmosphere from rays + pellet particles — never flat color washes, never
+purple gradients.
+
+## Typography — precise, not loud
+
+- **Body/UI**: Schibsted Grotesk — UI weight 500 ("precise but not bold"), body 400.
+- **Display** (greetings, page titles, splash, empty states): Bricolage Grotesque via
+  `--font-display` / `.font-display`, tracking −2%.
+- **Mono**: Geist Mono (ids, transcripts, cron expressions, code).
+- Headlines whisper: prefer weight 500–600 at larger sizes over 700+ at small sizes.
+
+## Shape, depth & motion
+
+- Radius scale: base `--radius: 1rem`; cards `rounded-2xl`, pills/inputs full.
+- Depth = 1px inset border + soft shadow; surfaces stack by border + 2% tint, not
+  elevation theater.
+- **Flex, absorb, reform** — the barrier metaphor, literally: interactions compress
+  slightly (`scale(0.98)`) and spring back via `cubic-bezier(0.2, 0.9, 0.3, 1.2)`; one
+  orchestrated entrance per page (staggered 40ms fade-up); the yellow pulse dot (Runs) is
+  the canonical "alive" signal. Durations: 150ms hover, 300ms layout, 500ms entrance —
+  nothing over 600ms except splash.
+
+## Layout, components & voice
+
+- Content column `max-w-3xl` for reading surfaces; admin tables may go wide.
+- Empty states: one display-font line, friendly ("All clear — nothing needs your sign-off
+  right now."), no illustration clutter.
+- One yellow primary button per view; badges lowercase-calm at 10–15% alpha tint; tables
+  hover-tint with right-aligned mono numerics; comboboxes over raw selects for anything
+  with >6 options (the MCP teams pattern); skeletons that match final geometry.
+- Voice: calm, specific, no exclamation marks in UI chrome. **Cost and consequences stated
+  plainly before actions** — "~$0.40 · charged to Engineering budget" — which is also a
+  [governance feature](/docs/governance/budgets-and-usage#cost-preview).

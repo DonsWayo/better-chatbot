@@ -1,0 +1,52 @@
+---
+title: Runs & Triage
+description: The Runs rail (mission control), permanent run transcripts at /runs/[id], and the Triage inbox.
+---
+
+## The Runs rail
+
+The Runs drawer in the chat layout is the platform's **mission control**: every in-flight
+workflow/agent execution for the current user, with live status, cost-so-far, and
+abort/steer affordances. The yellow pulse dot — the one
+"[alive](/docs/design-language)" signal — marks running sessions.
+
+Data flows over SWR routes (per the
+[Server Actions vs routes rule](/docs/development/server-actions-vs-routes), client-side
+data fetching is route-based):
+
+| Route | Shape |
+|---|---|
+| `GET /api/runs` | The user's sessions (default page of 30). Optional `?origin=schedule` filters by `originSurface` (used by Triage's "Recent routine runs"). |
+| `GET /api/runs/[id]` | One session with its ordered step rows (`getSessionWithSteps`). |
+
+Mutations — abort, steer — are Server Actions in `src/app/api/runs/actions.ts`.
+
+## /runs/[id] — permanent transcripts
+
+Every session has a permanent transcript page at `/runs/[id]`
+(`src/app/(chat)/runs/[id]`), built from the
+[checkpointed step rows](/docs/agent-platform/sessions-and-steps#agent_step--resumable-checkpoints):
+node-by-node inputs/outputs, per-step cost, timings, and failures.
+
+The blueprint's audit story goes one step further: the run URL is injected into
+tool-execution context so agent outputs in Jira/Confluence/email can say *"produced by
+asafe-ai run \<link\>"* — the linkback compliance signs off on.
+
+## Triage
+
+`/triage` (`src/app/(chat)/triage`) is the inbox for things that need a human:
+
+- **Pending approvals** — approval requests the current user can decide
+  (`listPendingApprovalsForUser` respects the
+  [`requestedRole`](/docs/agent-platform/approvals-and-autonomy#the-approval-gate) rules), with
+  approve/reject and a reason field.
+- **Recent routine runs** — sessions with `originSurface: "schedule"`, so routine findings
+  land somewhere visible instead of an unread dashboard. The design goal is signal-only:
+  empty runs auto-archive.
+
+## Visibility of runs
+
+Runs follow their container (see the [visibility model](/docs/collaboration/visibility)):
+the initiator and admins always see a run; sessions inside a shared team folder become
+readable to folder members (phase 1 is read-only) — steer/abort stays restricted to the
+initiator and folder admins.

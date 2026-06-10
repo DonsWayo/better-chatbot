@@ -1,0 +1,56 @@
+---
+title: Agent platform
+description: One governance and execution layer under conversational agents and node-graph workflows.
+---
+
+The agent platform puts **one governance + execution layer** under everything that runs:
+
+> **Definition** (what it is) → **Revision** (immutable version) → **Session** (one
+> governed execution) → **Steps** (checkpoints)
+
+Chat, workflows, routines, webhooks, and desktop opencode coding sessions are all
+*sessions of some revision*. One Runs drawer, one audit trail, one budget meter — the
+Postgres-native, team-governed equivalent of Claude Managed Agents.
+
+## The pieces
+
+| Page | What it covers |
+|---|---|
+| [Sessions & steps](/docs/agent-platform/sessions-and-steps) | The `agent_session`/`agent_step` spine: checkpointing, the SKIP LOCKED worker, heartbeat reclaim. |
+| [Approvals & autonomy](/docs/agent-platform/approvals-and-autonomy) | The approval node and the interactive / plan / autopilot autonomy ladder, resolved org → team → user. |
+| [Routines](/docs/agent-platform/routines) | Scheduled automations: the in-house cron engine, the worker tick, the kill switch. |
+| [Revisions & publishing](/docs/agent-platform/revisions-and-publishing) | Immutable versions, the publish lifecycle, and NL workflow generation ("Cowork-lite"). |
+| [Runs & Triage](/docs/agent-platform/runs-and-triage) | The Runs rail, `/runs/[id]` transcripts, and the Triage inbox for routine findings. |
+
+## Where the code lives
+
+```text
+src/lib/agent-platform/
+  sessions.ts             # create/start/complete/fail/cancel, heartbeat, steps, queries
+  worker.ts               # SKIP LOCKED claim, tickOnce, startWorkerLoop, reclaim
+  persistent-executor.ts  # wraps the workflow executor to persist a step per NODE event
+  approvals.ts            # approval_request lifecycle + who-can-decide
+  autonomy.ts             # interactive/plan/autopilot resolver (org→team→user caps)
+  scheduler.ts            # workflow_schedule CRUD + claimDueSchedules
+  cron.ts                 # dependency-free 5-field cron engine (tz-aware)
+  revisions.ts            # immutable revisions + publish lifecycle
+src/app/api/agent-platform/   # Server Actions (approvals, revisions, schedules)
+src/app/api/runs/             # GET runs list + /runs/[id] detail (SWR data routes)
+src/app/api/hooks/agent-tick/ # external cron tick ingress
+scripts/agent-worker.ts       # detached worker entrypoint (pnpm worker:agents)
+```
+
+The API surface follows the repo's
+[Server Actions vs routes rule](/docs/development/server-actions-vs-routes): mutations
+(approve, abort, schedule toggles, publish) are Server Actions; data fetching for SWR
+(runs list/detail) and external consumers (the tick hook) are routes.
+
+## Design invariants
+
+- **Sessions pin a revision.** Publishing v7 never mutates an in-flight v6 run; schedules
+  choose pinned vs track-latest-published.
+- **`parentSessionId` = sub-agents for free.** Cost rolls up; the Runs drawer shows the
+  tree; depth-capped.
+- **Governance floors before autonomy.** Autopilot is grantable only after the team's
+  floor exists: budget hard-stop on, kill-switch coverage, guardrail severity cap.
+- **The model drafts; it never publishes** (NL workflow generation).

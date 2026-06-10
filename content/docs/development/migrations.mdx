@@ -1,0 +1,51 @@
+---
+title: Database migrations
+description: How to add a migration today — hand-written SQL plus a journal entry, and why drizzle-kit generate is off the table.
+---
+
+## State of play
+
+- Schema source of truth: **`src/lib/db/pg/schema.pg.ts`** (single Drizzle schema file).
+- Migrations: plain SQL in `src/lib/db/migrations/pg/` (currently `0000` … `0035`), with
+  the journal at `src/lib/db/migrations/pg/meta/_journal.json`.
+- Applied by `pnpm db:migrate` locally, the Helm pre-upgrade Job in EKS, or
+  migrate-on-boot in docker-compose (see [Deployment](/docs/operations/deployment#migrations--and-the-journal-repair-story)).
+
+> **Caveat:** `drizzle-kit generate` (`pnpm db:generate`) is currently **broken** for this
+> repo — the meta snapshots carry a parent-pointer collision. Until the snapshots are
+> regenerated, do **not** rely on codegen. Write migrations by hand (the `0030` pattern).
+
+## How to add a migration
+
+1. **Edit the schema** in `src/lib/db/pg/schema.pg.ts` (tables, columns, indexes, types).
+2. **Hand-write the SQL** as the next-numbered file, e.g.
+   `src/lib/db/migrations/pg/0036_my_change.sql`:
+
+   ```sql
+   ALTER TABLE "agent_session" ADD COLUMN "example" text;
+   CREATE INDEX IF NOT EXISTS "agent_session_example_idx" ON "agent_session" ("example");
+   ```
+
+   Prefer idempotent guards (`IF NOT EXISTS` / `IF EXISTS`) — they make journal repairs
+   survivable.
+3. **Append a journal entry** to `meta/_journal.json` (copy the previous entry; bump
+   `idx`, set the `tag` to the filename without `.sql`, use a current `when` timestamp).
+4. **Apply and verify**: `pnpm db:migrate`, then exercise the touched surface.
+5. Commit schema change + SQL + journal together.
+
+## Why the journal matters (incident write-up)
+
+The drizzle journal is what `db:migrate` trusts. At one point the journal stopped at
+`0021` while SQL files existed through `0029` — **eight migrations silently never ran**,
+and the failure mode was not at migrate time but at runtime:
+`column "model_allow_list" does not exist` on an admin page. The repair was appending the
+missing journal entries so `pnpm db:migrate` applied them cleanly.
+
+Lessons encoded in the process:
+
+- After adding a migration, confirm the journal entry exists and `db:migrate` reports the
+  application.
+- When a deployed environment throws a "missing column/table" error for code that has a
+  migration, **diff the journal against the SQL directory first** — and against
+  `drizzle.__drizzle_migrations` in the target database.
+- Never hand-edit applied migration files; fix forward with a new numbered file.

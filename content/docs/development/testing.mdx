@@ -1,0 +1,69 @@
+---
+title: Testing
+description: 5,500+ Vitest cases colocated with the code, the db-mock pattern, and Playwright e2e.
+---
+
+Every wave shipped with tests; the suite currently counts **5,500+ unit test cases**
+(`*.test.ts` colocated next to their modules) plus Playwright e2e under `tests/`.
+
+## Unit tests (Vitest)
+
+```bash
+pnpm test          # run once
+pnpm test:watch    # watch mode
+```
+
+Conventions:
+
+- **Colocated** — `worker.ts` is tested by `worker.test.ts` in the same directory.
+- **No live database.** Library code is tested against mocked Drizzle surfaces, not a
+  Postgres instance (e2e covers the integrated path).
+
+### The db-mock pattern
+
+Server lib modules import three things that need stubbing in tests — the pattern (from
+`src/lib/agent-platform/sessions.test.ts` and hundreds of siblings):
+
+```ts
+// 1. Mock the db handle: chainable query-builder stubs
+vi.mock("lib/db/pg/db.pg", () => ({ pgDb: { /* select/insert/update chains */ } }));
+
+// 2. Mock the schema module: table objects can be plain placeholders
+vi.mock("lib/db/pg/schema.pg", () => ({ AgentSessionTable: {}, /* … */ }));
+
+// 3. Mock drizzle-orm operators used by the module under test
+vi.mock("drizzle-orm", () => ({ eq: vi.fn(), and: vi.fn(), /* … */ }));
+
+// 4. server-only would throw outside Next.js
+vi.mock("server-only", () => ({}));
+```
+
+Step 4 is also handled globally: `vitest.config.ts` aliases `server-only` to the no-op
+stub in `src/lib/__mocks__/server-only.ts`, and `vite-tsconfig-paths` resolves the repo's
+path aliases inside tests.
+
+Pure modules (the [cron engine](/docs/agent-platform/routines#the-cron-engine), guardrail
+patterns, the entitlement resolvers) are deliberately dependency-free so they test
+without any mocking — prefer that shape when adding logic.
+
+## E2E (Playwright)
+
+```bash
+pnpm test:e2e:seed   # seed test users (dotenv + scripts/seed-test-users.ts)
+pnpm test:e2e        # run; :ui for headed mode
+pnpm test:e2e:clean  # remove all test data
+```
+
+The auth proxy returns `pong` on `/ping` so Playwright's webServer readiness check works
+unauthenticated.
+
+## Desktop
+
+The Electron app is driven over CDP via the electron MCP server — see the
+[desktop testing workflow](/docs/desktop#testing-workflow-electron-mcp-over-cdp).
+
+## The gate
+
+`pnpm check` = Biome lint:fix + `tsc --noEmit` + Vitest. The definition of done for every
+change also includes: env vars documented in `.env.example`, schema changes with
+[committed migrations](/docs/development/migrations), and metrics on new request paths.

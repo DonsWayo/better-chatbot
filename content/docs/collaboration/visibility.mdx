@@ -1,0 +1,60 @@
+---
+title: Visibility model
+description: One mental model for every shareable entity — private, shared, team, company.
+---
+
+> "Workflows can be private, shared, team or company — think in all things like that."
+
+Every shareable entity on the platform converges on **one four-level visibility model**
+(`docs/design/visibility-model.md`):
+
+| Level | Who can see/use | Who can grant |
+|---|---|---|
+| `private` | Owner only — **the default for everything**. | — |
+| `shared` | Explicitly named users (grant list). | Owner. |
+| `team` | Members of one or more teams (`teamIds[]`). | Owner if member; admins. |
+| `company` | The whole org. | **Admins only** — the curation gate. |
+
+## Three orthogonal axes
+
+Kept separate on purpose:
+
+1. **Visibility** (above) — who can find/see it.
+2. **Capability** — view / use / edit / manage: an entity can be usable org-wide but
+   editable only by its owner + admins.
+3. **Lifecycle** — draft / published:
+   [revisions](/docs/agent-platform/revisions-and-publishing) gate what the org-wide
+   audience actually *runs*.
+
+And entitlements always apply **on top**: visibility never bypasses
+[model allow-lists](/docs/governance/model-entitlements), tool gates,
+[budgets](/docs/governance/budgets-and-usage), or
+[guardrails](/docs/governance/guardrails).
+
+## Current state per entity
+
+| Entity | Today | Target gap |
+|---|---|---|
+| MCP servers | `org` / `team` + `teamIds[]` ([catalog](/docs/mcp/catalog)) | Rename mental model org → company; `shared` grant list later. |
+| Agent/workflow revisions | `teamIds[]` + `orgWide` | Already the target model minus `shared`. |
+| Workflows / agents (live definitions) | `private`/`public` + isPublished | Migrate `public` → `company`; add `team`/`teamIds[]` + `shared`. |
+| Threads | `private`/`team` via folders ([teamspaces phase 1](/docs/collaboration/teamspaces)) | Add `shared` (named users); `company` rare and admin-gated. |
+| Folders (teamspaces) | `private`/`team` | Add `shared` + company curation. |
+| Knowledge collections | org/team scoped | Add `private` + `shared`; align field names. |
+| Schedules/routines | Owner-scoped | Inherit the workflow's visibility for viewing. |
+| Runs/sessions | Owner + admins (+ folder members read-only) | Follows the folder/thread container. |
+
+## Implementation rules
+
+1. **One shape everywhere**: `visibility: "private"|"shared"|"team"|"company"`,
+   `teamIds: uuid[] | null`, plus a generic `entity_grant` table
+   (entityType, entityId, userId, capability) for `shared`.
+2. **One resolver**: `canAccess(entity, userId, capability)` in a shared lib
+   (`src/lib/visibility/` — planned), mirroring how
+   [model policy](/docs/governance/model-entitlements) and
+   [autonomy](/docs/agent-platform/approvals-and-autonomy) resolve org → team → user. No
+   per-feature bespoke checks once migrated.
+3. **`company` always passes the admin curation gate** — the same gate as featured MCP
+   servers and org-wide revisions today.
+4. **One `VisibilityPicker` component** (lock / link-user / users / building icons),
+   reused everywhere, with the multi-team combobox from the MCP catalog.

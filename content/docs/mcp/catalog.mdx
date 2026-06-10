@@ -1,0 +1,50 @@
+---
+title: MCP catalog
+description: The admin-curated registry of company MCP servers — org/multi-team scoping, live connection probes, cached tool info.
+---
+
+The catalog (Wave 5; `src/lib/admin/mcp-servers.ts` + the admin MCP UI) is the central
+registry of **approved** company MCP servers. Plain users consume connectors; admins
+curate them.
+
+## Scoping: org vs multi-team
+
+Each catalog entry has a scope:
+
+| Scope | Who sees it |
+|---|---|
+| `org` | Everyone in the company. |
+| `team` | Members of **one or more** teams — `teamIds: string[]` (the multi-team combobox pattern reused by [revisions](/docs/agent-platform/revisions-and-publishing) and the [visibility model](/docs/collaboration/visibility)). |
+
+A legacy single `teamId` column is kept in sync with the first entry of `teamIds` for
+backwards compatibility (`registerMcpServer` / `updateMcpServer` handle this
+transparently).
+
+## Live connection probe
+
+When a server is registered or tested, the platform performs a **live connection probe**
+(`src/lib/admin/mcp-connection-test.ts`):
+
+- the outcome is stored as `lastConnectionStatus` (`connected` | `error`) so the catalog
+  shows health at a glance;
+- the server's **tool list is enumerated and cached** (`toolInfo` + `toolInfoUpdatedAt`),
+  so admins can see exactly which tools a connector exposes before granting it to teams —
+  and the blueprint's per-tool entitlement roadmap builds on this enumeration.
+
+## Auth options
+
+Per the [config shape](/docs/mcp#server-config-shape), catalog servers support static
+headers and OAuth/SSO client credentials. The recommended default for org connectors is
+**per-user OAuth**, so the assistant inherits each user's own SharePoint/ERP/Jira
+permissions.
+
+## Governance hooks
+
+- Catalog mutations are admin-only and audited.
+- `NOT_ALLOW_ADD_MCP_SERVERS=1` enforces a catalog-only posture (no ad-hoc user servers).
+- Per-session connector masks (a chip row showing which catalog servers are active for
+  *this* thread) are on the blueprint roadmap, enforced as a filter in the tool-loading
+  pipeline.
+- A future "Desktop" scope is reserved for the
+  [local stdio bridge](/docs/desktop#local-mcp-bridge-roadmap) — disabled by default, no
+  sideloading, `.mcpb` manifests.
