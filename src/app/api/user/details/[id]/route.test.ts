@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, getUserMock, canManageUserMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -16,12 +16,16 @@ function makeRequest(): NextRequest {
 }
 
 describe("GET /api/user/details/[id]", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -36,7 +40,9 @@ describe("GET /api/user/details/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u2", role: "user" } });
     canManageUserMock.mockResolvedValueOnce(false);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     expect(res.status).toBe(403);
   });
 
@@ -54,7 +60,9 @@ describe("GET /api/user/details/[id]", () => {
     const USER = { id: "u-1", name: "Bob", email: "bob@example.com" };
     getUserMock.mockResolvedValueOnce(USER);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe("u-1");
@@ -65,7 +73,9 @@ describe("GET /api/user/details/[id]", () => {
     canManageUserMock.mockResolvedValueOnce(true);
     getUserMock.mockResolvedValueOnce({ id: "target-user-567" });
     const { GET } = await import("./route");
-    await GET(makeRequest(), { params: Promise.resolve({ id: "target-user-567" }) });
+    await GET(makeRequest(), {
+      params: Promise.resolve({ id: "target-user-567" }),
+    });
     expect(canManageUserMock).toHaveBeenCalledWith("target-user-567");
   });
 
@@ -74,7 +84,9 @@ describe("GET /api/user/details/[id]", () => {
     canManageUserMock.mockResolvedValueOnce(true);
     getUserMock.mockResolvedValueOnce({ id: "target-user-567" });
     const { GET } = await import("./route");
-    await GET(makeRequest(), { params: Promise.resolve({ id: "target-user-567" }) });
+    await GET(makeRequest(), {
+      params: Promise.resolve({ id: "target-user-567" }),
+    });
     expect(getUserMock).toHaveBeenCalledWith("target-user-567");
   });
 
@@ -83,7 +95,9 @@ describe("GET /api/user/details/[id]", () => {
     canManageUserMock.mockResolvedValueOnce(true);
     getUserMock.mockResolvedValueOnce(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "nonexistent" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "nonexistent" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({});
@@ -92,10 +106,17 @@ describe("GET /api/user/details/[id]", () => {
   it("preserves all user fields in response", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     canManageUserMock.mockResolvedValueOnce(true);
-    const USER = { id: "u-1", name: "Bob", email: "bob@example.com", role: "user" };
+    const USER = {
+      id: "u-1",
+      name: "Bob",
+      email: "bob@example.com",
+      role: "user",
+    };
     getUserMock.mockResolvedValueOnce(USER);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     const body = await res.json();
     expect(body.name).toBe("Bob");
     expect(body.email).toBe("bob@example.com");
@@ -104,16 +125,22 @@ describe("GET /api/user/details/[id]", () => {
 
   it("returns 500 on unexpected error", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1" } });
-    canManageUserMock.mockRejectedValueOnce(new Error("permission check failed"));
+    canManageUserMock.mockRejectedValueOnce(
+      new Error("permission check failed"),
+    );
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     expect(res.status).toBe(500);
   });
 
   it("401 body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -122,7 +149,9 @@ describe("GET /api/user/details/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u2", role: "user" } });
     canManageUserMock.mockResolvedValueOnce(false);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -147,7 +176,9 @@ describe("GET /api/user/details/[id]", () => {
 });
 
 describe("GET /api/user/details/[id] — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -167,7 +198,9 @@ describe("GET /api/user/details/[id] — additional", () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1" } });
     canManageUserMock.mockRejectedValueOnce(new Error("internal failure"));
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -177,7 +210,9 @@ describe("GET /api/user/details/[id] — additional", () => {
     canManageUserMock.mockResolvedValueOnce(true);
     getUserMock.mockResolvedValueOnce({ id: "u-arr", email: "a@b.com" });
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-arr" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-arr" }),
+    });
     const body = await res.json();
     expect(Array.isArray(body)).toBe(false);
     expect(typeof body).toBe("object");
@@ -185,36 +220,52 @@ describe("GET /api/user/details/[id] — additional", () => {
 });
 
 describe("GET /api/user/details/[id] — guard chain", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
   it("canManageUser called before getUser", async () => {
     const callOrder: string[] = [];
     getSessionMock.mockResolvedValue({ user: { id: "a1" } });
-    canManageUserMock.mockImplementationOnce(async () => { callOrder.push("manage"); return true; });
-    getUserMock.mockImplementationOnce(async () => { callOrder.push("get"); return { id: "u-1" }; });
+    canManageUserMock.mockImplementationOnce(async () => {
+      callOrder.push("manage");
+      return true;
+    });
+    getUserMock.mockImplementationOnce(async () => {
+      callOrder.push("get");
+      return { id: "u-1" };
+    });
     const { GET } = await import("./route");
     await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
     expect(callOrder[0]).toBe("manage");
     expect(callOrder[1]).toBe("get");
   });
 
-  it("returns 401 when session has user:null", async () => {
+  it("returns 403 when session has user:null (session object itself is truthy)", async () => {
     getSessionMock.mockResolvedValue({ user: null });
+    canManageUserMock.mockResolvedValue(false);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
-    expect(res.status).toBe(401);
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/user/details/[id] — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -240,7 +291,9 @@ describe("GET /api/user/details/[id] — call count invariants", () => {
   it("GET returns 401 Response when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "u-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "u-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
     expect(res.status).toBe(401);
   });

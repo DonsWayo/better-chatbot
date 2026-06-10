@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -38,17 +38,25 @@ vi.mock("app-types/archive", () => ({
 }));
 
 describe("createArchiveAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { createArchiveAction } = await import("./actions");
-    await expect(createArchiveAction({ name: "My Archive" })).rejects.toThrow("User not found");
+    await expect(createArchiveAction({ name: "My Archive" })).rejects.toThrow(
+      "User not found",
+    );
   });
 
   it("creates archive for authenticated user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    createArchiveMock.mockResolvedValueOnce({ id: "a1", name: "My Archive", userId: "u1" });
+    createArchiveMock.mockResolvedValueOnce({
+      id: "a1",
+      name: "My Archive",
+      userId: "u1",
+    });
     const { createArchiveAction } = await import("./actions");
     const result = await createArchiveAction({ name: "My Archive" });
     expect(result.id).toBe("a1");
@@ -59,13 +67,17 @@ describe("createArchiveAction", () => {
 });
 
 describe("updateArchiveAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("throws when archive not owned by user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce({ id: "a1", userId: "u2" }); // different owner
     const { updateArchiveAction } = await import("./actions");
-    await expect(updateArchiveAction("a1", { name: "New" })).rejects.toThrow("Archive not found");
+    await expect(updateArchiveAction("a1", { name: "New" })).rejects.toThrow(
+      "Archive not found",
+    );
   });
 
   it("updates archive when user owns it", async () => {
@@ -79,7 +91,9 @@ describe("updateArchiveAction", () => {
 });
 
 describe("deleteArchiveAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -91,7 +105,9 @@ describe("deleteArchiveAction", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce({ id: "a1", userId: "u2" });
     const { deleteArchiveAction } = await import("./actions");
-    await expect(deleteArchiveAction("a1")).rejects.toThrow("Archive not found");
+    await expect(deleteArchiveAction("a1")).rejects.toThrow(
+      "Archive not found",
+    );
   });
 
   it("deletes archive when user owns it", async () => {
@@ -112,19 +128,25 @@ describe("deleteArchiveAction", () => {
 });
 
 describe("addItemToArchiveAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { addItemToArchiveAction } = await import("./actions");
-    await expect(addItemToArchiveAction("a1", "item1")).rejects.toThrow("User not found");
+    await expect(addItemToArchiveAction("a1", "item1")).rejects.toThrow(
+      "User not found",
+    );
   });
 
   it("throws when archive not owned by user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce({ id: "a1", userId: "u2" });
     const { addItemToArchiveAction } = await import("./actions");
-    await expect(addItemToArchiveAction("a1", "item1")).rejects.toThrow("Archive not found");
+    await expect(addItemToArchiveAction("a1", "item1")).rejects.toThrow(
+      "Archive not found",
+    );
   });
 
   it("adds item when user owns archive", async () => {
@@ -147,19 +169,25 @@ describe("addItemToArchiveAction", () => {
 });
 
 describe("removeItemFromArchiveAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { removeItemFromArchiveAction } = await import("./actions");
-    await expect(removeItemFromArchiveAction("a1", "item1")).rejects.toThrow("User not found");
+    await expect(removeItemFromArchiveAction("a1", "item1")).rejects.toThrow(
+      "User not found",
+    );
   });
 
   it("throws when archive not owned by user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce({ id: "a1", userId: "u2" });
     const { removeItemFromArchiveAction } = await import("./actions");
-    await expect(removeItemFromArchiveAction("a1", "item1")).rejects.toThrow("Archive not found");
+    await expect(removeItemFromArchiveAction("a1", "item1")).rejects.toThrow(
+      "Archive not found",
+    );
   });
 
   it("removes item when user owns archive", async () => {
@@ -167,7 +195,9 @@ describe("removeItemFromArchiveAction", () => {
     getArchiveByIdMock.mockResolvedValueOnce({ id: "a1", userId: "u1" });
     removeItemFromArchiveMock.mockResolvedValueOnce(undefined);
     const { removeItemFromArchiveAction } = await import("./actions");
-    await expect(removeItemFromArchiveAction("a1", "item1")).resolves.toBeUndefined();
+    await expect(
+      removeItemFromArchiveAction("a1", "item1"),
+    ).resolves.toBeUndefined();
     expect(removeItemFromArchiveMock).toHaveBeenCalledWith("a1", "item1");
   });
 
@@ -180,12 +210,16 @@ describe("removeItemFromArchiveAction", () => {
 });
 
 describe("getItemArchivesAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { getItemArchivesAction } = await import("./actions");
-    await expect(getItemArchivesAction("item1")).rejects.toThrow("User not found");
+    await expect(getItemArchivesAction("item1")).rejects.toThrow(
+      "User not found",
+    );
   });
 
   it("returns archives for item when authenticated", async () => {
@@ -216,33 +250,38 @@ describe("getItemArchivesAction", () => {
 });
 
 describe("archive actions — auth guard invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
-  it("updateArchiveAction throws or returns error when unauthenticated", async () => {
+  it("updateArchiveAction throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { updateArchiveAction } = await import("./actions");
-    const result = await updateArchiveAction({ id: "a1", name: "test" });
-    expect(result).toBeDefined();
+    await expect(updateArchiveAction("a1", { name: "test" })).rejects.toThrow(
+      "User not found",
+    );
   });
 
-  it("deleteArchiveAction throws or returns error when unauthenticated", async () => {
+  it("deleteArchiveAction throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { deleteArchiveAction } = await import("./actions");
-    const result = await deleteArchiveAction("a1");
-    expect(result).toBeDefined();
+    await expect(deleteArchiveAction("a1")).rejects.toThrow("User not found");
   });
 
-  it("addItemToArchiveAction throws or returns error when unauthenticated", async () => {
+  it("addItemToArchiveAction throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { addItemToArchiveAction } = await import("./actions");
-    const result = await addItemToArchiveAction({ archiveId: "a1", itemId: "i1", itemType: "chat" });
-    expect(result).toBeDefined();
+    await expect(addItemToArchiveAction("a1", "i1")).rejects.toThrow(
+      "User not found",
+    );
   });
 
-  it("getItemArchivesAction returns empty array when unauthenticated", async () => {
+  it("getItemArchivesAction throws when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { getItemArchivesAction } = await import("./actions");
-    const result = await getItemArchivesAction("item1");
-    expect(Array.isArray(result) || result === undefined || result === null).toBe(true);
+    await expect(getItemArchivesAction("item1")).rejects.toThrow(
+      "User not found",
+    );
   });
 });

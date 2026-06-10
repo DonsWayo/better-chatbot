@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { APICallError } from "ai";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("lib/observability/slo", () => ({
@@ -33,8 +33,12 @@ vi.mock("ai", async (importOriginal) => {
   };
 });
 
-import { isRetryableProviderError, wrapWithFallback, FALLBACK_MODEL_IDS } from "./index";
 import { providerFallbackTotal } from "lib/observability/slo";
+import {
+  FALLBACK_MODEL_IDS,
+  isRetryableProviderError,
+  wrapWithFallback,
+} from "./index";
 
 const mockInc = vi.mocked(providerFallbackTotal.inc);
 
@@ -94,20 +98,28 @@ describe("isRetryableProviderError", () => {
     expect(isRetryableProviderError(err)).toBe(true);
   });
 
-  it.each([500, 502, 503, 504])("returns true for %d server error", (status) => {
-    expect(isRetryableProviderError(make5xxError(status))).toBe(true);
-  });
+  it.each([500, 502, 503, 504])(
+    "returns true for %d server error",
+    (status) => {
+      expect(isRetryableProviderError(make5xxError(status))).toBe(true);
+    },
+  );
 
   it("returns true for 408 timeout", () => {
     expect(isRetryableProviderError(make4xxError(408))).toBe(true);
   });
 
-  it.each([400, 401, 403, 422])("returns false for %d client error", (status) => {
-    expect(isRetryableProviderError(make4xxError(status))).toBe(false);
-  });
+  it.each([400, 401, 403, 422])(
+    "returns false for %d client error",
+    (status) => {
+      expect(isRetryableProviderError(make4xxError(status))).toBe(false);
+    },
+  );
 
   it("returns true for ECONNREFUSED", () => {
-    expect(isRetryableProviderError(new Error("connect ECONNREFUSED 127.0.0.1:80"))).toBe(true);
+    expect(
+      isRetryableProviderError(new Error("connect ECONNREFUSED 127.0.0.1:80")),
+    ).toBe(true);
   });
 
   it("returns true for ETIMEDOUT", () => {
@@ -119,7 +131,11 @@ describe("isRetryableProviderError", () => {
   });
 
   it("returns true for ENOTFOUND", () => {
-    expect(isRetryableProviderError(new Error("getaddrinfo ENOTFOUND api.example.com"))).toBe(true);
+    expect(
+      isRetryableProviderError(
+        new Error("getaddrinfo ENOTFOUND api.example.com"),
+      ),
+    ).toBe(true);
   });
 
   it("returns false for non-Error values", () => {
@@ -301,9 +317,10 @@ describe("FALLBACK_MODEL_IDS — invariants", () => {
 });
 
 describe("FALLBACK_MODEL_IDS — additional invariants", () => {
-  it("every entry includes a slash (provider/model format)", () => {
+  it("every entry is a bare model id (no provider/ prefix)", () => {
     for (const id of FALLBACK_MODEL_IDS) {
-      expect(id).toContain("/");
+      expect(id).not.toContain("/");
+      expect(id.length).toBeGreaterThan(0);
     }
   });
 

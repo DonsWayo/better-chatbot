@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
-  AdminUsersQuery,
+  AdminUpdateUserDetailsData,
   AdminUserListItem,
   AdminUsersPaginated,
-  AdminUpdateUserDetailsData,
+  AdminUsersQuery,
 } from "./admin";
 
 describe("AdminUsersQuery — shape", () => {
@@ -58,7 +58,13 @@ describe("AdminUsersQuery — shape", () => {
 
   it("filterOperator supports numeric and string comparison", () => {
     const ops: Array<NonNullable<AdminUsersQuery["filterOperator"]>> = [
-      "lt", "eq", "ne", "lte", "gt", "gte", "contains",
+      "lt",
+      "eq",
+      "ne",
+      "lte",
+      "gt",
+      "gte",
+      "contains",
     ];
     for (const op of ops) {
       const q: AdminUsersQuery = { filterOperator: op };
@@ -85,6 +91,7 @@ describe("AdminUserListItem — shape", () => {
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+      acceptedAupAt: null,
     };
     expect(user.id).toBe("u-1");
     expect(user.email).toBe("alice@example.com");
@@ -98,6 +105,7 @@ describe("AdminUserListItem — shape", () => {
       emailVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
+      acceptedAupAt: null,
     };
     expect(user.image).toBeUndefined();
     expect(user.role).toBeUndefined();
@@ -112,6 +120,7 @@ describe("AdminUserListItem — shape", () => {
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+      acceptedAupAt: null,
       image: null,
       role: null,
       banned: null,
@@ -131,6 +140,7 @@ describe("AdminUserListItem — shape", () => {
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+      acceptedAupAt: null,
     };
     expect("password" in user).toBe(false);
   });
@@ -143,6 +153,7 @@ describe("AdminUserListItem — shape", () => {
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+      acceptedAupAt: null,
     };
     expect("preferences" in user).toBe(false);
   });
@@ -170,9 +181,13 @@ describe("AdminUsersPaginated — shape", () => {
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+      acceptedAupAt: null,
     };
     const paginated: AdminUsersPaginated = {
-      users: [user, { ...user, id: "u-2", email: "bob@example.com", name: "Bob" }],
+      users: [
+        user,
+        { ...user, id: "u-2", email: "bob@example.com", name: "Bob" },
+      ],
       total: 2,
       limit: 20,
       offset: 0,

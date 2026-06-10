@@ -1,8 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { createBarChartTool } from "./create-bar-chart";
 import { createLineChartTool } from "./create-line-chart";
 import { createPieChartTool } from "./create-pie-chart";
 import { createTableTool } from "./create-table";
+
+// The AI SDK types inputSchema as FlexibleSchema, but at runtime these are zod schemas.
+const barSchema = createBarChartTool.inputSchema as unknown as z.ZodTypeAny;
+const lineSchema = createLineChartTool.inputSchema as unknown as z.ZodTypeAny;
+const pieSchema = createPieChartTool.inputSchema as unknown as z.ZodTypeAny;
+const tableSchema = createTableTool.inputSchema as unknown as z.ZodTypeAny;
+
+// Helper to invoke tool.execute without fighting the AI SDK's optional/generic typing.
+const runTool = (tool: { execute?: unknown }): Promise<unknown> =>
+  Promise.resolve(
+    (tool.execute as (input: unknown, options: unknown) => unknown)({}, {}),
+  );
 
 const sampleSeriesData = [
   {
@@ -24,7 +37,7 @@ const sampleSeriesData = [
 describe("createBarChartTool", () => {
   it("has a description", () => {
     expect(typeof createBarChartTool.description).toBe("string");
-    expect(createBarChartTool.description.length).toBeGreaterThan(0);
+    expect(createBarChartTool.description?.length).toBeGreaterThan(0);
   });
 
   it("has an inputSchema", () => {
@@ -36,12 +49,12 @@ describe("createBarChartTool", () => {
   });
 
   it("execute returns 'Success'", async () => {
-    const result = await createBarChartTool.execute!({} as Parameters<typeof createBarChartTool.execute!>[0], {} as Parameters<typeof createBarChartTool.execute!>[1]);
+    const result = await runTool(createBarChartTool);
     expect(result).toBe("Success");
   });
 
   it("validates valid bar chart input", () => {
-    const r = createBarChartTool.inputSchema.safeParse({
+    const r = barSchema.safeParse({
       data: sampleSeriesData,
       title: "Quarterly Performance",
       description: "Sales vs Costs",
@@ -51,7 +64,7 @@ describe("createBarChartTool", () => {
   });
 
   it("accepts null description and yAxisLabel", () => {
-    const r = createBarChartTool.inputSchema.safeParse({
+    const r = barSchema.safeParse({
       data: sampleSeriesData,
       title: "Chart",
       description: null,
@@ -61,7 +74,7 @@ describe("createBarChartTool", () => {
   });
 
   it("rejects missing title", () => {
-    const r = createBarChartTool.inputSchema.safeParse({
+    const r = barSchema.safeParse({
       data: sampleSeriesData,
       description: null,
       yAxisLabel: null,
@@ -70,8 +83,10 @@ describe("createBarChartTool", () => {
   });
 
   it("rejects non-numeric series value", () => {
-    const r = createBarChartTool.inputSchema.safeParse({
-      data: [{ xAxisLabel: "Q1", series: [{ seriesName: "Sales", value: "100" }] }],
+    const r = barSchema.safeParse({
+      data: [
+        { xAxisLabel: "Q1", series: [{ seriesName: "Sales", value: "100" }] },
+      ],
       title: "Chart",
       description: null,
       yAxisLabel: null,
@@ -86,7 +101,7 @@ describe("createLineChartTool", () => {
   });
 
   it("validates valid line chart input", () => {
-    const r = createLineChartTool.inputSchema.safeParse({
+    const r = lineSchema.safeParse({
       data: sampleSeriesData,
       title: "Revenue Trend",
       description: "Monthly revenue",
@@ -96,7 +111,7 @@ describe("createLineChartTool", () => {
   });
 
   it("accepts null description and yAxisLabel", () => {
-    const r = createLineChartTool.inputSchema.safeParse({
+    const r = lineSchema.safeParse({
       data: sampleSeriesData,
       title: "Trend",
       description: null,
@@ -106,7 +121,7 @@ describe("createLineChartTool", () => {
   });
 
   it("accepts empty data array", () => {
-    const r = createLineChartTool.inputSchema.safeParse({
+    const r = lineSchema.safeParse({
       data: [],
       title: "Empty Chart",
       description: null,
@@ -116,7 +131,7 @@ describe("createLineChartTool", () => {
   });
 
   it("execute returns 'Success'", async () => {
-    const result = await createLineChartTool.execute!({} as Parameters<typeof createLineChartTool.execute!>[0], {} as Parameters<typeof createLineChartTool.execute!>[1]);
+    const result = await runTool(createLineChartTool);
     expect(result).toBe("Success");
   });
 });
@@ -133,7 +148,7 @@ describe("createPieChartTool", () => {
   });
 
   it("validates valid pie chart input", () => {
-    const r = createPieChartTool.inputSchema.safeParse({
+    const r = pieSchema.safeParse({
       data: validPieData,
       title: "Fruit Distribution",
       description: "Fruit sales breakdown",
@@ -143,7 +158,7 @@ describe("createPieChartTool", () => {
   });
 
   it("accepts null description and unit", () => {
-    const r = createPieChartTool.inputSchema.safeParse({
+    const r = pieSchema.safeParse({
       data: validPieData,
       title: "Pie Chart",
       description: null,
@@ -153,7 +168,7 @@ describe("createPieChartTool", () => {
   });
 
   it("rejects non-numeric pie value", () => {
-    const r = createPieChartTool.inputSchema.safeParse({
+    const r = pieSchema.safeParse({
       data: [{ label: "A", value: "big" }],
       title: "Pie",
       description: null,
@@ -163,7 +178,7 @@ describe("createPieChartTool", () => {
   });
 
   it("execute returns 'Success'", async () => {
-    const result = await createPieChartTool.execute!({} as Parameters<typeof createPieChartTool.execute!>[0], {} as Parameters<typeof createPieChartTool.execute!>[1]);
+    const result = await runTool(createPieChartTool);
     expect(result).toBe("Success");
   });
 });
@@ -187,12 +202,12 @@ describe("createTableTool", () => {
   });
 
   it("validates valid table input", () => {
-    const r = createTableTool.inputSchema.safeParse(validTableInput);
+    const r = tableSchema.safeParse(validTableInput);
     expect(r.success).toBe(true);
   });
 
   it("accepts null description", () => {
-    const r = createTableTool.inputSchema.safeParse({
+    const r = tableSchema.safeParse({
       ...validTableInput,
       description: null,
     });
@@ -200,18 +215,21 @@ describe("createTableTool", () => {
   });
 
   it("defaults column type to 'string'", () => {
-    const r = createTableTool.inputSchema.safeParse({
+    const r = tableSchema.safeParse({
       title: "Table",
       description: null,
       columns: [{ key: "name", label: "Name" }],
       data: [],
     });
     expect(r.success).toBe(true);
-    if (r.success) expect(r.data.columns[0].type).toBe("string");
+    if (r.success) {
+      const data = r.data as { columns: Array<{ type?: string | null }> };
+      expect(data.columns[0].type).toBe("string");
+    }
   });
 
   it("accepts null column type", () => {
-    const r = createTableTool.inputSchema.safeParse({
+    const r = tableSchema.safeParse({
       title: "Table",
       description: null,
       columns: [{ key: "name", label: "Name", type: null }],
@@ -221,7 +239,7 @@ describe("createTableTool", () => {
   });
 
   it("rejects invalid column type", () => {
-    const r = createTableTool.inputSchema.safeParse({
+    const r = tableSchema.safeParse({
       title: "Table",
       description: null,
       columns: [{ key: "x", label: "X", type: "currency" }],
@@ -231,7 +249,7 @@ describe("createTableTool", () => {
   });
 
   it("accepts date and boolean column types", () => {
-    const r = createTableTool.inputSchema.safeParse({
+    const r = tableSchema.safeParse({
       title: "Table",
       description: null,
       columns: [
@@ -244,7 +262,7 @@ describe("createTableTool", () => {
   });
 
   it("rejects missing title", () => {
-    const r = createTableTool.inputSchema.safeParse({
+    const r = tableSchema.safeParse({
       columns: [],
       data: [],
     });
@@ -252,31 +270,36 @@ describe("createTableTool", () => {
   });
 
   it("execute returns 'Success'", async () => {
-    const result = await createTableTool.execute!({} as Parameters<typeof createTableTool.execute!>[0], {} as Parameters<typeof createTableTool.execute!>[1]);
+    const result = await runTool(createTableTool);
     expect(result).toBe("Success");
   });
 });
 
 describe("visualization tools — execute invariants", () => {
   it("createBarChartTool.execute always returns 'Success'", async () => {
-    const result = await createBarChartTool.execute!({} as any, {} as any);
+    const result = await runTool(createBarChartTool);
     expect(result).toBe("Success");
   });
 
   it("createLineChartTool.execute always returns 'Success'", async () => {
-    const result = await createLineChartTool.execute!({} as any, {} as any);
+    const result = await runTool(createLineChartTool);
     expect(result).toBe("Success");
   });
 
   it("createPieChartTool.execute always returns 'Success'", async () => {
-    const result = await createPieChartTool.execute!({} as any, {} as any);
+    const result = await runTool(createPieChartTool);
     expect(result).toBe("Success");
   });
 
   it("all four tools have a non-empty description string", () => {
-    for (const tool of [createBarChartTool, createLineChartTool, createPieChartTool, createTableTool]) {
+    for (const tool of [
+      createBarChartTool,
+      createLineChartTool,
+      createPieChartTool,
+      createTableTool,
+    ]) {
       expect(typeof tool.description).toBe("string");
-      expect(tool.description.length).toBeGreaterThan(0);
+      expect(tool.description?.length).toBeGreaterThan(0);
     }
   });
 });

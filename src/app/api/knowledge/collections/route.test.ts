@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, dbSelectMock, dbInsertMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -12,15 +12,25 @@ const dbSelectWhereMock = vi.fn().mockResolvedValue([]);
 const dbSelectFromMock = vi.fn().mockReturnValue({ where: dbSelectWhereMock });
 dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
 
-const dbInsertReturningMock = vi.fn().mockResolvedValue([{ id: "col-1", name: "Docs" }]);
-const dbInsertValuesMock = vi.fn().mockReturnValue({ returning: dbInsertReturningMock });
+const dbInsertReturningMock = vi
+  .fn()
+  .mockResolvedValue([{ id: "col-1", name: "Docs" }]);
+const dbInsertValuesMock = vi
+  .fn()
+  .mockReturnValue({ returning: dbInsertReturningMock });
 dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
 
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: { select: dbSelectMock, insert: dbInsertMock },
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({
-  AsafeKnowledgeCollectionTable: { id: "id", name: "name", visibility: "visibility", teamId: "teamId", createdAt: "createdAt" },
+  AsafeKnowledgeCollectionTable: {
+    id: "id",
+    name: "name",
+    visibility: "visibility",
+    teamId: "teamId",
+    createdAt: "createdAt",
+  },
 }));
 
 function makeRequest(body?: unknown): Request {
@@ -30,7 +40,9 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("GET /api/knowledge/collections", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -42,7 +54,9 @@ describe("GET /api/knowledge/collections", () => {
   it("returns 200 with collections for any authenticated user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
     // Mock select chain to return collections directly
-    const selectAllMock = vi.fn().mockResolvedValue([{ id: "col-1", name: "Docs" }]);
+    const selectAllMock = vi
+      .fn()
+      .mockResolvedValue([{ id: "col-1", name: "Docs" }]);
     dbSelectMock.mockReturnValueOnce({ from: selectAllMock });
     const { GET } = await import("./route");
     const res = await GET();
@@ -53,7 +67,9 @@ describe("GET /api/knowledge/collections", () => {
 });
 
 describe("POST /api/knowledge/collections", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -78,9 +94,13 @@ describe("POST /api/knowledge/collections", () => {
 
   it("creates collection and returns 200 for admin", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{ id: "col-new", name: "Product Docs", visibility: "org" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      { id: "col-new", name: "Product Docs", visibility: "org" },
+    ]);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ name: "Product Docs", visibility: "org" }));
+    const res = await POST(
+      makeRequest({ name: "Product Docs", visibility: "org" }),
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.collection.name).toBe("Product Docs");
@@ -109,7 +129,9 @@ describe("POST /api/knowledge/collections", () => {
 });
 
 describe("GET /api/knowledge/collections — guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls db.select when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -155,7 +177,9 @@ describe("GET /api/knowledge/collections — guard chains", () => {
 
   it("db.insert called exactly once on valid admin request", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{ id: "col-x", name: "X Docs" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      { id: "col-x", name: "X Docs" },
+    ]);
     const { POST } = await import("./route");
     await POST(makeRequest({ name: "X Docs", visibility: "org" }));
     expect(dbInsertMock).toHaveBeenCalledTimes(1);
@@ -170,7 +194,9 @@ describe("GET /api/knowledge/collections — guard chains", () => {
 });
 
 describe("GET /api/knowledge/collections — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -191,7 +217,9 @@ describe("GET /api/knowledge/collections — additional", () => {
 });
 
 describe("POST /api/knowledge/collections — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -210,7 +238,9 @@ describe("POST /api/knowledge/collections — additional", () => {
 
   it("200 body has collection property on success", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{ id: "col-y", name: "Y Docs" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      { id: "col-y", name: "Y Docs" },
+    ]);
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ name: "Y Docs", visibility: "org" }));
     const body = await res.json();
@@ -219,12 +249,17 @@ describe("POST /api/knowledge/collections — additional", () => {
 });
 
 describe("GET and POST /api/knowledge/collections — response invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
 
   it("GET returns Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res).toBeInstanceOf(Response);
     expect(res.status).toBe(401);
   });
@@ -239,7 +274,7 @@ describe("GET and POST /api/knowledge/collections — response invariants", () =
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    await GET(makeRequest());
+    await GET();
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 

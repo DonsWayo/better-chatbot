@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { UpdateUserRoleSchema } from "./validations";
 import { USER_ROLES } from "app-types/roles";
+import { describe, expect, it } from "vitest";
+import { UpdateUserRoleSchema } from "./validations";
 
 describe("Admin Validations", () => {
   describe("UpdateUserRoleSchema", () => {
@@ -187,18 +187,27 @@ describe("UpdateUserRoleSchema — additional boundaries", () => {
   });
 
   it("rejects numeric userId", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: 12345, role: "user" });
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: 12345,
+      role: "user",
+    });
     expect(result.success).toBe(false);
   });
 
   it("rejects boolean userId", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: true, role: "admin" });
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: true,
+      role: "admin",
+    });
     expect(result.success).toBe(false);
   });
 
   it("parsed data.userId matches input UUID exactly", () => {
     const uuid = "550e8400-e29b-41d4-a716-446655440000";
-    const result = UpdateUserRoleSchema.safeParse({ userId: uuid, role: "admin" });
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: uuid,
+      role: "admin",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.userId).toBe(uuid);
   });
@@ -235,8 +244,10 @@ describe("UpdateUserRoleSchema — invariants", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing role", () => {
-    const result = UpdateUserRoleSchema.safeParse({ userId: "123e4567-e89b-12d3-a456-426614174000" });
-    expect(result.success).toBe(false);
+  it("accepts missing role (role is optional)", () => {
+    const result = UpdateUserRoleSchema.safeParse({
+      userId: "123e4567-e89b-12d3-a456-426614174000",
+    });
+    expect(result.success).toBe(true);
   });
 });

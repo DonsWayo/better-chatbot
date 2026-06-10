@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -17,12 +17,12 @@ vi.mock("prom-client", () => {
 vi.mock("./metrics", () => ({ metricsRegistry: {} }));
 
 import {
-  ttftMs,
-  providerErrorsTotal,
-  providerFallbackTotal,
   activeRequests,
   killSwitchActivations,
+  providerErrorsTotal,
+  providerFallbackTotal,
   rateLimitActivations,
+  ttftMs,
 } from "./slo";
 
 describe("SLO metrics — shape", () => {
@@ -55,7 +55,10 @@ describe("SLO metrics — shape", () => {
 describe("SLO metrics — behaviour", () => {
   it("ttftMs.observe() can be called with labels", () => {
     expect(() =>
-      ttftMs.observe({ provider: "openrouter", model: "gpt-4o", task_class: "chat" }, 350),
+      ttftMs.observe(
+        { provider: "openrouter", model: "gpt-4o", task_class: "chat" },
+        350,
+      ),
     ).not.toThrow();
   });
 
@@ -66,7 +69,11 @@ describe("SLO metrics — behaviour", () => {
 
   it("providerErrorsTotal.inc() callable with labels", () => {
     expect(() =>
-      providerErrorsTotal.inc({ provider: "openrouter", model: "gpt-4o", error_type: "timeout" }),
+      providerErrorsTotal.inc({
+        provider: "openrouter",
+        model: "gpt-4o",
+        error_type: "timeout",
+      }),
     ).not.toThrow();
   });
 
@@ -82,14 +89,22 @@ describe("SLO metrics — behaviour", () => {
     expect(() => activeRequests.set(0)).not.toThrow();
   });
 
-  it("providerFallbackTotal.inc() callable with provider label", () => {
+  it("providerFallbackTotal.inc() callable with fallback labels", () => {
     expect(() =>
-      providerFallbackTotal.inc({ provider: "anthropic", model: "claude-opus-4.8" }),
+      providerFallbackTotal.inc({
+        primary_provider: "anthropic",
+        fallback_provider: "openai",
+        fallback_model: "gpt-5.1",
+      }),
     ).not.toThrow();
   });
 
   it("ttftMs.observe() accepts multiple different latencies", () => {
-    const labels = { provider: "openrouter", model: "gpt-5.1", task_class: "code" };
+    const labels = {
+      provider: "openrouter",
+      model: "gpt-5.1",
+      task_class: "code",
+    };
     expect(() => ttftMs.observe(labels, 100)).not.toThrow();
     expect(() => ttftMs.observe(labels, 2000)).not.toThrow();
   });

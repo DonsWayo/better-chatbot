@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { pythonExecutionSchema, pythonExecutionTool } from "./python-run-tool";
+
+// The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+const inputSchema = pythonExecutionTool.inputSchema as unknown as z.ZodTypeAny;
 
 describe("pythonExecutionSchema", () => {
   it("is an object schema", () => {
@@ -36,24 +40,24 @@ describe("pythonExecutionTool", () => {
   });
 
   it("inputSchema accepts valid python code", () => {
-    const result = pythonExecutionTool.inputSchema.safeParse({
+    const result = inputSchema.safeParse({
       code: "print('Hello, World!')",
     });
     expect(result.success).toBe(true);
   });
 
   it("inputSchema rejects missing code field", () => {
-    const result = pythonExecutionTool.inputSchema.safeParse({});
+    const result = inputSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 
   it("inputSchema rejects non-string code", () => {
-    const result = pythonExecutionTool.inputSchema.safeParse({ code: 123 });
+    const result = inputSchema.safeParse({ code: 123 });
     expect(result.success).toBe(false);
   });
 
   it("inputSchema rejects null code", () => {
-    const result = pythonExecutionTool.inputSchema.safeParse({ code: null });
+    const result = inputSchema.safeParse({ code: null });
     expect(result.success).toBe(false);
   });
 
@@ -63,7 +67,7 @@ import pandas as pd
 df = pd.DataFrame({'a': [1, 2, 3]})
 print(df.head())
     `.trim();
-    const result = pythonExecutionTool.inputSchema.safeParse({ code: multiLine });
+    const result = inputSchema.safeParse({ code: multiLine });
     expect(result.success).toBe(true);
   });
 
@@ -72,7 +76,7 @@ print(df.head())
   });
 
   it("inputSchema rejects empty object", () => {
-    const result = pythonExecutionTool.inputSchema.safeParse({});
+    const result = inputSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });
@@ -99,7 +103,7 @@ describe("pythonExecutionSchema — properties completeness", () => {
 
 describe("pythonExecutionTool — schema edge cases", () => {
   it("inputSchema accepts empty string code (empty script is valid Python)", () => {
-    const result = pythonExecutionTool.inputSchema.safeParse({ code: "" });
+    const result = inputSchema.safeParse({ code: "" });
     expect(result.success).toBe(true);
   });
 
@@ -110,6 +114,6 @@ describe("pythonExecutionTool — schema edge cases", () => {
 
   it("inputSchema is the same object as pythonExecutionSchema (same schema)", () => {
     expect(pythonExecutionTool.inputSchema).toBeDefined();
-    expect(pythonExecutionTool.inputSchema.safeParse).toBeDefined();
+    expect(inputSchema.safeParse).toBeDefined();
   });
 });

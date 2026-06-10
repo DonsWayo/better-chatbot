@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -73,12 +73,20 @@ describe("GET /api/admin/feature-flags", () => {
   it("returns 200 with flags array for admin", async () => {
     mockSession = { user: { role: "admin" } };
     const updatedAt = new Date("2026-01-01T00:00:00.000Z");
-    mockSelect.mockResolvedValue([{ name: "kill_switch", enabled: false, updatedAt }]);
+    mockSelect.mockResolvedValue([
+      { name: "kill_switch", enabled: false, updatedAt },
+    ]);
     const res = await GET({} as Request);
     expect(res.status).toBe(200);
     const body = await res.json();
     // Date serialises to ISO string in JSON
-    expect(body.flags).toEqual([{ name: "kill_switch", enabled: false, updatedAt: updatedAt.toISOString() }]);
+    expect(body.flags).toEqual([
+      {
+        name: "kill_switch",
+        enabled: false,
+        updatedAt: updatedAt.toISOString(),
+      },
+    ]);
   });
 });
 
@@ -108,12 +116,16 @@ describe("POST /api/admin/feature-flags", () => {
   });
 
   it("returns 400 for non-boolean enabled", async () => {
-    const res = await POST(makeRequest({ name: "kill_switch", enabled: "yes" }));
+    const res = await POST(
+      makeRequest({ name: "kill_switch", enabled: "yes" }),
+    );
     expect(res.status).toBe(400);
   });
 
   it("returns 400 for malformed JSON body", async () => {
-    const badReq = { json: () => Promise.reject(new Error("bad json")) } as unknown as Request;
+    const badReq = {
+      json: () => Promise.reject(new Error("bad json")),
+    } as unknown as Request;
     const res = await POST(badReq);
     expect(res.status).toBe(400);
   });
@@ -141,7 +153,9 @@ describe("POST /api/admin/feature-flags", () => {
 
   it("returns the correct enabled=false value on deactivation", async () => {
     mockInsert.mockResolvedValue(undefined);
-    const res = await POST(makeRequest({ name: "kill_switch", enabled: false }));
+    const res = await POST(
+      makeRequest({ name: "kill_switch", enabled: false }),
+    );
     const body = await res.json();
     expect(body.enabled).toBe(false);
   });
@@ -238,7 +252,9 @@ describe("POST /api/admin/feature-flags — additional", () => {
 
   it("200 body name matches the posted name", async () => {
     mockInsert.mockResolvedValue(undefined);
-    const res = await POST(makeRequest({ name: "feature_unique_99", enabled: true }));
+    const res = await POST(
+      makeRequest({ name: "feature_unique_99", enabled: true }),
+    );
     const body = await res.json();
     expect(body.name).toBe("feature_unique_99");
   });
@@ -264,10 +280,10 @@ describe("GET /api/admin/feature-flags — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 
-  it("200 body is an array", async () => {
+  it("200 body has a flags array", async () => {
     const res = await GET(makeRequest());
     const body = await res.json();
-    expect(Array.isArray(body)).toBe(true);
+    expect(Array.isArray(body.flags)).toBe(true);
   });
 
   it("returns 401 when session is null", async () => {

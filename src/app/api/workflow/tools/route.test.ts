@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, selectExecuteAbilityMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -87,12 +87,20 @@ describe("GET /api/workflow/tools", () => {
     const res = await GET();
     const body = await res.json();
     expect(body).toHaveLength(3);
-    expect(body.map((w: { id: string }) => w.id)).toEqual(["wf-1", "wf-2", "wf-3"]);
+    expect(body.map((w: { id: string }) => w.id)).toEqual([
+      "wf-1",
+      "wf-2",
+      "wf-3",
+    ]);
   });
 
   it("preserves workflow fields in response", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const workflow = { id: "wf-1", name: "Data Processor", description: "Processes data" };
+    const workflow = {
+      id: "wf-1",
+      name: "Data Processor",
+      description: "Processes data",
+    };
     selectExecuteAbilityMock.mockResolvedValueOnce([workflow]);
     const { GET } = await import("./route");
     const res = await GET();
@@ -129,7 +137,9 @@ describe("GET /api/workflow/tools", () => {
 });
 
 describe("GET /api/workflow/tools — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -155,7 +165,9 @@ describe("GET /api/workflow/tools — additional", () => {
 });
 
 describe("GET /api/workflow/tools — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for unauthenticated request", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -191,7 +203,10 @@ describe("GET /api/workflow/tools — response shape", () => {
 });
 
 describe("GET /api/workflow/tools — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -200,12 +215,13 @@ describe("GET /api/workflow/tools — call count invariants", () => {
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
-  it("GET returns 401 Response when session is null", async () => {
+  it("GET returns 200 with empty array when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
     const res = await GET();
     expect(res).toBeInstanceOf(Response);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
   });
 
   it("selectExecuteAbility not called when unauthenticated", async () => {

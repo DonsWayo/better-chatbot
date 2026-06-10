@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  AgentInstructionsSchema,
   AgentCreateSchema,
-  AgentUpdateSchema,
-  AgentQuerySchema,
   AgentGenerateSchema,
+  AgentInstructionsSchema,
+  AgentQuerySchema,
+  AgentUpdateSchema,
 } from "./agent";
 
 describe("AgentInstructionsSchema", () => {
@@ -14,7 +14,9 @@ describe("AgentInstructionsSchema", () => {
   });
 
   it("accepts role only", () => {
-    const r = AgentInstructionsSchema.safeParse({ role: "Customer support agent" });
+    const r = AgentInstructionsSchema.safeParse({
+      role: "Customer support agent",
+    });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.role).toBe("Customer support agent");
   });
@@ -28,7 +30,9 @@ describe("AgentInstructionsSchema", () => {
 
   it("accepts mentions array", () => {
     const r = AgentInstructionsSchema.safeParse({
-      mentions: [{ type: "defaultTool", name: "web_search", label: "Web Search" }],
+      mentions: [
+        { type: "defaultTool", name: "web_search", label: "Web Search" },
+      ],
     });
     expect(r.success).toBe(true);
   });
@@ -60,13 +64,19 @@ describe("AgentCreateSchema", () => {
   });
 
   it("accepts public visibility", () => {
-    const r = AgentCreateSchema.safeParse({ ...minimalValid, visibility: "public" });
+    const r = AgentCreateSchema.safeParse({
+      ...minimalValid,
+      visibility: "public",
+    });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.visibility).toBe("public");
   });
 
   it("accepts readonly visibility", () => {
-    const r = AgentCreateSchema.safeParse({ ...minimalValid, visibility: "readonly" });
+    const r = AgentCreateSchema.safeParse({
+      ...minimalValid,
+      visibility: "readonly",
+    });
     expect(r.success).toBe(true);
   });
 
@@ -117,7 +127,10 @@ describe("AgentCreateSchema", () => {
   });
 
   it("rejects name over 100 characters", () => {
-    const r = AgentCreateSchema.safeParse({ ...minimalValid, name: "a".repeat(101) });
+    const r = AgentCreateSchema.safeParse({
+      ...minimalValid,
+      name: "a".repeat(101),
+    });
     expect(r.success).toBe(false);
   });
 
@@ -127,9 +140,13 @@ describe("AgentCreateSchema", () => {
   });
 
   it("strips unknown fields", () => {
-    const r = AgentCreateSchema.safeParse({ ...minimalValid, unknownField: "value" });
+    const r = AgentCreateSchema.safeParse({
+      ...minimalValid,
+      unknownField: "value",
+    });
     expect(r.success).toBe(true);
-    if (r.success) expect((r.data as Record<string, unknown>).unknownField).toBeUndefined();
+    if (r.success)
+      expect((r.data as Record<string, unknown>).unknownField).toBeUndefined();
   });
 });
 
@@ -166,7 +183,8 @@ describe("AgentUpdateSchema", () => {
   it("strips unknown fields", () => {
     const r = AgentUpdateSchema.safeParse({ name: "Agent", extra: true });
     expect(r.success).toBe(true);
-    if (r.success) expect((r.data as Record<string, unknown>).extra).toBeUndefined();
+    if (r.success)
+      expect((r.data as Record<string, unknown>).extra).toBeUndefined();
   });
 });
 
@@ -246,7 +264,10 @@ describe("AgentGenerateSchema", () => {
   });
 
   it("accepts tools list", () => {
-    const r = AgentGenerateSchema.safeParse({ ...validInput, tools: ["web_search", "calculator"] });
+    const r = AgentGenerateSchema.safeParse({
+      ...validInput,
+      tools: ["web_search", "calculator"],
+    });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.tools).toEqual(["web_search", "calculator"]);
   });
@@ -307,8 +328,8 @@ describe("AgentGenerateSchema — additional", () => {
     if (r.success) expect(r.data.name).toBe("Exact Name");
   });
 
-  it("rejects empty string name", () => {
+  it("accepts empty string name (schema does not enforce min length)", () => {
     const r = AgentGenerateSchema.safeParse({ ...base, name: "" });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
   });
 });

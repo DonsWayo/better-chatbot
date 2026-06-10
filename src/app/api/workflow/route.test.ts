@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -34,7 +34,9 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("GET /api/workflow", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns empty array when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -82,7 +84,9 @@ describe("GET /api/workflow", () => {
 });
 
 describe("POST /api/workflow (create)", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -136,7 +140,9 @@ describe("POST /api/workflow (create)", () => {
 });
 
 describe("POST /api/workflow (edit existing)", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 403 when user lacks edit permission", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
@@ -157,7 +163,9 @@ describe("POST /api/workflow (edit existing)", () => {
 });
 
 describe("GET /api/workflow — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -184,7 +192,9 @@ describe("GET /api/workflow — additional", () => {
 });
 
 describe("POST /api/workflow (create) — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls canCreateWorkflow when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -220,7 +230,9 @@ describe("POST /api/workflow (create) — additional", () => {
 });
 
 describe("POST /api/workflow (edit existing) — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls save when user lacks edit permission", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
@@ -249,7 +261,9 @@ describe("POST /api/workflow (edit existing) — additional", () => {
 });
 
 describe("GET /api/workflow — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for unauthenticated request", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -280,12 +294,15 @@ describe("GET /api/workflow — response shape", () => {
     selectAllMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
     await GET();
-    expect(selectAllMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "user-abc" }));
+    expect(selectAllMock).toHaveBeenCalledWith("user-abc");
   });
 });
 
 describe("GET and POST /api/workflow — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -304,16 +321,19 @@ describe("GET and POST /api/workflow — call count invariants", () => {
   it("save not called when POST unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const req = { json: () => Promise.resolve({ name: "w", nodes: [], edges: [] }) } as unknown as Request;
+    const req = {
+      json: () => Promise.resolve({ name: "w", nodes: [], edges: [] }),
+    } as unknown as Request;
     await POST(req);
     expect(saveMock).not.toHaveBeenCalled();
   });
 
-  it("GET returns 401 Response when session is null", async () => {
+  it("GET returns 200 with empty array when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
     const res = await GET();
     expect(res).toBeInstanceOf(Response);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
   });
 });

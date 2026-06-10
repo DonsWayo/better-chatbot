@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the @ai-sdk/openai-compatible module before importing
 vi.mock("@ai-sdk/openai-compatible", () => ({
   createOpenAICompatible: vi.fn(() => vi.fn()),
 }));
 
-import { createAzureOpenAICompatible } from "./azure-openai-compatible";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createAzureOpenAICompatible } from "./azure-openai-compatible";
 
 const mockCreateOpenAICompatible = vi.mocked(createOpenAICompatible);
 
@@ -200,8 +200,14 @@ describe("createAzureOpenAICompatible — return type invariants", () => {
   it("calling the returned function returns something defined", () => {
     const mockModel = { id: "az-model" };
     const mockFactory = vi.fn().mockReturnValue(mockModel);
-    mockCreateOpenAICompatible.mockReturnValueOnce(mockFactory as unknown as ReturnType<typeof createOpenAICompatible>);
-    const config = { name: "Az", apiKey: "k", baseURL: "https://x.com/deployments/" };
+    mockCreateOpenAICompatible.mockReturnValueOnce(
+      mockFactory as unknown as ReturnType<typeof createOpenAICompatible>,
+    );
+    const config = {
+      name: "Az",
+      apiKey: "k",
+      baseURL: "https://x.com/deployments/",
+    };
     const provider = createAzureOpenAICompatible(config);
     const result = provider("m", "v");
     expect(result).toBeDefined();
@@ -219,10 +225,12 @@ describe("createAzureOpenAICompatible — fetch intercept", () => {
       apiKey: "k",
       baseURL: "https://x.com/deployments/",
     };
-    let capturedFetch: ((url: string | Request, init?: RequestInit) => Promise<Response>) | undefined;
+    let capturedFetch:
+      | ((url: string | Request, init?: RequestInit) => Promise<Response>)
+      | undefined;
     mockCreateOpenAICompatible.mockImplementation((opts) => {
       capturedFetch = opts.fetch as typeof capturedFetch;
-      return vi.fn();
+      return vi.fn() as unknown as ReturnType<typeof createOpenAICompatible>;
     });
     const provider = createAzureOpenAICompatible(config);
     provider("model", "2024-01-01");
@@ -250,8 +258,16 @@ describe("createAzureOpenAICompatible — fetch intercept", () => {
   });
 
   it("different apiKeys produce different createOpenAICompatible calls", () => {
-    const config1 = { name: "Az", apiKey: "key-a", baseURL: "https://x.com/deployments/" };
-    const config2 = { name: "Az", apiKey: "key-b", baseURL: "https://x.com/deployments/" };
+    const config1 = {
+      name: "Az",
+      apiKey: "key-a",
+      baseURL: "https://x.com/deployments/",
+    };
+    const config2 = {
+      name: "Az",
+      apiKey: "key-b",
+      baseURL: "https://x.com/deployments/",
+    };
     createAzureOpenAICompatible(config1)("model", "v");
     createAzureOpenAICompatible(config2)("model", "v");
     const calls = mockCreateOpenAICompatible.mock.calls;
@@ -260,11 +276,17 @@ describe("createAzureOpenAICompatible — fetch intercept", () => {
   });
 
   it("api-version is appended as query param via custom fetch", async () => {
-    const config = { name: "Az", apiKey: "k", baseURL: "https://x.com/deployments/" };
-    let capturedFetch: ((url: string | Request, init?: RequestInit) => Promise<Response>) | undefined;
+    const config = {
+      name: "Az",
+      apiKey: "k",
+      baseURL: "https://x.com/deployments/",
+    };
+    let capturedFetch:
+      | ((url: string | Request, init?: RequestInit) => Promise<Response>)
+      | undefined;
     mockCreateOpenAICompatible.mockImplementation((opts) => {
       capturedFetch = opts.fetch as typeof capturedFetch;
-      return vi.fn();
+      return vi.fn() as unknown as ReturnType<typeof createOpenAICompatible>;
     });
     createAzureOpenAICompatible(config)("m", "2024-09-01");
     expect(capturedFetch).toBeDefined();

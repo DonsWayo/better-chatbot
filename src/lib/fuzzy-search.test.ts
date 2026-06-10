@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { fuzzySearch } from "./fuzzy-search";
 import type { SearchItem } from "./fuzzy-search";
 

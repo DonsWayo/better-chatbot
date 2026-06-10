@@ -1,14 +1,24 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── shared hoisted mocks ───────────────────────────────────────────────────────
 
-const { requireAdminPermissionMock, revalidatePathMock, updateTeamPolicyMock, addTeamMemberMock, removeTeamMemberMock, dbSelectLimitMock, dbInsertOnConflictMock } = vi.hoisted(() => ({
+const {
+  requireAdminPermissionMock,
+  revalidatePathMock,
+  updateTeamPolicyMock,
+  addTeamMemberMock,
+  removeTeamMemberMock,
+  dbSelectLimitMock,
+  dbInsertOnConflictMock,
+} = vi.hoisted(() => ({
   requireAdminPermissionMock: vi.fn().mockResolvedValue(undefined),
   revalidatePathMock: vi.fn(),
   updateTeamPolicyMock: vi.fn().mockResolvedValue(undefined),
   addTeamMemberMock: vi.fn().mockResolvedValue(undefined),
   removeTeamMemberMock: vi.fn().mockResolvedValue(undefined),
-  dbSelectLimitMock: vi.fn().mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]),
+  dbSelectLimitMock: vi
+    .fn()
+    .mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]),
   dbInsertOnConflictMock: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -53,14 +63,18 @@ vi.mock("drizzle-orm", () => ({
 // ── test suites ───────────────────────────────────────────────────────────────
 
 describe("setModelAllowListAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("requires admin, then calls updateTeamPolicy with modelAllowList", async () => {
     const { setModelAllowListAction } = await import("./actions");
     await setModelAllowListAction("team-1", ["gpt-5.1", "claude-opus-4.8"]);
 
     expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-1", { modelAllowList: ["gpt-5.1", "claude-opus-4.8"] });
+    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-1", {
+      modelAllowList: ["gpt-5.1", "claude-opus-4.8"],
+    });
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-1");
   });
 
@@ -68,26 +82,34 @@ describe("setModelAllowListAction", () => {
     const { setModelAllowListAction } = await import("./actions");
     await setModelAllowListAction("team-2", []);
 
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-2", { modelAllowList: [] });
+    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-2", {
+      modelAllowList: [],
+    });
   });
 
   it("throws if requireAdminPermission rejects", async () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
     const { setModelAllowListAction } = await import("./actions");
-    await expect(setModelAllowListAction("team-1", [])).rejects.toThrow("Forbidden");
+    await expect(setModelAllowListAction("team-1", [])).rejects.toThrow(
+      "Forbidden",
+    );
     expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 });
 
 describe("setEmailDomainsAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("requires admin, then calls updateTeamPolicy with allowedEmailDomains", async () => {
     const { setEmailDomainsAction } = await import("./actions");
     await setEmailDomainsAction("team-3", ["asafe.ai", "corp.example.com"]);
 
     expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-3", { allowedEmailDomains: ["asafe.ai", "corp.example.com"] });
+    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-3", {
+      allowedEmailDomains: ["asafe.ai", "corp.example.com"],
+    });
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-3");
   });
 
@@ -95,7 +117,9 @@ describe("setEmailDomainsAction", () => {
     const { setEmailDomainsAction } = await import("./actions");
     await setEmailDomainsAction("team-4", []);
 
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-4", { allowedEmailDomains: [] });
+    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-4", {
+      allowedEmailDomains: [],
+    });
   });
 
   it("revalidates the correct path", async () => {
@@ -107,7 +131,9 @@ describe("setEmailDomainsAction", () => {
 });
 
 describe("setPolicyAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("requires admin, then calls updateTeamPolicy with the full patch", async () => {
     const { setPolicyAction } = await import("./actions");
@@ -132,13 +158,17 @@ describe("setPolicyAction", () => {
     const { setPolicyAction } = await import("./actions");
     await setPolicyAction("team-6", { guardrailPolicy: "permissive" });
 
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-6", { guardrailPolicy: "permissive" });
+    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-6", {
+      guardrailPolicy: "permissive",
+    });
   });
 
   it("propagates errors from updateTeamPolicy", async () => {
     updateTeamPolicyMock.mockRejectedValueOnce(new Error("DB write failed"));
     const { setPolicyAction } = await import("./actions");
-    await expect(setPolicyAction("team-7", { allowSpeech: true })).rejects.toThrow("DB write failed");
+    await expect(
+      setPolicyAction("team-7", { allowSpeech: true }),
+    ).rejects.toThrow("DB write failed");
   });
 });
 
@@ -146,27 +176,38 @@ describe("addTeamMemberAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: user found
-    dbSelectLimitMock.mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]);
+    dbSelectLimitMock.mockResolvedValue([
+      { id: "u1", email: "alice@asafe.ai" },
+    ]);
   });
 
   it("looks up user by email and calls addTeamMember with userEmail", async () => {
     const { addTeamMemberAction } = await import("./actions");
     await addTeamMemberAction("team-8", "alice@asafe.ai", "member");
 
-    expect(addTeamMemberMock).toHaveBeenCalledWith("team-8", "u1", "member", "alice@asafe.ai");
+    expect(addTeamMemberMock).toHaveBeenCalledWith(
+      "team-8",
+      "u1",
+      "member",
+      "alice@asafe.ai",
+    );
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-8");
   });
 
   it("throws 'User not found' when email has no matching DB record", async () => {
     dbSelectLimitMock.mockResolvedValueOnce([]);
     const { addTeamMemberAction } = await import("./actions");
-    await expect(addTeamMemberAction("team-8", "unknown@ghost.io", "member")).rejects.toThrow("User not found");
+    await expect(
+      addTeamMemberAction("team-8", "unknown@ghost.io", "member"),
+    ).rejects.toThrow("User not found");
     expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
 });
 
 describe("removeTeamMemberAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("requires admin, calls removeTeamMember, and revalidates", async () => {
     const { removeTeamMemberAction } = await import("./actions");
@@ -181,13 +222,19 @@ describe("removeTeamMemberAction", () => {
 describe("addTeamMemberAction — additional", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    dbSelectLimitMock.mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]);
+    dbSelectLimitMock.mockResolvedValue([
+      { id: "u1", email: "alice@asafe.ai" },
+    ]);
   });
 
   it("requireAdminPermission called before addTeamMember", async () => {
     const callOrder: string[] = [];
-    requireAdminPermissionMock.mockImplementationOnce(async () => { callOrder.push("admin"); });
-    addTeamMemberMock.mockImplementationOnce(async () => { callOrder.push("add"); });
+    requireAdminPermissionMock.mockImplementationOnce(async () => {
+      callOrder.push("admin");
+    });
+    addTeamMemberMock.mockImplementationOnce(async () => {
+      callOrder.push("add");
+    });
     const { addTeamMemberAction } = await import("./actions");
     await addTeamMemberAction("team-x", "alice@asafe.ai", "member");
     expect(callOrder[0]).toBe("admin");
@@ -197,7 +244,9 @@ describe("addTeamMemberAction — additional", () => {
   it("revalidates the correct team path", async () => {
     const { addTeamMemberAction } = await import("./actions");
     await addTeamMemberAction("team-path-check", "alice@asafe.ai", "admin");
-    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-path-check");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/admin/teams/team-path-check",
+    );
   });
 
   it("addTeamMember called exactly once on success", async () => {
@@ -208,18 +257,24 @@ describe("addTeamMemberAction — additional", () => {
 });
 
 describe("setModelAllowListAction — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("revalidates correct team path", async () => {
     const { setModelAllowListAction } = await import("./actions");
     await setModelAllowListAction("team-revalidate", ["model-a"]);
-    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-revalidate");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/admin/teams/team-revalidate",
+    );
   });
 
   it("updateTeamPolicy not called when permission is denied", async () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
     const { setModelAllowListAction } = await import("./actions");
-    await expect(setModelAllowListAction("team-x", [])).rejects.toThrow("Forbidden");
+    await expect(setModelAllowListAction("team-x", [])).rejects.toThrow(
+      "Forbidden",
+    );
     expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 
@@ -231,7 +286,9 @@ describe("setModelAllowListAction — additional", () => {
 });
 
 describe("removeTeamMemberAction — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("requireAdminPermission called exactly once", async () => {
     const { removeTeamMemberAction } = await import("./actions");
@@ -248,38 +305,48 @@ describe("removeTeamMemberAction — additional", () => {
   it("throws when requireAdminPermission rejects", async () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
     const { removeTeamMemberAction } = await import("./actions");
-    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow("Forbidden");
+    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow(
+      "Forbidden",
+    );
     expect(removeTeamMemberMock).not.toHaveBeenCalled();
   });
 
   it("revalidates the correct team path on success", async () => {
     const { removeTeamMemberAction } = await import("./actions");
     await removeTeamMemberAction("mem-id-unique", "team-path-99");
-    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-path-99");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/admin/teams/team-path-99",
+    );
   });
 });
 
 describe("team actions — requireAdminPermission guard invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); requireAdminPermissionMock.mockResolvedValue(undefined); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    requireAdminPermissionMock.mockResolvedValue(undefined);
+  });
 
-  it("addTeamMemberAction calls requireAdminPermission before addTeamMember", async () => {
+  it("addTeamMemberAction calls requireAdminPermission", async () => {
     const { addTeamMemberAction } = await import("./actions");
-    await addTeamMemberAction("u1", "t1");
-    expect(requireAdminPermissionMock).toHaveBeenCalledBefore
-      ? expect(requireAdminPermissionMock).toHaveBeenCalled()
-      : expect(requireAdminPermissionMock).toHaveBeenCalled();
+    await addTeamMemberAction("t1", "user@example.com", "member");
+    expect(requireAdminPermissionMock).toHaveBeenCalled();
   });
 
   it("removeTeamMemberAction calls revalidatePath with team-scoped path", async () => {
     const { removeTeamMemberAction } = await import("./actions");
     await removeTeamMemberAction("mem-a", "team-xyz");
-    expect(revalidatePathMock).toHaveBeenCalledWith(expect.stringContaining("team-xyz"));
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      expect.stringContaining("team-xyz"),
+    );
   });
 
   it("addTeamMember not called when requireAdminPermission throws", async () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("no admin"));
     const { addTeamMemberAction } = await import("./actions");
-    await expect(addTeamMemberAction("u1", "t1")).rejects.toThrow();
+    await expect(
+      addTeamMemberAction("t1", "user@example.com", "member"),
+    ).rejects.toThrow();
     expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
 

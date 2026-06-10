@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { RESOURCES, PERMISSION_TYPES } from "./permissions";
+import { describe, expect, it } from "vitest";
+import { PERMISSION_TYPES, RESOURCES } from "./permissions";
 
 describe("RESOURCES", () => {
   it("has WORKFLOW resource", () => {
@@ -103,7 +103,7 @@ describe("PERMISSION_TYPES — uniqueness and format", () => {
 
 describe("RESOURCES and PERMISSION_TYPES — cross-property", () => {
   it("no overlapping values between RESOURCES and PERMISSION_TYPES", () => {
-    const resourceValues = new Set(Object.values(RESOURCES));
+    const resourceValues = new Set<string>(Object.values(RESOURCES));
     for (const v of Object.values(PERMISSION_TYPES)) {
       expect(resourceValues.has(v)).toBe(false);
     }

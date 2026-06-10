@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, selectThreadsByUserIdMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -13,7 +13,9 @@ vi.mock("lib/db/repository", () => ({
 }));
 
 describe("GET /api/thread", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -48,7 +50,10 @@ describe("GET /api/thread", () => {
 
   it("returns threads for authenticated user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const THREADS = [{ id: "t-1", title: "My chat" }, { id: "t-2", title: "Another" }];
+    const THREADS = [
+      { id: "t-1", title: "My chat" },
+      { id: "t-2", title: "Another" },
+    ];
     selectThreadsByUserIdMock.mockResolvedValueOnce(THREADS);
     const { GET } = await import("./route");
     const res = await GET();
@@ -79,7 +84,10 @@ describe("GET /api/thread", () => {
 
   it("returns many threads correctly", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const THREADS = Array.from({ length: 10 }, (_, i) => ({ id: `t-${i}`, title: `Thread ${i}` }));
+    const THREADS = Array.from({ length: 10 }, (_, i) => ({
+      id: `t-${i}`,
+      title: `Thread ${i}`,
+    }));
     selectThreadsByUserIdMock.mockResolvedValueOnce(THREADS);
     const { GET } = await import("./route");
     const res = await GET();
@@ -114,7 +122,9 @@ describe("GET /api/thread", () => {
 });
 
 describe("GET /api/thread — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -152,7 +162,9 @@ describe("GET /api/thread — additional", () => {
 });
 
 describe("GET /api/thread — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -183,14 +195,15 @@ describe("GET /api/thread — response shape", () => {
     selectThreadsByUserIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
     await GET();
-    expect(selectThreadsByUserIdMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "specific-user" }),
-    );
+    expect(selectThreadsByUserIdMock).toHaveBeenCalledWith("specific-user");
   });
 });
 
 describe("GET /api/thread — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);

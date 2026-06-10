@@ -1,12 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { generateImageMock, fileStorageMock, generateTextMock } = vi.hoisted(() => ({
-  generateImageMock: vi.fn(),
-  fileStorageMock: { upload: vi.fn(), download: vi.fn() },
-  generateTextMock: vi.fn(),
-}));
+const { generateImageMock, fileStorageMock, generateTextMock } = vi.hoisted(
+  () => ({
+    generateImageMock: vi.fn(),
+    fileStorageMock: { upload: vi.fn(), download: vi.fn() },
+    generateTextMock: vi.fn(),
+  }),
+);
 
 vi.mock("lib/ai/image/generate-image", () => ({
   generateImageWithNanoBanana: generateImageMock,
@@ -19,15 +21,39 @@ vi.mock("ai", async () => ({
   generateText: generateTextMock,
 }));
 vi.mock("@ai-sdk/openai", () => ({
-  openai: Object.assign(vi.fn((model: string) => ({ modelId: model })), {
-    tools: { imageGeneration: vi.fn(() => ({})) },
-  }),
+  openai: Object.assign(
+    vi.fn((model: string) => ({ modelId: model })),
+    {
+      tools: { imageGeneration: vi.fn(() => ({})) },
+    },
+  ),
 }));
-vi.mock("logger", () => ({ default: { error: vi.fn(), info: vi.fn(), withTag: vi.fn(() => ({ error: vi.fn() })) } }));
+vi.mock("logger", () => ({
+  default: {
+    error: vi.fn(),
+    info: vi.fn(),
+    withTag: vi.fn(() => ({ error: vi.fn() })),
+  },
+}));
 vi.mock("lib/utils", () => ({ toAny: (v: unknown) => v }));
 
-import { nanoBananaTool, openaiImageTool } from "./index";
+import type { ToolCallOptions } from "ai";
 import { ImageToolName } from "..";
+import { nanoBananaTool, openaiImageTool } from "./index";
+
+// The AI SDK's Tool type does not surface the extra `name` property that
+// createTool({ name, ... }) carries at runtime, nor a non-streaming result type.
+type NamedTool = { name?: string };
+type ImageToolResult = {
+  images: Array<{ url: string; mimeType?: string }>;
+  mode: string;
+  model: string;
+  guide: string;
+};
+const callOpts = {
+  messages: [],
+  abortSignal: undefined,
+} as unknown as ToolCallOptions;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,7 +65,7 @@ describe("nanoBananaTool", () => {
   });
 
   it("has the correct name", () => {
-    expect(nanoBananaTool.name).toBe(ImageToolName);
+    expect((nanoBananaTool as NamedTool).name).toBe(ImageToolName);
   });
 
   it("has a description", () => {
@@ -59,12 +85,14 @@ describe("nanoBananaTool", () => {
     generateImageMock.mockResolvedValue({
       images: [{ base64: "abc123", mimeType: "image/png" }],
     });
-    fileStorageMock.upload.mockResolvedValue({ sourceUrl: "https://cdn.example.com/img.png" });
+    fileStorageMock.upload.mockResolvedValue({
+      sourceUrl: "https://cdn.example.com/img.png",
+    });
 
-    const result = await nanoBananaTool.execute!(
+    const result = (await nanoBananaTool.execute!(
       { mode: "create" },
-      { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof nanoBananaTool.execute>>[1],
-    );
+      callOpts,
+    )) as ImageToolResult;
 
     expect(result.images).toHaveLength(1);
     expect(result.images[0].url).toBe("https://cdn.example.com/img.png");
@@ -75,10 +103,10 @@ describe("nanoBananaTool", () => {
   it("returns empty images array when generation returns no images", async () => {
     generateImageMock.mockResolvedValue({ images: [] });
 
-    const result = await nanoBananaTool.execute!(
+    const result = (await nanoBananaTool.execute!(
       { mode: "create" },
-      { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof nanoBananaTool.execute>>[1],
-    );
+      callOpts,
+    )) as ImageToolResult;
 
     expect(result.images).toEqual([]);
   });
@@ -90,10 +118,7 @@ describe("nanoBananaTool", () => {
     fileStorageMock.upload.mockRejectedValue(new Error("Upload failed"));
 
     await expect(
-      nanoBananaTool.execute!(
-        { mode: "create" },
-        { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof nanoBananaTool.execute>>[1],
-      ),
+      nanoBananaTool.execute!({ mode: "create" }, callOpts),
     ).rejects.toThrow("file upload failed");
   });
 
@@ -101,12 +126,14 @@ describe("nanoBananaTool", () => {
     generateImageMock.mockResolvedValue({
       images: [{ base64: "abc", mimeType: "image/png" }],
     });
-    fileStorageMock.upload.mockResolvedValue({ sourceUrl: "https://cdn.example.com/i.png" });
+    fileStorageMock.upload.mockResolvedValue({
+      sourceUrl: "https://cdn.example.com/i.png",
+    });
 
-    const result = await nanoBananaTool.execute!(
+    const result = (await nanoBananaTool.execute!(
       { mode: "edit" },
-      { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof nanoBananaTool.execute>>[1],
-    );
+      callOpts,
+    )) as ImageToolResult;
 
     expect(typeof result.guide).toBe("string");
     expect(result.guide.length).toBeGreaterThan(0);
@@ -119,7 +146,7 @@ describe("openaiImageTool", () => {
   });
 
   it("has the correct name", () => {
-    expect(openaiImageTool.name).toBe(ImageToolName);
+    expect((openaiImageTool as NamedTool).name).toBe(ImageToolName);
   });
 
   it("has a description", () => {
@@ -138,10 +165,7 @@ describe("openaiImageTool", () => {
   it("throws when OPENAI_API_KEY is not set", async () => {
     delete process.env.OPENAI_API_KEY;
     await expect(
-      openaiImageTool.execute!(
-        { mode: "create" },
-        { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof openaiImageTool.execute>>[1],
-      ),
+      openaiImageTool.execute!({ mode: "create" }, callOpts),
     ).rejects.toThrow("OPENAI_API_KEY is not set");
   });
 
@@ -149,10 +173,10 @@ describe("openaiImageTool", () => {
     process.env.OPENAI_API_KEY = "test-key";
     generateTextMock.mockResolvedValue({ staticToolResults: [] });
 
-    const result = await openaiImageTool.execute!(
+    const result = (await openaiImageTool.execute!(
       { mode: "create" },
-      { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof openaiImageTool.execute>>[1],
-    );
+      callOpts,
+    )) as ImageToolResult;
 
     expect(result.images).toEqual([]);
     expect(result.model).toBe("gpt-image-1-mini");
@@ -169,12 +193,14 @@ describe("openaiImageTool", () => {
         },
       ],
     });
-    fileStorageMock.upload.mockResolvedValue({ sourceUrl: "https://cdn.example.com/gen.webp" });
+    fileStorageMock.upload.mockResolvedValue({
+      sourceUrl: "https://cdn.example.com/gen.webp",
+    });
 
-    const result = await openaiImageTool.execute!(
+    const result = (await openaiImageTool.execute!(
       { mode: "create" },
-      { messages: [], abortSignal: undefined } as Parameters<NonNullable<typeof openaiImageTool.execute>>[1],
-    );
+      callOpts,
+    )) as ImageToolResult;
 
     expect(result.images).toHaveLength(1);
     expect(result.images[0].url).toBe("https://cdn.example.com/gen.webp");

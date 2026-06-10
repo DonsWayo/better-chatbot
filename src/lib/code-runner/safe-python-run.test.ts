@@ -1,9 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OUTPUT_HANDLERS, safePythonRun } from "./safe-python-run";
 
 const makePyodideMock = () => {
-  const stdoutBatched = vi.fn();
-  const stderrBatched = vi.fn();
   let capturedStdout: ((s: string) => void) | null = null;
   let capturedStderr: ((s: string) => void) | null = null;
 
@@ -73,37 +71,51 @@ describe("safePythonRun", () => {
   });
 
   it("captures stdout logs", async () => {
-    pyodideMock.setStdout.mockImplementation(({ batched }: { batched: (s: string) => void }) => {
-      batched("Hello from Python");
-    });
+    pyodideMock.setStdout.mockImplementation(
+      ({ batched }: { batched: (s: string) => void }) => {
+        batched("Hello from Python");
+      },
+    );
     const result = await safePythonRun({ code: "print('Hello from Python')" });
     expect(result.success).toBe(true);
-    expect(result.logs.some((l) => l.args.some((a) => a.value === "Hello from Python"))).toBe(true);
+    expect(
+      result.logs.some((l) =>
+        l.args.some((a) => a.value === "Hello from Python"),
+      ),
+    ).toBe(true);
   });
 
   it("detects image output in stdout", async () => {
     const imageData = "data:image/png;base64,abc123";
-    pyodideMock.setStdout.mockImplementation(({ batched }: { batched: (s: string) => void }) => {
-      batched(imageData);
-    });
+    pyodideMock.setStdout.mockImplementation(
+      ({ batched }: { batched: (s: string) => void }) => {
+        batched(imageData);
+      },
+    );
     const result = await safePythonRun({ code: "# image output" });
     expect(result.success).toBe(true);
-    expect(result.logs.some((l) => l.args.some((a) => a.type === "image"))).toBe(true);
+    expect(
+      result.logs.some((l) => l.args.some((a) => a.type === "image")),
+    ).toBe(true);
   });
 
   it("captures stderr logs as error type", async () => {
-    pyodideMock.setStderr.mockImplementation(({ batched }: { batched: (s: string) => void }) => {
-      batched("NameError: x is not defined");
-    });
+    pyodideMock.setStderr.mockImplementation(
+      ({ batched }: { batched: (s: string) => void }) => {
+        batched("NameError: x is not defined");
+      },
+    );
     const result = await safePythonRun({ code: "print(x)" });
     expect(result.success).toBe(true);
     expect(result.logs.some((l) => l.type === "error")).toBe(true);
   });
 
   it("calls onLog callback for each log entry", async () => {
-    pyodideMock.setStdout.mockImplementation(({ batched }: { batched: (s: string) => void }) => {
-      batched("output line");
-    });
+    pyodideMock.setStdout.mockImplementation(
+      ({ batched }: { batched: (s: string) => void }) => {
+        batched("output line");
+      },
+    );
     const onLog = vi.fn();
     await safePythonRun({ code: "print('hi')", onLog });
     expect(onLog).toHaveBeenCalledWith(
@@ -112,9 +124,9 @@ describe("safePythonRun", () => {
   });
 
   it("returns error result when pyodide throws", async () => {
-    (globalThis as Record<string, unknown>).loadPyodide = vi.fn().mockRejectedValue(
-      new Error("Pyodide load failed"),
-    );
+    (globalThis as Record<string, unknown>).loadPyodide = vi
+      .fn()
+      .mockRejectedValue(new Error("Pyodide load failed"));
     const result = await safePythonRun({ code: "print('hi')" });
     expect(result.success).toBe(false);
     expect(result.error).toContain("Pyodide load failed");
@@ -123,19 +135,29 @@ describe("safePythonRun", () => {
   it("loads matplotlib handler when code uses plt.", async () => {
     pyodideMock.runPythonAsync.mockResolvedValue(undefined);
     await safePythonRun({ code: "import matplotlib\nplt.show()" });
-    const calls = pyodideMock.runPythonAsync.mock.calls.map((c) => c[0] as string);
-    expect(calls.some((c: string) => c.includes("setup_matplotlib_output"))).toBe(true);
+    const calls = pyodideMock.runPythonAsync.mock.calls.map(
+      (c) => c[0] as string,
+    );
+    expect(
+      calls.some((c: string) => c.includes("setup_matplotlib_output")),
+    ).toBe(true);
   });
 
   it("does not load matplotlib handler for non-matplotlib code", async () => {
     await safePythonRun({ code: "x = 1 + 1" });
-    const calls = pyodideMock.runPythonAsync.mock.calls.map((c) => c[0] as string);
-    expect(calls.some((c: string) => c.includes("setup_matplotlib_output"))).toBe(false);
+    const calls = pyodideMock.runPythonAsync.mock.calls.map(
+      (c) => c[0] as string,
+    );
+    expect(
+      calls.some((c: string) => c.includes("setup_matplotlib_output")),
+    ).toBe(false);
   });
 
   it("returns executionTimeMs", async () => {
     const result = await safePythonRun({ code: "pass" });
     expect(result.success).toBe(true);
-    expect(typeof (result as { executionTimeMs?: number }).executionTimeMs).toBe("number");
+    expect(
+      typeof (result as { executionTimeMs?: number }).executionTimeMs,
+    ).toBe("number");
   });
 });

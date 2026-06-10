@@ -1,12 +1,13 @@
-import { describe, it, expect } from "vitest";
+import type { MCPToolInfo } from "app-types/mcp";
+import { describe, expect, it } from "vitest";
 import {
   CREATE_THREAD_TITLE_PROMPT,
-  buildAgentGenerationPrompt,
-  buildUserSystemPrompt,
-  buildMcpServerCustomizationsSystemPrompt,
-  generateExampleToolSchemaPrompt,
   MANUAL_REJECT_RESPONSE_PROMPT,
+  buildAgentGenerationPrompt,
+  buildMcpServerCustomizationsSystemPrompt,
   buildToolCallUnsupportedModelSystemPrompt,
+  buildUserSystemPrompt,
+  generateExampleToolSchemaPrompt,
 } from "./prompts";
 
 describe("CREATE_THREAD_TITLE_PROMPT", () => {
@@ -55,41 +56,43 @@ describe("buildUserSystemPrompt", () => {
   });
 
   it("uses userPreferences botName as fallback", () => {
-    const prompt = buildUserSystemPrompt(undefined, { botName: "MyBot" } as any);
+    const prompt = buildUserSystemPrompt(undefined, {
+      botName: "MyBot",
+    } as any);
     expect(prompt).toContain("You are MyBot");
   });
 
   it("includes agent role when provided", () => {
-    const prompt = buildUserSystemPrompt(
-      undefined,
-      undefined,
-      { name: "Agent", instructions: { role: "data analysis" } } as any,
-    );
+    const prompt = buildUserSystemPrompt(undefined, undefined, {
+      name: "Agent",
+      instructions: { role: "data analysis" },
+    } as any);
     expect(prompt).toContain("expert in data analysis");
   });
 
   it("includes agent systemPrompt in core capabilities block", () => {
-    const prompt = buildUserSystemPrompt(
-      undefined,
-      undefined,
-      { name: "Agent", instructions: { systemPrompt: "Always be concise." } } as any,
-    );
+    const prompt = buildUserSystemPrompt(undefined, undefined, {
+      name: "Agent",
+      instructions: { systemPrompt: "Always be concise." },
+    } as any);
     expect(prompt).toContain("<core_capabilities>");
     expect(prompt).toContain("Always be concise.");
   });
 
   it("includes user name and email when provided", () => {
-    const prompt = buildUserSystemPrompt({ name: "Alice", email: "alice@example.com" } as any);
+    const prompt = buildUserSystemPrompt({
+      name: "Alice",
+      email: "alice@example.com",
+    } as any);
     expect(prompt).toContain("Name: Alice");
     expect(prompt).toContain("Email: alice@example.com");
     expect(prompt).toContain("<user_information>");
   });
 
   it("includes profession from preferences", () => {
-    const prompt = buildUserSystemPrompt(
-      undefined,
-      { profession: "Software Engineer" } as any,
-    );
+    const prompt = buildUserSystemPrompt(undefined, {
+      profession: "Software Engineer",
+    } as any);
     expect(prompt).toContain("Profession: Software Engineer");
   });
 
@@ -98,15 +101,14 @@ describe("buildUserSystemPrompt", () => {
       { name: "Bob" } as any,
       { displayName: "Bobby" } as any,
     );
-    expect(prompt).toContain('<communication_preferences>');
+    expect(prompt).toContain("<communication_preferences>");
     expect(prompt).toContain('"Bobby"');
   });
 
   it("includes response style example when provided", () => {
-    const prompt = buildUserSystemPrompt(
-      undefined,
-      { responseStyleExample: "Be very formal." } as any,
-    );
+    const prompt = buildUserSystemPrompt(undefined, {
+      responseStyleExample: "Be very formal.",
+    } as any);
     expect(prompt).toContain("Be very formal.");
   });
 
@@ -129,14 +131,14 @@ describe("buildMcpServerCustomizationsSystemPrompt", () => {
 
   it("returns empty string when servers have no prompts", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "server1": { name: "Server1", id: "s1", prompt: "", tools: {} },
+      server1: { name: "Server1", id: "s1", prompt: "", tools: {} },
     });
     expect(result).toBe("");
   });
 
   it("includes server prompt when present", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "s1": { name: "MyServer", id: "s1", prompt: "Always use metric units." },
+      s1: { name: "MyServer", id: "s1", prompt: "Always use metric units." },
     });
     expect(result).toContain("MyServer");
     expect(result).toContain("Always use metric units.");
@@ -144,7 +146,7 @@ describe("buildMcpServerCustomizationsSystemPrompt", () => {
 
   it("includes tool-level prompts", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "s1": {
+      s1: {
         name: "SearchSrv",
         id: "s1",
         prompt: "",
@@ -157,8 +159,8 @@ describe("buildMcpServerCustomizationsSystemPrompt", () => {
 
   it("handles multiple servers", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "s1": { name: "A", id: "s1", prompt: "Prompt A." },
-      "s2": { name: "B", id: "s2", prompt: "Prompt B." },
+      s1: { name: "A", id: "s1", prompt: "Prompt A." },
+      s2: { name: "B", id: "s2", prompt: "Prompt B." },
     });
     expect(result).toContain("Prompt A.");
     expect(result).toContain("Prompt B.");
@@ -203,7 +205,9 @@ describe("buildToolCallUnsupportedModelSystemPrompt", () => {
   });
 
   it("mentions tool call limitation", () => {
-    expect(buildToolCallUnsupportedModelSystemPrompt).toContain("Tool Call Limitation");
+    expect(buildToolCallUnsupportedModelSystemPrompt).toContain(
+      "Tool Call Limitation",
+    );
   });
 });
 
@@ -214,9 +218,9 @@ describe("buildUserSystemPrompt — additional", () => {
     expect(prompt.length).toBeGreaterThan(0);
   });
 
-  it("includes today_date block", () => {
+  it("includes the current date and time sentence", () => {
     const prompt = buildUserSystemPrompt();
-    expect(prompt).toContain("<today_date>");
+    expect(prompt).toContain("The current date and time is");
   });
 
   it("agent name takes priority over userPreferences botName", () => {
@@ -230,7 +234,9 @@ describe("buildUserSystemPrompt — additional", () => {
   });
 
   it("includes agent name in prompt when agent is defined", () => {
-    const prompt = buildUserSystemPrompt(undefined, undefined, { name: "SearchBot" } as any);
+    const prompt = buildUserSystemPrompt(undefined, undefined, {
+      name: "SearchBot",
+    } as any);
     expect(prompt).toContain("SearchBot");
   });
 });
@@ -238,7 +244,7 @@ describe("buildUserSystemPrompt — additional", () => {
 describe("buildMcpServerCustomizationsSystemPrompt — additional", () => {
   it("returns non-empty string when a server has a prompt", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "s1": { name: "Server1", id: "s1", prompt: "Custom server instructions." },
+      s1: { name: "Server1", id: "s1", prompt: "Custom server instructions." },
     });
     expect(typeof result).toBe("string");
     expect(result.length).toBeGreaterThan(0);
@@ -251,14 +257,19 @@ describe("buildMcpServerCustomizationsSystemPrompt — additional", () => {
 
   it("skips servers with no prompt and no tool prompts", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "s1": { name: "Silent", id: "s1", prompt: "", tools: {} },
+      s1: { name: "Silent", id: "s1", prompt: "", tools: {} },
     });
     expect(result).toBe("");
   });
 
   it("includes tool name when tool prompt is non-empty", () => {
     const result = buildMcpServerCustomizationsSystemPrompt({
-      "s1": { name: "ToolSrv", id: "s1", prompt: "", tools: { my_tool: "Use sparingly." } },
+      s1: {
+        name: "ToolSrv",
+        id: "s1",
+        prompt: "",
+        tools: { my_tool: "Use sparingly." },
+      },
     });
     expect(result).toContain("my_tool");
     expect(result).toContain("Use sparingly.");
@@ -267,7 +278,9 @@ describe("buildMcpServerCustomizationsSystemPrompt — additional", () => {
 
 describe("prompt builders — return type invariants", () => {
   it("buildUserSystemPrompt always returns a string", () => {
-    expect(typeof buildUserSystemPrompt({ name: "Alice", role: "user" } as any)).toBe("string");
+    expect(
+      typeof buildUserSystemPrompt({ name: "Alice", role: "user" } as any),
+    ).toBe("string");
   });
 
   it("buildMcpServerCustomizationsSystemPrompt always returns a string", () => {
@@ -275,7 +288,14 @@ describe("prompt builders — return type invariants", () => {
   });
 
   it("generateExampleToolSchemaPrompt always returns a string", () => {
-    expect(typeof generateExampleToolSchemaPrompt()).toBe("string");
+    const result = generateExampleToolSchemaPrompt({
+      toolInfo: {
+        name: "tool",
+        description: "desc",
+        inputSchema: {} as unknown as MCPToolInfo["inputSchema"],
+      },
+    });
+    expect(typeof result).toBe("string");
   });
 
   it("MANUAL_REJECT_RESPONSE_PROMPT is a non-empty string", () => {

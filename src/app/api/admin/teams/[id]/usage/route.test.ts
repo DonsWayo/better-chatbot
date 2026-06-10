@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetSession, mockSelect } = vi.hoisted(() => ({
   mockGetSession: vi.fn(),
@@ -11,8 +11,12 @@ vi.mock("lib/auth/server", () => ({ getSession: mockGetSession }));
 // Drizzle chain: select({}).from(T).where(cond).groupBy(...).orderBy(...).limit(n)
 const limitMock = vi.fn().mockResolvedValue([]);
 const orderByMock = vi.fn().mockReturnValue({ limit: limitMock });
-const groupByMock = vi.fn().mockReturnValue({ orderBy: orderByMock, limit: limitMock });
-const whereMock = vi.fn().mockReturnValue({ groupBy: groupByMock, orderBy: orderByMock });
+const groupByMock = vi
+  .fn()
+  .mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+const whereMock = vi
+  .fn()
+  .mockReturnValue({ groupBy: groupByMock, orderBy: orderByMock });
 const fromMock = vi.fn().mockReturnValue({ where: whereMock });
 
 vi.mock("lib/db/pg/db.pg", () => ({
@@ -36,7 +40,10 @@ vi.mock("drizzle-orm", () => ({
   gte: vi.fn(() => ({})),
   and: vi.fn(() => ({})),
   desc: vi.fn(() => ({})),
-  sql: Object.assign(vi.fn(() => ({})), { raw: vi.fn(() => ({})) }),
+  sql: Object.assign(
+    vi.fn(() => ({})),
+    { raw: vi.fn(() => ({})) },
+  ),
 }));
 
 function makeRequest(params: Record<string, string> = {}) {
@@ -66,7 +73,14 @@ describe("GET /api/admin/teams/[id]/usage", () => {
         // totals query (shorter chain)
         return {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ totalRequests: 0, totalCostUsd: null, totalPromptTokens: 0, totalCompletionTokens: 0 }]),
+            where: vi.fn().mockResolvedValue([
+              {
+                totalRequests: 0,
+                totalCostUsd: null,
+                totalPromptTokens: 0,
+                totalCompletionTokens: 0,
+              },
+            ]),
           }),
         };
       }
@@ -110,7 +124,10 @@ describe("GET /api/admin/teams/[id]/usage", () => {
   it("caps days at 365", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
     const { GET } = await import("./route");
-    const res = await GET(makeRequest({ days: "9999" }), makeParams("team-1") as any);
+    const res = await GET(
+      makeRequest({ days: "9999" }),
+      makeParams("team-1") as any,
+    );
     const body = await res.json();
     expect(body.days).toBe(365);
   });
@@ -155,7 +172,10 @@ describe("GET /api/admin/teams/[id]/usage", () => {
   it("custom days within range parsed correctly", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
     const { GET } = await import("./route");
-    const res = await GET(makeRequest({ days: "7" }), makeParams("team-1") as any);
+    const res = await GET(
+      makeRequest({ days: "7" }),
+      makeParams("team-1") as any,
+    );
     const body = await res.json();
     expect(body.days).toBe(7);
   });
@@ -163,7 +183,10 @@ describe("GET /api/admin/teams/[id]/usage", () => {
   it("days clamped to 1 when days=0", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
     const { GET } = await import("./route");
-    const res = await GET(makeRequest({ days: "0" }), makeParams("team-1") as any);
+    const res = await GET(
+      makeRequest({ days: "0" }),
+      makeParams("team-1") as any,
+    );
     const body = await res.json();
     expect(body.days).toBe(1);
   });
@@ -209,7 +232,14 @@ describe("GET /api/admin/teams/[id]/usage — additional", () => {
       if (call % 2 === 0) {
         return {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ totalRequests: 0, totalCostUsd: null, totalPromptTokens: 0, totalCompletionTokens: 0 }]),
+            where: vi.fn().mockResolvedValue([
+              {
+                totalRequests: 0,
+                totalCostUsd: null,
+                totalPromptTokens: 0,
+                totalCompletionTokens: 0,
+              },
+            ]),
           }),
         };
       }
@@ -235,7 +265,10 @@ describe("GET /api/admin/teams/[id]/usage — additional", () => {
   it("negative days clamped to minimum 1", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
     const { GET } = await import("./route");
-    const res = await GET(makeRequest({ days: "-5" }), makeParams("team-1") as any);
+    const res = await GET(
+      makeRequest({ days: "-5" }),
+      makeParams("team-1") as any,
+    );
     const body = await res.json();
     expect(body.days).toBeGreaterThanOrEqual(1);
   });
@@ -254,8 +287,32 @@ describe("GET /api/admin/teams/[id]/usage — response shape", () => {
     vi.clearAllMocks();
     vi.resetModules();
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
-    mockSelect.mockReturnValue({ from: fromMock });
+
     limitMock.mockResolvedValue([]);
+    orderByMock.mockReturnValue({ limit: limitMock });
+    groupByMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+    whereMock.mockReturnValue({ groupBy: groupByMock, orderBy: orderByMock });
+    fromMock.mockReturnValue({ where: whereMock });
+
+    let call = 0;
+    mockSelect.mockImplementation(() => {
+      call++;
+      if (call % 2 === 0) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                totalRequests: 0,
+                totalCostUsd: null,
+                totalPromptTokens: 0,
+                totalCompletionTokens: 0,
+              },
+            ]),
+          }),
+        };
+      }
+      return { from: fromMock };
+    });
   });
 
   it("returns a Response instance for 401", async () => {
@@ -271,18 +328,20 @@ describe("GET /api/admin/teams/[id]/usage — response shape", () => {
     expect(res).toBeInstanceOf(Response);
   });
 
-  it("200 body teamId matches route param", async () => {
+  it("200 body has byModel, totals and days fields", async () => {
     const { GET } = await import("./route");
     const res = await GET(makeRequest(), makeParams("team-xyz") as any);
     const body = await res.json();
-    expect(body.teamId).toBe("team-xyz");
+    expect(body).toHaveProperty("byModel");
+    expect(body).toHaveProperty("totals");
+    expect(body).toHaveProperty("days");
   });
 
-  it("200 body has usageByModel array", async () => {
+  it("200 body has byModel array", async () => {
     const { GET } = await import("./route");
     const res = await GET(makeRequest(), makeParams("team-1") as any);
     const body = await res.json();
-    expect(Array.isArray(body.usageByModel)).toBe(true);
+    expect(Array.isArray(body.byModel)).toBe(true);
   });
 });
 
@@ -295,8 +354,29 @@ describe("GET /api/admin/teams/[id]/usage — call count invariants", () => {
     groupByMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
     whereMock.mockReturnValue({ groupBy: groupByMock, orderBy: orderByMock });
     fromMock.mockReturnValue({ where: whereMock });
-    mockGetSession.mockResolvedValue({ user: { id: "admin-1", role: "admin" } });
-    mockSelect.mockReturnValue({ from: fromMock });
+    mockGetSession.mockResolvedValue({
+      user: { id: "admin-1", role: "admin" },
+    });
+
+    let call = 0;
+    mockSelect.mockImplementation(() => {
+      call++;
+      if (call % 2 === 0) {
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                totalRequests: 0,
+                totalCostUsd: null,
+                totalPromptTokens: 0,
+                totalCompletionTokens: 0,
+              },
+            ]),
+          }),
+        };
+      }
+      return { from: fromMock };
+    });
   });
 
   it("getSession called exactly once per GET", async () => {

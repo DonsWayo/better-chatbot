@@ -1,15 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  canCreateAgent,
-  canEditAgent,
-  canDeleteAgent,
-  canCreateWorkflow,
-  canEditWorkflow,
-  canDeleteWorkflow,
-  canCreateMCP,
-  canEditMCP,
   canChangeVisibilityMCP,
+  canCreateAgent,
+  canCreateMCP,
+  canCreateWorkflow,
+  canDeleteAgent,
   canDeleteMCP,
+  canDeleteWorkflow,
+  canEditAgent,
+  canEditMCP,
+  canEditWorkflow,
   canUseResource,
   canViewResource,
 } from "./client-permissions";
@@ -186,8 +186,8 @@ describe("canChangeVisibilityMCP — additional", () => {
 });
 
 describe("canUseResource — additional", () => {
-  it("user cannot use mcp resource", () => {
-    expect(canUseResource("user", "mcp")).toBe(false);
+  it("user can use mcp resource", () => {
+    expect(canUseResource("user", "mcp")).toBe(true);
   });
 
   it("editor can use agent resource", () => {
@@ -198,8 +198,8 @@ describe("canUseResource — additional", () => {
     expect(canUseResource("editor", "workflow")).toBe(true);
   });
 
-  it("undefined role cannot use mcp resource", () => {
-    expect(canUseResource(undefined, "mcp")).toBe(false);
+  it("undefined role defaults to user role and can use mcp resource", () => {
+    expect(canUseResource(undefined, "mcp")).toBe(true);
   });
 });
 
@@ -214,8 +214,8 @@ describe("canViewResource — additional", () => {
     expect(canViewResource("user", "workflow")).toBe(true);
   });
 
-  it("undefined role returns false for mcp view", () => {
-    expect(canViewResource(undefined, "mcp")).toBe(false);
+  it("undefined role defaults to user role and can view mcp", () => {
+    expect(canViewResource(undefined, "mcp")).toBe(true);
   });
 });
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, dbSelectMock, dbInsertMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -8,20 +8,28 @@ const { getSessionMock, dbSelectMock, dbInsertMock } = vi.hoisted(() => ({
 
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
 
-const dbSelectWhereMock = vi.fn().mockResolvedValue([]);
 const dbSelectOrderByMock = vi.fn().mockResolvedValue([]);
-const dbSelectFromMock = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ orderBy: dbSelectOrderByMock }) });
+const dbSelectFromMock = vi.fn().mockReturnValue({
+  where: vi.fn().mockReturnValue({ orderBy: dbSelectOrderByMock }),
+});
 dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
 
 const dbInsertReturningMock = vi.fn().mockResolvedValue([]);
-const dbInsertValuesMock = vi.fn().mockReturnValue({ returning: dbInsertReturningMock });
+const dbInsertValuesMock = vi
+  .fn()
+  .mockReturnValue({ returning: dbInsertReturningMock });
 dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
 
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: { select: dbSelectMock, insert: dbInsertMock },
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({
-  AsafePromptTemplateTable: { id: "id", visibility: "visibility", authorId: "authorId", createdAt: "createdAt" },
+  AsafePromptTemplateTable: {
+    id: "id",
+    visibility: "visibility",
+    authorId: "authorId",
+    createdAt: "createdAt",
+  },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((_a: unknown, _b: unknown) => ({})),
@@ -33,7 +41,9 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("GET /api/prompts", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -56,7 +66,9 @@ describe("GET /api/prompts", () => {
 });
 
 describe("POST /api/prompts", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -85,14 +97,18 @@ describe("POST /api/prompts", () => {
 
   it("creates prompt and returns 201 for authenticated user", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{
-      id: "p-new",
-      title: "My Prompt",
-      content: "Summarise this text",
-      visibility: "private",
-    }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      {
+        id: "p-new",
+        title: "My Prompt",
+        content: "Summarise this text",
+        visibility: "private",
+      },
+    ]);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ title: "My Prompt", content: "Summarise this text" }));
+    const res = await POST(
+      makeRequest({ title: "My Prompt", content: "Summarise this text" }),
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.title).toBe("My Prompt");
@@ -107,7 +123,9 @@ describe("POST /api/prompts", () => {
 
   it("201 response has id field", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-xyz", title: "T", content: "C" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      { id: "p-xyz", title: "T", content: "C" },
+    ]);
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ title: "T", content: "C" }));
     const body = await res.json();
@@ -116,7 +134,9 @@ describe("POST /api/prompts", () => {
 });
 
 describe("GET /api/prompts — guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls dbSelect when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -136,7 +156,9 @@ describe("GET /api/prompts — guard chains", () => {
 });
 
 describe("GET /api/prompts — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -155,7 +177,9 @@ describe("GET /api/prompts — additional", () => {
 });
 
 describe("POST /api/prompts — guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -188,7 +212,9 @@ describe("POST /api/prompts — guard chains", () => {
 
   it("dbInsert called exactly once on valid POST", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-1", title: "T", content: "C" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      { id: "p-1", title: "T", content: "C" },
+    ]);
     const { POST } = await import("./route");
     await POST(makeRequest({ title: "T", content: "C" }));
     expect(dbInsertMock).toHaveBeenCalledTimes(1);
@@ -196,7 +222,9 @@ describe("POST /api/prompts — guard chains", () => {
 });
 
 describe("POST /api/prompts — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -207,7 +235,9 @@ describe("POST /api/prompts — response shape", () => {
 
   it("201 body has title field matching input", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
-    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-1", title: "My Prompt", content: "C" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([
+      { id: "p-1", title: "My Prompt", content: "C" },
+    ]);
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ title: "My Prompt", content: "C" }));
     const body = await res.json();
@@ -231,7 +261,9 @@ describe("POST /api/prompts — response shape", () => {
 });
 
 describe("GET /api/prompts — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -268,7 +300,12 @@ describe("GET /api/prompts — response shape", () => {
 });
 
 describe("GET and POST /api/prompts — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -287,7 +324,12 @@ describe("GET and POST /api/prompts — call count invariants", () => {
   it("dbInsert never called when POST unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(new Request("http://localhost/api/prompts", { method: "POST", body: JSON.stringify({ title: "T", content: "C" }) }));
+    await POST(
+      new Request("http://localhost/api/prompts", {
+        method: "POST",
+        body: JSON.stringify({ title: "T", content: "C" }),
+      }),
+    );
     expect(dbInsertMock).not.toHaveBeenCalled();
   });
 

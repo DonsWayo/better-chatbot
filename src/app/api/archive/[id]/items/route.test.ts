@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -28,12 +28,16 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("GET /api/archive/[id]/items", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -41,16 +45,23 @@ describe("GET /api/archive/[id]/items", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "missing" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "missing" }),
+    });
     expect(res.status).toBe(404);
   });
 
   it("returns items for owned archive", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
-    getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-1" }, { itemId: "item-2" }]);
+    getArchiveItemsMock.mockResolvedValueOnce([
+      { itemId: "item-1" },
+      { itemId: "item-2" },
+    ]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(2);
@@ -58,12 +69,16 @@ describe("GET /api/archive/[id]/items", () => {
 });
 
 describe("POST /api/archive/[id]/items", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -71,7 +86,9 @@ describe("POST /api/archive/[id]/items", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "missing" }) });
+    const res = await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "missing" }),
+    });
     expect(res.status).toBe(404);
   });
 
@@ -81,7 +98,9 @@ describe("POST /api/archive/[id]/items", () => {
     const ITEM = { id: "ai-1", archiveId: "a-1", itemId: "item-42" };
     addItemToArchiveMock.mockResolvedValueOnce(ITEM);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ itemId: "item-42" }), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await POST(makeRequest({ itemId: "item-42" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.itemId).toBe("item-42");
@@ -91,7 +110,9 @@ describe("POST /api/archive/[id]/items", () => {
   it("never calls addItemToArchive when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(addItemToArchiveMock).not.toHaveBeenCalled();
   });
 
@@ -99,13 +120,17 @@ describe("POST /api/archive/[id]/items", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(addItemToArchiveMock).not.toHaveBeenCalled();
   });
 });
 
 describe("GET /api/archive/[id]/items — guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls getArchiveItems when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -127,7 +152,9 @@ describe("GET /api/archive/[id]/items — guard chains", () => {
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
     getArchiveItemsMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(0);
@@ -135,12 +162,16 @@ describe("GET /api/archive/[id]/items — guard chains", () => {
 });
 
 describe("GET /api/archive/[id]/items — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body is text 'Unauthorized'", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(await res.text()).toBe("Unauthorized");
   });
 
@@ -163,14 +194,19 @@ describe("GET /api/archive/[id]/items — additional", () => {
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
     getArchiveItemsMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
   });
 });
 
 describe("GET and POST /api/archive/[id]/items — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -189,68 +225,96 @@ describe("GET and POST /api/archive/[id]/items — call count invariants", () =>
   it("addItemToArchive never called when POST unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "x", itemType: "chat" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "x", itemType: "chat" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(addItemToArchiveMock).not.toHaveBeenCalled();
   });
 
-  it("401 body has error property for GET", async () => {
+  it("401 body is plain text 'Unauthorized' for GET", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
-    const body = await res.json();
-    expect(body).toHaveProperty("error");
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
+    const body = await res.text();
+    expect(body).toBe("Unauthorized");
   });
 });
 describe("POST /api/archive/[id]/items — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body is text 'Unauthorized'", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(await res.text()).toBe("Unauthorized");
   });
 
   it("never calls getArchiveById when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(getArchiveByIdMock).not.toHaveBeenCalled();
   });
 
   it("addItemToArchive called exactly once on success", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
-    addItemToArchiveMock.mockResolvedValueOnce({ id: "ai-1", archiveId: "a-1", itemId: "item-1" });
+    addItemToArchiveMock.mockResolvedValueOnce({
+      id: "ai-1",
+      archiveId: "a-1",
+      itemId: "item-1",
+    });
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(addItemToArchiveMock).toHaveBeenCalledTimes(1);
   });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("POST /api/archive/[id]/items — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
   it("200 body has itemId field matching input", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
-    addItemToArchiveMock.mockResolvedValueOnce({ id: "ai-1", archiveId: "a-1", itemId: "item-42" });
+    addItemToArchiveMock.mockResolvedValueOnce({
+      id: "ai-1",
+      archiveId: "a-1",
+      itemId: "item-42",
+    });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ itemId: "item-42" }), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await POST(makeRequest({ itemId: "item-42" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     const body = await res.json();
     expect(body.itemId).toBe("item-42");
   });
@@ -258,27 +322,39 @@ describe("POST /api/archive/[id]/items — response shape", () => {
   it("getArchiveById called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
-    addItemToArchiveMock.mockResolvedValueOnce({ id: "ai-1", archiveId: "a-1", itemId: "item-1" });
+    addItemToArchiveMock.mockResolvedValueOnce({
+      id: "ai-1",
+      archiveId: "a-1",
+      itemId: "item-1",
+    });
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(getArchiveByIdMock).toHaveBeenCalledTimes(1);
   });
 
   it("getSession called exactly once per POST (response shape)", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ itemId: "item-1" }), { params: Promise.resolve({ id: "a-1" }) });
+    await POST(makeRequest({ itemId: "item-1" }), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("GET /api/archive/[id]/items — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -287,7 +363,9 @@ describe("GET /api/archive/[id]/items — response shape", () => {
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
     getArchiveItemsMock.mockResolvedValueOnce([{ itemId: "item-1" }]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -305,7 +383,9 @@ describe("GET /api/archive/[id]/items — response shape", () => {
     getArchiveByIdMock.mockResolvedValueOnce(ARCHIVE);
     getArchiveItemsMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "a-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "a-1" }),
+    });
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
   });

@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { httpFetchSchema, httpFetchTool } from "./fetch";
+
+// The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+const fetchInputSchema = httpFetchTool.inputSchema as unknown as z.ZodTypeAny;
 
 describe("httpFetchSchema", () => {
   it("requires url field", () => {
@@ -63,7 +67,10 @@ describe("httpFetchTool", () => {
   });
 
   it("execute returns error for invalid URL", async () => {
-    const result = await httpFetchTool.execute!({ url: "not-a-url" } as any, {} as any);
+    const result = await httpFetchTool.execute!(
+      { url: "not-a-url" } as any,
+      {} as any,
+    );
     expect(result).toBeDefined();
     expect(typeof result === "object" || typeof result === "string").toBe(true);
   });
@@ -77,17 +84,17 @@ describe("httpFetchTool", () => {
   });
 
   it("inputSchema rejects missing url field", () => {
-    const result = httpFetchTool.inputSchema.safeParse({});
+    const result = fetchInputSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 
   it("inputSchema accepts url-only (all other fields optional)", () => {
-    const result = httpFetchTool.inputSchema.safeParse({ url: "http://example.com" });
+    const result = fetchInputSchema.safeParse({ url: "http://example.com" });
     expect(result.success).toBe(true);
   });
 
   it("inputSchema accepts all optional fields alongside url", () => {
-    const result = httpFetchTool.inputSchema.safeParse({
+    const result = fetchInputSchema.safeParse({
       url: "http://example.com",
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -98,7 +105,10 @@ describe("httpFetchTool", () => {
   });
 
   it("error result has isError flag on failure", async () => {
-    const result = await httpFetchTool.execute!({ url: "not-a-url" } as any, {} as any);
+    const result = await httpFetchTool.execute!(
+      { url: "not-a-url" } as any,
+      {} as any,
+    );
     expect(result).toMatchObject({ isError: true });
   });
 });

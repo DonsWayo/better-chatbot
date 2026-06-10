@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { GetWeather, BabyResearch } from "./index";
+import { describe, expect, it } from "vitest";
+import { BabyResearch, GetWeather } from "./index";
 
 describe("GetWeather example", () => {
   it("returns a workflow object", () => {
@@ -100,9 +100,9 @@ describe("GetWeather and BabyResearch — shared invariants", () => {
 
   it("both have non-empty workflow names", () => {
     expect(typeof GetWeather().workflow.name).toBe("string");
-    expect(GetWeather().workflow.name.length).toBeGreaterThan(0);
+    expect(GetWeather().workflow.name?.length).toBeGreaterThan(0);
     expect(typeof BabyResearch().workflow.name).toBe("string");
-    expect(BabyResearch().workflow.name.length).toBeGreaterThan(0);
+    expect(BabyResearch().workflow.name?.length).toBeGreaterThan(0);
   });
 
   it("both have at least 2 nodes", () => {
@@ -132,15 +132,21 @@ describe("GetWeather — edge connectivity", () => {
     const { nodes, edges } = GetWeather();
     const nodeIds = new Set(nodes.map((n) => n.id));
     for (const edge of edges) {
-      expect(nodeIds.has(edge.source), `edge source ${edge.source} not in nodes`).toBe(true);
-      expect(nodeIds.has(edge.target), `edge target ${edge.target} not in nodes`).toBe(true);
+      expect(
+        nodeIds.has(edge.source),
+        `edge source ${edge.source} not in nodes`,
+      ).toBe(true);
+      expect(
+        nodeIds.has(edge.target),
+        `edge target ${edge.target} not in nodes`,
+      ).toBe(true);
     }
   });
 
   it("workflow object has a name string", () => {
     const { workflow } = GetWeather();
     expect(typeof workflow.name).toBe("string");
-    expect(workflow.name.length).toBeGreaterThan(0);
+    expect(workflow.name?.length).toBeGreaterThan(0);
   });
 
   it("BabyResearch has at least 3 nodes", () => {
@@ -151,8 +157,14 @@ describe("GetWeather — edge connectivity", () => {
     const { nodes, edges } = BabyResearch();
     const nodeIds = new Set(nodes.map((n) => n.id));
     for (const edge of edges) {
-      expect(nodeIds.has(edge.source), `edge source ${edge.source} not found`).toBe(true);
-      expect(nodeIds.has(edge.target), `edge target ${edge.target} not found`).toBe(true);
+      expect(
+        nodeIds.has(edge.source),
+        `edge source ${edge.source} not found`,
+      ).toBe(true);
+      expect(
+        nodeIds.has(edge.target),
+        `edge target ${edge.target} not found`,
+      ).toBe(true);
     }
   });
 });

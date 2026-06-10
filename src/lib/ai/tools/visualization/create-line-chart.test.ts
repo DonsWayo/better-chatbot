@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { createLineChartTool } from "./create-line-chart";
 
 describe("createLineChartTool", () => {
@@ -21,7 +22,8 @@ describe("createLineChartTool", () => {
 });
 
 describe("createLineChartTool inputSchema validation", () => {
-  const schema = createLineChartTool.inputSchema;
+  // The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+  const schema = createLineChartTool.inputSchema as unknown as z.ZodTypeAny;
 
   const validData = {
     data: [
@@ -50,11 +52,15 @@ describe("createLineChartTool inputSchema validation", () => {
   });
 
   it("accepts null description", () => {
-    expect(schema.safeParse({ ...validData, description: null }).success).toBe(true);
+    expect(schema.safeParse({ ...validData, description: null }).success).toBe(
+      true,
+    );
   });
 
   it("accepts null yAxisLabel", () => {
-    expect(schema.safeParse({ ...validData, yAxisLabel: null }).success).toBe(true);
+    expect(schema.safeParse({ ...validData, yAxisLabel: null }).success).toBe(
+      true,
+    );
   });
 
   it("rejects when title is missing", () => {
@@ -78,7 +84,9 @@ describe("createLineChartTool inputSchema validation", () => {
   it("rejects when series value is not a number", () => {
     const bad = {
       ...validData,
-      data: [{ xAxisLabel: "W1", series: [{ seriesName: "Sales", value: "high" }] }],
+      data: [
+        { xAxisLabel: "W1", series: [{ seriesName: "Sales", value: "high" }] },
+      ],
     };
     expect(schema.safeParse(bad).success).toBe(false);
   });
@@ -125,7 +133,9 @@ describe("createLineChartTool inputSchema validation", () => {
   it("accepts negative values in series", () => {
     const data = {
       ...validData,
-      data: [{ xAxisLabel: "W1", series: [{ seriesName: "Loss", value: -50 }] }],
+      data: [
+        { xAxisLabel: "W1", series: [{ seriesName: "Loss", value: -50 }] },
+      ],
     };
     expect(schema.safeParse(data).success).toBe(true);
   });

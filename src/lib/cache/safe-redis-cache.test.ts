@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { SafeRedisCache } from "./safe-redis-cache";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryCache } from "./memory-cache";
 import { RedisCache } from "./redis-cache";
+import { SafeRedisCache } from "./safe-redis-cache";
 
 vi.mock("./redis-cache");
 vi.mock("logger", () => ({
@@ -203,6 +203,9 @@ describe("SafeRedisCache — fallback behavior", () => {
     cache = new SafeRedisCache({ serverCache: mockMemoryCache });
     await mockMemoryCache.set("k", "v");
     mockRedisCache.get.mockRejectedValue(new Error("Redis down"));
+    // has() must also fail so the automatic Redis retry probe does not
+    // mark the connection healthy again
+    mockRedisCache.has.mockRejectedValue(new Error("Redis down"));
     // trigger fallback
     await cache.get("k");
     const result = await cache.has("k");

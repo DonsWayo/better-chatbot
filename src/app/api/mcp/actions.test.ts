@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getCurrentUserMock,
@@ -48,47 +48,67 @@ describe("saveMcpClientAction", () => {
   it("throws when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: { url: "http://mcp" } } as any))
-      .rejects.toThrow(/logged in/i);
+    await expect(
+      saveMcpClientAction({
+        name: "Test",
+        config: { url: "http://mcp" },
+      } as any),
+    ).rejects.toThrow(/logged in/i);
   });
 
   it("throws when user cannot create MCP", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(false);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: { url: "http://mcp" } } as any))
-      .rejects.toThrow(/permission/i);
+    await expect(
+      saveMcpClientAction({
+        name: "Test",
+        config: { url: "http://mcp" },
+      } as any),
+    ).rejects.toThrow(/permission/i);
   });
 
   it("throws when NOT_ALLOW_ADD_MCP_SERVERS env is set", async () => {
     process.env.NOT_ALLOW_ADD_MCP_SERVERS = "1";
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any))
-      .rejects.toThrow(/Not allowed/i);
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow(/Not allowed/i);
   });
 
   it("throws for non-admin trying to create org-scoped server", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "valid-name", scope: "org", config: {} } as any))
-      .rejects.toThrow(/admin/i);
+    await expect(
+      saveMcpClientAction({
+        name: "valid-name",
+        scope: "org",
+        config: {},
+      } as any),
+    ).rejects.toThrow(/admin/i);
   });
 
   it("throws for non-admin trying to create team-scoped server", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "valid-name", scope: "team", config: {} } as any))
-      .rejects.toThrow(/admin/i);
+    await expect(
+      saveMcpClientAction({
+        name: "valid-name",
+        scope: "team",
+        config: {},
+      } as any),
+    ).rejects.toThrow(/admin/i);
   });
 
   it("throws when name contains invalid characters", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "invalid name!", config: {} } as any))
-      .rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "invalid name!", config: {} } as any),
+    ).rejects.toThrow();
   });
 });
 
@@ -165,7 +185,9 @@ describe("saveMcpClientAction — guard chains", () => {
   it("never calls insertMcpServer when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow();
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 
@@ -173,20 +195,26 @@ describe("saveMcpClientAction — guard chains", () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(false);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow();
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 
   it("never calls insertMcpServer when env flag blocks request", async () => {
     process.env.NOT_ALLOW_ADD_MCP_SERVERS = "1";
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow();
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 });
 
 describe("selectMcpClientsAction — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns array with matching client for each user server", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
@@ -212,7 +240,9 @@ describe("selectMcpClientsAction — additional", () => {
 
   it("result items have id field", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
-    selectAllForUserMock.mockResolvedValueOnce([{ id: "srv-check", userId: "u1", visibility: "private" }]);
+    selectAllForUserMock.mockResolvedValueOnce([
+      { id: "srv-check", userId: "u1", visibility: "private" },
+    ]);
     getClientsMock.mockResolvedValueOnce([
       { id: "srv-check", client: { getInfo: () => ({ tools: [] }) } },
     ]);
@@ -241,20 +271,26 @@ describe("saveMcpClientAction — additional", () => {
   it("throws when user is null (not logged in)", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow();
   });
 
   it("getCurrentUser called exactly once per invocation", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow();
     expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
   });
 
   it("canCreateMCP not called when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "Test", config: {} } as any)).rejects.toThrow();
+    await expect(
+      saveMcpClientAction({ name: "Test", config: {} } as any),
+    ).rejects.toThrow();
     expect(canCreateMCPMock).not.toHaveBeenCalled();
   });
 
@@ -262,12 +298,21 @@ describe("saveMcpClientAction — additional", () => {
     getCurrentUserMock.mockResolvedValue({ id: "u-basic", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(saveMcpClientAction({ name: "valid-name", scope: "org", config: {} } as any)).rejects.toThrow(/admin/i);
+    await expect(
+      saveMcpClientAction({
+        name: "valid-name",
+        scope: "org",
+        config: {},
+      } as any),
+    ).rejects.toThrow(/admin/i);
   });
 });
 
 describe("selectMcpClientsAction — return type invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("returns an array even with no MCP clients configured", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
@@ -280,7 +325,9 @@ describe("selectMcpClientsAction — return type invariants", () => {
 
   it("each MCP client item has id field", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
-    selectAllForUserMock.mockResolvedValueOnce([{ id: "mcp-1", name: "Test", config: { url: "http://mcp" } }]);
+    selectAllForUserMock.mockResolvedValueOnce([
+      { id: "mcp-1", name: "Test", config: { url: "http://mcp" } },
+    ]);
     getClientsMock.mockReturnValue([]);
     const { selectMcpClientsAction } = await import("./actions");
     const result = await selectMcpClientsAction();
@@ -288,10 +335,10 @@ describe("selectMcpClientsAction — return type invariants", () => {
     else expect(result).toEqual([]);
   });
 
-  it("throws when user is not authenticated", async () => {
+  it("returns empty array when user is not authenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { selectMcpClientsAction } = await import("./actions");
-    await expect(selectMcpClientsAction()).rejects.toThrow();
+    await expect(selectMcpClientsAction()).resolves.toEqual([]);
   });
 
   it("getCurrentUser called exactly once per selectMcpClientsAction call", async () => {

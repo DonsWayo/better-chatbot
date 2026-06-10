@@ -198,6 +198,7 @@ function fillMcpServerTable(
     userId: server.userId || "file-based-user",
     visibility: server.visibility || "private",
     scope: server.scope || "personal",
+    teamIds: server.teamIds ?? null,
     teamId: server.teamId ?? null,
     enabled: true,
     toolInfo: server.toolInfo ?? null,

@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { sanitizeFilename, getContentTypeFromFilename, storageKeyFromUrl } from "./storage-utils";
+import { describe, expect, it } from "vitest";
+import {
+  getContentTypeFromFilename,
+  sanitizeFilename,
+  storageKeyFromUrl,
+} from "./storage-utils";
 
 describe("sanitizeFilename", () => {
   it("returns filename as-is when safe", () => {
@@ -72,11 +76,15 @@ describe("getContentTypeFromFilename", () => {
   });
 
   it("returns application/octet-stream for unknown extension", () => {
-    expect(getContentTypeFromFilename("file.xyz")).toBe("application/octet-stream");
+    expect(getContentTypeFromFilename("file.xyz")).toBe(
+      "application/octet-stream",
+    );
   });
 
   it("returns application/octet-stream for no extension", () => {
-    expect(getContentTypeFromFilename("noextension")).toBe("application/octet-stream");
+    expect(getContentTypeFromFilename("noextension")).toBe(
+      "application/octet-stream",
+    );
   });
 
   it("is case-insensitive for extensions", () => {
@@ -105,9 +113,9 @@ describe("storageKeyFromUrl", () => {
   });
 
   it("handles deeply nested paths", () => {
-    expect(storageKeyFromUrl("https://cdn.example.com/org/team/user/doc.pdf")).toBe(
-      "org/team/user/doc.pdf",
-    );
+    expect(
+      storageKeyFromUrl("https://cdn.example.com/org/team/user/doc.pdf"),
+    ).toBe("org/team/user/doc.pdf");
   });
 
   it("strips leading slash from path", () => {
@@ -118,7 +126,9 @@ describe("storageKeyFromUrl", () => {
 
   it("handles URL with query params and hash", () => {
     expect(
-      storageKeyFromUrl("https://example.com/uploads/file.csv?v=2&token=abc#section"),
+      storageKeyFromUrl(
+        "https://example.com/uploads/file.csv?v=2&token=abc#section",
+      ),
     ).toBe("uploads/file.csv");
   });
 });

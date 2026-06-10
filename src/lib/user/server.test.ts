@@ -1,6 +1,6 @@
 //@vitest-environment node
 
-import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -32,6 +32,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { auth, getSession } = await import("auth/server");
+const { userRepository } = await import("lib/db/repository");
 const { headers } = await import("next/headers");
 const { notFound } = await import("next/navigation");
 import {
@@ -118,7 +119,9 @@ describe("User Server", () => {
 
   describe("getUserIdAndCheckAccess - Access Control Logic", () => {
     it("should use requested user ID when provided", async () => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "current-user" }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "current-user" }),
+      );
 
       const result = await getUserIdAndCheckAccess("target-user");
 
@@ -126,7 +129,9 @@ describe("User Server", () => {
     });
 
     it("should fall back to current user ID when none provided", async () => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "current-user" }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "current-user" }),
+      );
 
       const result = await getUserIdAndCheckAccess();
 
@@ -142,7 +147,9 @@ describe("User Server", () => {
     });
 
     it("should handle null/undefined gracefully", async () => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "fallback-user" }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "fallback-user" }),
+      );
 
       const result1 = await getUserIdAndCheckAccess(null as unknown as string);
       const result2 = await getUserIdAndCheckAccess(undefined);
@@ -161,13 +168,22 @@ describe("User Server", () => {
     });
 
     beforeEach(() => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "current-user" }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "current-user" }),
+      );
     });
 
     it("should update user with provided fields", async () => {
-      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(
+        undefined as never,
+      );
 
-      await updateUserDetails("user-1", "New Name", "new@email.com", "new-image.jpg");
+      await updateUserDetails(
+        "user-1",
+        "New Name",
+        "new@email.com",
+        "new-image.jpg",
+      );
 
       expect(userRepo.updateUserDetails).toHaveBeenCalledWith({
         userId: "user-1",
@@ -178,7 +194,9 @@ describe("User Server", () => {
     });
 
     it("should update only name when provided", async () => {
-      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(
+        undefined as never,
+      );
 
       await updateUserDetails("user-1", "New Name");
 
@@ -189,7 +207,9 @@ describe("User Server", () => {
     });
 
     it("should update only email when provided", async () => {
-      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(
+        undefined as never,
+      );
 
       await updateUserDetails("user-1", undefined, "new@email.com");
 
@@ -200,7 +220,9 @@ describe("User Server", () => {
     });
 
     it("should update only image when provided", async () => {
-      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(
+        undefined as never,
+      );
 
       await updateUserDetails("user-1", undefined, undefined, "new-image.jpg");
 
@@ -223,7 +245,9 @@ describe("User Server", () => {
     });
 
     it("should use resolved user ID from access check", async () => {
-      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(undefined);
+      vi.mocked(userRepo.updateUserDetails).mockResolvedValue(
+        undefined as never,
+      );
 
       await updateUserDetails("user-1", "New Name");
 
@@ -238,7 +262,12 @@ describe("User Server", () => {
 describe("updateUserDetails — edge cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(userRepository.updateUserDetails).mockResolvedValue(undefined);
+    vi.mocked(getSession).mockResolvedValue(
+      mockSessionFor({ id: "current-user" }),
+    );
+    vi.mocked(userRepository.updateUserDetails).mockResolvedValue(
+      undefined as never,
+    );
   });
 
   it("does not call repository when all fields are undefined", async () => {
@@ -265,7 +294,12 @@ describe("updateUserDetails — edge cases", () => {
 });
 
 describe("updateUserDetails — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSession).mockResolvedValue(
+      mockSessionFor({ id: "current-user" }),
+    );
+  });
 
   it("updateUserDetails does not call repository when no update fields are given", async () => {
     const { updateUserDetails } = await import("./server");
@@ -283,7 +317,7 @@ describe("updateUserDetails — call count invariants", () => {
     const { updateUserDetails } = await import("./server");
     await updateUserDetails("user-xyz", "Test");
     expect(userRepository.updateUserDetails).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "user-xyz" }),
+      expect.objectContaining({ userId: "user-xyz" }),
     );
   });
 

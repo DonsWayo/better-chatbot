@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
 
@@ -7,7 +7,9 @@ vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: vi.fn(() => ({})) },
   isToolCallUnsupportedModel: vi.fn(() => false),
 }));
-vi.mock("lib/ai/routing/route-model", () => ({ routeModel: vi.fn().mockResolvedValue({}) }));
+vi.mock("lib/ai/routing/route-model", () => ({
+  routeModel: vi.fn().mockResolvedValue({}),
+}));
 vi.mock("lib/db/repository", () => ({
   agentRepository: { findById: vi.fn().mockResolvedValue(null) },
   chatRepository: { upsertThread: vi.fn(), saveMessages: vi.fn() },
@@ -17,9 +19,15 @@ vi.mock("lib/ai/prompts", () => ({
   buildMcpServerCustomizationsSystemPrompt: vi.fn(() => ""),
   buildToolCallUnsupportedModelSystemPrompt: vi.fn(() => ""),
 }));
-vi.mock("lib/ai/embeddings/ingest", () => ({ retrieveChunks: vi.fn().mockResolvedValue([]) }));
-vi.mock("@/lib/ai/ingest/csv-ingest", () => ({ buildCsvIngestionPreviewParts: vi.fn().mockResolvedValue([]) }));
-vi.mock("lib/file-storage", () => ({ serverFileStorage: { getSourceUrl: vi.fn() } }));
+vi.mock("lib/ai/embeddings/ingest", () => ({
+  retrieveChunks: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/lib/ai/ingest/csv-ingest", () => ({
+  buildCsvIngestionPreviewParts: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("lib/file-storage", () => ({
+  serverFileStorage: { getSourceUrl: vi.fn() },
+}));
 vi.mock("lib/observability/metrics", () => ({
   chatErrorsTotal: { inc: vi.fn() },
   chatLatencyMs: { observe: vi.fn() },
@@ -31,8 +39,12 @@ vi.mock("lib/observability/slo", () => ({
   rateLimitActivations: { inc: vi.fn() },
   ttftMs: { observe: vi.fn() },
 }));
-vi.mock("lib/observability/kill-switch", () => ({ checkKillSwitch: vi.fn().mockResolvedValue(null) }));
-vi.mock("lib/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
+vi.mock("lib/observability/kill-switch", () => ({
+  checkKillSwitch: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("lib/rate-limit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("lib/ai/budget", () => ({
   checkBudget: vi.fn().mockResolvedValue(null),
   estimateCostUsd: vi.fn().mockResolvedValue(0),
@@ -42,9 +54,20 @@ vi.mock("lib/admin/teams", () => ({
   getUserPrimaryTeamId: vi.fn().mockResolvedValue(null),
   getTeamPolicy: vi.fn().mockResolvedValue(null),
 }));
-vi.mock("lib/user/server", () => ({ getUserPreferences: vi.fn().mockResolvedValue(null) }));
+vi.mock("lib/user/server", () => ({
+  getUserPreferences: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("lib/ai/mcp/audit", () => ({ auditMcpInvocation: vi.fn() }));
-vi.mock("lib/utils", () => ({ generateUUID: vi.fn(() => "uuid-1"), errorToString: vi.fn((e: any) => String(e)), exclude: vi.fn((o: any) => o), objectFlow: vi.fn(() => ({ filter: vi.fn(() => ({})), map: vi.fn(() => ({})), forEach: vi.fn() })) }));
+vi.mock("lib/utils", () => ({
+  generateUUID: vi.fn(() => "uuid-1"),
+  errorToString: vi.fn((e: any) => String(e)),
+  exclude: vi.fn((o: any) => o),
+  objectFlow: vi.fn(() => ({
+    filter: vi.fn(() => ({})),
+    map: vi.fn(() => ({})),
+    forEach: vi.fn(),
+  })),
+}));
 vi.mock("./shared.chat", () => ({
   filterMCPToolsByMentions: vi.fn((tools: any) => tools),
   filterMCPToolsByAllowedMCPServers: vi.fn((tools: any) => tools),
@@ -62,11 +85,18 @@ vi.mock("./shared.chat", () => ({
 vi.mock("logger", () => ({
   default: {
     withDefaults: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }),
-    info: vi.fn(), error: vi.fn(), warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
-vi.mock("ts-safe", () => ({ safe: vi.fn(() => ({ ifOk: () => ({ ifFail: () => ({ unwrap: () => null }) }) })), errorIf: vi.fn() }));
+vi.mock("ts-safe", () => ({
+  safe: vi.fn(() => ({
+    ifOk: () => ({ ifFail: () => ({ unwrap: () => null }) }),
+  })),
+  errorIf: vi.fn(),
+}));
 vi.mock("app-types/chat", () => ({
   chatApiSchemaRequestBodySchema: { parse: (b: unknown) => b },
 }));
@@ -76,17 +106,27 @@ vi.mock("ai", () => ({
   createUIMessageStreamResponse: vi.fn(() => new Response("{}")),
   smoothStream: vi.fn(() => ({})),
   stepCountIs: vi.fn(() => false),
-  streamText: vi.fn(() => ({ toUIMessageStreamResponse: vi.fn(() => new Response("{}")) })),
+  streamText: vi.fn(() => ({
+    toUIMessageStreamResponse: vi.fn(() => new Response("{}")),
+  })),
 }));
 vi.mock("lib/ai/tools", () => ({ ImageToolName: "image" }));
-vi.mock("lib/ai/tools/image", () => ({ nanoBananaTool: {}, openaiImageTool: {} }));
+vi.mock("lib/ai/tools/image", () => ({
+  nanoBananaTool: {},
+  openaiImageTool: {},
+}));
 
 function makeRequest(body?: unknown): any {
-  return { json: () => Promise.resolve(body ?? {}), signal: new AbortController().signal };
+  return {
+    json: () => Promise.resolve(body ?? {}),
+    signal: new AbortController().signal,
+  };
 }
 
 describe("POST /api/chat", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -122,7 +162,12 @@ describe("POST /api/chat", () => {
   it("returns 429 when rate limited", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { checkRateLimit } = await import("lib/rate-limit");
-    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, limit: 10, remaining: 0, resetAt: 9999999999000 });
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      allowed: false,
+      limit: 10,
+      remaining: 0,
+      resetAt: 9999999999000,
+    });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(429);
@@ -130,7 +175,9 @@ describe("POST /api/chat", () => {
 });
 
 describe("POST /api/chat — additional guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -157,7 +204,9 @@ describe("POST /api/chat — additional guard chains", () => {
 });
 
 describe("POST /api/chat — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -192,7 +241,10 @@ describe("POST /api/chat — response shape", () => {
 });
 
 describe("POST /api/chat — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -216,11 +268,11 @@ describe("POST /api/chat — call count invariants", () => {
     expect(getSessionMock).not.toHaveBeenCalledTimes(2);
   });
 
-  it("401 response body has error field", async () => {
+  it("401 response body is the plain text 'Unauthorized'", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
-    const body = await res.json();
-    expect(body).toHaveProperty("error");
+    const body = await res.text();
+    expect(body).toBe("Unauthorized");
   });
 });

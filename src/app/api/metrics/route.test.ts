@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { ensureMetricsMock, metricsMock } = vi.hoisted(() => ({
   ensureMetricsMock: vi.fn(),
@@ -15,7 +15,10 @@ vi.mock("lib/observability/metrics", () => ({
 
 function makeRequest(authHeader?: string): Request {
   return {
-    headers: { get: (name: string) => (name === "authorization" ? (authHeader ?? null) : null) },
+    headers: {
+      get: (name: string) =>
+        name === "authorization" ? (authHeader ?? null) : null,
+    },
   } as unknown as Request;
 }
 
@@ -201,7 +204,11 @@ describe("GET /api/metrics — response invariants", () => {
 });
 
 describe("GET /api/metrics — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); metricsMock.mockResolvedValue("# HELP up\nprocess_uptime 1"); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    metricsMock.mockResolvedValue("# HELP up\nprocess_uptime 1");
+  });
 
   it("metricsMock called exactly once per valid GET", async () => {
     const { GET } = await import("./route");
@@ -222,7 +229,7 @@ describe("GET /api/metrics — call count invariants", () => {
   });
 
   it("metricsMock not called when authorization header is invalid and token is configured", async () => {
-    vi.stubEnv("METRICS_TOKEN", "secure-token");
+    vi.stubEnv("METRICS_AUTH_TOKEN", "secure-token");
     const { GET } = await import("./route");
     const res = await GET(makeRequest("Bearer wrong-token"));
     expect(res.status).toBe(401);

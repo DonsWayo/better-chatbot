@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("prom-client", () => ({
@@ -11,10 +11,10 @@ vi.mock("./metrics", () => ({
   compressionRatio: { observe: vi.fn() },
 }));
 
-import { applyCompression } from "./strategies";
-import { buildCompressionConfig } from "./config";
-import { wrapWithCompression, compressionLevelFromPolicy } from "./index";
 import type { LanguageModelMiddleware } from "ai";
+import { buildCompressionConfig } from "./config";
+import { compressionLevelFromPolicy, wrapWithCompression } from "./index";
+import { applyCompression } from "./strategies";
 
 // Extract prompt type from middleware signature
 type Prompt = Parameters<
@@ -25,7 +25,10 @@ type Prompt = Parameters<
 // helpers
 // ---------------------------------------------------------------------------
 
-function textMsg(role: "system" | "user" | "assistant", text: string): Prompt[number] {
+function textMsg(
+  role: "system" | "user" | "assistant",
+  text: string,
+): Prompt[number] {
   return {
     role,
     content: [{ type: "text" as const, text }],
@@ -50,16 +53,25 @@ function charCount(prompt: Prompt): number {
   let n = 0;
   for (const msg of prompt) {
     const c = msg.content;
-    if (typeof c === "string") { n += c.length; continue; }
+    if (typeof c === "string") {
+      n += c.length;
+      continue;
+    }
     if (!Array.isArray(c)) continue;
     for (const part of c) {
       if (typeof part === "object" && part !== null) {
-        if ("text" in part && typeof (part as { text?: unknown }).text === "string") {
-          n += ((part as { text: string }).text).length;
-        } else if ("content" in part && Array.isArray((part as { content?: unknown }).content)) {
+        if (
+          "text" in part &&
+          typeof (part as { text?: unknown }).text === "string"
+        ) {
+          n += (part as { text: string }).text.length;
+        } else if (
+          "content" in part &&
+          Array.isArray((part as { content?: unknown }).content)
+        ) {
           for (const sub of (part as { content: unknown[] }).content) {
             if (typeof sub === "object" && sub !== null && "text" in sub) {
-              n += ((sub as { text: string }).text).length;
+              n += (sub as { text: string }).text.length;
             }
           }
         }
@@ -84,7 +96,9 @@ describe("buildCompressionConfig", () => {
     const agg = buildCompressionConfig("aggressive");
     const std = buildCompressionConfig("standard");
     expect(agg.maxToolOutputChars).toBeLessThan(std.maxToolOutputChars);
-    expect(agg.maxOldAssistantMsgChars).toBeLessThan(std.maxOldAssistantMsgChars);
+    expect(agg.maxOldAssistantMsgChars).toBeLessThan(
+      std.maxOldAssistantMsgChars,
+    );
   });
 
   it("overrides merge with level defaults", () => {
@@ -167,7 +181,11 @@ describe("applyCompression: history drop", () => {
       turns.push(textMsg("assistant", "a".repeat(500)));
     }
     const cfg = buildCompressionConfig("aggressive");
-    const { charsBefore, charsAfter, prompt: compressed } = applyCompression(turns, cfg);
+    const {
+      charsBefore,
+      charsAfter,
+      prompt: compressed,
+    } = applyCompression(turns, cfg);
 
     expect(charsAfter).toBeLessThan(charsBefore);
 
@@ -177,7 +195,10 @@ describe("applyCompression: history drop", () => {
       const c = m.content;
       if (!Array.isArray(c)) return false;
       return c.some(
-        (p) => typeof p === "object" && p !== null && "text" in p &&
+        (p) =>
+          typeof p === "object" &&
+          p !== null &&
+          "text" in p &&
           String((p as { text?: string }).text ?? "").includes("older message"),
       );
     });
@@ -187,7 +208,7 @@ describe("applyCompression: history drop", () => {
   it("preserves system messages through history drop", () => {
     const turns: Prompt = [
       textMsg("system", "You are a helpful assistant."),
-      ...Array.from({ length: 30 }, (_, i) => [
+      ...Array.from({ length: 30 }, () => [
         textMsg("user", "u".repeat(300)),
         textMsg("assistant", "a".repeat(300)),
       ]).flat(),
@@ -200,8 +221,13 @@ describe("applyCompression: history drop", () => {
       const c = m.content;
       if (!Array.isArray(c)) return false;
       return c.some(
-        (p) => typeof p === "object" && p !== null && "text" in p &&
-          String((p as { text?: string }).text ?? "").includes("helpful assistant"),
+        (p) =>
+          typeof p === "object" &&
+          p !== null &&
+          "text" in p &&
+          String((p as { text?: string }).text ?? "").includes(
+            "helpful assistant",
+          ),
       );
     });
     expect(hasOriginal).toBe(true);
@@ -248,7 +274,9 @@ describe("wrapWithCompression", () => {
     provider: "test",
     modelId: "test",
     defaultObjectGenerationMode: undefined,
-    doGenerate: vi.fn().mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
+    doGenerate: vi
+      .fn()
+      .mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
     doStream: vi.fn(),
   };
 
@@ -270,7 +298,9 @@ describe("wrapWithCompression — invariants", () => {
     provider: "test",
     modelId: "model-id",
     defaultObjectGenerationMode: undefined,
-    doGenerate: vi.fn().mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
+    doGenerate: vi
+      .fn()
+      .mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
     doStream: vi.fn(),
   };
 
@@ -288,7 +318,9 @@ describe("wrapWithCompression — invariants", () => {
   });
 
   it("level=aggressive wraps model (not same reference)", () => {
-    const result = wrapWithCompression(baseModel as any, { level: "aggressive" });
+    const result = wrapWithCompression(baseModel as any, {
+      level: "aggressive",
+    });
     expect(result).not.toBe(baseModel);
   });
 
@@ -304,7 +336,9 @@ describe("wrapWithCompression — additional invariants", () => {
     provider: "test",
     modelId: "m",
     defaultObjectGenerationMode: undefined,
-    doGenerate: vi.fn().mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
+    doGenerate: vi
+      .fn()
+      .mockResolvedValue({ content: [], finishReason: "stop", usage: {} }),
     doStream: vi.fn(),
   };
 
@@ -325,6 +359,6 @@ describe("wrapWithCompression — additional invariants", () => {
 
   it("level=off returns object identical to input model", () => {
     const result = wrapWithCompression(model as any, { level: "off" });
-    expect(result.modelId).toBe(model.modelId);
+    expect((result as { modelId?: string }).modelId).toBe(model.modelId);
   });
 });

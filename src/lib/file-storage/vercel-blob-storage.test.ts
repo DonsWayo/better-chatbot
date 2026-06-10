@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { putMock, headMock, delMock } = vi.hoisted(() => ({
   putMock: vi.fn(),
@@ -17,7 +17,6 @@ vi.mock("lib/utils", () => ({
 }));
 
 import { createVercelBlobStorage } from "./vercel-blob-storage";
-import { FileNotFoundError } from "lib/errors";
 
 const blobResult = {
   pathname: "uploads/test-uuid-file.txt",
@@ -25,7 +24,8 @@ const blobResult = {
   contentType: "text/plain",
   size: 3,
   uploadedAt: new Date("2024-01-01"),
-  downloadUrl: "https://blob.vercel-storage.com/uploads/test-uuid-file.txt?download=1",
+  downloadUrl:
+    "https://blob.vercel-storage.com/uploads/test-uuid-file.txt?download=1",
 };
 
 describe("createVercelBlobStorage", () => {
@@ -75,9 +75,12 @@ describe("createVercelBlobStorage", () => {
 
     it("uses prefix from env at construction time", async () => {
       process.env.FILE_STORAGE_PREFIX = "custom";
-      putMock.mockResolvedValue({ ...blobResult, pathname: "custom/test-uuid-x.txt" });
+      putMock.mockResolvedValue({
+        ...blobResult,
+        pathname: "custom/test-uuid-x.txt",
+      });
       const storage = createVercelBlobStorage();
-      const result = await storage.upload(Buffer.from("x"), {
+      await storage.upload(Buffer.from("x"), {
         filename: "x.txt",
         contentType: "text/plain",
       });
@@ -118,7 +121,9 @@ describe("createVercelBlobStorage", () => {
     });
 
     it("returns false when head throws FileNotFoundError", async () => {
-      const err = Object.assign(new Error("not found"), { name: "BlobNotFoundError" });
+      const err = Object.assign(new Error("not found"), {
+        name: "BlobNotFoundError",
+      });
       headMock.mockRejectedValue(err);
       const storage = createVercelBlobStorage();
       expect(await storage.exists("uploads/missing.txt")).toBe(false);
@@ -127,7 +132,9 @@ describe("createVercelBlobStorage", () => {
     it("rethrows non-404 errors", async () => {
       headMock.mockRejectedValue(new Error("Network error"));
       const storage = createVercelBlobStorage();
-      await expect(storage.exists("uploads/x.txt")).rejects.toThrow("Network error");
+      await expect(storage.exists("uploads/x.txt")).rejects.toThrow(
+        "Network error",
+      );
     });
   });
 
@@ -142,7 +149,9 @@ describe("createVercelBlobStorage", () => {
     });
 
     it("returns null when file not found", async () => {
-      const err = Object.assign(new Error("not found"), { name: "BlobNotFoundError" });
+      const err = Object.assign(new Error("not found"), {
+        name: "BlobNotFoundError",
+      });
       headMock.mockRejectedValue(err);
       const storage = createVercelBlobStorage();
       const meta = await storage.getMetadata("uploads/missing.txt");
@@ -159,7 +168,9 @@ describe("createVercelBlobStorage", () => {
     });
 
     it("returns null when file not found", async () => {
-      const err = Object.assign(new Error("not found"), { name: "BlobNotFoundError" });
+      const err = Object.assign(new Error("not found"), {
+        name: "BlobNotFoundError",
+      });
       headMock.mockRejectedValue(err);
       const storage = createVercelBlobStorage();
       const url = await storage.getSourceUrl("uploads/missing.txt");
@@ -171,7 +182,7 @@ describe("createVercelBlobStorage", () => {
     it("returns downloadUrl when present", async () => {
       headMock.mockResolvedValue(blobResult);
       const storage = createVercelBlobStorage();
-      const url = await storage.getDownloadUrl("uploads/file.txt");
+      const url = await storage.getDownloadUrl!("uploads/file.txt");
       expect(url).toBe(blobResult.downloadUrl);
     });
 
@@ -179,15 +190,17 @@ describe("createVercelBlobStorage", () => {
       const noDownloadUrl = { ...blobResult, downloadUrl: undefined };
       headMock.mockResolvedValue(noDownloadUrl);
       const storage = createVercelBlobStorage();
-      const url = await storage.getDownloadUrl("uploads/file.txt");
+      const url = await storage.getDownloadUrl!("uploads/file.txt");
       expect(url).toBe(blobResult.url);
     });
 
     it("returns null when file not found", async () => {
-      const err = Object.assign(new Error("not found"), { name: "BlobNotFoundError" });
+      const err = Object.assign(new Error("not found"), {
+        name: "BlobNotFoundError",
+      });
       headMock.mockRejectedValue(err);
       const storage = createVercelBlobStorage();
-      const url = await storage.getDownloadUrl("uploads/missing.txt");
+      const url = await storage.getDownloadUrl!("uploads/missing.txt");
       expect(url).toBeNull();
     });
   });

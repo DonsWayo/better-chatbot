@@ -1,15 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+  AllowedMCPServerZodSchema,
   MCPRemoteConfigZodSchema,
   MCPStdioConfigZodSchema,
-  AllowedMCPServerZodSchema,
-  McpToolCustomizationZodSchema,
   McpServerCustomizationZodSchema,
+  McpToolCustomizationZodSchema,
 } from "./mcp";
 
 describe("MCPRemoteConfigZodSchema", () => {
   it("accepts valid remote URL", () => {
-    const r = MCPRemoteConfigZodSchema.safeParse({ url: "https://mcp.example.com/sse" });
+    const r = MCPRemoteConfigZodSchema.safeParse({
+      url: "https://mcp.example.com/sse",
+    });
     expect(r.success).toBe(true);
   });
 
@@ -35,7 +37,10 @@ describe("MCPRemoteConfigZodSchema", () => {
 
 describe("MCPStdioConfigZodSchema", () => {
   it("accepts valid stdio config", () => {
-    const r = MCPStdioConfigZodSchema.safeParse({ command: "npx", args: ["-y", "@some/mcp"] });
+    const r = MCPStdioConfigZodSchema.safeParse({
+      command: "npx",
+      args: ["-y", "@some/mcp"],
+    });
     expect(r.success).toBe(true);
   });
 
@@ -60,7 +65,9 @@ describe("MCPStdioConfigZodSchema", () => {
 
 describe("AllowedMCPServerZodSchema", () => {
   it("accepts valid allowed server config", () => {
-    const r = AllowedMCPServerZodSchema.safeParse({ tools: ["search", "fetch"] });
+    const r = AllowedMCPServerZodSchema.safeParse({
+      tools: ["search", "fetch"],
+    });
     expect(r.success).toBe(true);
   });
 
@@ -98,7 +105,9 @@ describe("McpServerCustomizationZodSchema", () => {
 
 describe("MCPRemoteConfigZodSchema — additional cases", () => {
   it("accepts http:// URL (not only https)", () => {
-    const r = MCPRemoteConfigZodSchema.safeParse({ url: "http://mcp.internal/sse" });
+    const r = MCPRemoteConfigZodSchema.safeParse({
+      url: "http://mcp.internal/sse",
+    });
     expect(r.success).toBe(true);
   });
 
@@ -122,28 +131,43 @@ describe("MCPStdioConfigZodSchema — additional cases", () => {
 
 describe("McpToolCustomizationZodSchema — field rules", () => {
   it("requires toolName (min 1)", () => {
-    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "", mcpServerId: "s1" });
+    const r = McpToolCustomizationZodSchema.safeParse({
+      toolName: "",
+      mcpServerId: "s1",
+    });
     expect(r.success).toBe(false);
   });
 
   it("requires mcpServerId (min 1)", () => {
-    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "" });
+    const r = McpToolCustomizationZodSchema.safeParse({
+      toolName: "search",
+      mcpServerId: "",
+    });
     expect(r.success).toBe(false);
   });
 
   it("accepts null prompt", () => {
-    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "s1", prompt: null });
+    const r = McpToolCustomizationZodSchema.safeParse({
+      toolName: "search",
+      mcpServerId: "s1",
+      prompt: null,
+    });
     expect(r.success).toBe(true);
   });
 
   it("accepts omitted prompt", () => {
-    const r = McpToolCustomizationZodSchema.safeParse({ toolName: "search", mcpServerId: "s1" });
+    const r = McpToolCustomizationZodSchema.safeParse({
+      toolName: "search",
+      mcpServerId: "s1",
+    });
     expect(r.success).toBe(true);
   });
 
   it("rejects prompt over 1000 characters", () => {
     const r = McpToolCustomizationZodSchema.safeParse({
-      toolName: "search", mcpServerId: "s1", prompt: "x".repeat(1001),
+      toolName: "search",
+      mcpServerId: "s1",
+      prompt: "x".repeat(1001),
     });
     expect(r.success).toBe(false);
   });
@@ -155,13 +179,20 @@ describe("MCP schemas — additional invariants", () => {
     expect(r.success).toBe(false);
   });
 
-  it("MCPRemoteConfigZodSchema rejects non-http url", () => {
-    const r = MCPRemoteConfigZodSchema.safeParse({ url: "ftp://example.com" });
-    expect(r.success).toBe(false);
+  it("MCPRemoteConfigZodSchema accepts any valid URL scheme (only rejects malformed URLs)", () => {
+    const ftp = MCPRemoteConfigZodSchema.safeParse({
+      url: "ftp://example.com",
+    });
+    expect(ftp.success).toBe(true);
+    const malformed = MCPRemoteConfigZodSchema.safeParse({ url: "not a url" });
+    expect(malformed.success).toBe(false);
   });
 
   it("MCPStdioConfigZodSchema accepts valid command with args", () => {
-    const r = MCPStdioConfigZodSchema.safeParse({ command: "node", args: ["server.js"] });
+    const r = MCPStdioConfigZodSchema.safeParse({
+      command: "node",
+      args: ["server.js"],
+    });
     expect(r.success).toBe(true);
   });
 

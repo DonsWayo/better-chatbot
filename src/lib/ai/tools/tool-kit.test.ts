@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { APP_DEFAULT_TOOL_KIT } from "./tool-kit";
+import { describe, expect, it } from "vitest";
 import { AppDefaultToolkit, DefaultToolName } from "./index";
+import { APP_DEFAULT_TOOL_KIT } from "./tool-kit";
 
 describe("APP_DEFAULT_TOOL_KIT", () => {
   it("has all four toolkit categories", () => {
@@ -38,7 +38,10 @@ describe("APP_DEFAULT_TOOL_KIT", () => {
   it("each tool has an inputSchema", () => {
     for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
       for (const [toolName, tool] of Object.entries(kit)) {
-        expect(tool.inputSchema, `${kitName}/${toolName} missing inputSchema`).toBeDefined();
+        expect(
+          tool.inputSchema,
+          `${kitName}/${toolName} missing inputSchema`,
+        ).toBeDefined();
       }
     }
   });
@@ -52,7 +55,10 @@ describe("APP_DEFAULT_TOOL_KIT", () => {
     for (const kitKey of serverToolkits) {
       const kit = APP_DEFAULT_TOOL_KIT[kitKey];
       for (const [toolName, tool] of Object.entries(kit)) {
-        expect(typeof tool.execute, `${kitKey}/${toolName} missing execute`).toBe("function");
+        expect(
+          typeof tool.execute,
+          `${kitKey}/${toolName} missing execute`,
+        ).toBe("function");
       }
     }
   });
@@ -91,7 +97,10 @@ describe("APP_DEFAULT_TOOL_KIT", () => {
           typeof (tool as any).description,
           `${kitName}/${toolName} should have string description`,
         ).toBe("string");
-        expect((tool as any).description.length, `${kitName}/${toolName} description empty`).toBeGreaterThan(0);
+        expect(
+          (tool as any).description.length,
+          `${kitName}/${toolName} description empty`,
+        ).toBeGreaterThan(0);
       }
     }
   });
@@ -111,8 +120,8 @@ describe("APP_DEFAULT_TOOL_KIT", () => {
   });
 
   it("each tool inputSchema is an object with properties or type field", () => {
-    for (const [kitName, kit] of Object.entries(APP_DEFAULT_TOOL_KIT)) {
-      for (const [toolName, tool] of Object.entries(kit)) {
+    for (const kit of Object.values(APP_DEFAULT_TOOL_KIT)) {
+      for (const tool of Object.values(kit)) {
         expect(typeof tool.inputSchema).toBe("object");
         expect(tool.inputSchema).not.toBeNull();
       }

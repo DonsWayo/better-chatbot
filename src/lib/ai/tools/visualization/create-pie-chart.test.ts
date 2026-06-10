@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { createPieChartTool } from "./create-pie-chart";
 
 describe("createPieChartTool", () => {
@@ -21,7 +22,8 @@ describe("createPieChartTool", () => {
 });
 
 describe("createPieChartTool inputSchema validation", () => {
-  const schema = createPieChartTool.inputSchema;
+  // The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+  const schema = createPieChartTool.inputSchema as unknown as z.ZodTypeAny;
 
   it("accepts valid pie chart data", () => {
     const result = schema.safeParse({
@@ -106,7 +108,10 @@ describe("createPieChartTool inputSchema validation", () => {
 
   it("accepts multiple data entries", () => {
     const result = schema.safeParse({
-      data: Array.from({ length: 5 }, (_, i) => ({ label: `Slice ${i}`, value: 20 })),
+      data: Array.from({ length: 5 }, (_, i) => ({
+        label: `Slice ${i}`,
+        value: 20,
+      })),
       title: "Five Slices",
       description: "Equal distribution",
       unit: "%",

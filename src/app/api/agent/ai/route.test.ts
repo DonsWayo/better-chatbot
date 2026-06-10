@@ -1,15 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, streamObjectMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
-  streamObjectMock: vi.fn(() => ({ toTextStreamResponse: vi.fn(() => new Response("{}")) })),
+  streamObjectMock: vi.fn((_opts?: unknown) => ({
+    toTextStreamResponse: vi.fn(() => new Response("{}")),
+  })),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: vi.fn(() => ({})) },
 }));
-vi.mock("lib/ai/prompts", () => ({ buildAgentGenerationPrompt: vi.fn(() => "") }));
+vi.mock("lib/ai/prompts", () => ({
+  buildAgentGenerationPrompt: vi.fn(() => ""),
+}));
 vi.mock("logger", () => ({
   default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
 }));
@@ -31,7 +35,9 @@ vi.mock("lib/db/repository", () => ({
 vi.mock("ts-safe", () => ({
   safe: vi.fn(() => ({ ifOk: () => ({ unwrap: () => Promise.resolve() }) })),
 }));
-vi.mock("lib/utils", () => ({ objectFlow: vi.fn(() => ({ forEach: vi.fn() })) }));
+vi.mock("lib/utils", () => ({
+  objectFlow: vi.fn(() => ({ forEach: vi.fn() })),
+}));
 vi.mock("lib/ai/mcp/mcp-manager", () => ({
   mcpClientsManager: { tools: vi.fn().mockResolvedValue({}) },
 }));
@@ -40,19 +46,24 @@ vi.mock("ai", () => ({
 }));
 
 function makeRequest(body?: unknown): Request {
-  return { json: () => Promise.resolve(body), signal: new AbortController().signal } as unknown as Request;
+  return {
+    json: () => Promise.resolve(body),
+    signal: new AbortController().signal,
+  } as unknown as Request;
 }
 
 describe("POST /api/agent/ai", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+    streamObjectMock.mockReturnValue({
+      toTextStreamResponse: vi.fn(() => new Response("{}")),
+    });
   });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "create an agent" }));
+    const res = (await POST(makeRequest({ message: "create an agent" })))!;
     expect(res.status).toBe(401);
   });
 
@@ -66,35 +77,39 @@ describe("POST /api/agent/ai", () => {
   it("streams agent generation when authenticated", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "build me an agent" }));
+    const res = (await POST(makeRequest({ message: "build me an agent" })))!;
     expect(res.status).toBe(200);
   });
 
   it("calls streamObject exactly once per request", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
-    await POST(makeRequest({ message: "create an agent for customer support" }));
+    await POST(
+      makeRequest({ message: "create an agent for customer support" }),
+    );
     expect(streamObjectMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns a Response object on success", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "create a coding agent" }));
+    const res = (await POST(
+      makeRequest({ message: "create a coding agent" }),
+    ))!;
     expect(res).toBeInstanceOf(Response);
   });
 
   it("returns 401 when session is an empty object (falsy user)", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "hello" }));
+    const res = (await POST(makeRequest({ message: "hello" })))!;
     expect(res.status).toBe(401);
   });
 
   it("response body for 401 is text Unauthorized", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "test" }));
+    const res = (await POST(makeRequest({ message: "test" })))!;
     expect(res.status).toBe(401);
     const text = await res.text();
     expect(text).toBe("Unauthorized");
@@ -108,7 +123,9 @@ describe("POST /api/agent/ai", () => {
       return { toTextStreamResponse: vi.fn(() => new Response("ok")) };
     });
     const { POST } = await import("./route");
-    await POST(makeRequest({ message: "build a support agent", chatModel: undefined }));
+    await POST(
+      makeRequest({ message: "build a support agent", chatModel: undefined }),
+    );
     expect(capturedPrompt).toBe("build a support agent");
   });
 
@@ -128,7 +145,9 @@ describe("POST /api/agent/ai", () => {
 describe("POST /api/agent/ai — additional", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+    streamObjectMock.mockReturnValue({
+      toTextStreamResponse: vi.fn(() => new Response("{}")),
+    });
   });
 
   it("getSession called exactly once per POST", async () => {
@@ -148,7 +167,7 @@ describe("POST /api/agent/ai — additional", () => {
   it("returns Response instance on success", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u-resp" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "generate an agent" }));
+    const res = (await POST(makeRequest({ message: "generate an agent" })))!;
     expect(res).toBeInstanceOf(Response);
   });
 });
@@ -156,20 +175,22 @@ describe("POST /api/agent/ai — additional", () => {
 describe("POST /api/agent/ai — response shape", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamObjectMock.mockReturnValue({ toTextStreamResponse: vi.fn(() => new Response("{}")) });
+    streamObjectMock.mockReturnValue({
+      toTextStreamResponse: vi.fn(() => new Response("{}")),
+    });
   });
 
   it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "hello" }));
+    const res = (await POST(makeRequest({ message: "hello" })))!;
     expect(res).toBeInstanceOf(Response);
   });
 
   it("returns a Response instance for 200", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "build an agent" }));
+    const res = (await POST(makeRequest({ message: "build an agent" })))!;
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -189,7 +210,10 @@ describe("POST /api/agent/ai — response shape", () => {
 });
 
 describe("POST /api/agent/ai — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -201,7 +225,7 @@ describe("POST /api/agent/ai — call count invariants", () => {
   it("POST returns 401 Response when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "test" }));
+    const res = (await POST(makeRequest({ message: "test" })))!;
     expect(res).toBeInstanceOf(Response);
     expect(res.status).toBe(401);
   });

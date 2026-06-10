@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { USER_ROLES } from "app-types/roles";
 import type { AdminUsersPaginated } from "app-types/admin";
+import { USER_ROLES } from "app-types/roles";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -26,33 +26,36 @@ vi.mock("next/headers", () => ({
 }));
 
 import {
-  requireAdminSession,
-  getAdminUsers,
+  canListUsers,
+  hasAdminPermission,
+  requireAdminPermission,
+  requireUserListPermission,
+} from "lib/auth/permissions";
+import { getSession } from "lib/auth/server";
+import pgAdminRepository from "lib/db/pg/repositories/admin-respository.pg";
+import {
   ADMIN_USER_LIST_LIMIT,
   DEFAULT_SORT_BY,
   DEFAULT_SORT_DIRECTION,
+  getAdminUsers,
+  requireAdminSession,
 } from "./server";
-import { getSession } from "lib/auth/server";
-import {
-  requireAdminPermission,
-  requireUserListPermission,
-  hasAdminPermission,
-  canListUsers,
-} from "lib/auth/permissions";
-import pgAdminRepository from "lib/db/pg/repositories/admin-respository.pg";
 
 type MockSession = Awaited<ReturnType<typeof getSession>>;
 
 const mockSessionFor = (user: Record<string, unknown>): MockSession =>
   ({ user, session: {} }) as unknown as MockSession;
 
-const mockPaginated = (partial: Partial<AdminUsersPaginated>): AdminUsersPaginated => ({
-  users: [],
-  total: 0,
-  limit: ADMIN_USER_LIST_LIMIT,
-  offset: 0,
-  ...partial,
-}) as unknown as AdminUsersPaginated;
+const mockPaginated = (
+  partial: Partial<AdminUsersPaginated>,
+): AdminUsersPaginated =>
+  ({
+    users: [],
+    total: 0,
+    limit: ADMIN_USER_LIST_LIMIT,
+    offset: 0,
+    ...partial,
+  }) as unknown as AdminUsersPaginated;
 
 describe("Admin Server - Business Logic", () => {
   beforeEach(() => {
@@ -76,7 +79,10 @@ describe("Admin Server - Business Logic", () => {
       ];
 
       for (const testCase of testCases) {
-        const sess = { user: { id: "test-user", role: testCase.role }, session: { id: "session-1" } };
+        const sess = {
+          user: { id: "test-user", role: testCase.role },
+          session: { id: "session-1" },
+        };
         vi.mocked(getSession).mockResolvedValue(sess as unknown as MockSession);
 
         if (testCase.shouldPass) {
@@ -87,7 +93,9 @@ describe("Admin Server - Business Logic", () => {
         } else {
           vi.mocked(hasAdminPermission).mockResolvedValue(false);
           vi.mocked(requireAdminPermission).mockRejectedValue(
-            new Error("Unauthorized: Admin access required to access admin functions"),
+            new Error(
+              "Unauthorized: Admin access required to access admin functions",
+            ),
           );
           await expect(requireAdminSession()).rejects.toThrow(
             "Unauthorized: Admin access required to access admin functions",
@@ -99,7 +107,9 @@ describe("Admin Server - Business Logic", () => {
 
   describe("getAdminUsers - Query Parameter Handling", () => {
     beforeEach(() => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "admin-1", role: USER_ROLES.ADMIN }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "admin-1", role: USER_ROLES.ADMIN }),
+      );
       vi.mocked(canListUsers).mockResolvedValue(true);
       vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
     });
@@ -155,20 +165,44 @@ describe("Admin Server - Business Logic", () => {
 
     it("should handle response format variations", async () => {
       vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
-        mockPaginated({ users: [{ id: "1" } as unknown as AdminUsersPaginated["users"][number]], total: 1, limit: 5, offset: 10 }),
+        mockPaginated({
+          users: [
+            { id: "1" } as unknown as AdminUsersPaginated["users"][number],
+          ],
+          total: 1,
+          limit: 5,
+          offset: 10,
+        }),
       );
 
       const result1 = await getAdminUsers({ limit: 20, offset: 30 });
 
-      expect(result1).toEqual({ users: [{ id: "1" }], total: 1, limit: 5, offset: 10 });
+      expect(result1).toEqual({
+        users: [{ id: "1" }],
+        total: 1,
+        limit: 5,
+        offset: 10,
+      });
 
       vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
-        mockPaginated({ users: [{ id: "2" } as unknown as AdminUsersPaginated["users"][number]], total: 1, limit: 20, offset: 30 }),
+        mockPaginated({
+          users: [
+            { id: "2" } as unknown as AdminUsersPaginated["users"][number],
+          ],
+          total: 1,
+          limit: 20,
+          offset: 30,
+        }),
       );
 
       const result2 = await getAdminUsers({ limit: 20, offset: 30 });
 
-      expect(result2).toEqual({ users: [{ id: "2" }], total: 1, limit: 20, offset: 30 });
+      expect(result2).toEqual({
+        users: [{ id: "2" }],
+        total: 1,
+        limit: 20,
+        offset: 30,
+      });
     });
 
     it("should handle edge case responses", async () => {
@@ -178,14 +212,23 @@ describe("Admin Server - Business Logic", () => {
 
       const result = await getAdminUsers();
 
-      expect(result).toEqual({ users: [], total: 0, limit: ADMIN_USER_LIST_LIMIT, offset: 0 });
+      expect(result).toEqual({
+        users: [],
+        total: 0,
+        limit: ADMIN_USER_LIST_LIMIT,
+        offset: 0,
+      });
     });
 
     it("should enforce admin access before making API call", async () => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "user-1", role: USER_ROLES.USER }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "user-1", role: USER_ROLES.USER }),
+      );
       vi.mocked(canListUsers).mockResolvedValue(false);
       vi.mocked(requireUserListPermission).mockRejectedValue(
-        new Error("Unauthorized: Permission required to list users in admin panel"),
+        new Error(
+          "Unauthorized: Permission required to list users in admin panel",
+        ),
       );
 
       await expect(getAdminUsers()).rejects.toThrow(
@@ -208,7 +251,9 @@ describe("Admin Server - Business Logic", () => {
     it("throws when getSession returns null", async () => {
       vi.mocked(getSession).mockResolvedValue(null);
       vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
-      await expect(requireAdminSession()).rejects.toThrow("Unauthorized: No session found");
+      await expect(requireAdminSession()).rejects.toThrow(
+        "Unauthorized: No session found",
+      );
     });
 
     it("calls requireAdminPermission when session exists", async () => {
@@ -216,7 +261,9 @@ describe("Admin Server - Business Logic", () => {
       vi.mocked(getSession).mockResolvedValue(sess);
       vi.mocked(requireAdminPermission).mockResolvedValue(undefined);
       await requireAdminSession();
-      expect(requireAdminPermission).toHaveBeenCalledWith("access admin functions");
+      expect(requireAdminPermission).toHaveBeenCalledWith(
+        "access admin functions",
+      );
     });
 
     it("calls getSession exactly once", async () => {
@@ -238,25 +285,36 @@ describe("Admin Server - Business Logic", () => {
 
   describe("getAdminUsers - error handling and invariants", () => {
     beforeEach(() => {
-      vi.mocked(getSession).mockResolvedValue(mockSessionFor({ id: "admin-1", role: USER_ROLES.ADMIN }));
+      vi.mocked(getSession).mockResolvedValue(
+        mockSessionFor({ id: "admin-1", role: USER_ROLES.ADMIN }),
+      );
       vi.mocked(canListUsers).mockResolvedValue(true);
       vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
     });
 
     it("propagates repository errors", async () => {
-      vi.mocked(pgAdminRepository.getUsers).mockRejectedValue(new Error("DB failure"));
+      vi.mocked(pgAdminRepository.getUsers).mockRejectedValue(
+        new Error("DB failure"),
+      );
       await expect(getAdminUsers()).rejects.toThrow("DB failure");
     });
 
     it("calls getUsers exactly once per call", async () => {
-      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(mockPaginated({}));
+      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
+        mockPaginated({}),
+      );
       await getAdminUsers();
       expect(pgAdminRepository.getUsers).toHaveBeenCalledTimes(1);
     });
 
     it("passes filterField and filterValue when provided", async () => {
-      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(mockPaginated({}));
-      await getAdminUsers({ filterField: "role" as const, filterValue: "admin" });
+      vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
+        mockPaginated({}),
+      );
+      await getAdminUsers({
+        filterField: "role" as const,
+        filterValue: "admin",
+      });
       expect(pgAdminRepository.getUsers).toHaveBeenCalledWith(
         expect.objectContaining({ filterField: "role", filterValue: "admin" }),
       );
@@ -264,7 +322,9 @@ describe("Admin Server - Business Logic", () => {
 
     it("returns result from repository unchanged", async () => {
       const paginated = mockPaginated({
-        users: [{ id: "u1" } as unknown as AdminUsersPaginated["users"][number]],
+        users: [
+          { id: "u1" } as unknown as AdminUsersPaginated["users"][number],
+        ],
         total: 1,
       });
       vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(paginated);
@@ -278,7 +338,9 @@ describe("getAdminUsers — response invariants", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
-    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
+      [] as unknown as AdminUsersPaginated,
+    );
   });
 
   it("returns an array", async () => {
@@ -297,7 +359,9 @@ describe("getAdminUsers — response invariants", () => {
   });
 
   it("returns empty array when repository returns no users", async () => {
-    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
+      [] as unknown as AdminUsersPaginated,
+    );
     const result = await getAdminUsers();
     expect(result).toHaveLength(0);
   });
@@ -307,7 +371,9 @@ describe("getAdminUsers — constants and pagination invariants", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(requireUserListPermission).mockResolvedValue(undefined);
-    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue([]);
+    vi.mocked(pgAdminRepository.getUsers).mockResolvedValue(
+      [] as unknown as AdminUsersPaginated,
+    );
   });
 
   it("ADMIN_USER_LIST_LIMIT is a positive number", () => {
@@ -325,7 +391,9 @@ describe("getAdminUsers — constants and pagination invariants", () => {
   });
 
   it("getAdminUsers throws when requireUserListPermission rejects", async () => {
-    vi.mocked(requireUserListPermission).mockRejectedValueOnce(new Error("Forbidden"));
+    vi.mocked(requireUserListPermission).mockRejectedValueOnce(
+      new Error("Forbidden"),
+    );
     await expect(getAdminUsers()).rejects.toThrow("Forbidden");
     expect(pgAdminRepository.getUsers).not.toHaveBeenCalled();
   });

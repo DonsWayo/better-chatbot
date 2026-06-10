@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  validateSchema,
   httpNodeValidate,
-  templateNodeValidate,
   llmNodeValidate,
+  templateNodeValidate,
   toolNodeValidate,
+  validateSchema,
 } from "./node-validate";
 import { NodeKind } from "./workflow.interface";
 
@@ -20,7 +20,9 @@ describe("validateSchema", () => {
   });
 
   it("throws for empty key name", () => {
-    expect(() => validateSchema("", { type: "string" })).toThrow("Invalid Variable Name");
+    expect(() => validateSchema("", { type: "string" })).toThrow(
+      "Invalid Variable Name",
+    );
   });
 
   it("throws for missing type in schema", () => {
@@ -31,8 +33,8 @@ describe("validateSchema", () => {
     const schema = {
       type: "object" as const,
       properties: {
-        name: { type: "string" },
-        age: { type: "number" },
+        name: { type: "string" as const },
+        age: { type: "number" as const },
       },
     };
     expect(validateSchema("data", schema)).toBe(true);
@@ -51,7 +53,9 @@ describe("validateSchema", () => {
 
   it("throws for key name that becomes empty after cleaning", () => {
     // cleanVariableName("!!!") returns ""
-    expect(() => validateSchema("!!!", { type: "string" })).toThrow("Invalid Variable Name");
+    expect(() => validateSchema("!!!", { type: "string" })).toThrow(
+      "Invalid Variable Name",
+    );
   });
 });
 
@@ -70,49 +74,67 @@ const baseHttpNode: any = {
 
 describe("httpNodeValidate", () => {
   it("passes valid GET node", () => {
-    expect(() => httpNodeValidate({ node: baseHttpNode, nodes: [], edges: [] })).not.toThrow();
+    expect(() =>
+      httpNodeValidate({ node: baseHttpNode, nodes: [], edges: [] }),
+    ).not.toThrow();
   });
 
   it("throws when url is undefined", () => {
     const node = { ...baseHttpNode, url: undefined };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP node must have a URL defined");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "HTTP node must have a URL defined",
+    );
   });
 
   it("accepts empty string url", () => {
     const node = { ...baseHttpNode, url: "" };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+    expect(() =>
+      httpNodeValidate({ node, nodes: [], edges: [] }),
+    ).not.toThrow();
   });
 
   it("throws for invalid HTTP method", () => {
     const node = { ...baseHttpNode, method: "CONNECT" };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP method must be one of");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "HTTP method must be one of",
+    );
   });
 
   it("accepts all valid HTTP methods", () => {
     for (const method of ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"]) {
       const node = { ...baseHttpNode, method };
-      expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+      expect(() =>
+        httpNodeValidate({ node, nodes: [], edges: [] }),
+      ).not.toThrow();
     }
   });
 
   it("throws for negative timeout", () => {
     const node = { ...baseHttpNode, timeout: -1 };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP timeout must be a positive number");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "HTTP timeout must be a positive number",
+    );
   });
 
   it("throws for timeout exceeding 5 minutes", () => {
     const node = { ...baseHttpNode, timeout: 300_001 };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("HTTP timeout cannot exceed 300000ms");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "HTTP timeout cannot exceed 300000ms",
+    );
   });
 
   it("accepts valid timeout", () => {
     const node = { ...baseHttpNode, timeout: 5000 };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+    expect(() =>
+      httpNodeValidate({ node, nodes: [], edges: [] }),
+    ).not.toThrow();
   });
 
   it("throws for header with empty key", () => {
     const node = { ...baseHttpNode, headers: [{ key: "", value: "val" }] };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Header key cannot be empty");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Header key cannot be empty",
+    );
   });
 
   it("throws for duplicate header keys", () => {
@@ -123,22 +145,30 @@ describe("httpNodeValidate", () => {
         { key: "Content-Type", value: "text/plain" },
       ],
     };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Duplicate header key");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Duplicate header key",
+    );
   });
 
   it("throws for query param with empty key", () => {
     const node = { ...baseHttpNode, query: [{ key: "", value: "val" }] };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Query parameter key cannot be empty");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Query parameter key cannot be empty",
+    );
   });
 
   it("throws for body on GET request", () => {
     const node = { ...baseHttpNode, method: "GET", body: "some body" };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow("Body is not allowed for GET requests");
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Body is not allowed for GET requests",
+    );
   });
 
   it("accepts body on POST request", () => {
     const node = { ...baseHttpNode, method: "POST", body: '{"key":"value"}' };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+    expect(() =>
+      httpNodeValidate({ node, nodes: [], edges: [] }),
+    ).not.toThrow();
   });
 });
 
@@ -147,20 +177,28 @@ describe("httpNodeValidate", () => {
 describe("templateNodeValidate", () => {
   it("passes for valid tiptap template", () => {
     const node: any = {
-      id: "t1", kind: NodeKind.Template, name: "Template",
+      id: "t1",
+      kind: NodeKind.Template,
+      name: "Template",
       outputSchema: { type: "object", properties: {} },
       template: { type: "tiptap", tiptap: { type: "doc", content: [] } },
     };
-    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).not.toThrow();
+    expect(() =>
+      templateNodeValidate({ node, nodes: [], edges: [] }),
+    ).not.toThrow();
   });
 
   it("throws for invalid template type", () => {
     const node: any = {
-      id: "t1", kind: NodeKind.Template, name: "Template",
+      id: "t1",
+      kind: NodeKind.Template,
+      name: "Template",
       outputSchema: { type: "object", properties: {} },
       template: { type: "handlebars", tiptap: null },
     };
-    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).toThrow("Template type must be one of");
+    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Template type must be one of",
+    );
   });
 });
 
@@ -169,22 +207,30 @@ describe("templateNodeValidate", () => {
 describe("llmNodeValidate", () => {
   it("throws when model is missing", () => {
     const node: any = {
-      id: "l1", kind: NodeKind.LLM, name: "LLM",
+      id: "l1",
+      kind: NodeKind.LLM,
+      name: "LLM",
       outputSchema: { type: "object", properties: {} },
       model: null,
       messages: [{ role: "user", content: { type: "doc", content: [] } }],
     };
-    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow("LLM node must have a model");
+    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "LLM node must have a model",
+    );
   });
 
   it("throws when no messages", () => {
     const node: any = {
-      id: "l1", kind: NodeKind.LLM, name: "LLM",
+      id: "l1",
+      kind: NodeKind.LLM,
+      name: "LLM",
       outputSchema: { type: "object", properties: {} },
       model: { provider: "openrouter", model: "claude-3-5-sonnet" },
       messages: [],
     };
-    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow("LLM node must have a message");
+    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "LLM node must have a message",
+    );
   });
 });
 
@@ -193,50 +239,79 @@ describe("llmNodeValidate", () => {
 describe("toolNodeValidate", () => {
   it("throws when tool is missing", () => {
     const node: any = {
-      id: "t1", kind: NodeKind.Tool, name: "Tool",
+      id: "t1",
+      kind: NodeKind.Tool,
+      name: "Tool",
       outputSchema: { type: "object", properties: {} },
       tool: null,
       model: { provider: "openrouter", model: "claude" },
       message: { type: "doc", content: [] },
     };
-    expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow("Tool node must have a tool");
+    expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Tool node must have a tool",
+    );
   });
 
   it("throws when model is missing", () => {
     const node: any = {
-      id: "t1", kind: NodeKind.Tool, name: "Tool",
+      id: "t1",
+      kind: NodeKind.Tool,
+      name: "Tool",
       outputSchema: { type: "object", properties: {} },
       tool: { id: "web_search", type: "app-tool", description: "Search" },
       model: null,
       message: { type: "doc", content: [] },
     };
-    expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow("Tool node must have a model");
+    expect(() => toolNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "Tool node must have a model",
+    );
   });
 });
 
 describe("node validators — shared invariants", () => {
-  it("validateSchema returns no errors for empty schema properties", () => {
-    const { validateSchema } = require("./node-validate");
-    const result = validateSchema({ type: "object", properties: {} });
-    expect(Array.isArray(result)).toBe(true);
-    expect(result).toHaveLength(0);
+  type NodeOf<V> = V extends (ctx: { node: infer N }) => unknown ? N : never;
+
+  it("validateSchema returns true for empty object schema properties", () => {
+    const result = validateSchema("data", { type: "object", properties: {} });
+    expect(result).toBe(true);
   });
 
-  it("httpNodeValidate throws for missing url", () => {
-    const { httpNodeValidate } = require("./node-validate");
-    const node = { id: "n1", type: "http", data: { url: "", method: "GET", headers: [], bodyParams: [], queryParams: [] } };
-    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow();
+  it("httpNodeValidate throws for undefined url", () => {
+    const node = {
+      id: "n1",
+      kind: NodeKind.Http,
+      name: "Http",
+      url: undefined,
+      method: "GET",
+      headers: [],
+    } as unknown as NodeOf<typeof httpNodeValidate>;
+    expect(() => httpNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "HTTP node must have a URL defined",
+    );
   });
 
   it("llmNodeValidate throws for missing model", () => {
-    const { llmNodeValidate } = require("./node-validate");
-    const node = { id: "n1", type: "llm", data: { model: null, systemPrompt: "", userPrompt: "" } };
-    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow();
+    const node = {
+      id: "n1",
+      kind: NodeKind.LLM,
+      name: "LLM",
+      model: undefined,
+      messages: [],
+    } as unknown as NodeOf<typeof llmNodeValidate>;
+    expect(() => llmNodeValidate({ node, nodes: [], edges: [] })).toThrow(
+      "LLM node must have a model",
+    );
   });
 
-  it("templateNodeValidate throws for missing template", () => {
-    const { templateNodeValidate } = require("./node-validate");
-    const node = { id: "n1", type: "template", data: { template: "" } };
-    expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).toThrow();
+  it("templateNodeValidate throws for invalid template type", () => {
+    const node = {
+      id: "n1",
+      kind: NodeKind.Template,
+      name: "Template",
+      template: { type: "handlebars" },
+    } as unknown as NodeOf<typeof templateNodeValidate>;
+    expect(() =>
+      templateNodeValidate({ node, nodes: [], edges: [] }),
+    ).toThrow();
   });
 });

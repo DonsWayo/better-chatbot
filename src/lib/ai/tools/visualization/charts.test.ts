@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // Test that the chart tool schemas validate data correctly via Zod
 // (these tools export inputSchema as a ZodObject)
@@ -19,7 +19,9 @@ describe("createBarChartTool schema", () => {
     const { createBarChartTool } = await import("./create-bar-chart");
     const schema = createBarChartTool.inputSchema as any;
     const valid = schema.parse({
-      data: [{ xAxisLabel: "Q1", series: [{ seriesName: "Revenue", value: 100 }] }],
+      data: [
+        { xAxisLabel: "Q1", series: [{ seriesName: "Revenue", value: 100 }] },
+      ],
       title: "Sales Chart",
       description: "Monthly sales",
       yAxisLabel: "USD",
@@ -63,7 +65,10 @@ describe("createPieChartTool schema", () => {
     const { createPieChartTool } = await import("./create-pie-chart");
     const schema = createPieChartTool.inputSchema as any;
     const valid = schema.parse({
-      data: [{ label: "Apple", value: 40 }, { label: "Google", value: 60 }],
+      data: [
+        { label: "Apple", value: 40 },
+        { label: "Google", value: 60 },
+      ],
       title: "Market Share",
       description: null,
       unit: "%",
@@ -106,13 +111,17 @@ describe("createTableTool schema", () => {
 
 describe("all chart tools — shared invariants", () => {
   it("all 4 chart tools have inputSchema defined", async () => {
-    const [{ createBarChartTool }, { createLineChartTool }, { createPieChartTool }, { createTableTool }] =
-      await Promise.all([
-        import("./create-bar-chart"),
-        import("./create-line-chart"),
-        import("./create-pie-chart"),
-        import("./create-table"),
-      ]);
+    const [
+      { createBarChartTool },
+      { createLineChartTool },
+      { createPieChartTool },
+      { createTableTool },
+    ] = await Promise.all([
+      import("./create-bar-chart"),
+      import("./create-line-chart"),
+      import("./create-pie-chart"),
+      import("./create-table"),
+    ]);
     expect(createBarChartTool.inputSchema).toBeDefined();
     expect(createLineChartTool.inputSchema).toBeDefined();
     expect(createPieChartTool.inputSchema).toBeDefined();
@@ -120,13 +129,17 @@ describe("all chart tools — shared invariants", () => {
   });
 
   it("all 4 chart tools have an execute function", async () => {
-    const [{ createBarChartTool }, { createLineChartTool }, { createPieChartTool }, { createTableTool }] =
-      await Promise.all([
-        import("./create-bar-chart"),
-        import("./create-line-chart"),
-        import("./create-pie-chart"),
-        import("./create-table"),
-      ]);
+    const [
+      { createBarChartTool },
+      { createLineChartTool },
+      { createPieChartTool },
+      { createTableTool },
+    ] = await Promise.all([
+      import("./create-bar-chart"),
+      import("./create-line-chart"),
+      import("./create-pie-chart"),
+      import("./create-table"),
+    ]);
     expect(typeof createBarChartTool.execute).toBe("function");
     expect(typeof createLineChartTool.execute).toBe("function");
     expect(typeof createPieChartTool.execute).toBe("function");
@@ -134,13 +147,17 @@ describe("all chart tools — shared invariants", () => {
   });
 
   it("all 4 tools return 'Success' on execute", async () => {
-    const [{ createBarChartTool }, { createLineChartTool }, { createPieChartTool }, { createTableTool }] =
-      await Promise.all([
-        import("./create-bar-chart"),
-        import("./create-line-chart"),
-        import("./create-pie-chart"),
-        import("./create-table"),
-      ]);
+    const [
+      { createBarChartTool },
+      { createLineChartTool },
+      { createPieChartTool },
+      { createTableTool },
+    ] = await Promise.all([
+      import("./create-bar-chart"),
+      import("./create-line-chart"),
+      import("./create-pie-chart"),
+      import("./create-table"),
+    ]);
     const results = await Promise.all([
       createBarChartTool.execute!({} as any, {} as any),
       createLineChartTool.execute!({} as any, {} as any),
@@ -154,16 +171,16 @@ describe("all chart tools — shared invariants", () => {
 });
 
 describe("all chart tools — additional invariants", () => {
-  it("createBarChartTool has a name property", async () => {
+  it("createBarChartTool has a description property", async () => {
     const { createBarChartTool } = await import("./create-bar-chart");
-    expect(createBarChartTool).toHaveProperty("name");
-    expect(typeof createBarChartTool.name).toBe("string");
+    expect(createBarChartTool).toHaveProperty("description");
+    expect(typeof createBarChartTool.description).toBe("string");
   });
 
-  it("createLineChartTool has a name property", async () => {
+  it("createLineChartTool has a description property", async () => {
     const { createLineChartTool } = await import("./create-line-chart");
-    expect(createLineChartTool).toHaveProperty("name");
-    expect(typeof createLineChartTool.name).toBe("string");
+    expect(createLineChartTool).toHaveProperty("description");
+    expect(typeof createLineChartTool.description).toBe("string");
   });
 
   it("createPieChartTool has an execute function", async () => {

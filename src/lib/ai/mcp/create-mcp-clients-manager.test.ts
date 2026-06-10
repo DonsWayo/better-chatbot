@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { MCPServerConfig } from "app-types/mcp";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MCPClient } from "./create-mcp-client";
 import {
-  createMCPClientsManager,
   MCPClientsManager,
+  createMCPClientsManager,
 } from "./create-mcp-clients-manager";
 import type { MCPConfigStorage } from "./create-mcp-clients-manager";
-import type { MCPClient } from "./create-mcp-client";
-import type { MCPServerConfig } from "app-types/mcp";
 
 // Mock dependencies
 vi.mock("./create-mcp-client", () => ({
@@ -94,7 +94,7 @@ describe("MCPClientsManager", () => {
       tools: {
         "test-tool": vi.fn(),
       },
-    };
+    } as unknown as MCPClient;
 
     vi.mocked(mockCreateMCPClient).mockReturnValue(mockClient);
 
@@ -233,7 +233,10 @@ describe("MCPClientsManager", () => {
       await manager.addClient("test-server", "test-server", mockServerConfig);
 
       const firstClient = mockClient;
-      const secondClient = { ...mockClient, disconnect: vi.fn() };
+      const secondClient = {
+        ...mockClient,
+        disconnect: vi.fn(),
+      } as unknown as MCPClient;
       vi.mocked(mockCreateMCPClient).mockReturnValue(secondClient);
 
       // Add client with same ID
@@ -349,7 +352,7 @@ describe("MCPClientsManager", () => {
 
       vi.mocked(mockStorage.get).mockResolvedValue(updatedServer);
 
-      const newClient = { ...mockClient };
+      const newClient = { ...mockClient } as unknown as MCPClient;
       vi.mocked(mockCreateMCPClient).mockReturnValue(newClient);
 
       await manager.refreshClient("test-server");
@@ -428,7 +431,7 @@ describe("MCPClientsManager", () => {
           toolInfo: [],
         })),
         tools: {},
-      };
+      } as unknown as MCPClient;
 
       vi.mocked(mockCreateMCPClient).mockReturnValue(clientWithoutTools);
       await manager.addClient("empty-server", "empty-server", mockServerConfig);
@@ -472,11 +475,13 @@ describe("MCPClientsManager", () => {
       await manager.addClient("test-server", "test-server", mockServerConfig);
 
       const createCall = vi.mocked(mockCreateMCPClient).mock.calls.at(-1)!;
-      const options = createCall[3] as Parameters<typeof mockCreateMCPClient>[3];
+      const options = createCall[3] as NonNullable<
+        Parameters<typeof mockCreateMCPClient>[3]
+      >;
       expect(options.onToolInfoUpdate).toBeDefined();
 
       const newToolInfo = [{ name: "new-tool", description: "New tool" }];
-      options.onToolInfoUpdate(newToolInfo);
+      options.onToolInfoUpdate?.(newToolInfo);
 
       expect(mockStorage.updateToolInfo).toHaveBeenCalledWith(
         "test-server",
@@ -494,10 +499,12 @@ describe("MCPClientsManager", () => {
       await manager.addClient("test-server", "test-server", mockServerConfig);
 
       const createCall = vi.mocked(mockCreateMCPClient).mock.calls.at(-1)!;
-      const options = createCall[3] as Parameters<typeof mockCreateMCPClient>[3];
+      const options = createCall[3] as NonNullable<
+        Parameters<typeof mockCreateMCPClient>[3]
+      >;
       expect(options.onConnectionStatusChange).toBeDefined();
 
-      options.onConnectionStatusChange("connected");
+      options.onConnectionStatusChange?.("connected");
 
       expect(mockStorage.updateConnectionStatus).toHaveBeenCalledWith(
         "test-server",

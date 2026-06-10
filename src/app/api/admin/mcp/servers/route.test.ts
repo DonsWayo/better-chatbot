@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, dbSelectMock, dbInsertMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -13,15 +13,24 @@ const dbSelectWhereMock = vi.fn().mockResolvedValue([]);
 const dbSelectFromMock = vi.fn().mockReturnValue({ where: dbSelectWhereMock });
 dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
 
-const dbInsertReturningMock = vi.fn().mockResolvedValue([{ id: "srv-1", name: "Test MCP" }]);
-const dbInsertValuesMock = vi.fn().mockReturnValue({ returning: dbInsertReturningMock });
+const dbInsertReturningMock = vi
+  .fn()
+  .mockResolvedValue([{ id: "srv-1", name: "Test MCP" }]);
+const dbInsertValuesMock = vi
+  .fn()
+  .mockReturnValue({ returning: dbInsertReturningMock });
 dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
 
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: { select: dbSelectMock, insert: dbInsertMock },
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({
-  McpServerTable: { id: "id", scope: "scope", name: "name", enabled: "enabled" },
+  McpServerTable: {
+    id: "id",
+    scope: "scope",
+    name: "name",
+    enabled: "enabled",
+  },
 }));
 vi.mock("drizzle-orm", () => ({
   inArray: vi.fn((_col: unknown, _vals: unknown) => ({})),
@@ -36,7 +45,9 @@ function makeRequest(body?: unknown): NextRequest {
 }
 
 describe("GET /api/admin/mcp/servers", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -54,7 +65,9 @@ describe("GET /api/admin/mcp/servers", () => {
 
   it("returns 200 with servers list for admin", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbSelectWhereMock.mockResolvedValue([{ id: "srv-1", name: "Company Jira" }]);
+    dbSelectWhereMock.mockResolvedValue([
+      { id: "srv-1", name: "Company Jira" },
+    ]);
 
     const { GET } = await import("./route");
     const res = await GET();
@@ -95,7 +108,9 @@ describe("GET /api/admin/mcp/servers", () => {
 });
 
 describe("POST /api/admin/mcp/servers", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -107,7 +122,13 @@ describe("POST /api/admin/mcp/servers", () => {
   it("returns 403 for non-admin", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    const res = await POST(
+      makeRequest({
+        name: "Tool",
+        scope: "org",
+        config: { url: "https://mcp.example.com" },
+      }),
+    );
     expect(res.status).toBe(403);
   });
 
@@ -121,11 +142,13 @@ describe("POST /api/admin/mcp/servers", () => {
   it("returns 400 when scope=team but teamId is missing", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({
-      name: "My Tool",
-      scope: "team",
-      config: { url: "https://mcp.example.com" },
-    }));
+    const res = await POST(
+      makeRequest({
+        name: "My Tool",
+        scope: "team",
+        config: { url: "https://mcp.example.com" },
+      }),
+    );
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toMatch(/teamId/i);
@@ -133,14 +156,18 @@ describe("POST /api/admin/mcp/servers", () => {
 
   it("creates server and returns 201 for valid org-wide request", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValue([{ id: "srv-new", name: "Docs MCP", scope: "org" }]);
+    dbInsertReturningMock.mockResolvedValue([
+      { id: "srv-new", name: "Docs MCP", scope: "org" },
+    ]);
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({
-      name: "Docs MCP",
-      scope: "org",
-      config: { url: "https://docs-mcp.example.com/sse" },
-    }));
+    const res = await POST(
+      makeRequest({
+        name: "Docs MCP",
+        scope: "org",
+        config: { url: "https://docs-mcp.example.com/sse" },
+      }),
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.server.name).toBe("Docs MCP");
@@ -149,14 +176,26 @@ describe("POST /api/admin/mcp/servers", () => {
   it("never calls dbInsert when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    await POST(
+      makeRequest({
+        name: "Tool",
+        scope: "org",
+        config: { url: "https://mcp.example.com" },
+      }),
+    );
     expect(dbInsertMock).not.toHaveBeenCalled();
   });
 
   it("never calls dbInsert for non-admin", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
     const { POST } = await import("./route");
-    await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    await POST(
+      makeRequest({
+        name: "Tool",
+        scope: "org",
+        config: { url: "https://mcp.example.com" },
+      }),
+    );
     expect(dbInsertMock).not.toHaveBeenCalled();
   });
 
@@ -171,16 +210,30 @@ describe("POST /api/admin/mcp/servers", () => {
   it("403 body has error field", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com" } }));
+    const res = await POST(
+      makeRequest({
+        name: "Tool",
+        scope: "org",
+        config: { url: "https://mcp.example.com" },
+      }),
+    );
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
 
   it("dbInsert called exactly once on successful POST", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValue([{ id: "srv-ok", name: "Docs MCP", scope: "org" }]);
+    dbInsertReturningMock.mockResolvedValue([
+      { id: "srv-ok", name: "Docs MCP", scope: "org" },
+    ]);
     const { POST } = await import("./route");
-    await POST(makeRequest({ name: "Docs MCP", scope: "org", config: { url: "https://mcp.example.com/sse" } }));
+    await POST(
+      makeRequest({
+        name: "Docs MCP",
+        scope: "org",
+        config: { url: "https://mcp.example.com/sse" },
+      }),
+    );
     expect(dbInsertMock).toHaveBeenCalledTimes(1);
   });
 
@@ -193,7 +246,9 @@ describe("POST /api/admin/mcp/servers", () => {
 });
 
 describe("GET /api/admin/mcp/servers — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -220,7 +275,9 @@ describe("GET /api/admin/mcp/servers — additional", () => {
 });
 
 describe("POST /api/admin/mcp/servers — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -231,17 +288,33 @@ describe("POST /api/admin/mcp/servers — additional", () => {
 
   it("response is always a Response instance for 201", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValue([{ id: "srv-rsp", name: "Srv", scope: "org" }]);
+    dbInsertReturningMock.mockResolvedValue([
+      { id: "srv-rsp", name: "Srv", scope: "org" },
+    ]);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ name: "Srv", scope: "org", config: { url: "https://mcp.example.com/sse" } }));
+    const res = await POST(
+      makeRequest({
+        name: "Srv",
+        scope: "org",
+        config: { url: "https://mcp.example.com/sse" },
+      }),
+    );
     expect(res).toBeInstanceOf(Response);
   });
 
   it("201 body has server property", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
-    dbInsertReturningMock.mockResolvedValue([{ id: "srv-body", name: "Tool", scope: "org" }]);
+    dbInsertReturningMock.mockResolvedValue([
+      { id: "srv-body", name: "Tool", scope: "org" },
+    ]);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ name: "Tool", scope: "org", config: { url: "https://mcp.example.com/sse" } }));
+    const res = await POST(
+      makeRequest({
+        name: "Tool",
+        scope: "org",
+        config: { url: "https://mcp.example.com/sse" },
+      }),
+    );
     const body = await res.json();
     expect(body).toHaveProperty("server");
   });
@@ -256,12 +329,14 @@ describe("POST /api/admin/mcp/servers — additional", () => {
 });
 
 describe("GET /api/admin/mcp/servers — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -269,24 +344,24 @@ describe("GET /api/admin/mcp/servers — response shape", () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     dbSelectWhereMock.mockResolvedValue([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest());
+    const res = await GET();
     expect(res).toBeInstanceOf(Response);
   });
 
-  it("200 body is an array", async () => {
+  it("200 body has a servers array", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     dbSelectWhereMock.mockResolvedValue([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest());
+    const res = await GET();
     const body = await res.json();
-    expect(Array.isArray(body)).toBe(true);
+    expect(Array.isArray(body.servers)).toBe(true);
   });
 
   it("dbSelectMock called once for GET", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     dbSelectWhereMock.mockResolvedValue([]);
     const { GET } = await import("./route");
-    await GET(makeRequest());
+    await GET();
     expect(dbSelectMock).toHaveBeenCalledTimes(1);
   });
 });

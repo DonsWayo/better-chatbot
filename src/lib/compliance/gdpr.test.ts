@@ -1,19 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
 // DB mock setup
-const dbSelectWhereMock = vi.fn().mockResolvedValue([]);
 const dbSelectWhereLimitMock = vi.fn().mockResolvedValue([]);
 const dbSelectFromMock = vi.fn().mockReturnValue({
-  where: (cond: unknown) => {
+  where: (_cond: unknown) => {
     const chain = {
-      then: (resolve: (v: unknown[]) => void) => Promise.resolve([]).then(resolve),
+      then: (resolve: (v: unknown[]) => void) =>
+        Promise.resolve([]).then(resolve),
       limit: dbSelectWhereLimitMock,
     };
     // Make where() both awaitable and chainable
-    Object.assign(chain, { [Symbol.for("vitest.promise")]: Promise.resolve([]) });
-    return Object.assign(Promise.resolve([]), { limit: dbSelectWhereLimitMock });
+    Object.assign(chain, {
+      [Symbol.for("vitest.promise")]: Promise.resolve([]),
+    });
+    return Object.assign(Promise.resolve([]), {
+      limit: dbSelectWhereLimitMock,
+    });
   },
 });
 const dbSelectMock = vi.fn().mockReturnValue({ from: dbSelectFromMock });
@@ -36,7 +40,13 @@ vi.mock("lib/db/pg/db.pg", () => ({
   },
 }));
 vi.mock("@/lib/db/pg/schema.pg", () => ({
-  UserTable: { id: "id", email: "email", name: "name", image: "image", acceptedAupAt: "acceptedAupAt" },
+  UserTable: {
+    id: "id",
+    email: "email",
+    name: "name",
+    image: "image",
+    acceptedAupAt: "acceptedAupAt",
+  },
   ChatThreadTable: { userId: "userId" },
   AsafeUsageEventTable: { userId: "userId" },
   AsafeAuditLogTable: { userId: "userId" },
@@ -46,11 +56,18 @@ vi.mock("@/lib/db/pg/schema.pg", () => ({
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(() => ({})),
-  sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({ query: strings.join("?"), values })),
+  sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({
+    query: strings.join("?"),
+    values,
+  })),
 }));
 
 describe("eraseUserData", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+    dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
+  });
 
   it("returns tablesCleared with all 7 entries", async () => {
     dbExecuteMock.mockResolvedValueOnce([]);
@@ -101,7 +118,12 @@ describe("eraseUserData", () => {
     dbExecuteMock.mockResolvedValueOnce([]);
     const { eraseUserData } = await import("./gdpr");
     const result = await eraseUserData("u1");
-    const cascadeTables = ["asafe_usage_event", "asafe_user_model_grant", "asafe_aup_acceptance", "asafe_team_member"];
+    const cascadeTables = [
+      "asafe_usage_event",
+      "asafe_user_model_grant",
+      "asafe_aup_acceptance",
+      "asafe_team_member",
+    ];
     for (const table of cascadeTables) {
       expect(result.tablesCleared, `missing: ${table}`).toContain(table);
     }
@@ -116,7 +138,11 @@ describe("eraseUserData", () => {
 });
 
 describe("exportUserData", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+    dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
+  });
 
   it("returns object with correct shape", async () => {
     const { exportUserData } = await import("./gdpr");
@@ -153,14 +179,18 @@ describe("exportUserData", () => {
 });
 
 describe("eraseUserData — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+    dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
+  });
 
-  it("result has userId field matching input", async () => {
+  it("result has tablesCleared listing the user table first", async () => {
     dbExecuteMock.mockResolvedValueOnce([]);
     const { eraseUserData } = await import("./gdpr");
     const result = await eraseUserData("user-id-check");
-    expect(result).toHaveProperty("userId");
-    expect((result as any).userId).toBe("user-id-check");
+    expect(result).toHaveProperty("tablesCleared");
+    expect(result.tablesCleared[0]).toBe("user");
   });
 
   it("result is an object (not null)", async () => {
@@ -181,7 +211,9 @@ describe("eraseUserData — additional", () => {
 });
 
 describe("exportUserData — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("exportedAt is an ISO date string", async () => {
     const { exportUserData } = await import("./gdpr");
@@ -235,7 +267,11 @@ describe("eraseUserData — call count invariants", () => {
 });
 
 describe("eraseUserData and exportUserData — return type invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbExecuteMock.mockResolvedValue([]); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    dbExecuteMock.mockResolvedValue([]);
+  });
 
   it("eraseUserData returns an object with tablesCleared array", async () => {
     const { eraseUserData } = await import("./gdpr");

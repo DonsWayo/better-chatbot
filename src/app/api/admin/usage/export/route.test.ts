@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockSelect, mockSession } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
@@ -8,7 +8,17 @@ const { mockSelect, mockSession } = vi.hoisted(() => ({
 vi.mock("lib/auth/server", () => ({ getSession: mockSession }));
 vi.mock("lib/db/pg/db.pg", () => ({ pgDb: { select: mockSelect } }));
 vi.mock("lib/db/pg/schema.pg", () => ({
-  AsafeUsageEventTable: { createdAt: "created_at", userId: "user_id", teamId: "team_id", model: "model", provider: "provider", taskClass: "task_class", promptTokens: "prompt_tokens", completionTokens: "completion_tokens", costUsd: "cost_usd" },
+  AsafeUsageEventTable: {
+    createdAt: "created_at",
+    userId: "user_id",
+    teamId: "team_id",
+    model: "model",
+    provider: "provider",
+    taskClass: "task_class",
+    promptTokens: "prompt_tokens",
+    completionTokens: "completion_tokens",
+    costUsd: "cost_usd",
+  },
   UserTable: { id: "id", email: "email" },
   AsafeTeamTable: { id: "id", name: "name" },
 }));
@@ -23,7 +33,8 @@ function makeChain(result: unknown[]) {
   const chain: Record<string, unknown> = {};
   const methods = ["from", "leftJoin", "where", "orderBy", "limit"];
   for (const m of methods) chain[m] = vi.fn(() => chain);
-  chain.then = (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve);
+  chain.then = (resolve: (v: unknown) => unknown) =>
+    Promise.resolve(result).then(resolve);
   return chain;
 }
 
@@ -248,10 +259,10 @@ describe("GET /api/admin/usage/export — response shape", () => {
 });
 
 describe("GET /api/admin/usage/export — edge cases", () => {
-  it("returns 401 for regular user with extra query params", async () => {
+  it("returns 403 for regular user with extra query params", async () => {
     mockSession.mockResolvedValue(regularSession);
     const res = await GET(makeRequest({ days: "7" }));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it("returns a Response instance for empty data set", async () => {

@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { createTableTool } from "./create-table";
 
 describe("createTableTool", () => {
@@ -21,7 +22,8 @@ describe("createTableTool", () => {
 });
 
 describe("createTableTool inputSchema validation", () => {
-  const schema = createTableTool.inputSchema;
+  // The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+  const schema = createTableTool.inputSchema as unknown as z.ZodTypeAny;
 
   const validInput = {
     title: "User List",
@@ -42,7 +44,9 @@ describe("createTableTool inputSchema validation", () => {
   });
 
   it("accepts null description", () => {
-    expect(schema.safeParse({ ...validInput, description: null }).success).toBe(true);
+    expect(schema.safeParse({ ...validInput, description: null }).success).toBe(
+      true,
+    );
   });
 
   it("rejects when title is missing", () => {

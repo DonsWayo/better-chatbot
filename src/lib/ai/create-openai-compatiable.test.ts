@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  createOpenAICompatibleModels,
   type OpenAICompatibleProvider,
+  createOpenAICompatibleModels,
 } from "./create-openai-compatiable";
 
 // Mock the @ai-sdk/openai-compatible module
@@ -191,7 +191,12 @@ describe("createOpenAICompatibleModels", () => {
 describe("createOpenAICompatibleModels — additional", () => {
   it("providers object is empty for empty models array", () => {
     const result = createOpenAICompatibleModels([
-      { provider: "empty-provider", apiKey: "k", baseUrl: "http://x", models: [] },
+      {
+        provider: "empty-provider",
+        apiKey: "k",
+        baseUrl: "http://x",
+        models: [],
+      },
     ]);
     expect(result.providers["empty-provider"]).toEqual({});
     expect(result.unsupportedModels.size).toBe(0);
@@ -267,7 +272,7 @@ describe("createOpenAICompatibleModels — response invariants", () => {
     expect(Object.keys(result.providers)).toHaveLength(2);
   });
 
-  it("unsupportedModels contains apiNames with supportsTools=false", () => {
+  it("unsupportedModels contains model instances with supportsTools=false", () => {
     const result = createOpenAICompatibleModels([
       {
         provider: "prov",
@@ -279,8 +284,10 @@ describe("createOpenAICompatibleModels — response invariants", () => {
         ],
       },
     ]);
-    expect(result.unsupportedModels.has("no-tool-model")).toBe(true);
-    expect(result.unsupportedModels.has("tool-model")).toBe(false);
+    // unsupportedModels is a Set of LanguageModel instances keyed by the
+    // created model objects (not apiName strings)
+    expect(result.unsupportedModels.has(result.providers.prov.N)).toBe(true);
+    expect(result.unsupportedModels.has(result.providers.prov.T)).toBe(false);
   });
 });
 

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createDbBasedMCPConfigsStorage } from "./db-mcp-config-storage";
-import type { MCPClientsManager } from "./create-mcp-clients-manager";
 import type { MCPServerConfig } from "app-types/mcp";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MCPClientsManager } from "./create-mcp-clients-manager";
+import { createDbBasedMCPConfigsStorage } from "./db-mcp-config-storage";
 
 // Mock dependencies
 vi.mock("lib/db/repository", () => ({
@@ -276,25 +276,25 @@ describe("DB-based MCP Config Storage — getAll invariants", () => {
     vi.mocked(mockMcpRepository.selectAll).mockResolvedValue([]);
   });
 
-  it("getAll returns an array", async () => {
-    const result = await storage.getAll();
+  it("loadAll returns an array", async () => {
+    const result = await storage.loadAll();
     expect(Array.isArray(result)).toBe(true);
   });
 
-  it("getAll calls mcpRepository.selectAll exactly once", async () => {
-    await storage.getAll();
+  it("loadAll calls mcpRepository.selectAll exactly once", async () => {
+    await storage.loadAll();
     expect(mockMcpRepository.selectAll).toHaveBeenCalledTimes(1);
   });
 
-  it("getAll returns empty array when repository returns empty", async () => {
+  it("loadAll returns empty array when repository returns empty", async () => {
     vi.mocked(mockMcpRepository.selectAll).mockResolvedValue([]);
-    const result = await storage.getAll();
+    const result = await storage.loadAll();
     expect(result).toHaveLength(0);
   });
 
-  it("deleteById calls mcpRepository.deleteById exactly once", async () => {
+  it("delete calls mcpRepository.deleteById exactly once", async () => {
     vi.mocked(mockMcpRepository.deleteById).mockResolvedValue(undefined);
-    await storage.deleteById("test-id");
+    await storage.delete("test-id");
     expect(mockMcpRepository.deleteById).toHaveBeenCalledTimes(1);
   });
 });

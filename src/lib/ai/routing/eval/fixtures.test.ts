@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { EVAL_FIXTURES } from "./fixtures";
+import { describe, expect, it } from "vitest";
 import { LONG_CONTEXT_CHARS } from "../policy";
+import { EVAL_FIXTURES } from "./fixtures";
 
 const ALL_TASK_CLASSES = [
   "code",
@@ -15,8 +15,13 @@ const ALL_TASK_CLASSES = [
 describe("EVAL_FIXTURES", () => {
   it("has at least one fixture per task class", () => {
     for (const cls of ALL_TASK_CLASSES) {
-      const matching = EVAL_FIXTURES.filter((f) => f.name.startsWith(`${cls}/`));
-      expect(matching.length, `no fixture for task class: ${cls}`).toBeGreaterThan(0);
+      const matching = EVAL_FIXTURES.filter((f) =>
+        f.name.startsWith(`${cls}/`),
+      );
+      expect(
+        matching.length,
+        `no fixture for task class: ${cls}`,
+      ).toBeGreaterThan(0);
     }
   });
 
@@ -28,7 +33,7 @@ describe("EVAL_FIXTURES", () => {
     for (const fixture of EVAL_FIXTURES) {
       expect(typeof fixture.name).toBe("string");
       expect(fixture.name.length).toBeGreaterThan(0);
-      expect(fixture.request.text.length).toBeGreaterThan(0);
+      expect(fixture.request.text?.length).toBeGreaterThan(0);
     }
   });
 
@@ -40,42 +45,63 @@ describe("EVAL_FIXTURES", () => {
 
   it("names follow task_class/scenario format", () => {
     for (const fixture of EVAL_FIXTURES) {
-      expect(fixture.name, `bad name format: ${fixture.name}`).toMatch(/^\w+\/\w[\w-]*$/);
+      expect(fixture.name, `bad name format: ${fixture.name}`).toMatch(
+        /^\w+\/\w[\w-]*$/,
+      );
     }
   });
 
   it("vision fixtures have hasImage:true", () => {
-    const visionFixtures = EVAL_FIXTURES.filter((f) => f.name.startsWith("vision/"));
+    const visionFixtures = EVAL_FIXTURES.filter((f) =>
+      f.name.startsWith("vision/"),
+    );
     for (const f of visionFixtures) {
       expect(f.request.hasImage, `${f.name} missing hasImage`).toBe(true);
     }
   });
 
   it("tool_use fixtures have hasTools:true", () => {
-    const toolFixtures = EVAL_FIXTURES.filter((f) => f.name.startsWith("tool_use/"));
+    const toolFixtures = EVAL_FIXTURES.filter((f) =>
+      f.name.startsWith("tool_use/"),
+    );
     for (const f of toolFixtures) {
       expect(f.request.hasTools, `${f.name} missing hasTools`).toBe(true);
     }
   });
 
   it("long_context fixtures have totalChars > LONG_CONTEXT_CHARS threshold", () => {
-    const lcFixtures = EVAL_FIXTURES.filter((f) => f.name.startsWith("long_context/"));
+    const lcFixtures = EVAL_FIXTURES.filter((f) =>
+      f.name.startsWith("long_context/"),
+    );
     for (const f of lcFixtures) {
-      expect(f.request.totalChars ?? 0, `${f.name} needs totalChars`).toBeGreaterThan(LONG_CONTEXT_CHARS);
+      expect(
+        f.request.totalChars ?? 0,
+        `${f.name} needs totalChars`,
+      ).toBeGreaterThan(LONG_CONTEXT_CHARS);
     }
   });
 
   it("non-vision fixtures do not have hasImage:true", () => {
-    const nonVision = EVAL_FIXTURES.filter((f) => !f.name.startsWith("vision/"));
+    const nonVision = EVAL_FIXTURES.filter(
+      (f) => !f.name.startsWith("vision/"),
+    );
     for (const f of nonVision) {
-      expect(f.request.hasImage, `${f.name} should not have hasImage`).toBeFalsy();
+      expect(
+        f.request.hasImage,
+        `${f.name} should not have hasImage`,
+      ).toBeFalsy();
     }
   });
 
   it("non-tool_use fixtures do not have hasTools:true", () => {
-    const nonTool = EVAL_FIXTURES.filter((f) => !f.name.startsWith("tool_use/"));
+    const nonTool = EVAL_FIXTURES.filter(
+      (f) => !f.name.startsWith("tool_use/"),
+    );
     for (const f of nonTool) {
-      expect(f.request.hasTools, `${f.name} should not have hasTools`).toBeFalsy();
+      expect(
+        f.request.hasTools,
+        `${f.name} should not have hasTools`,
+      ).toBeFalsy();
     }
   });
 
@@ -86,18 +112,25 @@ describe("EVAL_FIXTURES", () => {
   });
 
   it("code class has at least 2 fixtures", () => {
-    expect(EVAL_FIXTURES.filter((f) => f.name.startsWith("code/")).length).toBeGreaterThanOrEqual(2);
+    expect(
+      EVAL_FIXTURES.filter((f) => f.name.startsWith("code/")).length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("reasoning class has at least 2 fixtures", () => {
-    expect(EVAL_FIXTURES.filter((f) => f.name.startsWith("reasoning/")).length).toBeGreaterThanOrEqual(2);
+    expect(
+      EVAL_FIXTURES.filter((f) => f.name.startsWith("reasoning/")).length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("each fixture name prefix is one of the known task classes", () => {
     const knownClasses = new Set(ALL_TASK_CLASSES as readonly string[]);
     for (const f of EVAL_FIXTURES) {
       const prefix = f.name.split("/")[0];
-      expect(knownClasses.has(prefix), `unknown task class in fixture: ${f.name}`).toBe(true);
+      expect(
+        knownClasses.has(prefix),
+        `unknown task class in fixture: ${f.name}`,
+      ).toBe(true);
     }
   });
 
@@ -113,11 +146,13 @@ describe("EVAL_FIXTURES", () => {
   it("request text is always a non-empty string", () => {
     for (const f of EVAL_FIXTURES) {
       expect(typeof f.request.text).toBe("string");
-      expect(f.request.text.length).toBeGreaterThan(0);
+      expect(f.request.text?.length).toBeGreaterThan(0);
     }
   });
 
   it("general class has at least one fixture", () => {
-    expect(EVAL_FIXTURES.filter((f) => f.name.startsWith("general/")).length).toBeGreaterThanOrEqual(1);
+    expect(
+      EVAL_FIXTURES.filter((f) => f.name.startsWith("general/")).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 });

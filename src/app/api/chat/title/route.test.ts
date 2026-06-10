@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -10,7 +10,7 @@ const {
   getSessionMock: vi.fn(),
   getModelMock: vi.fn(() => ({})),
   upsertThreadMock: vi.fn().mockResolvedValue({}),
-  streamTextMock: vi.fn(() => ({
+  streamTextMock: vi.fn((_opts?: unknown) => ({
     toUIMessageStreamResponse: vi.fn(() => new Response("stream")),
   })),
   handleErrorMock: vi.fn((e: any) => String(e)),
@@ -20,7 +20,9 @@ vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: getModelMock },
 }));
-vi.mock("lib/ai/prompts", () => ({ CREATE_THREAD_TITLE_PROMPT: "Generate a title:" }));
+vi.mock("lib/ai/prompts", () => ({
+  CREATE_THREAD_TITLE_PROMPT: "Generate a title:",
+}));
 vi.mock("logger", () => ({
   default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
 }));
@@ -42,7 +44,9 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("POST /api/chat/title", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -64,7 +68,9 @@ describe("POST /api/chat/title", () => {
       toUIMessageStreamResponse: vi.fn(() => new Response("stream")),
     });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ message: "Discuss AI safety", threadId: "thread-1" }));
+    const res = await POST(
+      makeRequest({ message: "Discuss AI safety", threadId: "thread-1" }),
+    );
     expect(res.status).toBe(200);
   });
 
@@ -97,7 +103,9 @@ describe("POST /api/chat/title", () => {
       return { toUIMessageStreamResponse: vi.fn(() => new Response("ok")) };
     });
     const { POST } = await import("./route");
-    await POST(makeRequest({ message: "Why is the sky blue?", threadId: "t1" }));
+    await POST(
+      makeRequest({ message: "Why is the sky blue?", threadId: "t1" }),
+    );
     expect(capturedPrompt).toBe("Why is the sky blue?");
   });
 
@@ -145,12 +153,16 @@ describe("POST /api/chat/title", () => {
 describe("POST /api/chat/title — additional", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
   });
 
   it("never calls upsertThread when streamText throws", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    streamTextMock.mockImplementationOnce(() => { throw new Error("stream fail"); });
+    streamTextMock.mockImplementationOnce(() => {
+      throw new Error("stream fail");
+    });
     const { POST } = await import("./route");
     await POST(makeRequest({ message: "hi", threadId: "t1" }));
     expect(upsertThreadMock).not.toHaveBeenCalled();
@@ -159,7 +171,13 @@ describe("POST /api/chat/title — additional", () => {
   it("getModel called exactly once per authenticated request", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
-    await POST(makeRequest({ message: "hello", threadId: "t1", chatModel: { provider: "openai", model: "gpt-4o" } }));
+    await POST(
+      makeRequest({
+        message: "hello",
+        threadId: "t1",
+        chatModel: { provider: "openai", model: "gpt-4o" },
+      }),
+    );
     expect(getModelMock).toHaveBeenCalledTimes(1);
   });
 
@@ -182,7 +200,9 @@ describe("POST /api/chat/title — additional", () => {
 describe("POST /api/chat/title — stream options", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
   });
 
   it("streamText called with system prompt", async () => {
@@ -208,7 +228,9 @@ describe("POST /api/chat/title — stream options", () => {
   it("handleError called when streamText throws", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const err = new Error("stream fail");
-    streamTextMock.mockImplementationOnce(() => { throw err; });
+    streamTextMock.mockImplementationOnce(() => {
+      throw err;
+    });
     const { POST } = await import("./route");
     await POST(makeRequest({ message: "hello", threadId: "t1" }));
     expect(handleErrorMock).toHaveBeenCalledWith(err);
@@ -216,7 +238,10 @@ describe("POST /api/chat/title — stream options", () => {
 });
 
 describe("POST /api/chat/title — response invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("returns a Response instance for authenticated request", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });

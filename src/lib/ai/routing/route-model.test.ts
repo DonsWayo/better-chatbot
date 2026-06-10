@@ -110,7 +110,11 @@ describe("routeModel", () => {
   });
 
   it("hasImage beats hasTools (vision checked before tool_use)", () => {
-    const d = routeModel({ text: "analyze this image with tools", hasImage: true, hasTools: true });
+    const d = routeModel({
+      text: "analyze this image with tools",
+      hasImage: true,
+      hasTools: true,
+    });
     expect(d.taskClass).toBe("vision");
   });
 
@@ -129,7 +133,10 @@ describe("routeModel", () => {
   });
 
   it("hasImage combined with code prompt still routes to vision", () => {
-    const d = routeModel({ text: "fix this ```js\nconst x = 1\n```", hasImage: true });
+    const d = routeModel({
+      text: "fix this ```js\nconst x = 1\n```",
+      hasImage: true,
+    });
     expect(d.taskClass).toBe("vision");
   });
 
@@ -198,9 +205,9 @@ describe("routeModel — return type invariants", () => {
     expect(routeModel({ text: "anything" })).not.toBeNull();
   });
 
-  it("returned model has a modelId property", () => {
+  it("returned model has a model property", () => {
     const d = routeModel({ text: "test" });
-    expect(d.model).toHaveProperty("modelId");
+    expect(d.model).toHaveProperty("model");
   });
 
   it("returned model has a provider property", () => {

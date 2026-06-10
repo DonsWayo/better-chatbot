@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock server-only modules required by node-executor
 vi.mock("server-only", () => ({}));
@@ -14,19 +14,19 @@ vi.mock("ai", async () => ({
   generateObject: vi.fn(),
   convertToModelMessages: vi.fn(() => []),
 }));
+import { NodeKind } from "../workflow.interface";
+import type {
+  InputNodeData,
+  OutputNodeData,
+  OutputSchemaSourceKey,
+  TemplateNodeData,
+} from "../workflow.interface";
+import type { WorkflowRuntimeState } from "./graph-store";
 import {
   inputNodeExecutor,
   outputNodeExecutor,
   templateNodeExecutor,
 } from "./node-executor";
-import type { WorkflowRuntimeState } from "./graph-store";
-import { NodeKind } from "../workflow.interface";
-import type {
-  InputNodeData,
-  OutputNodeData,
-  TemplateNodeData,
-  OutputSchemaSourceKey,
-} from "../workflow.interface";
 
 // Minimal mock for WorkflowRuntimeState
 const makeState = (
@@ -35,17 +35,25 @@ const makeState = (
 ): WorkflowRuntimeState => ({
   query,
   edges: [],
+  inputs: {},
+  outputs: {},
+  nodes: [],
+  getInput: vi.fn(),
+  setOutput: vi.fn(),
   setInput: vi.fn(),
-  getOutput: vi.fn(<T>(key: OutputSchemaSourceKey) => {
+  getOutput: vi.fn((key: OutputSchemaSourceKey) => {
     if (!key) return undefined;
     const path = [key.nodeId, ...(key.path || [])];
     let val: unknown = outputs;
     for (const segment of path) {
       val = (val as Record<string, unknown>)?.[segment];
     }
-    return val as T;
-  }),
+    return val;
+  }) as unknown as WorkflowRuntimeState["getOutput"],
 });
+
+// Node executors may return a promise or a plain result; these executors are sync.
+type ExecResult = { input?: unknown; output?: unknown };
 
 const makeInputNode = (): InputNodeData =>
   ({
@@ -66,9 +74,10 @@ const makeOutputNode = (
     outputSchema: { type: "object", properties: {} },
   }) as unknown as OutputNodeData;
 
-const makeTemplateNode = (
-  template: { type: "tiptap" | "string"; tiptap?: unknown },
-): TemplateNodeData =>
+const makeTemplateNode = (template: {
+  type: "tiptap" | "string";
+  tiptap?: unknown;
+}): TemplateNodeData =>
   ({
     id: "tpl-1",
     name: "Template",
@@ -81,13 +90,19 @@ describe("inputNodeExecutor", () => {
   it("returns state.query as output", () => {
     const query = { message: "hello", count: 3 };
     const state = makeState(query);
-    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    const result = inputNodeExecutor({
+      node: makeInputNode(),
+      state,
+    }) as ExecResult;
     expect(result).toEqual({ output: query });
   });
 
   it("returns empty object query as-is", () => {
     const state = makeState({});
-    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    const result = inputNodeExecutor({
+      node: makeInputNode(),
+      state,
+    }) as ExecResult;
     expect(result).toEqual({ output: {} });
   });
 
@@ -102,34 +117,40 @@ describe("outputNodeExecutor", () => {
   it("returns empty object when outputData is empty", () => {
     const state = makeState({}, { "node-a": { answer: "hi" } });
     const node = makeOutputNode([]);
-    const result = outputNodeExecutor({ node, state });
+    const result = outputNodeExecutor({ node, state }) as ExecResult;
     expect(result).toEqual({ output: {} });
   });
 
   it("collects output from a single source node", () => {
-    const state = makeState({}, {
-      "llm-1": { answer: "Paris" },
-    });
+    const state = makeState(
+      {},
+      {
+        "llm-1": { answer: "Paris" },
+      },
+    );
     const node = makeOutputNode([
       {
         key: "city",
         source: { nodeId: "llm-1", path: ["answer"] },
       },
     ]);
-    const result = outputNodeExecutor({ node, state });
+    const result = outputNodeExecutor({ node, state }) as ExecResult;
     expect((result.output as Record<string, unknown>).city).toBe("Paris");
   });
 
   it("collects output from multiple source nodes", () => {
-    const state = makeState({}, {
-      "node-a": { name: "Alice" },
-      "node-b": { score: 42 },
-    });
+    const state = makeState(
+      {},
+      {
+        "node-a": { name: "Alice" },
+        "node-b": { score: 42 },
+      },
+    );
     const node = makeOutputNode([
       { key: "user", source: { nodeId: "node-a", path: ["name"] } },
       { key: "result", source: { nodeId: "node-b", path: ["score"] } },
     ]);
-    const result = outputNodeExecutor({ node, state });
+    const result = outputNodeExecutor({ node, state }) as ExecResult;
     const out = result.output as Record<string, unknown>;
     expect(out.user).toBe("Alice");
     expect(out.result).toBe(42);
@@ -138,7 +159,10 @@ describe("outputNodeExecutor", () => {
   it("calls getOutput for each outputData entry", () => {
     const state = makeState({}, {});
     const source: OutputSchemaSourceKey = { nodeId: "n1", path: ["val"] };
-    const node = makeOutputNode([{ key: "k1", source }, { key: "k2", source }]);
+    const node = makeOutputNode([
+      { key: "k1", source },
+      { key: "k2", source },
+    ]);
     outputNodeExecutor({ node, state });
     expect(state.getOutput).toHaveBeenCalledTimes(2);
   });
@@ -148,22 +172,22 @@ describe("templateNodeExecutor", () => {
   it("returns object with template key", () => {
     const state = makeState({});
     const node = makeTemplateNode({ type: "string" });
-    const result = templateNodeExecutor({ node, state });
+    const result = templateNodeExecutor({ node, state }) as ExecResult;
     expect(result).toHaveProperty("output");
-    expect((result.output as Record<string, unknown>)).toHaveProperty("template");
+    expect(result.output as Record<string, unknown>).toHaveProperty("template");
   });
 
   it("returns empty string template for non-tiptap type", () => {
     const state = makeState({});
     const node = makeTemplateNode({ type: "string" });
-    const result = templateNodeExecutor({ node, state });
+    const result = templateNodeExecutor({ node, state }) as ExecResult;
     expect((result.output as Record<string, unknown>).template).toBe("");
   });
 
   it("result output is an object", () => {
     const state = makeState({});
     const node = makeTemplateNode({ type: "string" });
-    const result = templateNodeExecutor({ node, state });
+    const result = templateNodeExecutor({ node, state }) as ExecResult;
     expect(typeof result.output).toBe("object");
   });
 });
@@ -172,38 +196,50 @@ describe("inputNodeExecutor — additional invariants", () => {
   it("query values are preserved in output", () => {
     const query = { nested: { a: 1, b: [1, 2, 3] } };
     const state = makeState(query);
-    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    const result = inputNodeExecutor({
+      node: makeInputNode(),
+      state,
+    }) as ExecResult;
     expect(result.output).toEqual(query);
   });
 
   it("query with numeric values is returned correctly", () => {
     const query = { x: 42, y: -7.5 };
     const state = makeState(query);
-    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    const result = inputNodeExecutor({
+      node: makeInputNode(),
+      state,
+    }) as ExecResult;
     expect((result.output as Record<string, unknown>).x).toBe(42);
     expect((result.output as Record<string, unknown>).y).toBe(-7.5);
   });
 
   it("output is synchronous (not a promise)", () => {
     const state = makeState({ a: 1 });
-    const result = inputNodeExecutor({ node: makeInputNode(), state });
+    const result = inputNodeExecutor({
+      node: makeInputNode(),
+      state,
+    }) as ExecResult;
     expect(result).not.toBeInstanceOf(Promise);
   });
 });
 
 describe("outputNodeExecutor — additional invariants", () => {
   it("output keys match outputData keys", () => {
-    const state = makeState({}, { "n1": { val: "x" } });
+    const state = makeState({}, { n1: { val: "x" } });
     const node = makeOutputNode([
       { key: "myKey", source: { nodeId: "n1", path: ["val"] } },
     ]);
-    const result = outputNodeExecutor({ node, state });
+    const result = outputNodeExecutor({ node, state }) as ExecResult;
     expect(Object.keys(result.output as object)).toContain("myKey");
   });
 
   it("output is synchronous", () => {
     const state = makeState({}, {});
-    const result = outputNodeExecutor({ node: makeOutputNode([]), state });
+    const result = outputNodeExecutor({
+      node: makeOutputNode([]),
+      state,
+    }) as ExecResult;
     expect(result).not.toBeInstanceOf(Promise);
   });
 });

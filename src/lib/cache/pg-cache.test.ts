@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // vi.mock factories are hoisted to the top of the file, so shared variables
@@ -23,7 +23,9 @@ const {
   const selectChain = { from: fromMock };
 
   const onConflictDoUpdateMock = vi.fn().mockResolvedValue(undefined);
-  const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateMock });
+  const valuesMock = vi
+    .fn()
+    .mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateMock });
   const insertChain = { values: valuesMock };
 
   const deleteWhereMock = vi.fn().mockResolvedValue(undefined);
@@ -93,7 +95,11 @@ describe("PgCache", () => {
   // --- get() ---
 
   it("get() returns value when DB returns a non-expired row", async () => {
-    const row = { key: "foo", value: { hello: "world" }, expiresAt: new Date(Date.now() + 60_000) };
+    const row = {
+      key: "foo",
+      value: { hello: "world" },
+      expiresAt: new Date(Date.now() + 60_000),
+    };
     limitMock.mockResolvedValueOnce([row]);
 
     const cache = new PgCache();
@@ -167,7 +173,9 @@ describe("PgCache", () => {
     const cache = new PgCache();
 
     // Row found
-    limitMock.mockResolvedValueOnce([{ key: "present", value: "v", expiresAt: null }]);
+    limitMock.mockResolvedValueOnce([
+      { key: "present", value: "v", expiresAt: null },
+    ]);
     expect(await cache.has("present")).toBe(true);
 
     // No row
@@ -228,9 +236,17 @@ describe("PgCache — additional operations", () => {
     expect(mockDbRef.select).toHaveBeenCalledTimes(1);
   });
 
-  it("set() with zero ttlMs stores null expiresAt", async () => {
+  it("set() with zero ttlMs stores an immediate Date expiry (only undefined/null ttl means no expiry)", async () => {
     const cache = new PgCache();
     await cache.set("k", "v", 0);
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ expiresAt: expect.any(Date) }),
+    );
+  });
+
+  it("set() with no ttlMs stores null expiresAt", async () => {
+    const cache = new PgCache();
+    await cache.set("k", "v");
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({ expiresAt: null }),
     );
@@ -296,7 +312,8 @@ describe("PgCache — additional invariants", () => {
 
   it("set() followed by get() returns set value (mock chain)", async () => {
     const cache = new PgCache();
-    const row = { value: JSON.stringify("hello"), expiresAt: null };
+    // value is a jsonb column: stored/returned as-is, no JSON.stringify round-trip
+    const row = { value: "hello", expiresAt: null };
     limitMock.mockResolvedValueOnce([row]);
     await cache.set("greet", "hello");
     const val = await cache.get("greet");

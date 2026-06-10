@@ -10,6 +10,7 @@ const CreateServerSchema = z.object({
   name: z.string().min(1).max(200),
   scope: z.enum(["org", "team"]),
   teamId: z.string().uuid().optional(),
+  teamIds: z.array(z.string().uuid()).optional(),
   config: z.object({
     url: z.string().url().optional(),
     command: z.string().min(1).optional(),
@@ -51,11 +52,13 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const { name, scope, teamId, config, enabled } = parsed.data;
+  // Accept the multi-team field, with the legacy single teamId as fallback.
+  const teamIds = parsed.data.teamIds ?? (teamId ? [teamId] : null);
 
-  if (scope === "team" && !teamId) {
-    return NextResponse.json({ error: "teamId required when scope=team" }, { status: 400 });
+  if (scope === "team" && (!teamIds || teamIds.length === 0)) {
+    return NextResponse.json({ error: "teamIds required when scope=team" }, { status: 400 });
   }
 
-  const server = await registerMcpServer({ name, scope, teamId, config: config as never, enabled, userId: session.user.id });
+  const server = await registerMcpServer({ name, scope, teamIds, config: config as never, enabled, userId: session.user.id });
   return NextResponse.json({ server }, { status: 201 });
 }

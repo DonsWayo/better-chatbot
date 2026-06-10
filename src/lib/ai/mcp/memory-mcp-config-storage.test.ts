@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import type { MCPStdioConfig, McpServerInsert } from "app-types/mcp";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { MCPClientsManager } from "./create-mcp-clients-manager";
 import { MemoryMCPConfigStorage } from "./memory-mcp-config-storage";
-import type { McpServerInsert, MCPStdioConfig } from "app-types/mcp";
 
 describe("MemoryMCPConfigStorage", () => {
   let storage: MemoryMCPConfigStorage;
@@ -21,7 +22,9 @@ describe("MemoryMCPConfigStorage", () => {
 
   describe("init", () => {
     it("should initialize without errors", async () => {
-      await expect(storage.init({} as unknown as import("./create-mcp-clients-manager").MCPClientsManager)).resolves.not.toThrow();
+      await expect(
+        storage.init({} as unknown as MCPClientsManager),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -165,11 +168,12 @@ describe("MemoryMCPConfigStorage — additional invariants", () => {
     name,
     config: { command: "node", args: [name] },
     userId: "u-add-test",
-    scope: "personal",
   });
 
   let storage: MemoryMCPConfigStorage;
-  beforeEach(() => { storage = new MemoryMCPConfigStorage(); });
+  beforeEach(() => {
+    storage = new MemoryMCPConfigStorage();
+  });
 
   it("saved config contains the original config object", async () => {
     const server = makeServer("s");
@@ -203,7 +207,6 @@ describe("MemoryMCPConfigStorage — state invariants", () => {
     name,
     config: { command: "node", args: [name] },
     userId: "u-state-test",
-    scope: "personal",
   });
 
   let storage: InstanceType<typeof MemoryMCPConfigStorage>;

@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { jsExecutionSchema, jsExecutionTool } from "./js-run-tool";
 import { pythonExecutionSchema, pythonExecutionTool } from "./python-run-tool";
+
+// The AI SDK types inputSchema as FlexibleSchema, but at runtime these are zod schemas.
+const jsInputSchema = jsExecutionTool.inputSchema as unknown as z.ZodTypeAny;
+const pyInputSchema =
+  pythonExecutionTool.inputSchema as unknown as z.ZodTypeAny;
 
 describe("jsExecutionSchema", () => {
   it("is defined", () => {
@@ -41,12 +47,12 @@ describe("jsExecutionTool", () => {
   });
 
   it("inputSchema validates code field", () => {
-    const r = jsExecutionTool.inputSchema.safeParse({ code: "console.log('hello')" });
+    const r = jsInputSchema.safeParse({ code: "console.log('hello')" });
     expect(r.success).toBe(true);
   });
 
   it("inputSchema rejects missing code", () => {
-    const r = jsExecutionTool.inputSchema.safeParse({});
+    const r = jsInputSchema.safeParse({});
     expect(r.success).toBe(false);
   });
 });
@@ -80,12 +86,12 @@ describe("pythonExecutionTool", () => {
   });
 
   it("inputSchema validates code field", () => {
-    const r = pythonExecutionTool.inputSchema.safeParse({ code: "print('hello')" });
+    const r = pyInputSchema.safeParse({ code: "print('hello')" });
     expect(r.success).toBe(true);
   });
 
   it("inputSchema rejects missing code", () => {
-    const r = pythonExecutionTool.inputSchema.safeParse({});
+    const r = pyInputSchema.safeParse({});
     expect(r.success).toBe(false);
   });
 
@@ -94,7 +100,7 @@ describe("pythonExecutionTool", () => {
   });
 
   it("rejects non-string code value", () => {
-    const r = pythonExecutionTool.inputSchema.safeParse({ code: 42 });
+    const r = pyInputSchema.safeParse({ code: 42 });
     expect(r.success).toBe(false);
   });
 });

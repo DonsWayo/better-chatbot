@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { jsExecutionSchema, jsExecutionTool } from "./js-run-tool";
+
+// The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+const inputSchema = jsExecutionTool.inputSchema as unknown as z.ZodTypeAny;
 
 describe("jsExecutionSchema", () => {
   it("is an object schema", () => {
@@ -33,34 +37,34 @@ describe("jsExecutionTool", () => {
   });
 
   it("inputSchema accepts valid code object", () => {
-    const result = jsExecutionTool.inputSchema.safeParse({ code: "console.log('hello')" });
+    const result = inputSchema.safeParse({ code: "console.log('hello')" });
     expect(result.success).toBe(true);
   });
 
   it("inputSchema rejects empty code string", () => {
     // empty string is still a string — schema allows it
-    const result = jsExecutionTool.inputSchema.safeParse({ code: "" });
+    const result = inputSchema.safeParse({ code: "" });
     expect(result.success).toBe(true);
   });
 
   it("inputSchema rejects missing code field", () => {
-    const result = jsExecutionTool.inputSchema.safeParse({});
+    const result = inputSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 
   it("inputSchema rejects non-string code", () => {
-    const result = jsExecutionTool.inputSchema.safeParse({ code: 42 });
+    const result = inputSchema.safeParse({ code: 42 });
     expect(result.success).toBe(false);
   });
 
   it("inputSchema rejects null code", () => {
-    const result = jsExecutionTool.inputSchema.safeParse({ code: null });
+    const result = inputSchema.safeParse({ code: null });
     expect(result.success).toBe(false);
   });
 
   it("inputSchema accepts multi-line JS code", () => {
     const code = `const x = 1;\nconst y = 2;\nconsole.log(x + y);`;
-    expect(jsExecutionTool.inputSchema.safeParse({ code }).success).toBe(true);
+    expect(inputSchema.safeParse({ code }).success).toBe(true);
   });
 
   it("has no server-side execute function (client-side only)", () => {
@@ -79,19 +83,22 @@ describe("jsExecutionSchema — properties completeness", () => {
 
   it("code is the only required field", () => {
     expect(jsExecutionSchema.required).toHaveLength(1);
-    expect(jsExecutionSchema.required[0]).toBe("code");
+    expect(jsExecutionSchema.required?.[0]).toBe("code");
   });
 });
 
 describe("jsExecutionTool — tool metadata", () => {
   it("description mentions JavaScript or execution", () => {
     const desc = jsExecutionTool.description!.toLowerCase();
-    const relevant = desc.includes("javascript") || desc.includes("execut") || desc.includes("code");
+    const relevant =
+      desc.includes("javascript") ||
+      desc.includes("execut") ||
+      desc.includes("code");
     expect(relevant).toBe(true);
   });
 
   it("inputSchema accepts extra fields (zod strips them by default)", () => {
-    const result = jsExecutionTool.inputSchema.safeParse({ code: "1+1", extra: "ignored" });
+    const result = inputSchema.safeParse({ code: "1+1", extra: "ignored" });
     expect(result.success).toBe(true);
     if (result.success) {
       expect((result.data as any).extra).toBeUndefined();
@@ -100,12 +107,12 @@ describe("jsExecutionTool — tool metadata", () => {
 
   it("inputSchema accepts code with template literals", () => {
     const code = "const msg = `Hello ${'world'}`; console.log(msg);";
-    expect(jsExecutionTool.inputSchema.safeParse({ code }).success).toBe(true);
+    expect(inputSchema.safeParse({ code }).success).toBe(true);
   });
 
   it("inputSchema accepts code with async/await syntax", () => {
     const code = "async function run() { await fetch('/api'); } run();";
-    expect(jsExecutionTool.inputSchema.safeParse({ code }).success).toBe(true);
+    expect(inputSchema.safeParse({ code }).success).toBe(true);
   });
 
   it("execute is undefined (not a server-side tool)", () => {

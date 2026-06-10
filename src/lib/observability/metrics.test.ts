@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // collectDefaultMetrics needs mock to avoid prom-client process metrics side effects
 vi.mock("prom-client", () => {

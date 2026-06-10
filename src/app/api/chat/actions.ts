@@ -86,6 +86,17 @@ export async function deleteMessageAction(messageId: string) {
 }
 
 export async function deleteThreadAction(threadId: string) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+  const hasAccess = await chatRepository.checkAccess(
+    threadId,
+    session.user.id,
+  );
+  if (!hasAccess) {
+    throw new Error("Forbidden");
+  }
   await chatRepository.deleteThread(threadId);
 }
 

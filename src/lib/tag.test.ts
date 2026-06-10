@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { tag } from "./tag";
 
 describe("tag builder — create", () => {
@@ -84,9 +84,7 @@ describe("tag builder — different tag names do not interfere", () => {
 describe("tag builder — isMaybe edge cases", () => {
   const nodeTag = tag<{ value: unknown }>("node");
 
-  it("returns false for an array (even if it has the tag key)", () => {
-    const arr = Object.assign([], { "__$ref__": "node" });
-    // Arrays are objects, so isMaybe may vary, but raw arrays without tag should fail
+  it("returns false for an array (raw array without the tag key)", () => {
     expect(nodeTag.isMaybe([])).toBe(false);
   });
 
@@ -115,7 +113,10 @@ describe("tag builder — unwrap with complex data", () => {
   const recordTag = tag<{ items: string[]; meta: { count: number } }>("record");
 
   it("unwrap preserves array fields", () => {
-    const obj = recordTag.create({ items: ["a", "b", "c"], meta: { count: 3 } });
+    const obj = recordTag.create({
+      items: ["a", "b", "c"],
+      meta: { count: 3 },
+    });
     const unwrapped = recordTag.unwrap(obj);
     expect(unwrapped.items).toEqual(["a", "b", "c"]);
   });

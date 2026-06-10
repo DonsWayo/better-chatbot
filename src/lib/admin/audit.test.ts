@@ -337,7 +337,20 @@ describe("getAuditLog — return type invariants", () => {
       orderBy: orderByMock,
       limit: limitMock,
     });
-    selectMock.mockReturnValue({ from: fromMock });
+    let callCount = 0;
+    selectMock.mockImplementation(() => {
+      callCount++;
+      if (callCount % 2 === 0) {
+        // Count query — shorter chain
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(_countRows),
+          }),
+        };
+      }
+      // Data query — full chain
+      return { from: fromMock };
+    });
   });
 
   it("returns an object with rows and total", async () => {

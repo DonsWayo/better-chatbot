@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { z } from "zod";
 import { createBarChartTool } from "./create-bar-chart";
 
 describe("createBarChartTool", () => {
@@ -21,7 +22,8 @@ describe("createBarChartTool", () => {
 });
 
 describe("createBarChartTool inputSchema validation", () => {
-  const schema = createBarChartTool.inputSchema;
+  // The AI SDK types inputSchema as FlexibleSchema, but at runtime it is a zod schema.
+  const schema = createBarChartTool.inputSchema as unknown as z.ZodTypeAny;
 
   const validData = {
     data: [
@@ -50,11 +52,15 @@ describe("createBarChartTool inputSchema validation", () => {
   });
 
   it("accepts null description", () => {
-    expect(schema.safeParse({ ...validData, description: null }).success).toBe(true);
+    expect(schema.safeParse({ ...validData, description: null }).success).toBe(
+      true,
+    );
   });
 
   it("accepts null yAxisLabel", () => {
-    expect(schema.safeParse({ ...validData, yAxisLabel: null }).success).toBe(true);
+    expect(schema.safeParse({ ...validData, yAxisLabel: null }).success).toBe(
+      true,
+    );
   });
 
   it("rejects when title is missing", () => {
@@ -86,7 +92,9 @@ describe("createBarChartTool inputSchema validation", () => {
   it("rejects when series item value is not a number", () => {
     const bad = {
       ...validData,
-      data: [{ xAxisLabel: "Jan", series: [{ seriesName: "Rev", value: "big" }] }],
+      data: [
+        { xAxisLabel: "Jan", series: [{ seriesName: "Rev", value: "big" }] },
+      ],
     };
     expect(schema.safeParse(bad).success).toBe(false);
   });
@@ -98,7 +106,9 @@ describe("createBarChartTool inputSchema validation", () => {
   it("accepts single series per data point", () => {
     const single = {
       ...validData,
-      data: [{ xAxisLabel: "Q1", series: [{ seriesName: "Revenue", value: 500 }] }],
+      data: [
+        { xAxisLabel: "Q1", series: [{ seriesName: "Revenue", value: 500 }] },
+      ],
     };
     expect(schema.safeParse(single).success).toBe(true);
   });
@@ -106,7 +116,9 @@ describe("createBarChartTool inputSchema validation", () => {
   it("accepts zero values in series", () => {
     const data = {
       ...validData,
-      data: [{ xAxisLabel: "Jan", series: [{ seriesName: "Revenue", value: 0 }] }],
+      data: [
+        { xAxisLabel: "Jan", series: [{ seriesName: "Revenue", value: 0 }] },
+      ],
     };
     expect(schema.safeParse(data).success).toBe(true);
   });
@@ -114,7 +126,9 @@ describe("createBarChartTool inputSchema validation", () => {
   it("accepts negative values in series", () => {
     const data = {
       ...validData,
-      data: [{ xAxisLabel: "Jan", series: [{ seriesName: "Loss", value: -100 }] }],
+      data: [
+        { xAxisLabel: "Jan", series: [{ seriesName: "Loss", value: -100 }] },
+      ],
     };
     expect(schema.safeParse(data).success).toBe(true);
   });

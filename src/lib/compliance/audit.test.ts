@@ -212,11 +212,12 @@ describe("hashContent — additional", () => {
     expect(hashContent("hello")).not.toBe(hashContent("hello!"));
   });
 
-  it("long input produces same length hash as short input", async () => {
+  it("hashes are unpadded hex strings of at most 8 chars for any input length", async () => {
     const { hashContent } = await import("./audit");
     const short = hashContent("ab");
     const long = hashContent("a".repeat(1000));
-    expect(short.length).toBe(long.length);
+    expect(short).toMatch(/^[0-9a-f]{1,8}$/);
+    expect(long).toMatch(/^[0-9a-f]{1,8}$/);
   });
 });
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -13,7 +13,7 @@ const {
   buildUserSystemPromptMock: vi.fn(() => "system-prompt"),
   getUserPreferencesMock: vi.fn().mockResolvedValue(null),
   convertToModelMessagesMock: vi.fn(() => []),
-  streamTextMock: vi.fn(() => ({
+  streamTextMock: vi.fn((_opts?: unknown) => ({
     toUIMessageStreamResponse: vi.fn(() => new Response("stream")),
   })),
 }));
@@ -22,8 +22,12 @@ vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: getModelMock },
 }));
-vi.mock("lib/ai/prompts", () => ({ buildUserSystemPrompt: buildUserSystemPromptMock }));
-vi.mock("lib/user/server", () => ({ getUserPreferences: getUserPreferencesMock }));
+vi.mock("lib/ai/prompts", () => ({
+  buildUserSystemPrompt: buildUserSystemPromptMock,
+}));
+vi.mock("lib/user/server", () => ({
+  getUserPreferences: getUserPreferencesMock,
+}));
 vi.mock("logger", () => ({
   default: { withDefaults: () => ({ info: vi.fn(), error: vi.fn() }) },
 }));
@@ -39,7 +43,9 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("POST /api/chat/temporary", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -61,7 +67,12 @@ describe("POST /api/chat/temporary", () => {
       toUIMessageStreamResponse: vi.fn(() => new Response("stream")),
     });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ messages: [], chatModel: { provider: "anthropic", model: "claude-3" } }));
+    const res = await POST(
+      makeRequest({
+        messages: [],
+        chatModel: { provider: "anthropic", model: "claude-3" },
+      }),
+    );
     expect(res.status).toBe(200);
   });
 
@@ -140,7 +151,9 @@ describe("POST /api/chat/temporary", () => {
 describe("POST /api/chat/temporary — additional", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
   });
 
   it("getSession called exactly once per POST", async () => {
@@ -160,7 +173,12 @@ describe("POST /api/chat/temporary — additional", () => {
   it("returns a 200 Response on authenticated success", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u-test" } });
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ messages: [], chatModel: { provider: "openrouter", model: "gpt-5.1" } }));
+    const res = await POST(
+      makeRequest({
+        messages: [],
+        chatModel: { provider: "openrouter", model: "gpt-5.1" },
+      }),
+    );
     expect(res.status).toBe(200);
     expect(res).toBeInstanceOf(Response);
   });
@@ -169,7 +187,9 @@ describe("POST /api/chat/temporary — additional", () => {
 describe("POST /api/chat/temporary — response shape", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    streamTextMock.mockReturnValue({ toUIMessageStreamResponse: vi.fn(() => new Response("ok")) });
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
   });
 
   it("returns a Response instance for 401", async () => {
@@ -181,7 +201,9 @@ describe("POST /api/chat/temporary — response shape", () => {
 
   it("returns a Response instance for 500 (streamText throws)", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    streamTextMock.mockImplementationOnce(() => { throw new Error("model error"); });
+    streamTextMock.mockImplementationOnce(() => {
+      throw new Error("model error");
+    });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ messages: [] }));
     expect(res).toBeInstanceOf(Response);
@@ -197,13 +219,21 @@ describe("POST /api/chat/temporary — response shape", () => {
   it("getModel called exactly once per authenticated request", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
-    await POST(makeRequest({ messages: [], chatModel: { provider: "openrouter", model: "gpt-5.1" } }));
+    await POST(
+      makeRequest({
+        messages: [],
+        chatModel: { provider: "openrouter", model: "gpt-5.1" },
+      }),
+    );
     expect(getModelMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("POST /api/chat/temporary — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);

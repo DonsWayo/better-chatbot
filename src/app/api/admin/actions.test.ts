@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import { USER_ROLES } from "app-types/roles";
+import { describe, expect, it } from "vitest";
 import { UpdateUserBanStatusSchema } from "./validations";
 
 describe("Admin Actions - Business Logic", () => {
@@ -56,8 +56,8 @@ describe("Admin Actions - Business Logic", () => {
     });
 
     it("allows banning another user", () => {
-      const adminId = "admin-1";
-      const targetId = "user-2";
+      const adminId: string = "admin-1";
+      const targetId: string = "user-2";
       expect(adminId === targetId).toBe(false);
     });
   });
@@ -128,31 +128,46 @@ describe("UpdateUserBanStatusSchema", () => {
 describe("UpdateUserBanStatusSchema — additional", () => {
   const VALID_UUID = "123e4567-e89b-12d3-a456-426614174000";
 
-  it("accepts boolean true for banned (not just string)", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: true });
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data.banned).toBe(true);
+  it("rejects boolean true for banned (schema only accepts form-data strings)", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: true,
+    });
+    expect(result.success).toBe(false);
   });
 
-  it("accepts boolean false for banned (not just string)", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: false });
+  it("transforms string 'false' for banned to boolean false", () => {
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "false",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.banned).toBe(false);
   });
 
   it("rejects empty string userId", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: "", banned: "true" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: "",
+      banned: "true",
+    });
     expect(result.success).toBe(false);
   });
 
   it("result.data.userId matches input UUID exactly", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "false" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "false",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.userId).toBe(VALID_UUID);
   });
 
   it("accepts banReason as empty string", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "true", banReason: "" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "true",
+      banReason: "",
+    });
     expect(result.success).toBe(true);
   });
 
@@ -166,25 +181,37 @@ describe("UpdateUserBanStatusSchema — invariants", () => {
   const VALID_UUID = "123e4567-e89b-12d3-a456-426614174000";
 
   it("parsed data.userId equals input uuid on success", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "true" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "true",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.userId).toBe(VALID_UUID);
   });
 
   it("parsed data.banned is a boolean on success", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "false" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "false",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(typeof result.data.banned).toBe("boolean");
   });
 
   it("banReason defaults to undefined when not provided", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: VALID_UUID, banned: "true" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: VALID_UUID,
+      banned: "true",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.banReason).toBeUndefined();
   });
 
   it("rejects null userId", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: null, banned: "true" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: null,
+      banned: "true",
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -206,7 +233,9 @@ describe("UpdateUserBanStatusSchema — null input invariants", () => {
   });
 
   it("rejects object with only userId and no banned field", () => {
-    const result = UpdateUserBanStatusSchema.safeParse({ userId: "00000000-0000-0000-0000-000000000001" });
+    const result = UpdateUserBanStatusSchema.safeParse({
+      userId: "00000000-0000-0000-0000-000000000001",
+    });
     expect(result.success).toBe(false);
   });
 });

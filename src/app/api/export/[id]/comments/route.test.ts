@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -30,13 +30,19 @@ function makeRequest(body?: unknown): NextRequest {
 }
 
 describe("GET /api/export/[id]/comments", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns comments (no auth required)", async () => {
     getUserIdMock.mockRejectedValueOnce(new Error("not authed"));
-    selectCommentsByExportIdMock.mockResolvedValueOnce([{ id: "c-1", content: "Nice!" }]);
+    selectCommentsByExportIdMock.mockResolvedValueOnce([
+      { id: "c-1", content: "Nice!" },
+    ]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveLength(1);
@@ -46,8 +52,13 @@ describe("GET /api/export/[id]/comments", () => {
     getUserIdMock.mockResolvedValueOnce("u-guest");
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    await GET(makeRequest(), { params: Promise.resolve({ id: "export-unique-111" }) });
-    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith("export-unique-111", expect.anything());
+    await GET(makeRequest(), {
+      params: Promise.resolve({ id: "export-unique-111" }),
+    });
+    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith(
+      "export-unique-111",
+      expect.anything(),
+    );
   });
 
   it("passes resolved userId when available", async () => {
@@ -55,14 +66,19 @@ describe("GET /api/export/[id]/comments", () => {
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
     await GET(makeRequest(), { params: Promise.resolve({ id: "ex-99" }) });
-    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith("ex-99", "user-logged-in");
+    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith(
+      "ex-99",
+      "user-logged-in",
+    );
   });
 
   it("returns empty array when no comments exist", async () => {
     getUserIdMock.mockRejectedValueOnce(new Error("not authed"));
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "empty-ex" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "empty-ex" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual([]);
@@ -72,25 +88,33 @@ describe("GET /api/export/[id]/comments", () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
     selectCommentsByExportIdMock.mockRejectedValueOnce(new Error("DB error"));
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res.status).toBe(500);
   });
 });
 
 describe("POST /api/export/[id]/comments", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
   it("never calls insertComment when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(insertCommentMock).not.toHaveBeenCalled();
   });
 
@@ -98,10 +122,9 @@ describe("POST /api/export/[id]/comments", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
-    const res = await POST(
-      makeRequest({ content: "Great conversation!" }),
-      { params: Promise.resolve({ id: "ex-1" }) },
-    );
+    const res = await POST(makeRequest({ content: "Great conversation!" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -127,14 +150,18 @@ describe("POST /api/export/[id]/comments", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockRejectedValueOnce(new Error("DB error"));
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res.status).toBe(500);
   });
 
   it("401 body has error field", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -143,7 +170,9 @@ describe("POST /api/export/[id]/comments", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockRejectedValueOnce(new Error("insert failed"));
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -152,20 +181,26 @@ describe("POST /api/export/[id]/comments", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
-    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(insertCommentMock).toHaveBeenCalledTimes(1);
   });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("GET /api/export/[id]/comments — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("selectCommentsByExportId called exactly once per GET", async () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
@@ -179,16 +214,23 @@ describe("GET /api/export/[id]/comments — additional", () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
     selectCommentsByExportIdMock.mockRejectedValueOnce(new Error("DB error"));
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
 
   it("200 body is an array", async () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
-    selectCommentsByExportIdMock.mockResolvedValueOnce([{ id: "c1" }, { id: "c2" }]);
+    selectCommentsByExportIdMock.mockResolvedValueOnce([
+      { id: "c1" },
+      { id: "c2" },
+    ]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body).toHaveLength(2);
@@ -196,12 +238,16 @@ describe("GET /api/export/[id]/comments — additional", () => {
 });
 
 describe("POST /api/export/[id]/comments — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -209,7 +255,9 @@ describe("POST /api/export/[id]/comments — response shape", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     const body = await res.json();
     expect(body.success).toBe(true);
   });
@@ -217,7 +265,9 @@ describe("POST /api/export/[id]/comments — response shape", () => {
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
@@ -225,19 +275,25 @@ describe("POST /api/export/[id]/comments — response shape", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     insertCommentMock.mockRejectedValueOnce(new Error("DB error"));
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: "hello" }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(makeRequest({ content: "hello" }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 });
 
 describe("GET /api/export/[id]/comments — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance for 200", async () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -245,7 +301,9 @@ describe("GET /api/export/[id]/comments — response shape", () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
     selectCommentsByExportIdMock.mockRejectedValueOnce(new Error("DB error"));
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -253,7 +311,9 @@ describe("GET /api/export/[id]/comments — response shape", () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
   });
@@ -262,13 +322,24 @@ describe("GET /api/export/[id]/comments — response shape", () => {
     getUserIdMock.mockRejectedValueOnce(new Error("no user"));
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    await GET(makeRequest(), { params: Promise.resolve({ id: "export-shape-check" }) });
-    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith("export-shape-check", expect.anything());
+    await GET(makeRequest(), {
+      params: Promise.resolve({ id: "export-shape-check" }),
+    });
+    // userId resolves to undefined when getUserId rejects
+    expect(selectCommentsByExportIdMock).toHaveBeenCalledWith(
+      "export-shape-check",
+      undefined,
+    );
   });
 });
 
 describe("GET and POST /api/export/[id]/comments — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); selectCommentsByExportIdMock.mockResolvedValue([]); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    getUserIdMock.mockRejectedValue(new Error("no user"));
+    selectCommentsByExportIdMock.mockResolvedValue([]);
+  });
 
   it("selectCommentsByExportId called exactly once per GET", async () => {
     const { GET } = await import("./route");
@@ -277,23 +348,30 @@ describe("GET and POST /api/export/[id]/comments — call count invariants", () 
   });
 
   it("insertComment never called when POST unauthenticated", async () => {
-    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ content: { type: "doc", content: [] } }), { params: Promise.resolve({ id: "ex-1" }) });
+    await POST(makeRequest({ content: { type: "doc", content: [] } }), {
+      params: Promise.resolve({ id: "ex-1" }),
+    });
     expect(insertCommentMock).not.toHaveBeenCalled();
   });
 
   it("GET always returns a Response instance", async () => {
     selectCommentsByExportIdMock.mockResolvedValueOnce([]);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "ex-resp" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "ex-resp" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
   it("POST returns Response instance when unauthenticated", async () => {
-    getUserIdMock.mockRejectedValueOnce(new Error("no user"));
+    getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ content: { type: "doc", content: [] } }), { params: Promise.resolve({ id: "ex-1" }) });
+    const res = await POST(
+      makeRequest({ content: { type: "doc", content: [] } }),
+      { params: Promise.resolve({ id: "ex-1" }) },
+    );
     expect(res).toBeInstanceOf(Response);
   });
 });

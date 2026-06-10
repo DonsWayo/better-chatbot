@@ -1,14 +1,20 @@
-import { describe, it, expect } from "vitest";
+import type {
+  ObjectJsonSchema7,
+  TipTapMentionJsonContent,
+} from "app-types/util";
+import { describe, expect, it } from "vitest";
 import {
-  findJsonSchemaByPath,
-  findAccessibleNodeIds,
+  WORKFLOW_STREAM_DELIMITER,
+  WORKFLOW_STREAM_PREFIX,
   convertTiptapJsonToText,
   decodeWorkflowEvents,
   encodeWorkflowEvent,
-  WORKFLOW_STREAM_PREFIX,
-  WORKFLOW_STREAM_DELIMITER,
+  findAccessibleNodeIds,
+  findJsonSchemaByPath,
 } from "./shared.workflow";
-import type { ObjectJsonSchema7 } from "app-types/util";
+
+// Test fixtures are plain literals; the runtime accepts any TipTap-shaped JSON.
+const asTipTap = (v: unknown) => v as TipTapMentionJsonContent;
 
 // ── findJsonSchemaByPath ──────────────────────────────────────────────────────
 
@@ -92,13 +98,19 @@ describe("convertTiptapJsonToText", () => {
         { type: "paragraph", content: [{ type: "text", text: "Hello world" }] },
       ],
     };
-    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: noopGetOutput,
+    });
     expect(result).toBe("Hello world");
   });
 
   it("handles empty paragraph", () => {
     const json = { type: "doc", content: [{ type: "paragraph" }] };
-    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: noopGetOutput,
+    });
     expect(result).toBe("");
   });
 
@@ -116,7 +128,10 @@ describe("convertTiptapJsonToText", () => {
         },
       ],
     };
-    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: noopGetOutput,
+    });
     expect(result).toContain("Line 1");
     expect(result).toContain("Line 2");
   });
@@ -135,7 +150,7 @@ describe("convertTiptapJsonToText", () => {
       ],
     };
     const getOutput = () => "resolved_value";
-    const result = convertTiptapJsonToText({ json, getOutput });
+    const result = convertTiptapJsonToText({ json: asTipTap(json), getOutput });
     expect(result).toContain("resolved_value");
   });
 
@@ -153,7 +168,7 @@ describe("convertTiptapJsonToText", () => {
       ],
     };
     const result = convertTiptapJsonToText({
-      json,
+      json: asTipTap(json),
       getOutput: noopGetOutput,
       mentionParser: () => "CUSTOM",
     });
@@ -167,13 +182,32 @@ describe("convertTiptapJsonToText", () => {
         {
           type: "bulletList",
           content: [
-            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item 1" }] }] },
-            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Item 2" }] }] },
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Item 1" }],
+                },
+              ],
+            },
+            {
+              type: "listItem",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Item 2" }],
+                },
+              ],
+            },
           ],
         },
       ],
     };
-    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: noopGetOutput,
+    });
     expect(result).toContain("Item 1");
     expect(result).toContain("Item 2");
     expect(result).toContain("•");
@@ -181,7 +215,10 @@ describe("convertTiptapJsonToText", () => {
 
   it("returns empty string for empty content", () => {
     const json = { type: "doc", content: [] };
-    const result = convertTiptapJsonToText({ json, getOutput: noopGetOutput });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: noopGetOutput,
+    });
     expect(result).toBe("");
   });
 });
@@ -190,7 +227,10 @@ describe("convertTiptapJsonToText", () => {
 
 describe("encodeWorkflowEvent / decodeWorkflowEvents", () => {
   it("encodes event with prefix and delimiter", () => {
-    const encoded = encodeWorkflowEvent({ type: "test", payload: "data" } as any);
+    const encoded = encodeWorkflowEvent({
+      type: "test",
+      payload: "data",
+    } as any);
     expect(encoded.startsWith(WORKFLOW_STREAM_PREFIX)).toBe(true);
     expect(encoded.endsWith(WORKFLOW_STREAM_DELIMITER)).toBe(true);
   });
@@ -213,7 +253,8 @@ describe("encodeWorkflowEvent / decodeWorkflowEvents", () => {
   });
 
   it("ignores non-prefixed lines", () => {
-    const buffer = "some random text\n" + encodeWorkflowEvent({ type: "ok" } as any);
+    const buffer =
+      "some random text\n" + encodeWorkflowEvent({ type: "ok" } as any);
     const { events } = decodeWorkflowEvents(buffer);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ type: "ok" });
@@ -222,7 +263,9 @@ describe("encodeWorkflowEvent / decodeWorkflowEvents", () => {
   it("returns remaining buffer (incomplete last line)", () => {
     const complete = encodeWorkflowEvent({ type: "done" } as any);
     const partial = "WF_EVENT:{incomplete";
-    const { events, remainingBuffer } = decodeWorkflowEvents(complete + partial);
+    const { events, remainingBuffer } = decodeWorkflowEvents(
+      complete + partial,
+    );
     expect(events).toHaveLength(1);
     expect(remainingBuffer).toBe(partial);
   });
@@ -245,14 +288,20 @@ describe("convertTiptapJsonToText — additional", () => {
         { type: "paragraph", content: [{ type: "text", text: "Second" }] },
       ],
     };
-    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: () => undefined,
+    });
     expect(result).toContain("First");
     expect(result).toContain("Second");
   });
 
   it("returns string type always", () => {
     const json = { type: "doc", content: [] };
-    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: () => undefined,
+    });
     expect(typeof result).toBe("string");
   });
 
@@ -262,19 +311,22 @@ describe("convertTiptapJsonToText — additional", () => {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text }] }],
     };
-    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: () => undefined,
+    });
     expect(result).toContain(text);
   });
 
   it("returns empty string for doc with only empty paragraphs", () => {
     const json = {
       type: "doc",
-      content: [
-        { type: "paragraph" },
-        { type: "paragraph" },
-      ],
+      content: [{ type: "paragraph" }, { type: "paragraph" }],
     };
-    const result = convertTiptapJsonToText({ json, getOutput: () => undefined });
+    const result = convertTiptapJsonToText({
+      json: asTipTap(json),
+      getOutput: () => undefined,
+    });
     expect(result.trim()).toBe("");
   });
 });
