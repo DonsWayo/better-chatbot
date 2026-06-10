@@ -1079,3 +1079,53 @@ export const WorkflowScheduleTable = pgTable(
 );
 
 export type WorkflowScheduleEntity = typeof WorkflowScheduleTable.$inferSelect;
+
+// ── Agent Platform #19: immutable revisions + publish lifecycle ──────────────
+// One row per published-or-drafted version of an agent ("conversational") or
+// workflow. `sourceId` is a polymorphic, FK-less pointer into the agent /
+// workflow tables (same convention as agent_session.definitionId).
+// `configSnapshot` freezes the full definition at submission time: the agent
+// row, or `{ workflow, nodes, edges }` for workflows. Lifecycle:
+// draft → pending_review → published → archived; at most ONE published
+// revision per (kind, sourceId). Multi-team visibility mirrors the MCP
+// catalog `teamIds` jsonb pattern (null = personal); orgWide is admin-only.
+
+export const AgentRevisionTable = pgTable(
+  "agent_revision",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    kind: varchar("kind", {
+      enum: ["conversational", "workflow"],
+    }).notNull(),
+    // Polymorphic pointer to agent.id or workflow.id — no FK on purpose.
+    sourceId: uuid("source_id").notNull(),
+    version: integer("version").notNull(),
+    // Full agent config OR full { workflow, nodes, edges } structure.
+    configSnapshot: jsonb("config_snapshot").$type<unknown>().notNull(),
+    status: varchar("status", {
+      enum: ["draft", "pending_review", "published", "archived"],
+    })
+      .notNull()
+      .default("draft"),
+    authorId: uuid("author_id").notNull(),
+    approvedBy: uuid("approved_by"),
+    changelog: text("changelog"),
+    // Multi-team visibility (MCP catalog pattern); null = personal.
+    teamIds: jsonb("team_ids").$type<string[] | null>(),
+    orgWide: boolean("org_wide").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("agent_revision_kind_source_id_version_unique").on(
+      t.kind,
+      t.sourceId,
+      t.version,
+    ),
+    index("agent_revision_source_id_idx").on(t.sourceId),
+    index("agent_revision_status_idx").on(t.status),
+    index("agent_revision_kind_status_idx").on(t.kind, t.status),
+  ],
+);
+
+export type AgentRevisionEntity = typeof AgentRevisionTable.$inferSelect;

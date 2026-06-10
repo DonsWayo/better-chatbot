@@ -6,6 +6,10 @@ import {
   type SubscribableExecutor,
   attachSessionPersistence,
 } from "lib/agent-platform/persistent-executor";
+import {
+  type WorkflowConfigSnapshot,
+  resolveRunnableRevision,
+} from "lib/agent-platform/revisions";
 import { createSession as createAgentSession } from "lib/agent-platform/sessions";
 import { createWorkflowExecutor } from "lib/ai/workflow/executor/workflow-executor";
 import { encodeWorkflowEvent } from "lib/ai/workflow/shared.workflow";
@@ -36,6 +40,36 @@ export async function POST(
     message: colorize("cyan", `WORKFLOW '${workflow.name}' `),
   });
 
+  // Agent Platform #19: when this workflow has a published revision, pin it
+  // and execute from its frozen configSnapshot (nodes/edges) instead of the
+  // live tables — publishing a new version never mutates this run.
+  // Strictly best-effort: any resolution failure (or a malformed snapshot)
+  // falls back to the live structure, so pre-revision behavior is unchanged.
+  let pinnedRevisionId: string | null = null;
+  let nodes = workflow.nodes;
+  let edges = workflow.edges;
+  try {
+    const published = await resolveRunnableRevision("workflow", id);
+    const snapshot = published?.configSnapshot as
+      | Partial<WorkflowConfigSnapshot>
+      | null
+      | undefined;
+    if (
+      published &&
+      Array.isArray(snapshot?.nodes) &&
+      Array.isArray(snapshot?.edges)
+    ) {
+      pinnedRevisionId = published.id;
+      nodes = snapshot.nodes as unknown as typeof workflow.nodes;
+      edges = snapshot.edges as unknown as typeof workflow.edges;
+    }
+  } catch (error) {
+    logger.error(
+      "Failed to resolve published revision; executing live structure:",
+      error,
+    );
+  }
+
   // Agent Platform #21: mirror this run into agent_session/agent_step.
   // Strictly best-effort — the route must never fail because of persistence.
   // Created BEFORE the executor so Approval nodes (#24) can read the session
@@ -45,6 +79,7 @@ export async function POST(
     const agentSession = await createAgentSession({
       kind: "workflow",
       definitionId: id,
+      revisionId: pinnedRevisionId,
       userId: session.user.id,
       originSurface: "web",
       inputPayload: { query },
@@ -55,8 +90,8 @@ export async function POST(
   }
 
   const app = createWorkflowExecutor({
-    edges: workflow.edges,
-    nodes: workflow.nodes,
+    edges,
+    nodes,
     logger: wfLogger,
     agentSessionId,
   });
