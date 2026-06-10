@@ -489,7 +489,7 @@
     "toggleSidebar": "Alternar Barra Lateral",
     "toolMode": "Modo de Herramientas",
     "lastMessageCopy": "Copiar Último Mensaje",
-    "openChatPreferences": "Abrir Preferencias de Chat",
+    "openPersonalization": "Abrir ajustes de personalización",
     "deleteThread": "Eliminar Chat",
     "openShortcutsPopup": "Abrir Ventana de Atajos",
     "toggleVoiceChat": "Alternar Chat por Voz",
@@ -1029,6 +1029,43 @@
     "title": "Estudio",
     "agents": "Agentes",
     "workflows": "Flujos de trabajo",
-    "backToStudio": "Volver al Estudio"
+    "backToStudio": "Volver al Estudio",
+    "describeWorkflow": "Describe un flujo de trabajo",
+    "describeWorkflowHint": "Aún no hay flujos de trabajo. La forma más rápida de empezar: describe lo que quieres en el chat y A-SAFE AI redactará el flujo de trabajo por ti.",
+    "describeWorkflowDraft": "Crea un flujo de trabajo que "
+  },
+  "Visibility": {
+    "label": "Visibilidad",
+    "private": "Privado",
+    "privateDescription": "Solo tú puedes verlo y usarlo.",
+    "shared": "Compartido",
+    "sharedDescription": "Solo las personas que indiques pueden acceder.",
+    "team": "Equipo",
+    "teamDescription": "Los miembros de los equipos que elijas pueden usarlo.",
+    "company": "Empresa",
+    "companyDescription": "Todos en la organización pueden usarlo.",
+    "companyAdminOnly": "El uso compartido en toda la empresa lo gestionan los administradores.",
+    "teamsLabel": "Equipos",
+    "selectTeams": "Selecciona equipos…",
+    "teamsSelected": "{count} equipo{count, plural, one {} other {s}} seleccionado{count, plural, one {} other {s}}",
+    "searchTeams": "Buscar equipos…",
+    "noTeams": "No se encontraron equipos.",
+    "noTeamsMembership": "Aún no perteneces a ningún equipo.",
+    "removeTeam": "Quitar {name}",
+    "peopleLabel": "Personas",
+    "emailPlaceholder": "Añadir por correo…",
+    "addPerson": "Añadir persona",
+    "userNotFound": "No se encontró ningún usuario para {email}.",
+    "grantAdded": "Compartido con {name}.",
+    "grantRemoved": "Acceso eliminado.",
+    "removeGrant": "Quitar acceso",
+    "noGrants": "Aún no se ha compartido con nadie.",
+    "sharedSaveFirst": "Guarda primero para compartir con personas concretas.",
+    "loading": "Cargando…",
+    "capability": {
+      "use": "Usar",
+      "edit": "Editar",
+      "manage": "Gestionar"
+    }
   }
 }

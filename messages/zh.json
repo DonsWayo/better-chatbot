@@ -341,7 +341,7 @@
     "toggleSidebar": "切换侧边栏",
     "toolMode": "工具模式",
     "lastMessageCopy": "复制最后一条消息",
-    "openChatPreferences": "打开聊天偏好",
+    "openPersonalization": "打开个性化设置",
     "deleteThread": "删除聊天",
     "openShortcutsPopup": "打开快捷键弹窗",
     "toggleVoiceChat": "切换语音聊天",
@@ -675,6 +675,43 @@
     "title": "工作室",
     "agents": "智能体",
     "workflows": "工作流",
-    "backToStudio": "返回工作室"
+    "backToStudio": "返回工作室",
+    "describeWorkflow": "描述一个工作流",
+    "describeWorkflowHint": "还没有工作流。最快的开始方式：在聊天中描述你想要的内容，A-SAFE AI 会为你起草工作流。",
+    "describeWorkflowDraft": "创建一个工作流，它可以 "
+  },
+  "Visibility": {
+    "label": "可见范围",
+    "private": "私有",
+    "privateDescription": "只有你能查看和使用。",
+    "shared": "共享",
+    "sharedDescription": "只有你指定的人可以访问。",
+    "team": "团队",
+    "teamDescription": "你选择的团队成员可以使用。",
+    "company": "公司",
+    "companyDescription": "组织内所有人都可以使用。",
+    "companyAdminOnly": "全公司共享由管理员管理。",
+    "teamsLabel": "团队",
+    "selectTeams": "选择团队…",
+    "teamsSelected": "已选择 {count} 个团队",
+    "searchTeams": "搜索团队…",
+    "noTeams": "未找到团队。",
+    "noTeamsMembership": "你还不是任何团队的成员。",
+    "removeTeam": "移除 {name}",
+    "peopleLabel": "成员",
+    "emailPlaceholder": "通过邮箱添加…",
+    "addPerson": "添加成员",
+    "userNotFound": "未找到邮箱为 {email} 的用户。",
+    "grantAdded": "已与 {name} 共享。",
+    "grantRemoved": "已移除访问权限。",
+    "removeGrant": "移除访问权限",
+    "noGrants": "尚未与任何人共享。",
+    "sharedSaveFirst": "请先保存以便与特定人员共享。",
+    "loading": "加载中…",
+    "capability": {
+      "use": "使用",
+      "edit": "编辑",
+      "manage": "管理"
+    }
   }
 }

@@ -489,7 +489,7 @@
     "toggleSidebar": "Toggle Sidebar",
     "toolMode": "Tool Mode",
     "lastMessageCopy": "Copy Last Message",
-    "openChatPreferences": "Open Chat Preferences",
+    "openPersonalization": "Open personalization settings",
     "deleteThread": "Delete Chat",
     "openShortcutsPopup": "Open Shortcuts Popup",
     "toggleVoiceChat": "Toggle Voice Chat",
@@ -1029,6 +1029,43 @@
     "title": "Studio",
     "agents": "Agents",
     "workflows": "Workflows",
-    "backToStudio": "Back to Studio"
+    "backToStudio": "Back to Studio",
+    "describeWorkflow": "Describe a workflow",
+    "describeWorkflowHint": "No workflows yet. The fastest way to start: describe what you want in chat and A-SAFE AI will draft the workflow for you.",
+    "describeWorkflowDraft": "Create a workflow that "
+  },
+  "Visibility": {
+    "label": "Visibility",
+    "private": "Private",
+    "privateDescription": "Only you can see and use this.",
+    "shared": "Shared",
+    "sharedDescription": "Only people you name can access this.",
+    "team": "Team",
+    "teamDescription": "Members of the teams you pick can use this.",
+    "company": "Company",
+    "companyDescription": "Everyone in the organization can use this.",
+    "companyAdminOnly": "Company-wide sharing is curated by admins.",
+    "teamsLabel": "Teams",
+    "selectTeams": "Select teams…",
+    "teamsSelected": "{count} team{count, plural, one {} other {s}} selected",
+    "searchTeams": "Search teams…",
+    "noTeams": "No teams found.",
+    "noTeamsMembership": "You are not a member of any team yet.",
+    "removeTeam": "Remove {name}",
+    "peopleLabel": "People",
+    "emailPlaceholder": "Add by email…",
+    "addPerson": "Add person",
+    "userNotFound": "No user found for {email}.",
+    "grantAdded": "Shared with {name}.",
+    "grantRemoved": "Access removed.",
+    "removeGrant": "Remove access",
+    "noGrants": "Not shared with anyone yet.",
+    "sharedSaveFirst": "Save first to share with specific people.",
+    "loading": "Loading…",
+    "capability": {
+      "use": "Use",
+      "edit": "Edit",
+      "manage": "Manage"
+    }
   }
 }

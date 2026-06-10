@@ -339,7 +339,7 @@
     "toggleSidebar": "サイドバーの切り替え",
     "toolMode": "ツールモード",
     "lastMessageCopy": "最後のメッセージをコピー",
-    "openChatPreferences": "チャット設定を開く",
+    "openPersonalization": "パーソナライズ設定を開く",
     "deleteThread": "チャットを削除",
     "openShortcutsPopup": "ショートカットポップアップを開く",
     "toggleVoiceChat": "音声チャットの切り替え",
@@ -673,6 +673,43 @@
     "title": "スタジオ",
     "agents": "エージェント",
     "workflows": "ワークフロー",
-    "backToStudio": "スタジオに戻る"
+    "backToStudio": "スタジオに戻る",
+    "describeWorkflow": "ワークフローを説明する",
+    "describeWorkflowHint": "ワークフローはまだありません。チャットで作りたい内容を説明すれば、A-SAFE AI がワークフローの下書きを作成します。",
+    "describeWorkflowDraft": "次のようなワークフローを作成して："
+  },
+  "Visibility": {
+    "label": "公開範囲",
+    "private": "非公開",
+    "privateDescription": "自分だけが閲覧・使用できます。",
+    "shared": "共有",
+    "sharedDescription": "指定した人のみがアクセスできます。",
+    "team": "チーム",
+    "teamDescription": "選択したチームのメンバーが使用できます。",
+    "company": "全社",
+    "companyDescription": "組織内の全員が使用できます。",
+    "companyAdminOnly": "全社共有は管理者が管理します。",
+    "teamsLabel": "チーム",
+    "selectTeams": "チームを選択…",
+    "teamsSelected": "{count} 件のチームを選択中",
+    "searchTeams": "チームを検索…",
+    "noTeams": "チームが見つかりません。",
+    "noTeamsMembership": "まだどのチームにも所属していません。",
+    "removeTeam": "{name} を削除",
+    "peopleLabel": "ユーザー",
+    "emailPlaceholder": "メールアドレスで追加…",
+    "addPerson": "ユーザーを追加",
+    "userNotFound": "{email} のユーザーが見つかりません。",
+    "grantAdded": "{name} と共有しました。",
+    "grantRemoved": "アクセスを削除しました。",
+    "removeGrant": "アクセスを削除",
+    "noGrants": "まだ誰とも共有していません。",
+    "sharedSaveFirst": "特定の人と共有するにはまず保存してください。",
+    "loading": "読み込み中…",
+    "capability": {
+      "use": "使用",
+      "edit": "編集",
+      "manage": "管理"
+    }
   }
 }

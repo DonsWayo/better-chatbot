@@ -24,7 +24,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const { visibility, isPublished } = await request.json();
+  const { visibility, isPublished, teamIds } = await request.json();
 
   const session = await getSession();
   if (!session) {
@@ -54,11 +54,14 @@ export async function PUT(
     return new Response("Workflow not found", { status: 404 });
   }
 
-  // Update only the specified fields
+  // Update only the specified fields. teamIds carries the real "team"-level
+  // share signal (unified visibility model); the legacy `visibility` enum is
+  // mapped client-side via toLegacyVisibilityColumn.
   const updatedWorkflow = await workflowRepository.save({
     ...existingWorkflow,
     visibility: visibility ?? existingWorkflow.visibility,
     isPublished: isPublished ?? existingWorkflow.isPublished,
+    teamIds: teamIds !== undefined ? teamIds : existingWorkflow.teamIds,
     updatedAt: new Date(),
   });
 

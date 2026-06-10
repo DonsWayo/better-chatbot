@@ -100,10 +100,17 @@ export function CommandPalette({ user }: { user?: BasicUser }) {
           openCommandPalette: !prev.openCommandPalette,
         }));
       }
+      // Cmd+Shift+L used to open the retired Chat Preferences popup; it
+      // now routes to its new home, Settings › Personalization.
+      if (isShortcutEvent(e, Shortcuts.openPersonalization)) {
+        e.preventDefault();
+        appStoreMutate({ openCommandPalette: false });
+        router.push("/settings/personalization");
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appStoreMutate]);
+  }, [appStoreMutate, router]);
 
   const close = useCallback(() => {
     appStoreMutate({ openCommandPalette: false });

@@ -1,18 +1,32 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { Separator } from "@/components/ui/separator";
 
 import { UINode } from "lib/ai/workflow/workflow.interface";
 
-import { AlignHorizontalSpaceAround, Loader, PlayIcon } from "lucide-react";
+import {
+  AlignHorizontalSpaceAround,
+  Building2,
+  Loader,
+  Lock,
+  PlayIcon,
+  UserPlus,
+  Users as UsersIcon,
+} from "lucide-react";
 import { Button } from "ui/button";
 
 import equal from "lib/equal";
 
-import { ShareableActions } from "@/components/shareable-actions";
+import {
+  VisibilityField,
+  type VisibilityValue,
+  fromLegacyVisibilityColumn,
+  toLegacyVisibilityColumn,
+} from "@/components/visibility";
 import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 
 import { DBWorkflow } from "app-types/workflow";
@@ -60,8 +74,23 @@ export const WorkflowPanel = memo(
       setNodes(arrangedNodes);
       toast.success(t("Workflow.nodesArranged"));
     }, [getNodes, getEdges, setNodes, t]);
+    // Modern four-level visibility for the picker, seeded from the legacy
+    // column + teamIds (unified visibility model — see
+    // docs/design/visibility-model.md). "shared" is detected by the picker's
+    // grant list, not the row, so the base level is private/team/company.
+    const visibilityValue = useMemo<VisibilityValue>(
+      () => ({
+        visibility: fromLegacyVisibilityColumn(
+          workflow.visibility,
+          workflow.teamIds,
+        ),
+        teamIds: workflow.teamIds ?? [],
+      }),
+      [workflow.visibility, workflow.teamIds],
+    );
+
     const updateVisibility = useCallback(
-      (visibility: DBWorkflow["visibility"]) => {
+      (next: VisibilityValue) => {
         setIsSaving(true);
         const close = addProcess();
         safe(() =>
@@ -69,7 +98,10 @@ export const WorkflowPanel = memo(
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              visibility,
+              // Map the four-level value onto the legacy enum the column still
+              // stores; teamIds carries the real "team"-level access signal.
+              visibility: toLegacyVisibilityColumn(next.visibility),
+              teamIds: next.teamIds,
             }),
           }).then((res) => {
             if (res.status != 200) throw new Error(res.statusText);
@@ -82,7 +114,7 @@ export const WorkflowPanel = memo(
             close();
           });
       },
-      [workflow],
+      [workflow.id, addProcess],
     );
 
     const updatePublished = useCallback(
@@ -242,12 +274,12 @@ export const WorkflowPanel = memo(
               </p>
             </TooltipContent>
           </Tooltip>
-          <ShareableActions
-            type="workflow"
-            visibility={workflow.visibility}
-            isOwner={hasEditAccess || false}
-            onVisibilityChange={hasEditAccess ? updateVisibility : undefined}
-            isVisibilityChangeLoading={isSaving}
+          <WorkflowVisibilityControl
+            workflowId={workflow.id}
+            value={visibilityValue}
+            onChange={updateVisibility}
+            canEdit={hasEditAccess || false}
+            saving={isSaving}
           />
         </div>
         <div className="flex gap-2">
@@ -289,3 +321,65 @@ export const WorkflowPanel = memo(
     return true;
   },
 );
+
+const VISIBILITY_TRIGGER_ICON = {
+  private: Lock,
+  shared: UserPlus,
+  team: UsersIcon,
+  company: Building2,
+} as const;
+
+/**
+ * Popover trigger that opens the unified VisibilityPicker for a workflow. The
+ * picker emits the four-level value; the panel maps it onto the legacy column
+ * + teamIds on change.
+ */
+function WorkflowVisibilityControl({
+  workflowId,
+  value,
+  onChange,
+  canEdit,
+  saving,
+}: {
+  workflowId: string;
+  value: VisibilityValue;
+  onChange: (value: VisibilityValue) => void;
+  canEdit: boolean;
+  saving: boolean;
+}) {
+  const t = useTranslations();
+  const Icon = VISIBILITY_TRIGGER_ICON[value.visibility];
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={saving}
+              className="size-8 text-muted-foreground hover:text-foreground data-[state=open]:bg-input"
+              data-testid="workflow-visibility-button"
+            >
+              {saving ? (
+                <Loader className="size-4 animate-spin" />
+              ) : (
+                <Icon className="size-4" />
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{t("Visibility.label")}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-80 rounded-2xl p-3">
+        <p className="mb-2 px-1 text-sm font-medium">{t("Visibility.label")}</p>
+        <VisibilityField
+          value={value}
+          onChange={onChange}
+          disabled={!canEdit || saving}
+          entity={{ type: "workflow", id: workflowId }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}

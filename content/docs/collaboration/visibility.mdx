@@ -89,5 +89,34 @@ server actions, each of which requires the caller to hold `manage` on the entity
 3. **`company` always passes the admin curation gate** — the same gate as featured MCP
    servers and org-wide revisions today.
 4. **One `VisibilityPicker` component** (lock / link-user / users / building icons),
-   reused everywhere, with the multi-team combobox from the MCP catalog — planned
-   (next step in the rollout).
+   reused everywhere, with the multi-team combobox from the MCP catalog —
+   **implemented** (`src/components/visibility/`) and wired into the **workflow
+   editor** and **agent editor**. Selecting **team** reveals the team
+   multi-select (seeded from the viewer's memberships via
+   `/api/teamspaces/folders`); selecting **shared** reveals an inline grant
+   manager (add by email → `resolveGranteeByEmailAction`, capability select,
+   remove) backed by the `grant`/`revoke`/`listGrants` actions; **company** is
+   disabled for non-admins behind a tooltip (the curation gate).
+
+## UI ↔ legacy-column mapping (current caveat)
+
+The workflow and agent rows still store the **legacy** `visibility` enum
+(`public | private | readonly`) — widening that column to the literal
+four-level value is a future migration this round intentionally does **not**
+make. So the editor maps the picker's four-level value onto the legacy column
+on save (`toLegacyVisibilityColumn` in `src/components/visibility/`):
+
+- **`company` → writes `public`** (the only value the resolver's legacy path
+  reads as org-wide).
+- **`private` / `team` / `shared` → write `private`.** The *real* access signal
+  for `team` and `shared` lives in the `teamIds[]` column and the
+  `entity_grant` table, which the resolver already prefers over the legacy
+  enum. So a `team`-shared workflow is stored as legacy `private` **plus**
+  `teamIds`, and `canAccess` still grants team members `use`.
+
+Seeding the picker is the inverse (`fromLegacyVisibilityColumn`): `public` →
+`company`; legacy `private` with a non-empty `teamIds` → `team`; otherwise
+`private`. (`shared` is recognized by the presence of grants, not the row, so
+the picker simply opens at the inferred base level and the grant list does the
+rest.) A future migration that widens the enum to store the literal value will
+make this mapping a no-op.

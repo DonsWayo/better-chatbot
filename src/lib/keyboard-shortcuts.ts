@@ -89,9 +89,21 @@ const openShortcutsPopupShortcut: Shortcut = {
   },
 };
 
+// Cmd+Shift+L used to open the retired Chat Preferences popup; it now
+// routes to Settings › Personalization (handled in command-palette.tsx).
+const openPersonalizationShortcut: Shortcut = {
+  description: "openPersonalization",
+  shortcut: {
+    key: "L",
+    command: true,
+    shift: true,
+  },
+};
+
 export const Shortcuts = {
   openNewChat: openNewChatShortcut,
   openCommandPalette: openCommandPaletteShortcut,
+  openPersonalization: openPersonalizationShortcut,
   toggleTemporaryChat: toggleTemporaryChatShortcut,
   toggleVoiceChat: toggleVoiceChatShortcut,
   toggleSidebar: toggleSidebarShortcut,

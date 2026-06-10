@@ -489,7 +489,7 @@
     "toggleSidebar": "Åpne sidefelt",
     "toolMode": "Verktøymodus",
     "lastMessageCopy": "Kopier siste melding",
-    "openChatPreferences": "Åpne chatpreferanser",
+    "openPersonalization": "Åpne personaliseringsinnstillinger",
     "deleteThread": "Slett chat",
     "openShortcutsPopup": "Åpne snarveier-popup",
     "toggleVoiceChat": "Åpne talechat",
@@ -974,6 +974,43 @@
     "title": "Studio",
     "agents": "Agenter",
     "workflows": "Arbeidsflyter",
-    "backToStudio": "Tilbake til Studio"
+    "backToStudio": "Tilbake til Studio",
+    "describeWorkflow": "Beskriv en arbeidsflyt",
+    "describeWorkflowHint": "Ingen arbeidsflyter ennå. Raskeste vei i gang: beskriv hva du vil ha i chatten, så lager A-SAFE AI et utkast til arbeidsflyten for deg.",
+    "describeWorkflowDraft": "Lag en arbeidsflyt som "
+  },
+  "Visibility": {
+    "label": "Synlighet",
+    "private": "Privat",
+    "privateDescription": "Bare du kan se og bruke dette.",
+    "shared": "Delt",
+    "sharedDescription": "Bare personer du navngir har tilgang.",
+    "team": "Team",
+    "teamDescription": "Medlemmer av teamene du velger kan bruke dette.",
+    "company": "Selskap",
+    "companyDescription": "Alle i organisasjonen kan bruke dette.",
+    "companyAdminOnly": "Deling i hele selskapet styres av administratorer.",
+    "teamsLabel": "Team",
+    "selectTeams": "Velg team…",
+    "teamsSelected": "{count} team valgt",
+    "searchTeams": "Søk i team…",
+    "noTeams": "Fant ingen team.",
+    "noTeamsMembership": "Du er ikke medlem av noe team ennå.",
+    "removeTeam": "Fjern {name}",
+    "peopleLabel": "Personer",
+    "emailPlaceholder": "Legg til med e-post…",
+    "addPerson": "Legg til person",
+    "userNotFound": "Fant ingen bruker for {email}.",
+    "grantAdded": "Delt med {name}.",
+    "grantRemoved": "Tilgang fjernet.",
+    "removeGrant": "Fjern tilgang",
+    "noGrants": "Ikke delt med noen ennå.",
+    "sharedSaveFirst": "Lagre først for å dele med bestemte personer.",
+    "loading": "Laster…",
+    "capability": {
+      "use": "Bruk",
+      "edit": "Rediger",
+      "manage": "Administrer"
+    }
   }
 }

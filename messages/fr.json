@@ -339,7 +339,7 @@
     "toggleSidebar": "Basculer Barre Latérale",
     "toolMode": "Mode Outils",
     "lastMessageCopy": "Copier le Dernier Message",
-    "openChatPreferences": "Ouvrir Préférences Chat",
+    "openPersonalization": "Ouvrir les paramètres de personnalisation",
     "deleteThread": "Supprimer Chat",
     "openShortcutsPopup": "Ouvrir Popup Raccourcis",
     "toggleVoiceChat": "Basculer Chat Vocal",
@@ -673,6 +673,43 @@
     "title": "Studio",
     "agents": "Agents",
     "workflows": "Workflows",
-    "backToStudio": "Retour au Studio"
+    "backToStudio": "Retour au Studio",
+    "describeWorkflow": "Décrire un workflow",
+    "describeWorkflowHint": "Aucun workflow pour l'instant. Le moyen le plus rapide de commencer : décrivez ce que vous voulez dans le chat et A-SAFE AI rédigera le workflow pour vous.",
+    "describeWorkflowDraft": "Crée un workflow qui "
+  },
+  "Visibility": {
+    "label": "Visibilité",
+    "private": "Privé",
+    "privateDescription": "Vous seul pouvez le voir et l'utiliser.",
+    "shared": "Partagé",
+    "sharedDescription": "Seules les personnes que vous désignez peuvent y accéder.",
+    "team": "Équipe",
+    "teamDescription": "Les membres des équipes que vous choisissez peuvent l'utiliser.",
+    "company": "Entreprise",
+    "companyDescription": "Tout le monde dans l'organisation peut l'utiliser.",
+    "companyAdminOnly": "Le partage à l'échelle de l'entreprise est géré par les administrateurs.",
+    "teamsLabel": "Équipes",
+    "selectTeams": "Sélectionner des équipes…",
+    "teamsSelected": "{count} équipe{count, plural, one {} other {s}} sélectionnée{count, plural, one {} other {s}}",
+    "searchTeams": "Rechercher des équipes…",
+    "noTeams": "Aucune équipe trouvée.",
+    "noTeamsMembership": "Vous ne faites encore partie d'aucune équipe.",
+    "removeTeam": "Retirer {name}",
+    "peopleLabel": "Personnes",
+    "emailPlaceholder": "Ajouter par e-mail…",
+    "addPerson": "Ajouter une personne",
+    "userNotFound": "Aucun utilisateur trouvé pour {email}.",
+    "grantAdded": "Partagé avec {name}.",
+    "grantRemoved": "Accès retiré.",
+    "removeGrant": "Retirer l'accès",
+    "noGrants": "Pas encore partagé.",
+    "sharedSaveFirst": "Enregistrez d'abord pour partager avec des personnes précises.",
+    "loading": "Chargement…",
+    "capability": {
+      "use": "Utiliser",
+      "edit": "Modifier",
+      "manage": "Gérer"
+    }
   }
 }

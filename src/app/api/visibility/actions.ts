@@ -8,6 +8,8 @@ import {
   canAccess,
   grantAccess,
   listGrants,
+  resolveGranteeByEmail,
+  resolveGranteeNames,
   revokeAccess,
 } from "lib/visibility";
 
@@ -62,10 +64,39 @@ export async function revokeAccessAction(input: {
   await revokeAccess(input);
 }
 
+export interface GrantWithGrantee extends EntityGrant {
+  granteeName: string | null;
+  granteeEmail: string | null;
+}
+
+/**
+ * Grant list enriched with each grantee's display name + email, for the
+ * "shared" grant manager. Requires "manage" on the entity (owner / admin).
+ */
 export async function listGrantsAction(input: {
   entityType: GrantableEntityType;
   entityId: string;
-}): Promise<EntityGrant[]> {
+}): Promise<GrantWithGrantee[]> {
   await requireManage(input.entityType, input.entityId);
-  return listGrants(input.entityType, input.entityId);
+  const grants = await listGrants(input.entityType, input.entityId);
+  const names = await resolveGranteeNames(grants.map((g) => g.granteeUserId));
+  return grants.map((g) => ({
+    ...g,
+    granteeName: names[g.granteeUserId]?.name ?? null,
+    granteeEmail: names[g.granteeUserId]?.email ?? null,
+  }));
+}
+
+/**
+ * Resolve an email to a grantable user for the "shared" picker. Requires the
+ * caller to hold "manage" on the entity (so non-managers can't probe which
+ * emails map to accounts). Returns null when no user owns that email.
+ */
+export async function resolveGranteeByEmailAction(input: {
+  entityType: GrantableEntityType;
+  entityId: string;
+  email: string;
+}): Promise<{ id: string; name: string; email: string } | null> {
+  await requireManage(input.entityType, input.entityId);
+  return resolveGranteeByEmail(input.email);
 }

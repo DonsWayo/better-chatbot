@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  Shortcuts,
-  isShortcutEvent,
-  getShortcutKeyList,
   type Shortcut,
+  Shortcuts,
+  getShortcutKeyList,
+  isShortcutEvent,
 } from "./keyboard-shortcuts";
 
 const makeKeyboardEvent = (overrides: Partial<KeyboardEvent>): KeyboardEvent =>
@@ -33,8 +33,14 @@ describe("Shortcuts", () => {
     expect(Shortcuts.deleteThread.shortcut.shift).toBe(true);
   });
 
-  it("has 9 shortcuts defined", () => {
-    expect(Object.keys(Shortcuts)).toHaveLength(9);
+  it("has 10 shortcuts defined", () => {
+    expect(Object.keys(Shortcuts)).toHaveLength(10);
+  });
+
+  it("has openPersonalization shortcut (Cmd+Shift+L, ex Chat Preferences)", () => {
+    expect(Shortcuts.openPersonalization.shortcut.command).toBe(true);
+    expect(Shortcuts.openPersonalization.shortcut.shift).toBe(true);
+    expect(Shortcuts.openPersonalization.shortcut.key).toBe("L");
   });
 
   it("all shortcuts have description", () => {
@@ -66,13 +72,21 @@ describe("isShortcutEvent", () => {
 
   it("returns false when shift is required but not held", () => {
     const event = makeKeyboardEvent({ metaKey: true, key: "o" });
-    const shortcut: Shortcut = { shortcut: { command: true, shift: true, key: "O" } };
+    const shortcut: Shortcut = {
+      shortcut: { command: true, shift: true, key: "O" },
+    };
     expect(isShortcutEvent(event, shortcut)).toBe(false);
   });
 
   it("returns true when both command and shift are held", () => {
-    const event = makeKeyboardEvent({ metaKey: true, shiftKey: true, key: "o" });
-    const shortcut: Shortcut = { shortcut: { command: true, shift: true, key: "O" } };
+    const event = makeKeyboardEvent({
+      metaKey: true,
+      shiftKey: true,
+      key: "o",
+    });
+    const shortcut: Shortcut = {
+      shortcut: { command: true, shift: true, key: "O" },
+    };
     expect(isShortcutEvent(event, shortcut)).toBe(true);
   });
 
@@ -95,7 +109,11 @@ describe("isShortcutEvent", () => {
   });
 
   it("openNewChat triggers on Cmd+Shift+O", () => {
-    const event = makeKeyboardEvent({ metaKey: true, shiftKey: true, key: "o" });
+    const event = makeKeyboardEvent({
+      metaKey: true,
+      shiftKey: true,
+      key: "o",
+    });
     expect(isShortcutEvent(event, Shortcuts.openNewChat)).toBe(true);
   });
 

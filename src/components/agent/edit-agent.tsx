@@ -1,6 +1,12 @@
 "use client";
 
-import { ShareableActions, Visibility } from "@/components/shareable-actions";
+import { ShareableActions } from "@/components/shareable-actions";
+import {
+  VisibilityField,
+  type VisibilityValue,
+  fromLegacyVisibilityColumn,
+  toLegacyVisibilityColumn,
+} from "@/components/visibility";
 import { useMutateAgents } from "@/hooks/queries/use-agents";
 import { useBookmark } from "@/hooks/queries/use-bookmark";
 import { useMcpList } from "@/hooks/queries/use-mcp-list";
@@ -18,7 +24,15 @@ import { DefaultToolName } from "lib/ai/tools";
 import { BACKGROUND_COLORS } from "lib/const";
 import { notify } from "lib/notify";
 import { cn, fetcher, objectFlow } from "lib/utils";
-import { ChevronDownIcon, Loader, WandSparklesIcon } from "lucide-react";
+import {
+  Building2,
+  ChevronDownIcon,
+  Loader,
+  Lock,
+  UserPlus,
+  Users as UsersIcon,
+  WandSparklesIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -33,11 +47,13 @@ import {
 } from "ui/dropdown-menu";
 import { Input } from "ui/input";
 import { Label } from "ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 import { ScrollArea } from "ui/scroll-area";
 import { handleErrorWithToast } from "ui/shared-toast";
 import { Skeleton } from "ui/skeleton";
 import { TextShimmer } from "ui/text-shimmer";
 import { Textarea } from "ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { AgentIconPicker } from "./agent-icon-picker";
 import { AgentToolSelector } from "./agent-tool-selector";
 import { GenerateAgentDialog } from "./generate-agent-dialog";
@@ -195,27 +211,42 @@ export default function EditAgent({
     }
   }, [agent, userId, mutateAgents, router, initialAgent, t]);
 
-  const updateVisibility = useCallback(
-    async (visibility: Visibility) => {
+  // Modern four-level visibility for the picker, seeded from the legacy column
+  // + teamIds (unified visibility model — docs/design/visibility-model.md).
+  const visibilityValue = useMemo<VisibilityValue>(
+    () => ({
+      visibility: fromLegacyVisibilityColumn(agent.visibility, agent.teamIds),
+      teamIds: agent.teamIds ?? [],
+    }),
+    [agent.visibility, agent.teamIds],
+  );
+
+  const updateAgentVisibility = useCallback(
+    async (next: VisibilityValue) => {
+      // Map the four-level value onto the legacy enum the column still stores;
+      // teamIds carries the real "team"-level access signal.
+      const legacy = toLegacyVisibilityColumn(next.visibility);
       if (initialAgent?.id) {
         safe(() => setIsVisibilityChangeLoading(true))
-          .map(() => AgentUpdateSchema.parse({ visibility }))
-          .map(JSON.stringify)
-          .map(async (body) =>
-            fetcher(`/api/agent/${initialAgent.id}`, {
-              method: "PUT",
-              body,
+          .map(() =>
+            AgentUpdateSchema.parse({
+              visibility: legacy,
+              teamIds: next.teamIds,
             }),
           )
+          .map(JSON.stringify)
+          .map(async (body) =>
+            fetcher(`/api/agent/${initialAgent.id}`, { method: "PUT", body }),
+          )
           .ifOk(() => {
-            setAgent({ visibility });
-            mutateAgents({ id: initialAgent.id, visibility });
+            setAgent({ visibility: legacy, teamIds: next.teamIds });
+            mutateAgents({ id: initialAgent.id, visibility: legacy });
             toast.success(t("Agent.visibilityUpdated"));
           })
           .ifFail(handleErrorWithToast)
           .watch(() => setIsVisibilityChangeLoading(false));
       } else {
-        setAgent({ visibility });
+        setAgent({ visibility: legacy, teamIds: next.teamIds });
       }
     },
     [initialAgent?.id, mutateAgents, setAgent, setIsVisibilityChangeLoading, t],
@@ -376,12 +407,23 @@ export default function EditAgent({
 
             {initialAgent && (
               <div className="flex items-center gap-2">
+                {isOwner && (
+                  <AgentVisibilityControl
+                    agentId={initialAgent.id}
+                    value={visibilityValue}
+                    onChange={updateAgentVisibility}
+                    saving={isVisibilityChangeLoading}
+                    disabled={isLoading || !hasEditAccess}
+                  />
+                )}
                 <ShareableActions
                   type="agent"
-                  visibility={agent.visibility || "private"}
+                  // Owners manage visibility via the four-level picker above;
+                  // ShareableActions keeps the bookmark + read-only badge for
+                  // non-owners.
+                  visibility={isOwner ? undefined : agent.visibility}
                   isBookmarked={agent?.isBookmarked || false}
                   isOwner={isOwner}
-                  onVisibilityChange={updateVisibility}
                   isVisibilityChangeLoading={isVisibilityChangeLoading}
                   disabled={isLoading}
                   onBookmarkToggle={handleBookmarkToggle}
@@ -564,5 +606,67 @@ export default function EditAgent({
         onToolsGenerated={assignToolsByNames}
       />
     </ScrollArea>
+  );
+}
+
+const AGENT_VISIBILITY_ICON = {
+  private: Lock,
+  shared: UserPlus,
+  team: UsersIcon,
+  company: Building2,
+} as const;
+
+/**
+ * Popover trigger that opens the unified VisibilityPicker for an agent. The
+ * picker emits the four-level value; the editor maps it onto the legacy column
+ * + teamIds on change.
+ */
+function AgentVisibilityControl({
+  agentId,
+  value,
+  onChange,
+  saving,
+  disabled,
+}: {
+  agentId: string;
+  value: VisibilityValue;
+  onChange: (value: VisibilityValue) => void;
+  saving: boolean;
+  disabled: boolean;
+}) {
+  const t = useTranslations();
+  const Icon = AGENT_VISIBILITY_ICON[value.visibility];
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={saving}
+              className="size-8 text-muted-foreground hover:text-foreground data-[state=open]:bg-input"
+              data-testid="agent-visibility-button"
+            >
+              {saving ? (
+                <Loader className="size-4 animate-spin" />
+              ) : (
+                <Icon className="size-4" />
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{t("Visibility.label")}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-80 rounded-2xl p-3">
+        <p className="mb-2 px-1 text-sm font-medium">{t("Visibility.label")}</p>
+        <VisibilityField
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          entity={{ type: "agent", id: agentId }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

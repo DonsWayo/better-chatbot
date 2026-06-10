@@ -9,8 +9,10 @@ import { useArchives } from "@/hooks/queries/use-archives";
 import { Button } from "ui/button";
 import { Skeleton } from "ui/skeleton";
 import { ArchiveDialog } from "../archive-dialog";
+import { ExportsManagementContent } from "../chat-preferences-content";
 
-// Settings › Data controls — GDPR export + Archives. This replaces the old
+// Settings › Data controls — GDPR export, My Exports (re-homed from the
+// retired Chat Preferences popup) + Archives. This replaces the old
 // admin-only sidebar Archive group; /archive/[id] keeps working.
 export function DataControls() {
   const t = useTranslations("Settings");
@@ -85,6 +87,11 @@ export function DataControls() {
             </ul>
           )}
         </div>
+      </section>
+
+      {/* My Exports — shared chat links (from the retired popup's third pane) */}
+      <section className="rounded-2xl border bg-card p-4 shadow-xs">
+        <ExportsManagementContent />
       </section>
 
       <ArchiveDialog

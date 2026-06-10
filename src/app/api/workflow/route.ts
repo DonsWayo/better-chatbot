@@ -64,6 +64,10 @@ export async function POST(request: Request) {
       id,
       isPublished,
       visibility,
+      // Unified visibility model: persist the real team-share signal. The
+      // legacy `visibility` enum is mapped on the client via
+      // toLegacyVisibilityColumn (company → "public", else "private").
+      ...(teamIds !== undefined ? { teamIds } : {}),
       icon,
       userId: session.user.id,
     },

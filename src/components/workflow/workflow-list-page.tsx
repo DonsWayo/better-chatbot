@@ -1,37 +1,43 @@
 "use client";
+import { appStore } from "@/app/store";
 import { EditWorkflowPopup } from "@/components/workflow/edit-workflow-popup";
 import { authClient } from "auth/client";
 import { canCreateWorkflow } from "lib/auth/client-permissions";
 
-import { ArrowUpRight, ChevronDown, MousePointer2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  MousePointer2,
+  WandSparkles,
+} from "lucide-react";
 
-import { Card, CardDescription, CardHeader, CardTitle } from "ui/card";
-import { Button } from "ui/button";
-import useSWR, { mutate } from "swr";
-import { fetcher } from "lib/utils";
-import { Skeleton } from "ui/skeleton";
-import { BackgroundPaths } from "ui/background-paths";
 import { ShareableCard } from "@/components/shareable-card";
+import { WorkflowGreeting } from "@/components/workflow/workflow-greeting";
 import {
   DBEdge,
   DBNode,
   DBWorkflow,
   WorkflowSummary,
 } from "app-types/workflow";
+import { BabyResearch, GetWeather } from "lib/ai/workflow/examples";
+import { notify } from "lib/notify";
+import { fetcher } from "lib/utils";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import useSWR, { mutate } from "swr";
+import { BackgroundPaths } from "ui/background-paths";
+import { Button } from "ui/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "ui/card";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "ui/dropdown-menu";
-import { BabyResearch, GetWeather } from "lib/ai/workflow/examples";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "ui/dialog";
-import { WorkflowGreeting } from "@/components/workflow/workflow-greeting";
-import { notify } from "lib/notify";
-import { useState } from "react";
+import { Skeleton } from "ui/skeleton";
 
 const createWithExample = async (exampleWorkflow: {
   workflow: Partial<DBWorkflow>;
@@ -210,6 +216,29 @@ export default function WorkflowListPage({
             </h2>
             <div className="flex-1 h-px bg-border" />
           </div>
+
+          {/* NL-generation entry: with no workflows yet, the primary path is
+              describing one in chat (docs/design/information-architecture.md
+              §4 — Studio › Workflows empty-state CTA). */}
+          {canCreate && !isLoading && myWorkflows.length === 0 && (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-card/50 p-8 text-center">
+              <p className="text-sm text-muted-foreground max-w-md">
+                {t("Studio.describeWorkflowHint")}
+              </p>
+              <Button
+                onClick={() => {
+                  appStore.setState({
+                    pendingChatDraft: t("Studio.describeWorkflowDraft"),
+                  });
+                  router.push("/");
+                }}
+                data-testid="describe-workflow-cta"
+              >
+                <WandSparkles className="size-4" />
+                {t("Studio.describeWorkflow")}
+              </Button>
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {canCreate && (

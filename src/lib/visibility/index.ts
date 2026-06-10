@@ -328,6 +328,47 @@ export async function revokeAccess(input: {
     );
 }
 
+/**
+ * Resolve a user by email for the "shared" grant manager UI. Returns the
+ * minimal identity the picker needs (id + display name) or null when no user
+ * owns that email. Case-insensitive on the local convention that emails are
+ * stored lower-cased; we normalize defensively.
+ */
+export async function resolveGranteeByEmail(
+  email: string,
+): Promise<{ id: string; name: string; email: string } | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  const [row] = await db
+    .select({
+      id: UserTable.id,
+      name: UserTable.name,
+      email: UserTable.email,
+    })
+    .from(UserTable)
+    .where(eq(UserTable.email, normalized))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Resolve the display names for a set of grantee user ids (grant list UI). */
+export async function resolveGranteeNames(
+  userIds: string[],
+): Promise<Record<string, { name: string; email: string }>> {
+  if (userIds.length === 0) return {};
+  const rows = await db
+    .select({
+      id: UserTable.id,
+      name: UserTable.name,
+      email: UserTable.email,
+    })
+    .from(UserTable)
+    .where(inArray(UserTable.id, userIds));
+  return Object.fromEntries(
+    rows.map((r) => [r.id, { name: r.name, email: r.email }]),
+  );
+}
+
 /** Every grant on an entity (for the sharing UI's grant list). */
 export async function listGrants(
   entityType: GrantableEntityType,
