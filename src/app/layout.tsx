@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Bricolage_Grotesque,
+  Geist_Mono,
+  Schibsted_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import {
@@ -9,8 +13,14 @@ import {
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "ui/sonner";
-const geistSans = Geist({
+// Design language ("Calm Industrial", docs/design/ui-language.md):
+// Schibsted Grotesk = body/UI; Bricolage Grotesque = display moments.
+const appSans = Schibsted_Grotesk({
   variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+const appDisplay = Bricolage_Grotesque({
+  variable: "--font-display-face",
   subsets: ["latin"],
 });
 const geistMono = Geist_Mono({
@@ -34,7 +44,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${appSans.variable} ${appDisplay.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"
