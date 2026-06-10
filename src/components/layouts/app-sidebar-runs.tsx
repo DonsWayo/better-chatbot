@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { MessageCircle, Terminal, Workflow, X } from "lucide-react";
+import { Inbox, MessageCircle, Terminal, Workflow, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
@@ -99,6 +99,14 @@ export function AppSidebarRuns() {
       latest?.some((run) => NON_TERMINAL.includes(run.status)) ? 5000 : 30000,
   });
 
+  // Pending-approvals badge for the Triage inbox link (#26).
+  const { data: approvalCount } = useSWR<{ pending: number }>(
+    "/api/agent-platform/approvals/count",
+    fetcher,
+    { fallbackData: { pending: 0 }, refreshInterval: 30000 },
+  );
+  const pendingApprovals = approvalCount?.pending ?? 0;
+
   const handleCancel = async (id: string) => {
     // Optimistic flip to cancelled, then reconcile with the server.
     mutate(
@@ -126,10 +134,28 @@ export function AppSidebarRuns() {
       <SidebarGroupContent className="group-data-[collapsible=icon]:hidden group/runs">
         <SidebarMenu data-testid="runs-sidebar-menu">
           <SidebarMenuItem>
-            <SidebarGroupLabel>
+            <SidebarGroupLabel className="justify-between pr-1">
               <h4 className="text-xs text-muted-foreground group-hover/runs:text-foreground transition-colors">
                 {t("title")}
               </h4>
+              <Link
+                href="/triage"
+                className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title={t("triage")}
+                aria-label={t("triage")}
+                data-testid="sidebar-triage-link"
+              >
+                <Inbox className="size-3.5" />
+                {pendingApprovals > 0 && (
+                  <span
+                    className="rounded-full px-1.5 text-[10px] font-semibold tabular-nums text-black"
+                    style={{ backgroundColor: "#FFC72C" }}
+                    data-testid="sidebar-triage-count"
+                  >
+                    {pendingApprovals}
+                  </span>
+                )}
+              </Link>
             </SidebarGroupLabel>
           </SidebarMenuItem>
           {runs.slice(0, DISPLAY_LIMIT).map((run) => {
@@ -147,6 +173,14 @@ export function AppSidebarRuns() {
                     <span className="truncate min-w-0 text-xs">
                       {t(STATUS_LABEL_KEY[run.status])}
                     </span>
+                    {run.status === "awaiting_approval" && (
+                      <span
+                        className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[9px] font-medium text-amber-600 dark:text-amber-400"
+                        data-testid="needs-approval-pill"
+                      >
+                        {t("needsApproval")}
+                      </span>
+                    )}
                     <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
                       <span className="truncate">
                         {formatDistanceToNow(new Date(run.createdAt), {

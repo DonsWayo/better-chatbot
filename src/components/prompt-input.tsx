@@ -18,6 +18,8 @@ import {
   XIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "ui/button";
 import {
   Sheet,
   SheetContent,
@@ -25,8 +27,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "ui/sheet";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "ui/button";
 import { useShallow } from "zustand/shallow";
 import { SelectModel } from "./select-model";
 import { ToolModeDropdown } from "./tool-mode-dropdown";
@@ -59,13 +59,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { DefaultToolIcon } from "./default-tool-icon";
 import { ToolSelectDropdown } from "./tool-select-dropdown";
 
+import { ScheduleRoutineDialog } from "@/components/runs/schedule-routine-dialog";
 import { useChatModels } from "@/hooks/queries/use-chat-models";
 import { isFilePartSupported, isIngestSupported } from "@/lib/ai/file-support";
-import { RagCollectionPicker } from "./rag-collection-picker";
 import { FileUIPart, TextUIPart } from "ai";
 import { AgentSummary } from "app-types/agent";
 import { EMOJI_DATA } from "lib/const";
 import { toast } from "sonner";
+import { RagCollectionPicker } from "./rag-collection-picker";
 
 interface PromptInputProps {
   placeholder?: string;
@@ -601,6 +602,9 @@ export default function PromptInput({
                     </div>
                   </SheetContent>
                 </Sheet>
+
+                {/* "/schedule" — run a published workflow as a routine (#26) */}
+                {!isBasicUser && <ScheduleRoutineDialog />}
 
                 {!toolDisabled &&
                   !isBasicUser &&

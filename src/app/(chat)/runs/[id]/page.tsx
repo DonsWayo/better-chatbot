@@ -4,9 +4,12 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { ApprovalDecisionButtons } from "@/components/runs/approval-decision-buttons";
 import { RunCopyButton } from "@/components/runs/run-copy-button";
 import { RunRefreshPoller } from "@/components/runs/run-refresh-poller";
 import { getSession } from "auth/server";
+import type { ApprovalRequestedRole } from "lib/agent-platform/approvals";
+import { canDecide, getApprovalForSession } from "lib/agent-platform/approvals";
 import type {
   AgentSessionStatus,
   AgentStepStatus,
@@ -102,6 +105,31 @@ export default async function RunPage({
   const t = await getTranslations("Runs");
   const isNonTerminal = NON_TERMINAL.includes(session.status);
 
+  // Agent Platform #26 — when this run is parked on a pending approval the
+  // current user may decide, surface Approve/Reject inline (same client
+  // component as the Triage inbox).
+  let pendingApprovalId: string | null = null;
+  let pendingApprovalMessage: string | null = null;
+  if (session.status === "awaiting_approval") {
+    const request = await getApprovalForSession(session.id);
+    if (request?.status === "pending") {
+      const allowed = await canDecide(
+        authSession.user.id,
+        getIsUserAdmin(authSession.user),
+        {
+          requestedRole: request.requestedRole as ApprovalRequestedRole,
+          sessionUserId: session.userId,
+          sessionTeamId: session.teamId,
+        },
+      );
+      if (allowed) {
+        pendingApprovalId = request.id;
+        const payload = request.payload as { message?: unknown } | null;
+        pendingApprovalMessage =
+          typeof payload?.message === "string" ? payload.message : null;
+      }
+    }
+  }
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       {isNonTerminal && <RunRefreshPoller runId={session.id} />}
@@ -113,6 +141,27 @@ export default async function RunPage({
         <ArrowLeft className="size-3.5" />
         {t("back")}
       </Link>
+
+      {/* Pending approval — decidable by the current user */}
+      {pendingApprovalId && (
+        <div
+          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          data-testid="run-approval-panel"
+        >
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+            {t("needsApproval")}
+          </p>
+          {pendingApprovalMessage && (
+            <p className="mt-2 rounded-xl bg-background/60 p-3 text-sm">
+              {pendingApprovalMessage}
+            </p>
+          )}
+          <ApprovalDecisionButtons
+            requestId={pendingApprovalId}
+            className="mt-3"
+          />
+        </div>
+      )}
 
       {/* Header */}
       <div className="rounded-2xl border bg-card p-6">
