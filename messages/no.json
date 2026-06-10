@@ -779,6 +779,18 @@
       "cannotUpdateOwnRole": "Du kan ikke oppdatere din egen rolle",
       "roleUpdatedSuccessfullyTo": "Brukerrolle oppdatert til {role}"
     },
+    "RolePacks": {
+      "title": "Rollepakker",
+      "subtitle": "Installerbart startinnhold for en avdeling: ferdige agenter, en arbeidsflyt og en planlagt rutine.",
+      "install": "Installer pakke",
+      "installing": "Installerer…",
+      "installed": "Installert",
+      "partiallyInstalled": "{installed}/{total} installert",
+      "installResult": "{created} elementer opprettet, {skipped} hoppet over",
+      "installFailed": "Installasjonen mislyktes. Prøv igjen.",
+      "nothingToInstall": "Alt innholdet i denne pakken er allerede installert.",
+      "disabledNote": "Rutinen installeres deaktivert — aktiver den fra Rutiner når du er klar."
+    },
     "FeatureFlags": {
       "title": "Funksjonsflagg",
       "flagName": "Flagg",

@@ -840,6 +840,18 @@
       "scopeOrg": "Org-wide",
       "scopeTeam": "Team"
     },
+    "RolePacks": {
+      "title": "Role packs",
+      "subtitle": "Installable starter content for a department: ready-made agents, a workflow and a scheduled routine.",
+      "install": "Install pack",
+      "installing": "Installing…",
+      "installed": "Installed",
+      "partiallyInstalled": "{installed}/{total} installed",
+      "installResult": "{created} items created, {skipped} skipped",
+      "installFailed": "Install failed. Please try again.",
+      "nothingToInstall": "Everything in this pack is already installed.",
+      "disabledNote": "The routine installs disabled — enable it from Routines when ready."
+    },
     "FeatureFlags": {
       "title": "Feature Flags",
       "flagName": "Flag",

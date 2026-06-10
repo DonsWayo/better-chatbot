@@ -532,6 +532,18 @@
     }
   },
   "Admin": {
+    "RolePacks": {
+      "title": "角色包",
+      "subtitle": "面向部门的可安装入门内容:现成的智能体、工作流和定时例程。",
+      "install": "安装包",
+      "installing": "安装中…",
+      "installed": "已安装",
+      "partiallyInstalled": "已安装 {installed}/{total}",
+      "installResult": "已创建 {created} 项,跳过 {skipped} 项",
+      "installFailed": "安装失败,请重试。",
+      "nothingToInstall": "此包中的所有内容均已安装。",
+      "disabledNote": "例程安装后处于禁用状态——准备就绪后可在例程中启用。"
+    },
     "FeatureFlags": {
       "title": "功能标志",
       "flagName": "标志",

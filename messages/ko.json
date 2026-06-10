@@ -545,6 +545,18 @@
     }
   },
   "Admin": {
+    "RolePacks": {
+      "title": "역할 팩",
+      "subtitle": "부서를 위한 설치형 스타터 콘텐츠: 에이전트, 워크플로우, 예약된 루틴.",
+      "install": "팩 설치",
+      "installing": "설치 중…",
+      "installed": "설치됨",
+      "partiallyInstalled": "{installed}/{total} 설치됨",
+      "installResult": "{created}개 생성, {skipped}개 건너뜀",
+      "installFailed": "설치에 실패했습니다. 다시 시도해 주세요.",
+      "nothingToInstall": "이 팩의 모든 항목이 이미 설치되어 있습니다.",
+      "disabledNote": "루틴은 비활성 상태로 설치됩니다. 준비되면 루틴에서 활성화하세요."
+    },
     "FeatureFlags": {
       "title": "기능 플래그",
       "flagName": "플래그",

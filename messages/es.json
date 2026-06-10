@@ -840,6 +840,18 @@
       "scopeOrg": "Toda la organización",
       "scopeTeam": "Equipo"
     },
+    "RolePacks": {
+      "title": "Paquetes de rol",
+      "subtitle": "Contenido inicial instalable para un departamento: agentes listos, un flujo de trabajo y una rutina programada.",
+      "install": "Instalar paquete",
+      "installing": "Instalando…",
+      "installed": "Instalado",
+      "partiallyInstalled": "{installed}/{total} instalados",
+      "installResult": "{created} elementos creados, {skipped} omitidos",
+      "installFailed": "Error al instalar. Inténtalo de nuevo.",
+      "nothingToInstall": "Todo el contenido de este paquete ya está instalado.",
+      "disabledNote": "La rutina se instala desactivada — actívala desde Rutinas cuando esté lista."
+    },
     "FeatureFlags": {
       "title": "Indicadores de función",
       "flagName": "Indicador",

@@ -530,6 +530,18 @@
     }
   },
   "Admin": {
+    "RolePacks": {
+      "title": "ロールパック",
+      "subtitle": "部門向けのインストール可能なスターターコンテンツ:エージェント、ワークフロー、スケジュール済みルーチン。",
+      "install": "パックをインストール",
+      "installing": "インストール中…",
+      "installed": "インストール済み",
+      "partiallyInstalled": "{installed}/{total} インストール済み",
+      "installResult": "{created} 件作成、{skipped} 件スキップ",
+      "installFailed": "インストールに失敗しました。もう一度お試しください。",
+      "nothingToInstall": "このパックの内容はすべてインストール済みです。",
+      "disabledNote": "ルーチンは無効状態でインストールされます。準備ができたらルーチンから有効にしてください。"
+    },
     "FeatureFlags": {
       "title": "機能フラグ",
       "flagName": "フラグ",

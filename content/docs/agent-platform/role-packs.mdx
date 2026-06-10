@@ -1,0 +1,61 @@
+---
+title: Role packs (installable starter content)
+description: Department starter kits — ready-made agents, a published workflow and a disabled hero routine, installed in one click from the admin console.
+---
+
+Role packs give a department a working starting point instead of an empty platform.
+Each pack bundles three agents with production-quality system prompts, one published
+workflow, and one "hero routine" (a `workflow_schedule`) that demonstrates what a
+recurring automation looks like. An admin installs a pack from **Admin console →
+Role packs**; everything arrives company-visible and ready to use.
+
+Definitions are pure data in `src/lib/role-packs/packs.ts`; the installer is
+`src/lib/role-packs/install.ts`; the admin page is `/admin/role-packs`.
+
+## The packs
+
+### Sales
+
+| Item | What it does |
+|---|---|
+| **Proposal Drafter** (agent) | Drafts quotes and proposals for barrier installations. Asks for site specifics (areas, vehicles, environment) before writing; never invents prices. |
+| **Competitor Brief** (agent) | Structured competitor comparison briefs: snapshot, product table, honest strengths, where A-SAFE wins, objection handling. Marks unverified claims. |
+| **RFP Answerer** (agent) | Answers RFP and tender questionnaires from company knowledge, citing the source document for every claim and flagging gaps as INFORMATION REQUIRED. |
+| **lead-to-qualified-brief** (workflow) | Lead → qualified brief: lead notes in, structured qualification brief out (fit rating, risk drivers, missing info, next action). Published. |
+| **Pipeline digest** (routine) | Weekly, Monday 08:00 Europe/London, on `lead-to-qualified-brief`. **Installs disabled.** |
+
+### Manufacturing Ops
+
+| Item | What it does |
+|---|---|
+| **Shift Handover Summarizer** (agent) | Turns raw end-of-shift notes into a structured handover: safety first, then open actions, production, equipment, quality. |
+| **Safety Incident Drafter** (agent) | Drafts near-miss and incident reports in a strictly factual, no-blame tone; lists missing information for the investigator. |
+| **SOP Explainer** (agent) | Explains standard procedures step by step, citing the knowledge collection and section each instruction comes from. Never improvises a procedure. |
+| **production-exceptions-report** (workflow) | Daily production notes → exceptions report: only deviations from plan, grouped by safety / production / equipment / quality / materials / decisions needed. Published. |
+| **Daily exceptions report** (routine) | Daily, 06:30 Europe/London, on `production-exceptions-report`. **Installs disabled.** |
+
+## What installing does
+
+- All items are created **owned by the installing admin** with visibility
+  `company`, so the whole organisation can use them immediately.
+- Workflows are installed **published**, with a simple INPUT → LLM → OUTPUT graph
+  you can extend in the builder afterwards.
+- Install is **idempotent per owner**: an item whose name already exists for that
+  admin is skipped, so re-running after a partial install only fills in the missing
+  pieces. The result toast reports created versus skipped counts.
+
+## Schedules install disabled
+
+A pack install never starts running anything on its own. The hero routine is
+created with a real cron expression and a standing `inputTemplate`, then
+immediately disabled. To turn it on:
+
+1. Open the routine (it belongs to the installing admin; see
+   [Routines](/docs/agent-platform/routines) for where schedules live).
+2. Replace the standing input template — it ships with a placeholder instruction
+   that says exactly that — with real notes or a data source.
+3. Enable the schedule (`setScheduleEnabled` / the routines UI toggle). Re-enabling
+   recomputes `nextRunAt` from now, so a stale schedule never fires immediately.
+
+The platform kill switch and the per-routine `enabled` flag both gate execution,
+as with any other routine.

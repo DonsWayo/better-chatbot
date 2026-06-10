@@ -530,6 +530,18 @@
     }
   },
   "Admin": {
+    "RolePacks": {
+      "title": "Packs de rôle",
+      "subtitle": "Contenu de démarrage installable pour un département : agents prêts à l'emploi, un workflow et une routine planifiée.",
+      "install": "Installer le pack",
+      "installing": "Installation…",
+      "installed": "Installé",
+      "partiallyInstalled": "{installed}/{total} installés",
+      "installResult": "{created} éléments créés, {skipped} ignorés",
+      "installFailed": "Échec de l'installation. Veuillez réessayer.",
+      "nothingToInstall": "Tout le contenu de ce pack est déjà installé.",
+      "disabledNote": "La routine est installée désactivée — activez-la depuis Routines quand vous êtes prêt."
+    },
     "FeatureFlags": {
       "title": "Indicateurs de fonctionnalité",
       "flagName": "Indicateur",

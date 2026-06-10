@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookOpen,
   LayoutDashboard,
+  Package,
   Plug2,
   ScrollText,
   Shield,
@@ -53,6 +54,7 @@ export function AdminSidebar() {
             !pathname.startsWith("/admin/usage") &&
             !pathname.startsWith("/admin/mcp") &&
             !pathname.startsWith("/admin/knowledge") &&
+            !pathname.startsWith("/admin/role-packs") &&
             !pathname.startsWith("/admin/quality") &&
             !pathname.startsWith("/admin/guardrails") &&
             !pathname.startsWith("/admin/feature-flags") &&
@@ -92,6 +94,13 @@ export function AdminSidebar() {
         url: "/admin/knowledge",
         icon: BookOpen,
         isActive: pathname.startsWith("/admin/knowledge"),
+      },
+      {
+        id: "role-packs",
+        title: t("RolePacks.title"),
+        url: "/admin/role-packs",
+        icon: Package,
+        isActive: pathname.startsWith("/admin/role-packs"),
       },
       {
         id: "quality",
