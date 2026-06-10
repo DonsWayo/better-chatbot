@@ -36,8 +36,11 @@ The app adds native niceties on top:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `ASAFE_APP_URL` | No | `http://localhost:3000` | URL of the Next.js web app to load. Point at your deployed environment. |
+| `ASAFE_APP_URL` | No | `http://localhost:3000` | URL of the Next.js web app to load. Point at your deployed environment. Also the base for the opencode gateway endpoint (see below). |
 | `ASAFE_UPDATE_URL` | No | *(unset)* | Base URL of an electron-updater–compatible update feed. When unset, auto-update is disabled (safe for local dev). |
+| `ASAFE_DESKTOP_OPENCODE` | No | *(unset — disabled)* | Set to `1` to opt in to the governed coding (opencode) surface. Default deny per ADR-0010. |
+| `ASAFE_OPENCODE_BIN` | No | *(unset — PATH lookup)* | Absolute path to the `opencode` binary. When unset, `opencode` is resolved from `PATH`. |
+| `ASAFE_SESSION_TOKEN` | No | *(unset)* | The user's asafe session token, passed through to the spawned opencode server so its gateway calls authenticate as the user. |
 
 ---
 
@@ -122,6 +125,62 @@ Decision recorded in [docs/adr/0010-desktop-electron.md](../docs/adr/0010-deskto
 5. Build consent dialog (native `dialog.showMessageBox`) before each tool execution.
 6. Route tool results back to the web app chat session via the existing MCP client.
 7. Code-signing + notarization per OS (IT must provide certs, see ADR-0010 open inputs).
+
+---
+
+## Governed coding (opencode)
+
+> **Status:** Lifecycle management implemented (`src/opencode-manager.ts`), **disabled by default** (ADR-0010). No chat/coding UI yet. The web-side gateway endpoint does not exist yet — the contract is documented below and in the manager's header comment.
+
+Per the next-gen platform blueprint, the desktop embeds the open-source [opencode](https://opencode.ai) server (`@opencode-ai/sdk`) as a **governed coding surface**: engineers get a local coding agent on their own machine, but its **model calls route through the asafe OpenRouter gateway** — so coding sessions inherit the same model entitlements, budgets, and audit trail as chat. The desktop never holds provider API keys.
+
+### How it works
+
+```
+Electron main process (src/opencode-manager.ts)
+  └─ gate check: ASAFE_DESKTOP_OPENCODE=1  AND  policy.allowSpawn   ← default deny (ADR-0010)
+  └─ locates `opencode` (ASAFE_OPENCODE_BIN, else PATH) — "unavailable" if absent
+  └─ spawns `opencode serve --port 0 --hostname 127.0.0.1`
+       env OPENCODE_CONFIG_CONTENT = scoped provider config (never touches user config):
+         provider.asafe → @ai-sdk/openai-compatible
+           baseURL = ${ASAFE_APP_URL}/api/gateway/openrouter
+           apiKey  = {env:ASAFE_SESSION_TOKEN}
+  └─ parses the chosen port from stdout → endpoint http://127.0.0.1:<port>
+  └─ crash restart cap (3), SIGTERM on app quit (SIGKILL after 5s)
+
+renderer (web UI)
+  └─ window.asafeDesktop.opencode.status() / .start() / .stop()
+       └─ ipcRenderer.invoke("opencode:…") → ipcMain.handle in main.ts
+```
+
+Lifecycle states: `stopped` → `starting` → `running`, plus `unavailable` (gate closed at probe time / binary missing — with a helpful message, never a throw) and `error` (spawn/startup failure, or restart cap exhausted).
+
+### Gateway contract (web side — to be implemented)
+
+| Aspect | Contract |
+|---|---|
+| Endpoint | `${ASAFE_APP_URL}/api/gateway/openrouter` |
+| Protocol | OpenAI-compatible chat completions (opencode's provider plugin is `@ai-sdk/openai-compatible`, i.e. `POST <baseURL>/chat/completions`, streaming SSE) |
+| Auth | `Authorization: Bearer <ASAFE_SESSION_TOKEN>` — the user's web session token, **not** a provider key. The gateway validates the session. |
+| Models | Resolved server-side through the layered model entitlements (org base + team overrides). The gateway rejects non-entitled models; the desktop ships an empty model map until the gateway exposes a model listing. |
+| Budgets/audit | Usage metered against the same org/team budgets as chat (ADR-0003); audit events carry `originSurface: "opencode"`. |
+
+### Enabling it (dev only, until the signed policy plane ships)
+
+```bash
+# In desktop/:
+ASAFE_DESKTOP_OPENCODE=1 \
+ASAFE_OPENCODE_BIN=/usr/local/bin/opencode \   # optional; PATH lookup otherwise
+ASAFE_APP_URL=http://localhost:3000 \
+pnpm dev
+```
+
+### Security posture
+
+- **Disabled by default** — without `ASAFE_DESKTOP_OPENCODE=1` the manager is inert: nothing is probed, spawned, or written. Mirrors the mcp-bridge sign-off convention (ADR-0010).
+- The env opt-in is **interim**: a signed, server-distributed policy plane will replace it before GA (`defineOpencodePolicy()` in `src/opencode-manager.ts` is the seam). The env var then becomes a local opt-in ANDed with the signed policy, never a bypass.
+- The server binds **loopback only** (`127.0.0.1`, OS-assigned port).
+- The governance config is injected via `OPENCODE_CONFIG_CONTENT` (highest-precedence runtime override) — the user's global/project opencode config is never modified.
 
 ---
 

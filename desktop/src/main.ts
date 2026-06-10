@@ -25,6 +25,7 @@ import {
   type MenuItemConstructorOptions,
 } from "electron";
 import { createSplashWindow, dismissSplash } from "./splash.js";
+import { OpencodeManager } from "./opencode-manager.js";
 // electron-updater is CommonJS — named imports break under ESM ("type": "module")
 import electronUpdaterPkg from "electron-updater";
 import windowStateKeeper from "electron-window-state";
@@ -428,6 +429,22 @@ ipcMain.handle(
 );
 
 // ---------------------------------------------------------------------------
+// IPC handlers — governed coding (opencode) lifecycle
+//
+// HARD-GATED (ADR-0010): the manager is inert unless ASAFE_DESKTOP_OPENCODE=1
+// AND its policy allows spawn. Construction never probes or spawns anything;
+// start() is invoked only via explicit IPC from the renderer. Model calls of
+// the spawned server route through the asafe gateway — see opencode-manager.ts
+// for the full gateway contract.
+// ---------------------------------------------------------------------------
+
+const opencodeManager = new OpencodeManager();
+
+ipcMain.handle("opencode:status", () => opencodeManager.getStatus());
+ipcMain.handle("opencode:start", () => opencodeManager.start());
+ipcMain.handle("opencode:stop", () => opencodeManager.stop());
+
+// ---------------------------------------------------------------------------
 // Auto-update
 // ---------------------------------------------------------------------------
 
@@ -511,6 +528,11 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+// Graceful shutdown of the governed opencode server (SIGTERM, SIGKILL after 5s).
+app.on("before-quit", () => {
+  void opencodeManager.stop();
 });
 
 // Focus existing window when a second instance is launched (Windows / Linux).

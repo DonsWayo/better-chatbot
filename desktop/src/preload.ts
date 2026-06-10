@@ -9,6 +9,7 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
+import type { OpencodeStatusSnapshot } from "./opencode-manager.js";
 
 // ---------------------------------------------------------------------------
 // Public API surface exposed to the web app (window.asafeDesktop)
@@ -64,6 +65,31 @@ contextBridge.exposeInMainWorld("asafeDesktop", {
   },
 
   // --------------------------------------------------------------------------
+  // Governed coding (opencode) — task #25
+  //
+  // Lifecycle control for the local opencode server managed by the main
+  // process. HARD-GATED (ADR-0010): unless ASAFE_DESKTOP_OPENCODE=1 and the
+  // policy allows it, start() resolves with the gate-closed status and
+  // nothing is spawned. Model calls of the spawned server route through the
+  // asafe OpenRouter gateway (see src/opencode-manager.ts for the contract).
+  // No chat UI yet — this is lifecycle + status only.
+  // --------------------------------------------------------------------------
+
+  opencode: {
+    /** Current lifecycle status (stopped/starting/running/unavailable/error). */
+    status: (): Promise<OpencodeStatusSnapshot> =>
+      ipcRenderer.invoke("opencode:status"),
+
+    /** Start the governed opencode server (no-op with explanatory status when gated). */
+    start: (): Promise<OpencodeStatusSnapshot> =>
+      ipcRenderer.invoke("opencode:start"),
+
+    /** Stop the server (graceful SIGTERM). */
+    stop: (): Promise<OpencodeStatusSnapshot> =>
+      ipcRenderer.invoke("opencode:stop"),
+  },
+
+  // --------------------------------------------------------------------------
   // Wave 10 v2 — local stdio MCP bridge (NOT YET ENABLED)
   //
   // These will be added once Security sign-off is obtained (ADR-0010).
@@ -84,6 +110,8 @@ contextBridge.exposeInMainWorld("asafeDesktop", {
 // Type declarations
 // ---------------------------------------------------------------------------
 
+export type { OpencodeStatusSnapshot } from "./opencode-manager.js";
+
 export interface LocalMcpTool {
   name: string;
   description: string;
@@ -102,6 +130,12 @@ export interface AsafeDesktopApi {
   ) => Promise<{ canceled: boolean; filePath: string | undefined }>;
   notify: (title: string, body: string) => Promise<void>;
   onDeepLink: (callback: (url: string) => void) => () => void;
+  /** Governed coding (opencode) lifecycle — gated by ASAFE_DESKTOP_OPENCODE (ADR-0010). */
+  opencode: {
+    status: () => Promise<OpencodeStatusSnapshot>;
+    start: () => Promise<OpencodeStatusSnapshot>;
+    stop: () => Promise<OpencodeStatusSnapshot>;
+  };
   // Wave 10 v2 (pending Security sign-off):
   // listLocalTools?: () => Promise<LocalMcpTool[]>;
   // invokeLocalTool?: (toolName: string, args: Record<string, unknown>) => Promise<unknown>;
