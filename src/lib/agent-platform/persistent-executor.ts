@@ -1,6 +1,7 @@
 import "server-only";
 
 import globalLogger from "logger";
+import { isApprovalPending } from "./approval-error";
 import {
   completeSession,
   failSession,
@@ -155,6 +156,11 @@ export function attachSessionPersistence(
         }
         case "WORKFLOW_END": {
           const evt = event as WorkflowEndEventLike;
+          if (!evt.isOk && isApprovalPending(evt.error)) {
+            // Approval node parked the run — awaiting_approval, not failed.
+            // The approvals lib already set the session status; do nothing.
+            break;
+          }
           fireAndForget(
             evt.isOk
               ? completeSession(sessionId)

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { dbInsertMock } = vi.hoisted(() => ({
   dbInsertMock: vi.fn(),
@@ -22,7 +22,10 @@ vi.mock("logger", () => ({
 }));
 
 describe("writeAuditLog", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
 
   it("inserts audit record with all fields", async () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
@@ -36,7 +39,11 @@ describe("writeAuditLog", () => {
   it("includes teamId when provided", async () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
     const { writeAuditLog } = await import("./audit");
-    await writeAuditLog({ userId: "u1", teamId: "t1", eventType: "admin_action" });
+    await writeAuditLog({
+      userId: "u1",
+      teamId: "t1",
+      eventType: "admin_action",
+    });
     expect(dbInsertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({ teamId: "t1" }),
     );
@@ -45,7 +52,9 @@ describe("writeAuditLog", () => {
   it("never throws even when DB fails", async () => {
     dbInsertValuesMock.mockRejectedValueOnce(new Error("DB down"));
     const { writeAuditLog } = await import("./audit");
-    await expect(writeAuditLog({ userId: "u1", eventType: "chat_request" })).resolves.toBeUndefined();
+    await expect(
+      writeAuditLog({ userId: "u1", eventType: "chat_request" }),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -89,7 +98,10 @@ describe("auditChatRequest", () => {
 });
 
 describe("writeAuditLog — details field", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
 
   it("serializes details as JSON string before inserting", async () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
@@ -128,13 +140,22 @@ describe("hashContent — length and format", () => {
 });
 
 describe("auditChatRequest — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
 
   it("fires with guardrailFired=true and does not throw", async () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
     const { auditChatRequest } = await import("./audit");
     expect(() =>
-      auditChatRequest({ userId: "u1", model: "gpt-5.1", promptHash: "abc", guardrailFired: true, ragUsed: false }),
+      auditChatRequest({
+        userId: "u1",
+        model: "gpt-5.1",
+        promptHash: "abc",
+        guardrailFired: true,
+        ragUsed: false,
+      }),
     ).not.toThrow();
   });
 
@@ -142,18 +163,29 @@ describe("auditChatRequest — additional", () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
     const { auditChatRequest } = await import("./audit");
     expect(() =>
-      auditChatRequest({ userId: "u2", model: "claude-opus-4.8", promptHash: "xyz", guardrailFired: false, ragUsed: false }),
+      auditChatRequest({
+        userId: "u2",
+        model: "claude-opus-4.8",
+        promptHash: "xyz",
+        guardrailFired: false,
+        ragUsed: false,
+      }),
     ).not.toThrow();
   });
 });
 
 describe("writeAuditLog — no details field", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbInsertMock.mockReturnValue({ values: dbInsertValuesMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
 
   it("inserts without throwing when details is omitted", async () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
     const { writeAuditLog } = await import("./audit");
-    await expect(writeAuditLog({ userId: "u1", eventType: "aup_accepted" })).resolves.toBeUndefined();
+    await expect(
+      writeAuditLog({ userId: "u1", eventType: "aup_accepted" }),
+    ).resolves.toBeUndefined();
   });
 
   it("calls DB exactly once", async () => {
@@ -185,6 +217,65 @@ describe("hashContent — additional", () => {
     const short = hashContent("ab");
     const long = hashContent("a".repeat(1000));
     expect(short.length).toBe(long.length);
+  });
+});
+
+describe("writeAuditLog — actor attribution (B90 #23)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+  });
+
+  it("defaults to actorType 'human' and agentSessionId null", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await writeAuditLog({ userId: "u1", eventType: "admin_action" });
+    expect(dbInsertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actorType: "human", agentSessionId: null }),
+    );
+  });
+
+  it("persists explicit agent attribution", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await writeAuditLog({
+      userId: "u1",
+      eventType: "tool_call",
+      actorType: "agent",
+      agentSessionId: "session-42",
+    });
+    expect(dbInsertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorType: "agent",
+        agentSessionId: "session-42",
+      }),
+    );
+  });
+
+  it("keeps agentSessionId null when only actorType 'agent' is provided", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await writeAuditLog({
+      userId: "u1",
+      eventType: "tool_call",
+      actorType: "agent",
+    });
+    expect(dbInsertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actorType: "agent", agentSessionId: null }),
+    );
+  });
+
+  it("passes through explicit 'human' actorType unchanged", async () => {
+    dbInsertValuesMock.mockResolvedValueOnce([]);
+    const { writeAuditLog } = await import("./audit");
+    await writeAuditLog({
+      userId: "u1",
+      eventType: "chat_request",
+      actorType: "human",
+    });
+    expect(dbInsertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actorType: "human" }),
+    );
   });
 });
 

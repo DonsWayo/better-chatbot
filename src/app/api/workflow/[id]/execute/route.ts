@@ -1,5 +1,7 @@
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
+import { isApprovalPending } from "lib/agent-platform/approval-error";
+import { markSessionAwaitingApproval } from "lib/agent-platform/approvals";
 import {
   type SubscribableExecutor,
   attachSessionPersistence,
@@ -33,14 +35,12 @@ export async function POST(
   const wfLogger = logger.withDefaults({
     message: colorize("cyan", `WORKFLOW '${workflow.name}' `),
   });
-  const app = createWorkflowExecutor({
-    edges: workflow.edges,
-    nodes: workflow.nodes,
-    logger: wfLogger,
-  });
 
   // Agent Platform #21: mirror this run into agent_session/agent_step.
   // Strictly best-effort — the route must never fail because of persistence.
+  // Created BEFORE the executor so Approval nodes (#24) can read the session
+  // id from the workflow runtime state.
+  let agentSessionId: string | undefined;
   try {
     const agentSession = await createAgentSession({
       kind: "workflow",
@@ -49,12 +49,27 @@ export async function POST(
       originSurface: "web",
       inputPayload: { query },
     });
-    attachSessionPersistence(
-      app as unknown as SubscribableExecutor,
-      agentSession.id,
-    );
+    agentSessionId = agentSession.id;
   } catch (error) {
-    logger.error("Failed to attach agent session persistence:", error);
+    logger.error("Failed to create agent session:", error);
+  }
+
+  const app = createWorkflowExecutor({
+    edges: workflow.edges,
+    nodes: workflow.nodes,
+    logger: wfLogger,
+    agentSessionId,
+  });
+
+  if (agentSessionId) {
+    try {
+      attachSessionPersistence(
+        app as unknown as SubscribableExecutor,
+        agentSessionId,
+      );
+    } catch (error) {
+      logger.error("Failed to attach agent session persistence:", error);
+    }
   }
 
   const encoder = new TextEncoder();
@@ -108,8 +123,27 @@ export async function POST(
             timeout: 1000 * 60 * 5,
           },
         )
-        .then((result) => {
+        .then(async (result) => {
           if (!result.isOk) {
+            // Approval gate (#24): an ApprovalPendingError is a pause, not a
+            // failure. Re-assert awaiting_approval because the generic
+            // WORKFLOW_END persistence path may have raced a failSession in.
+            if (isApprovalPending(result.error)) {
+              if (agentSessionId) {
+                try {
+                  await markSessionAwaitingApproval(agentSessionId);
+                } catch (error) {
+                  logger.error(
+                    "Failed to mark session awaiting approval:",
+                    error,
+                  );
+                }
+              }
+              logger.info(
+                `Workflow parked awaiting approval (session ${agentSessionId})`,
+              );
+              return;
+            }
             logger.error("Workflow execution error:", result.error);
           }
         });

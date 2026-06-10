@@ -186,6 +186,21 @@ describe("attachSessionPersistence", () => {
     expect(completeSessionMock).not.toHaveBeenCalled();
   });
 
+  it("WORKFLOW_END with ApprovalPendingError → neither failed nor completed (run stays parked)", async () => {
+    const { attachSessionPersistence } = await import("./persistent-executor");
+    const { ApprovalPendingError } = await import("./approval-error");
+    const fake = makeFakeExecutor();
+    attachSessionPersistence(fake.executor, "sess-1");
+    fake.emit({
+      eventType: "WORKFLOW_END",
+      isOk: false,
+      error: new ApprovalPendingError("sess-1", "approval-1"),
+    });
+    await flush();
+    expect(failSessionMock).not.toHaveBeenCalled();
+    expect(completeSessionMock).not.toHaveBeenCalled();
+  });
+
   it("touches the heartbeat on every NODE event", async () => {
     const { attachSessionPersistence } = await import("./persistent-executor");
     const fake = makeFakeExecutor();

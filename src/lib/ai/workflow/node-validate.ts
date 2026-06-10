@@ -1,21 +1,22 @@
 import { Edge } from "@xyflow/react";
 import { JSONSchema7 } from "json-schema";
 import {
+  ApprovalNodeData,
   ConditionNodeData,
-  OutputNodeData,
+  HttpNodeData,
+  InputNodeData,
   LLMNodeData,
   NodeKind,
-  InputNodeData,
+  OutputNodeData,
+  TemplateNodeData,
+  ToolNodeData,
   UINode,
   WorkflowNodeData,
-  ToolNodeData,
-  HttpNodeData,
-  TemplateNodeData,
 } from "lib/ai/workflow/workflow.interface";
 import { cleanVariableName } from "lib/utils";
 import { safe } from "ts-safe";
-import { findJsonSchemaByPath } from "./shared.workflow";
 import { ConditionBranch } from "./condition";
+import { findJsonSchemaByPath } from "./shared.workflow";
 
 export function validateSchema(key: string, schema: JSONSchema7) {
   const variableName = cleanVariableName(key);
@@ -109,6 +110,8 @@ export const nodeValidate: NodeValidate<WorkflowNodeData> = ({
       return httpNodeValidate({ node, nodes, edges });
     case NodeKind.Template:
       return templateNodeValidate({ node, nodes, edges });
+    case NodeKind.Approval:
+      return approvalNodeValidate({ node, nodes, edges });
   }
 };
 
@@ -255,6 +258,22 @@ export const httpNodeValidate: NodeValidate<HttpNodeData> = ({ node }) => {
     !["POST", "PUT", "PATCH"].includes(node.method)
   ) {
     throw new Error(`Body is not allowed for ${node.method} requests`);
+  }
+};
+
+export const approvalNodeValidate: NodeValidate<ApprovalNodeData> = ({
+  node,
+}) => {
+  // Approval nodes need no structural validation beyond the generic rules;
+  // only guard the requestedRole enum when one is set.
+  const validRoles = ["owner", "team-admin", "admin"];
+  if (
+    node.requestedRole !== undefined &&
+    !validRoles.includes(node.requestedRole)
+  ) {
+    throw new Error(
+      `Approval requestedRole must be one of: ${validRoles.join(", ")}`,
+    );
   }
 };
 

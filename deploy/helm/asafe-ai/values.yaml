@@ -67,6 +67,27 @@ migrateJob:
   enabled: true
   backoffLimit: 1
 
+# Detached agent-platform worker (Agent Platform #22): schedules + SKIP LOCKED session executor.
+# Runs the SAME image as the app with a worker entrypoint command (no Service — serves no
+# traffic). Disabled by default; alternatively drive ticks via POST /api/hooks/agent-tick
+# (x-asafe-cron-secret header, ASAFE_CRON_SECRET env) from an external CronJob.
+worker:
+  enabled: false
+  replicaCount: 1
+  # The production runner image is the Next standalone output (no pnpm/tsx) — this entrypoint
+  # must be bundled into the image like scripts/standalone-migrate.mjs. Override per environment.
+  command: ["node", "scripts/agent-worker.mjs"]
+  podAnnotations: {}
+  extraEnv: []
+  # - name: AGENT_WORKER_INTERVAL_MS
+  #   value: "5000"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
 # Non-sensitive env -> ConfigMap. (APP_VERSION is injected from the image tag automatically.)
 config:
   NODE_ENV: "production"

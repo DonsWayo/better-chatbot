@@ -1,8 +1,8 @@
 import { Node } from "@xyflow/react";
 import { ChatModel } from "app-types/chat";
 import { ObjectJsonSchema7, TipTapMentionJsonContent } from "app-types/util";
-import { ConditionBranches } from "./condition";
 import { JSONSchema7 } from "json-schema";
+import { ConditionBranches } from "./condition";
 
 /**
  * Enum defining all available node types in the workflow system.
@@ -22,6 +22,7 @@ export enum NodeKind {
   Http = "http", // HTTP request node
   Template = "template", // Template processing node
   Code = "code", // Code execution node (future implementation)
+  Approval = "approval", // Human approval gate - parks the session until decided
   Output = "output", // Exit point of workflow - produces final result
 }
 
@@ -189,6 +190,22 @@ export type TemplateNodeData = BaseWorkflowNodeDataData<{
 };
 
 /**
+ * Approval node: Human approval gate (Agent Platform #24).
+ * Execution parks the run: an approval_request row is written, the agent
+ * session flips to awaiting_approval and the graph halts with
+ * ApprovalPendingError. A decision re-queues (approve) or fails (reject)
+ * the session.
+ */
+export type ApprovalNodeData = BaseWorkflowNodeDataData<{
+  kind: NodeKind.Approval;
+}> & {
+  /** Role required to decide; defaults to "team-admin". */
+  requestedRole?: "owner" | "team-admin" | "admin";
+  /** Shown to the approver alongside the payload. */
+  message?: string;
+};
+
+/**
  * Union type of all possible node data types.
  * When adding a new node type, include it in this union.
  */
@@ -200,7 +217,8 @@ export type WorkflowNodeData =
   | ToolNodeData
   | ConditionNodeData
   | HttpNodeData
-  | TemplateNodeData;
+  | TemplateNodeData
+  | ApprovalNodeData;
 
 /**
  * Runtime fields added during workflow execution

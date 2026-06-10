@@ -106,6 +106,90 @@ export async function getUsageSummary(options: {
 }
 
 // ---------------------------------------------------------------------------
+// Compliance usage aggregation — shared by /api/admin/compliance/usage
+// ---------------------------------------------------------------------------
+
+export interface ComplianceUsageBucket {
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: string;
+}
+
+export interface ComplianceUsageSummary {
+  byModel: Array<{ model: string } & ComplianceUsageBucket>;
+  byTeam: Array<
+    { teamId: string | null; teamName: string | null } & ComplianceUsageBucket
+  >;
+  total: ComplianceUsageBucket;
+}
+
+export interface ComplianceUsageOptions {
+  from?: Date;
+  to?: Date;
+  teamId?: string;
+  userId?: string;
+}
+
+const EMPTY_USAGE_BUCKET: ComplianceUsageBucket = {
+  requests: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  costUsd: "0",
+};
+
+export async function getComplianceUsageSummary(
+  options: ComplianceUsageOptions = {},
+): Promise<ComplianceUsageSummary> {
+  const { from, to, teamId, userId } = options;
+
+  const conditions = [
+    from ? gte(AsafeUsageEventTable.createdAt, from) : undefined,
+    to ? lte(AsafeUsageEventTable.createdAt, to) : undefined,
+    teamId ? eq(AsafeUsageEventTable.teamId, teamId) : undefined,
+    userId ? eq(AsafeUsageEventTable.userId, userId) : undefined,
+  ].filter((c) => c !== undefined);
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const aggregate = {
+    requests: sql<number>`count(*)::int`,
+    inputTokens: sql<number>`coalesce(sum(${AsafeUsageEventTable.promptTokens}), 0)::int`,
+    outputTokens: sql<number>`coalesce(sum(${AsafeUsageEventTable.completionTokens}), 0)::int`,
+    costUsd: sql<string>`coalesce(sum(${AsafeUsageEventTable.costUsd}), 0)::text`,
+  };
+
+  const [byModel, byTeam, [total]] = await Promise.all([
+    db
+      .select({ model: AsafeUsageEventTable.model, ...aggregate })
+      .from(AsafeUsageEventTable)
+      .where(where)
+      .groupBy(AsafeUsageEventTable.model)
+      .orderBy(desc(sql`sum(${AsafeUsageEventTable.costUsd})`)),
+    db
+      .select({
+        teamId: AsafeUsageEventTable.teamId,
+        teamName: AsafeTeamTable.name,
+        ...aggregate,
+      })
+      .from(AsafeUsageEventTable)
+      .leftJoin(
+        AsafeTeamTable,
+        eq(AsafeTeamTable.id, AsafeUsageEventTable.teamId),
+      )
+      .where(where)
+      .groupBy(AsafeUsageEventTable.teamId, AsafeTeamTable.name)
+      .orderBy(desc(sql`sum(${AsafeUsageEventTable.costUsd})`)),
+    db.select(aggregate).from(AsafeUsageEventTable).where(where),
+  ]);
+
+  return {
+    byModel,
+    byTeam,
+    total: total ?? EMPTY_USAGE_BUCKET,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Budget alert summary — used by the admin usage dashboard
 // ---------------------------------------------------------------------------
 

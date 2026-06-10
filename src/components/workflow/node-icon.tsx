@@ -9,6 +9,7 @@ import {
   HouseIcon,
   InfoIcon,
   LandPlotIcon,
+  ShieldCheckIcon,
   SplitIcon,
   TerminalIcon,
   TextIcon,
@@ -41,6 +42,8 @@ export function NodeIcon({
         return TextIcon;
       case NodeKind.Code:
         return TerminalIcon;
+      case NodeKind.Approval:
+        return ShieldCheckIcon;
       default:
         return BoxIcon;
     }
@@ -65,7 +68,9 @@ export function NodeIcon({
                       ? "bg-purple-500"
                       : type === NodeKind.Condition
                         ? "bg-amber-500"
-                        : "bg-card",
+                        : type === NodeKind.Approval
+                          ? "bg-emerald-500"
+                          : "bg-card",
         "p-1 rounded",
         className,
       )}

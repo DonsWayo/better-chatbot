@@ -1,12 +1,18 @@
-import { objectFlow, toAny } from "lib/utils";
-import { OutputSchemaSourceKey } from "../workflow.interface";
-import { graphStore } from "ts-edge";
-import { DBEdge, DBNode } from "app-types/workflow";
 import { ObjectJsonSchema7 } from "app-types/util";
+import { DBEdge, DBNode } from "app-types/workflow";
+import { objectFlow, toAny } from "lib/utils";
+import { graphStore } from "ts-edge";
 import { defaultObjectJsonSchema } from "../shared.workflow";
+import { OutputSchemaSourceKey } from "../workflow.interface";
 
 export interface WorkflowRuntimeState {
   query: Record<string, unknown>;
+  /**
+   * Agent Platform #24: id of the agent_session governing this run, injected
+   * by the caller (execute route / detached worker). Approval nodes require
+   * it to park the session; absent for ungoverned runs.
+   */
+  agentSessionId?: string;
   inputs: {
     [nodeId: string]: any;
   };
@@ -24,10 +30,12 @@ export interface WorkflowRuntimeState {
 export const createGraphStore = (params: {
   nodes: DBNode[];
   edges: DBEdge[];
+  agentSessionId?: string;
 }) => {
   return graphStore<WorkflowRuntimeState>((set, get) => {
     return {
       query: {},
+      agentSessionId: params.agentSessionId,
       outputs: {},
       inputs: {},
       nodes: params.nodes,

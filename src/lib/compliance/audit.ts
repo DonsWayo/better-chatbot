@@ -20,11 +20,17 @@ export type AuditEventType =
   | "user_erasure"
   | "aup_accepted";
 
+export type AuditActorType = "human" | "agent";
+
 export interface AuditEvent {
   userId: string;
   teamId?: string | null;
   eventType: AuditEventType;
   details?: Record<string, unknown>;
+  /** Who performed the action — defaults to "human" (B90 #23). */
+  actorType?: AuditActorType;
+  /** Agent session that performed the action, when actorType is "agent". */
+  agentSessionId?: string | null;
 }
 
 export async function writeAuditLog(event: AuditEvent): Promise<void> {
@@ -32,6 +38,8 @@ export async function writeAuditLog(event: AuditEvent): Promise<void> {
     await db.insert(AsafeAuditLogTable).values({
       userId: event.userId,
       teamId: event.teamId ?? null,
+      actorType: event.actorType ?? "human",
+      agentSessionId: event.agentSessionId ?? null,
       eventType: event.eventType,
       details: event.details ? JSON.stringify(event.details) : "{}",
     });

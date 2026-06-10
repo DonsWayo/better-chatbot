@@ -1,7 +1,7 @@
-import { generateUUID } from "lib/utils";
-import { NodeKind, UINode } from "./workflow.interface";
-import { defaultObjectJsonSchema } from "./shared.workflow";
 import { ObjectJsonSchema7 } from "app-types/util";
+import { generateUUID } from "lib/utils";
+import { defaultObjectJsonSchema } from "./shared.workflow";
+import { NodeKind, UINode } from "./workflow.interface";
 
 export function createUINode(
   kind: NodeKind,
@@ -93,6 +93,14 @@ export function createUINode(
     node.data.headers = [];
     node.data.query = [];
     node.data.timeout = 30000; // 30 seconds default
+  } else if (node.data.kind === NodeKind.Approval) {
+    // Minimal defaults — full builder UI is out of scope (#24 backend).
+    node.data.requestedRole = "team-admin";
+    node.data.outputSchema.properties = {
+      approved: {
+        type: "boolean",
+      },
+    };
   } else if (node.data.kind === NodeKind.Template) {
     node.data.outputSchema = structuredClone(defaultTemplateNodeOutputSchema);
     // Set default values for Template node

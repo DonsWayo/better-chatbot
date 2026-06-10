@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Drizzle mock chain ─────────────────────────────────────────────────────────
 // select({}).from(T).leftJoin(U,on).where(cond).orderBy(col).limit(n).offset(n)
@@ -7,11 +7,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 let _selectRows: unknown[] = [];
 let _countRows: unknown[] = [{ total: 0 }];
 
-const offsetMock = vi.fn().mockImplementation(() => Promise.resolve(_selectRows));
+const offsetMock = vi
+  .fn()
+  .mockImplementation(() => Promise.resolve(_selectRows));
 const limitMock = vi.fn().mockReturnValue({ offset: offsetMock });
-const orderByMock = vi.fn().mockReturnValue({ limit: limitMock, offset: offsetMock });
-const whereMock = vi.fn().mockReturnValue({ orderBy: orderByMock, limit: limitMock });
-const leftJoinMock = vi.fn().mockReturnValue({ where: whereMock, orderBy: orderByMock });
+const orderByMock = vi
+  .fn()
+  .mockReturnValue({ limit: limitMock, offset: offsetMock });
+const whereMock = vi
+  .fn()
+  .mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+const leftJoinMock = vi
+  .fn()
+  .mockReturnValue({ where: whereMock, orderBy: orderByMock });
 const fromMock = vi.fn().mockReturnValue({
   where: whereMock,
   leftJoin: leftJoinMock,
@@ -29,6 +37,8 @@ vi.mock("@/lib/db/pg/schema.pg", () => ({
     id: "id",
     userId: "userId",
     teamId: "teamId",
+    actorType: "actorType",
+    agentSessionId: "agentSessionId",
     eventType: "eventType",
     details: "details",
     createdAt: "createdAt",
@@ -43,7 +53,10 @@ vi.mock("drizzle-orm", () => ({
   lte: vi.fn(() => ({})),
   and: vi.fn((...args: unknown[]) => ({ _and: args })),
   desc: vi.fn(() => ({})),
-  sql: Object.assign(vi.fn(() => ({})), { raw: vi.fn(() => ({})) }),
+  sql: Object.assign(
+    vi.fn(() => ({})),
+    { raw: vi.fn(() => ({})) },
+  ),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -88,7 +101,15 @@ describe("getAuditLog", () => {
 
   it("returns rows and total from DB", async () => {
     _selectRows = [
-      { id: "a1", userId: "u1", userEmail: "alice@example.com", teamId: null, eventType: "chat_request", details: {}, createdAt: new Date() },
+      {
+        id: "a1",
+        userId: "u1",
+        userEmail: "alice@example.com",
+        teamId: null,
+        eventType: "chat_request",
+        details: {},
+        createdAt: new Date(),
+      },
     ];
     _countRows = [{ total: 1 }];
 
@@ -168,11 +189,21 @@ describe("getAuditLog — pagination defaults", () => {
     orderByMock.mockReturnValue({ limit: limitMock, offset: offsetMock });
     whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
     leftJoinMock.mockReturnValue({ where: whereMock, orderBy: orderByMock });
-    fromMock.mockReturnValue({ where: whereMock, leftJoin: leftJoinMock, orderBy: orderByMock, limit: limitMock });
+    fromMock.mockReturnValue({
+      where: whereMock,
+      leftJoin: leftJoinMock,
+      orderBy: orderByMock,
+      limit: limitMock,
+    });
     let c = 0;
     selectMock.mockImplementation(() => {
       c++;
-      if (c % 2 === 0) return { from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(_countRows) }) };
+      if (c % 2 === 0)
+        return {
+          from: vi
+            .fn()
+            .mockReturnValue({ where: vi.fn().mockResolvedValue(_countRows) }),
+        };
       return { from: fromMock };
     });
   });
@@ -208,11 +239,21 @@ describe("getAuditLog — additional", () => {
     orderByMock.mockReturnValue({ limit: limitMock, offset: offsetMock });
     whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
     leftJoinMock.mockReturnValue({ where: whereMock, orderBy: orderByMock });
-    fromMock.mockReturnValue({ where: whereMock, leftJoin: leftJoinMock, orderBy: orderByMock, limit: limitMock });
+    fromMock.mockReturnValue({
+      where: whereMock,
+      leftJoin: leftJoinMock,
+      orderBy: orderByMock,
+      limit: limitMock,
+    });
     let c = 0;
     selectMock.mockImplementation(() => {
       c++;
-      if (c % 2 === 0) return { from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(_countRows) }) };
+      if (c % 2 === 0)
+        return {
+          from: vi
+            .fn()
+            .mockReturnValue({ where: vi.fn().mockResolvedValue(_countRows) }),
+        };
       return { from: fromMock };
     });
   });
@@ -290,7 +331,12 @@ describe("getAuditLog — return type invariants", () => {
     orderByMock.mockReturnValue({ limit: limitMock, offset: offsetMock });
     whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
     leftJoinMock.mockReturnValue({ where: whereMock, orderBy: orderByMock });
-    fromMock.mockReturnValue({ where: whereMock, leftJoin: leftJoinMock, orderBy: orderByMock, limit: limitMock });
+    fromMock.mockReturnValue({
+      where: whereMock,
+      leftJoin: leftJoinMock,
+      orderBy: orderByMock,
+      limit: limitMock,
+    });
     selectMock.mockReturnValue({ from: fromMock });
   });
 
@@ -317,5 +363,86 @@ describe("getAuditLog — return type invariants", () => {
     const { getAuditLog } = await import("./audit");
     await getAuditLog({ page: 1, limit: 10 });
     expect(selectMock).toHaveBeenCalled();
+  });
+});
+
+describe("getAuditLog — actor attribution filters (B90 #23)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    _selectRows = [];
+    _countRows = [{ total: 0 }];
+    offsetMock.mockImplementation(() => Promise.resolve(_selectRows));
+    limitMock.mockReturnValue({ offset: offsetMock });
+    orderByMock.mockReturnValue({ limit: limitMock, offset: offsetMock });
+    whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
+    leftJoinMock.mockReturnValue({ where: whereMock, orderBy: orderByMock });
+    fromMock.mockReturnValue({
+      where: whereMock,
+      leftJoin: leftJoinMock,
+      orderBy: orderByMock,
+      limit: limitMock,
+    });
+    let c = 0;
+    selectMock.mockImplementation(() => {
+      c++;
+      if (c % 2 === 0)
+        return {
+          from: vi
+            .fn()
+            .mockReturnValue({ where: vi.fn().mockResolvedValue(_countRows) }),
+        };
+      return { from: fromMock };
+    });
+  });
+
+  it("filters by actorType when provided", async () => {
+    const { eq } = await import("drizzle-orm");
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ actorType: "agent" });
+    expect(vi.mocked(eq)).toHaveBeenCalledWith("actorType", "agent");
+  });
+
+  it("filters by agentSessionId when provided", async () => {
+    const { eq } = await import("drizzle-orm");
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ agentSessionId: "as-123" });
+    expect(vi.mocked(eq)).toHaveBeenCalledWith("agentSessionId", "as-123");
+  });
+
+  it("adds no actor conditions when neither is provided", async () => {
+    const { eq } = await import("drizzle-orm");
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ page: 1, limit: 10 });
+    const eqArgs = vi.mocked(eq).mock.calls.map((c) => c[0]);
+    expect(eqArgs).not.toContain("actorType");
+    expect(eqArgs).not.toContain("agentSessionId");
+  });
+
+  it("explicit offset overrides page-based pagination", async () => {
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({ page: 3, limit: 10, offset: 7 });
+    expect(offsetMock).toHaveBeenCalledWith(7);
+  });
+
+  it("selects actorType and agentSessionId columns in the data query", async () => {
+    const { getAuditLog } = await import("./audit");
+    await getAuditLog({});
+    const selectedFields = selectMock.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(selectedFields).toHaveProperty("actorType");
+    expect(selectedFields).toHaveProperty("agentSessionId");
+  });
+});
+
+describe("compliance API constants (B90 #23)", () => {
+  it("exports the documented limits", async () => {
+    const mod = await import("./audit");
+    expect(mod.COMPLIANCE_AUDIT_DEFAULT_LIMIT).toBe(100);
+    expect(mod.COMPLIANCE_AUDIT_MAX_LIMIT).toBe(1000);
+    expect(mod.COMPLIANCE_EXPORT_MAX_ROWS).toBe(50_000);
+    expect(mod.COMPLIANCE_EXPORT_PAGE_SIZE).toBeGreaterThan(0);
   });
 });

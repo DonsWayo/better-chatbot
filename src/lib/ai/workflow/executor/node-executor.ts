@@ -1,36 +1,38 @@
-import { customModelProvider } from "lib/ai/models";
 import {
-  ConditionNodeData,
-  OutputNodeData,
-  LLMNodeData,
-  InputNodeData,
-  WorkflowNodeData,
-  ToolNodeData,
-  HttpNodeData,
-  TemplateNodeData,
-  OutputSchemaSourceKey,
-} from "../workflow.interface";
-import { WorkflowRuntimeState } from "./graph-store";
-import {
+  UIMessage,
   convertToModelMessages,
   generateObject,
   generateText,
-  UIMessage,
 } from "ai";
+import { ApprovalPendingError } from "lib/agent-platform/approval-error";
+import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
+import { customModelProvider } from "lib/ai/models";
+import { DefaultToolName } from "lib/ai/tools";
+import {
+  exaContentsToolForWorkflow,
+  exaSearchToolForWorkflow,
+} from "lib/ai/tools/web/web-search";
+import { AppError } from "lib/errors";
+import { jsonSchemaToZod } from "lib/json-schema-to-zod";
+import { toAny } from "lib/utils";
 import { checkConditionBranch } from "../condition";
 import {
   convertTiptapJsonToAiMessage,
   convertTiptapJsonToText,
 } from "../shared.workflow";
-import { jsonSchemaToZod } from "lib/json-schema-to-zod";
-import { toAny } from "lib/utils";
-import { AppError } from "lib/errors";
-import { DefaultToolName } from "lib/ai/tools";
 import {
-  exaSearchToolForWorkflow,
-  exaContentsToolForWorkflow,
-} from "lib/ai/tools/web/web-search";
-import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
+  ApprovalNodeData,
+  ConditionNodeData,
+  HttpNodeData,
+  InputNodeData,
+  LLMNodeData,
+  OutputNodeData,
+  OutputSchemaSourceKey,
+  TemplateNodeData,
+  ToolNodeData,
+  WorkflowNodeData,
+} from "../workflow.interface";
+import { WorkflowRuntimeState } from "./graph-store";
 
 /**
  * Interface for node executor functions.
@@ -471,6 +473,57 @@ export const httpNodeExecutor: NodeExecutor<HttpNodeData> = async ({
     });
     throw error;
   }
+};
+
+/**
+ * Approval Node Executor (Agent Platform #24)
+ *
+ * The approval semantic is "park the run", not "compute a value":
+ * 1. Reads the governing agent session id from the workflow runtime state
+ *    (`state.agentSessionId`, injected by the caller that created the
+ *    session — see createWorkflowExecutor / the execute route). Without it
+ *    the node fails: an ungoverned run has nothing to park.
+ * 2. Writes a pending approval_request row and flips the session to
+ *    awaiting_approval (createApprovalRequest).
+ * 3. Throws ApprovalPendingError so the ts-edge graph halts. Catchers
+ *    (route / worker) must treat that error as a pause via
+ *    isApprovalPending(), not as a failure.
+ *
+ * The recorded stepIndex is best-effort: the count of nodes that have
+ * produced output so far (the persistent step index lives in
+ * persistent-executor's closure and is not reachable from inside a node).
+ *
+ * `createApprovalRequest` is imported dynamically so this module stays
+ * importable without pulling the server-only DB layer until an approval
+ * node actually runs.
+ */
+export const approvalNodeExecutor: NodeExecutor<ApprovalNodeData> = async ({
+  node,
+  state,
+}) => {
+  const sessionId = state.agentSessionId;
+  if (!sessionId) {
+    throw new Error(
+      "Approval node requires a governed agent session (no agentSessionId in workflow runtime state)",
+    );
+  }
+
+  const stepIndex = Object.keys(state.outputs ?? {}).length;
+  const { createApprovalRequest } = await import(
+    "lib/agent-platform/approvals"
+  );
+  const request = await createApprovalRequest({
+    sessionId,
+    stepIndex,
+    requestedRole: node.requestedRole ?? "team-admin",
+    payload: {
+      nodeId: node.id,
+      nodeName: node.name,
+      message: node.message,
+    },
+  });
+
+  throw new ApprovalPendingError(sessionId, request.id, node.message);
 };
 
 /**
