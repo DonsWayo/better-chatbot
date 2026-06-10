@@ -4,6 +4,22 @@ import { z } from "zod";
 import { AllowedMCPServerZodSchema } from "./mcp";
 import { UserPreferences } from "./user";
 
+/**
+ * asafe-ai (ADR-0007, phase 2): one deduped knowledge source used to ground a
+ * message. `index` matches the [Source N] numbering in the prompt block, so
+ * citations in the model output line up with the rendered source list.
+ */
+export type RagSource = {
+  /** 1-based; matches [Source N] in the prompt and the model's citations. */
+  index: number;
+  /** Filename, URL, or archive item the chunks came from. */
+  sourceRef: string;
+  collectionId: string;
+  collectionName: string;
+  /** Normalized retrieval score in (0, 1]. */
+  score: number;
+};
+
 export type ChatMetadata = {
   usage?: LanguageModelUsage;
   chatModel?: ChatModel;
@@ -14,6 +30,8 @@ export type ChatMetadata = {
   routingReason?: string;
   /** asafe-ai (ADR-0007): knowledge collection ID used for RAG retrieval in this message. */
   ragCollectionId?: string;
+  /** asafe-ai (ADR-0007, phase 2): deduped sources behind this message's [Source N] citations. */
+  ragSources?: RagSource[];
 };
 
 export type ChatModel = {
@@ -92,6 +110,12 @@ export const ChatMentionSchema = z.discriminatedUnion("type", [
         style: z.record(z.string(), z.string()).optional(),
       })
       .nullish(),
+  }),
+  z.object({
+    type: z.literal("knowledge"),
+    name: z.string(),
+    description: z.string().nullish(),
+    collectionId: z.string(),
   }),
 ]);
 

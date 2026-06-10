@@ -66,6 +66,7 @@ import dynamic from "next/dynamic";
 import { ModelProviderIcon } from "ui/model-provider-icon";
 import { WorkflowInvocation } from "./tool-invocation/workflow-invocation";
 import { CitationBar } from "./citation-bar";
+import { RagSourcesRow } from "./message-rag-sources";
 
 type MessagePart = UIMessage["parts"][number];
 type TextMessagePart = Extract<MessagePart, { type: "text" }>;
@@ -309,6 +310,13 @@ export const AssistMessagePart = memo(function AssistMessagePart({
     return agentList.find((a) => a.id === metadata?.agentId);
   }, [metadata, agentList]);
 
+  // RAG sources are message-level metadata; render them once, under the
+  // message's final text part (a message can stream several text parts).
+  const isLastTextPart = useMemo(() => {
+    const textParts = message.parts.filter((p) => p.type === "text");
+    return textParts[textParts.length - 1] === part;
+  }, [message.parts, part]);
+
   const deleteMessage = useCallback(async () => {
     if (!setMessages) return;
     const ok = await notify.confirm({
@@ -375,7 +383,11 @@ export const AssistMessagePart = memo(function AssistMessagePart({
         })}
       >
         <Markdown>{part.text}</Markdown>
-        <CitationBar text={part.text} />
+        {metadata?.ragSources?.length ? (
+          isLastTextPart && <RagSourcesRow sources={metadata.ragSources} />
+        ) : (
+          <CitationBar text={part.text} />
+        )}
       </div>
       {showActions && (
         <div className="flex w-full">

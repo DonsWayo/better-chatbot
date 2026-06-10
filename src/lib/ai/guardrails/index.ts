@@ -97,7 +97,7 @@ function buildGuardrailMiddleware(
       return { ...result, content: processedContent };
     },
 
-    async wrapStream({ doStream, params }) {
+    async wrapStream({ doStream }) {
       const { stream, ...rest } = await doStream();
 
       if (!policy.outputLeakProtection) return { stream, ...rest };

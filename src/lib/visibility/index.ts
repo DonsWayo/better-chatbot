@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import {
   AgentTable,
+  AsafeKnowledgeCollectionTable,
   EntityGrantTable,
   UserTable,
   WorkflowTable,
@@ -105,6 +106,9 @@ function normalizeVisibility(
   const legacy = legacyVisibility ?? visibility ?? null;
   switch (legacy) {
     case "public":
+      return { level: "company", maxCapability: "use" };
+    // Legacy knowledge-collection enum value: "org" meant org-wide → company.
+    case "org":
       return { level: "company", maxCapability: "use" };
     case "readonly":
       return { level: "company", maxCapability: "view" };
@@ -209,12 +213,105 @@ async function loadEntity(
         teamIds: row.teamIds ?? null,
       };
     }
+    case "knowledge_collection": {
+      const [row] = await db
+        .select({
+          ownerId: AsafeKnowledgeCollectionTable.createdBy,
+          visibility: AsafeKnowledgeCollectionTable.visibility,
+          teamIds: AsafeKnowledgeCollectionTable.teamIds,
+          teamId: AsafeKnowledgeCollectionTable.teamId,
+        })
+        .from(AsafeKnowledgeCollectionTable)
+        .where(eq(AsafeKnowledgeCollectionTable.id, entityId))
+        .limit(1);
+      if (!row) return null;
+      return knowledgeCollectionEntity(row);
+    }
     default:
-      // TODO(visibility): wire thread, folder, knowledge_collection and
-      // mcp_server loaders in their migration rounds (they keep their
-      // existing bespoke checks until then). Fail closed meanwhile.
+      // TODO(visibility): wire thread, folder and mcp_server loaders in
+      // their migration rounds (they keep their existing bespoke checks
+      // until then). Fail closed meanwhile.
       return null;
   }
+}
+
+/**
+ * Map a knowledge-collection row to the resolver's entity shape. Legacy rows
+ * carry a single `teamId` (and visibility "org" / "team") — fall back to it
+ * when the modern `teamIds[]` is empty. `createdBy` is nullable (creator
+ * deleted): ownership then matches nobody, but visibility still applies.
+ */
+export function knowledgeCollectionEntity(row: {
+  createdBy?: string | null;
+  ownerId?: string | null;
+  visibility: string | null;
+  teamIds?: string[] | null;
+  teamId?: string | null;
+}): VisibilityEntity {
+  const teamIds = row.teamIds?.length
+    ? row.teamIds
+    : row.teamId
+      ? [row.teamId]
+      : null;
+  return {
+    ownerId: row.ownerId ?? row.createdBy ?? "",
+    visibility: row.visibility,
+    teamIds,
+  };
+}
+
+/**
+ * Viewer context for filtering LISTS of one entity type in a single pass:
+ * one user lookup, one team lookup, one grants query (all grants the user
+ * holds on that entity type, keyed by entity id). Combine with resolveAccess
+ * per row.
+ */
+export interface ViewerListContext {
+  userId: string;
+  userTeamIds: string[];
+  isAdmin: boolean;
+  grantsByEntityId: Record<string, Array<{ capability: Capability }>>;
+}
+
+export async function loadViewerContext(
+  entityType: GrantableEntityType,
+  userId: string,
+): Promise<ViewerListContext> {
+  const [userRows, teams, grants] = await Promise.all([
+    db
+      .select({ role: UserTable.role })
+      .from(UserTable)
+      .where(eq(UserTable.id, userId))
+      .limit(1),
+    listUserTeams(userId),
+    db
+      .select({
+        entityId: EntityGrantTable.entityId,
+        capability: EntityGrantTable.capability,
+      })
+      .from(EntityGrantTable)
+      .where(
+        and(
+          eq(EntityGrantTable.entityType, entityType),
+          eq(EntityGrantTable.granteeUserId, userId),
+        ),
+      ),
+  ]);
+
+  const grantsByEntityId: Record<
+    string,
+    Array<{ capability: Capability }>
+  > = {};
+  for (const g of grants) {
+    (grantsByEntityId[g.entityId] ??= []).push({ capability: g.capability });
+  }
+
+  return {
+    userId,
+    userTeamIds: teams.map((t) => t.id),
+    isAdmin: getIsUserAdmin({ role: userRows[0]?.role ?? null }),
+    grantsByEntityId,
+  };
 }
 
 /**

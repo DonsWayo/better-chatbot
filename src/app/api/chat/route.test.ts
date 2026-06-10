@@ -19,8 +19,8 @@ vi.mock("lib/ai/prompts", () => ({
   buildMcpServerCustomizationsSystemPrompt: vi.fn(() => ""),
   buildToolCallUnsupportedModelSystemPrompt: vi.fn(() => ""),
 }));
-vi.mock("lib/ai/embeddings/ingest", () => ({
-  retrieveChunks: vi.fn().mockResolvedValue([]),
+vi.mock("lib/ai/embeddings/retrieval", () => ({
+  retrieveForChat: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("@/lib/ai/ingest/csv-ingest", () => ({
   buildCsvIngestionPreviewParts: vi.fn().mockResolvedValue([]),

@@ -1,0 +1,83 @@
+---
+title: Company Knowledge (RAG)
+description: Hybrid retrieval over approved company documents — pgvector + full-text fused with RRF, citation-first answers, unified visibility.
+---
+
+Company knowledge (Wave 6, ADR-0007) lets chat ground answers in approved internal
+documents. Admins create **collections**, ingest documents into them (chunk → embed →
+store), and users attach one or more collections to a conversation. Retrieved chunks are
+injected into the prompt with **numbered sources**, and the assistant cites them as
+`[Source N]`.
+
+## Hybrid retrieval
+
+Phase 2 replaced pure vector search with **hybrid retrieval**
+(`src/lib/ai/embeddings/retrieval.ts`). For each query we run two ranked searches over
+`asafe_document_chunk`, scoped to every mentioned collection:
+
+1. **Semantic** — pgvector cosine distance over the pinned
+   `text-embedding-3-small` embeddings (1536 dims), top 20.
+2. **Lexical** — Postgres full-text search over the generated `fts` tsvector column
+   (`fts @@ websearch_to_tsquery('english', query)`), ranked by `ts_rank_cd`, top 20.
+   A GIN index keeps this fast.
+
+The two lists are merged with **reciprocal rank fusion** (k = 60):
+
+```
+score(chunk) = Σ over lists  1 / (60 + rank)
+```
+
+A chunk that appears in *both* lists accumulates both contributions, so agreement
+between semantic and lexical search is rewarded. Each fused score then gets a small
+**recency boost** — `× (1 + 0.1 · e^(−ageDays/30))` — so fresher documents win ties
+without ever outranking clearly better matches (the boost is capped at 10%). Scores are
+normalized so the best chunk is always `1.0`.
+
+If the FTS query matches nothing (or fails to parse), retrieval degrades gracefully to
+pure vector ordering — never an error in chat.
+
+## Citation-first answers
+
+Retrieval builds two artifacts with **identical numbering**:
+
+- the `<knowledge_base>` prompt block, where every chunk is prefixed
+  `[Source N: filename]` — chunks from the same document share one number;
+- a deduped source list attached to the assistant message metadata
+  (`ChatMetadata.ragSources`): number, file/URL name, collection name, normalized score.
+
+The UI renders a compact, collapsible **Sources** row under any assistant message that
+used RAG, so `[Source 2]` in the text always maps to entry 2 in the list — across
+multiple collections in the same conversation.
+
+## Visibility levels
+
+Collections follow the [unified visibility model](/docs/architecture) used by workflows
+and agents (resolver in `src/lib/visibility`):
+
+| visibility | who can read / retrieve from it          |
+|------------|-------------------------------------------|
+| `private`  | the creator only (+ org admins)            |
+| `shared`   | users with an explicit grant               |
+| `team`     | members of any team in `teamIds[]`         |
+| `company`  | everyone in the org                        |
+
+Legacy rows holding `org` resolve as `company` — no data migration required. The legacy
+single `teamId` column stays synced to `teamIds[0]` on every write for back-compat
+readers.
+
+Access is enforced at **every retrieval entry point**: when a chat mentions collections,
+each one is checked with `canAccess("knowledge_collection", id, userId, "use")` before
+any chunk is fetched; collections the user cannot access are silently skipped. The
+collection list and detail APIs apply the same resolver, so the picker only ever shows
+what the viewer may read.
+
+## API surface
+
+- `GET /api/knowledge/collections` — collections visible to the caller.
+- `POST /api/knowledge/collections` — admin; accepts `visibility`
+  (`private | shared | team | company`, legacy `org` accepted and normalized) and
+  `teamIds[]`.
+- `PATCH /api/knowledge/collections/:id` — requires `manage` (owner or admin); same
+  fields as create.
+- `DELETE /api/knowledge/collections/:id` — admin.
+- `POST /api/knowledge/ingest` — admin; chunk + embed a document into a collection.

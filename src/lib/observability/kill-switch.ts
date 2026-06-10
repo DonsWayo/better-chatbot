@@ -54,7 +54,7 @@ export async function isKillSwitchActive(): Promise<boolean> {
 
 /** Returns a 503 Response if the kill switch is active; null otherwise. */
 export async function checkKillSwitch(
-  teamId?: string | null,
+  _teamId?: string | null,
 ): Promise<Response | null> {
   if (!(await isKillSwitchActive())) return null;
 

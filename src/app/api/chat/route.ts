@@ -32,7 +32,7 @@ import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
 import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
-import { retrieveChunks } from "lib/ai/embeddings/ingest";
+import { retrieveForChat } from "lib/ai/embeddings/retrieval";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
@@ -133,6 +133,18 @@ export async function POST(request: Request) {
       attachments = [],
       ragCollectionId,
     } = chatApiSchemaRequestBodySchema.parse(json);
+
+    // Wave 6 phase 2: chat may reference SEVERAL collections — the explicit
+    // picker (ragCollectionId) plus any @knowledge mentions. Access is
+    // enforced downstream by retrieveForChat (unified visibility resolver).
+    const knowledgeCollectionIds = [
+      ...new Set([
+        ...(ragCollectionId ? [ragCollectionId] : []),
+        ...mentions.flatMap((m) =>
+          m.type === "knowledge" ? [m.collectionId] : [],
+        ),
+      ]),
+    ];
 
     let thread = await chatRepository.selectThreadDetails(id);
 
@@ -332,7 +344,7 @@ export async function POST(request: Request) {
       model: `${effectiveModel?.provider ?? "unknown"}/${effectiveModel?.model ?? "unknown"}`,
       promptHash: hashContent(promptText),
       guardrailFired: false, // updated by guardrails middleware via event
-      ragUsed: mentions.some((m: { type: string }) => m.type === "knowledge"),
+      ragUsed: knowledgeCollectionIds.length > 0,
     });
     if (routing) {
       logger.info(`routing: ${routing.reason}`);
@@ -452,27 +464,27 @@ export async function POST(request: Request) {
           .map((v) => filterMcpServerCustomizations(MCP_TOOLS!, v))
           .orElse({});
 
-        // Wave 6 (ADR-0007): retrieve relevant knowledge chunks when a collection is active
-        // ragCollectionId is passed directly in the request body; no thread.metadata column exists yet
+        // Wave 6 phase 2 (ADR-0007): hybrid retrieval (pgvector + FTS, RRF)
+        // across every mentioned collection the user can access. The payload
+        // carries a deduped [Source N] list that is attached to the message
+        // metadata so the UI can render citations.
         let ragContext: string | null = null;
-        if (ragCollectionId) {
+        if (knowledgeCollectionIds.length > 0) {
           const lastUserMessage = messages.findLast((m) => m.role === "user");
           const queryText =
             lastUserMessage?.parts
-              ?.filter((p: any) => p.type === "text")
-              ?.map((p: any) => p.text)
+              ?.map((p) => (p.type === "text" ? p.text : ""))
+              ?.filter(Boolean)
               ?.join(" ") ?? "";
           if (queryText) {
-            const chunks = await retrieveChunks(
+            const ragPayload = await retrieveForChat(
               queryText,
-              ragCollectionId,
+              knowledgeCollectionIds,
+              session.user.id,
             ).catch(() => null);
-            if (chunks && chunks.length > 0) {
-              ragContext = chunks
-                .map(
-                  (c, i) => `[Source ${i + 1}: ${c.sourceRef}]\n${c.chunkText}`,
-                )
-                .join("\n\n");
+            if (ragPayload) {
+              ragContext = ragPayload.context;
+              metadata.ragSources = ragPayload.sources;
             }
           }
         }

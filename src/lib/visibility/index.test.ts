@@ -10,6 +10,7 @@ const h = vi.hoisted(() => {
   const state = {
     workflowRows: [] as unknown[],
     agentRows: [] as unknown[],
+    knowledgeRows: [] as unknown[],
     userRows: [] as unknown[],
     grantRows: [] as unknown[],
   };
@@ -20,6 +21,8 @@ const h = vi.hoisted(() => {
         return state.workflowRows;
       case "agent":
         return state.agentRows;
+      case "knowledge":
+        return state.knowledgeRows;
       case "user":
         return state.userRows;
       case "grant":
@@ -94,6 +97,14 @@ vi.mock("lib/db/pg/schema.pg", () => ({
     visibility: "visibility",
     teamIds: "teamIds",
   },
+  AsafeKnowledgeCollectionTable: {
+    _tbl: "knowledge",
+    id: "id",
+    createdBy: "createdBy",
+    visibility: "visibility",
+    teamIds: "teamIds",
+    teamId: "teamId",
+  },
   UserTable: { _tbl: "user", id: "id", role: "role" },
   EntityGrantTable: {
     _tbl: "grant",
@@ -122,7 +133,9 @@ import {
   type VisibilityEntity,
   canAccess,
   grantAccess,
+  knowledgeCollectionEntity,
   listGrants,
+  loadViewerContext,
   resolveAccess,
   revokeAccess,
 } from "./index";
@@ -153,6 +166,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.workflowRows = [];
   state.agentRows = [];
+  state.knowledgeRows = [];
   state.userRows = [{ role: "user" }];
   state.grantRows = [];
   listUserTeamsMock.mockResolvedValue([]);
@@ -473,15 +487,181 @@ describe("canAccess — agent", () => {
 });
 
 describe("canAccess — unwired entity types fail closed", () => {
-  it("thread / folder / knowledge_collection / mcp_server → false (TODO rounds)", async () => {
-    for (const t of [
-      "thread",
-      "folder",
-      "knowledge_collection",
-      "mcp_server",
-    ] as const) {
+  it("thread / folder / mcp_server → false (TODO rounds)", async () => {
+    for (const t of ["thread", "folder", "mcp_server"] as const) {
       await expect(canAccess(t, ENTITY_ID, OWNER, "view")).resolves.toBe(false);
     }
+  });
+});
+
+// ── canAccess: knowledge_collection (Wave 6 phase 2) ─────────────────────────
+
+describe("canAccess — knowledge_collection", () => {
+  it("creator gets manage on their private collection", async () => {
+    state.knowledgeRows = [
+      { ownerId: OWNER, visibility: "private", teamIds: null, teamId: null },
+    ];
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, OWNER, "manage"),
+    ).resolves.toBe(true);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "view"),
+    ).resolves.toBe(false);
+  });
+
+  it("legacy 'org' visibility reads as company: anyone may view/use, not edit", async () => {
+    state.knowledgeRows = [
+      { ownerId: OWNER, visibility: "org", teamIds: null, teamId: null },
+    ];
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "view"),
+    ).resolves.toBe(true);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "use"),
+    ).resolves.toBe(true);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "edit"),
+    ).resolves.toBe(false);
+  });
+
+  it("team visibility honours modern teamIds[]", async () => {
+    state.knowledgeRows = [
+      { ownerId: OWNER, visibility: "team", teamIds: [TEAM_A], teamId: null },
+    ];
+    listUserTeamsMock.mockResolvedValue([
+      { id: TEAM_A, name: "Team A", role: "member" },
+    ]);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "use"),
+    ).resolves.toBe(true);
+  });
+
+  it("team visibility falls back to the legacy single teamId column", async () => {
+    state.knowledgeRows = [
+      { ownerId: OWNER, visibility: "team", teamIds: null, teamId: TEAM_B },
+    ];
+    listUserTeamsMock.mockResolvedValue([
+      { id: TEAM_B, name: "Team B", role: "member" },
+    ]);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "use"),
+    ).resolves.toBe(true);
+    listUserTeamsMock.mockResolvedValue([]);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "use"),
+    ).resolves.toBe(false);
+  });
+
+  it("shared visibility honours entity grants", async () => {
+    state.knowledgeRows = [
+      { ownerId: OWNER, visibility: "shared", teamIds: null, teamId: null },
+    ];
+    state.grantRows = [{ capability: "use" }];
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "use"),
+    ).resolves.toBe(true);
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "manage"),
+    ).resolves.toBe(false);
+  });
+
+  it("org admins manage any collection", async () => {
+    state.knowledgeRows = [
+      { ownerId: OWNER, visibility: "private", teamIds: null, teamId: null },
+    ];
+    state.userRows = [{ role: "admin" }];
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, STRANGER, "manage"),
+    ).resolves.toBe(true);
+  });
+
+  it("unknown collection → false", async () => {
+    state.knowledgeRows = [];
+    await expect(
+      canAccess("knowledge_collection", ENTITY_ID, OWNER, "view"),
+    ).resolves.toBe(false);
+  });
+});
+
+// ── knowledgeCollectionEntity mapping ────────────────────────────────────────
+
+describe("knowledgeCollectionEntity", () => {
+  it("prefers modern teamIds[] over the legacy teamId", () => {
+    const e = knowledgeCollectionEntity({
+      createdBy: OWNER,
+      visibility: "team",
+      teamIds: [TEAM_A],
+      teamId: TEAM_B,
+    });
+    expect(e.teamIds).toEqual([TEAM_A]);
+  });
+
+  it("falls back to [teamId] when teamIds is empty or null", () => {
+    expect(
+      knowledgeCollectionEntity({
+        createdBy: OWNER,
+        visibility: "team",
+        teamIds: [],
+        teamId: TEAM_B,
+      }).teamIds,
+    ).toEqual([TEAM_B]);
+    expect(
+      knowledgeCollectionEntity({
+        createdBy: OWNER,
+        visibility: "team",
+        teamIds: null,
+        teamId: null,
+      }).teamIds,
+    ).toBeNull();
+  });
+
+  it("null createdBy maps to an unmatchable owner (visibility still applies)", () => {
+    const e = knowledgeCollectionEntity({
+      createdBy: null,
+      visibility: "company",
+      teamIds: null,
+      teamId: null,
+    });
+    expect(e.ownerId).toBe("");
+    expect(resolveAccess(e, viewer(), "use")).toBe(true);
+  });
+});
+
+// ── loadViewerContext (list filtering) ───────────────────────────────────────
+
+describe("loadViewerContext", () => {
+  it("groups the user's grants by entity id", async () => {
+    state.grantRows = [
+      { entityId: "col-1", capability: "use" },
+      { entityId: "col-1", capability: "edit" },
+      { entityId: "col-2", capability: "view" },
+    ];
+    const ctx = await loadViewerContext("knowledge_collection", STRANGER);
+    expect(ctx.grantsByEntityId["col-1"]).toHaveLength(2);
+    expect(ctx.grantsByEntityId["col-2"]).toEqual([{ capability: "view" }]);
+    expect(ctx.isAdmin).toBe(false);
+  });
+
+  it("flags org admins and lists team memberships", async () => {
+    state.userRows = [{ role: "admin,editor" }];
+    listUserTeamsMock.mockResolvedValue([
+      { id: TEAM_A, name: "Team A", role: "member" },
+    ]);
+    const ctx = await loadViewerContext("knowledge_collection", STRANGER);
+    expect(ctx.isAdmin).toBe(true);
+    expect(ctx.userTeamIds).toEqual([TEAM_A]);
+  });
+});
+
+// ── resolveAccess: legacy 'org' mapping ──────────────────────────────────────
+
+describe("resolveAccess — legacy 'org' visibility", () => {
+  it("'org' resolves as company (view/use for everyone, edit owner-only)", () => {
+    const e = entity({ visibility: "org" });
+    expect(resolveAccess(e, viewer(), "view")).toBe(true);
+    expect(resolveAccess(e, viewer(), "use")).toBe(true);
+    expect(resolveAccess(e, viewer(), "edit")).toBe(false);
+    expect(resolveAccess(e, viewer({ userId: OWNER }), "manage")).toBe(true);
   });
 });
 
