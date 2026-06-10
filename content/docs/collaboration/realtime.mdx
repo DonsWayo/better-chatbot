@@ -1,0 +1,81 @@
+---
+title: Realtime sync
+description: Read-path-only realtime via ElectricSQL — shape whitelist, authenticated proxy, and the live shared-thread view.
+---
+
+Phase 2 of the [collaboration phasing plan](/docs/collaboration/teamspaces#electricsql-phasing-plan):
+an [ElectricSQL](https://electric-sql.com) sync service streams **reads only** out of
+Postgres logical replication. Every write still goes through the existing routes and
+server actions — Electric never accepts writes and the app never bypasses its own
+authorization, budgets, or audit paths.
+
+## Architecture
+
+<Mermaid
+  chart={`flowchart LR
+    PG[(Postgres\nwal_level=logical)] -->|logical replication| E[Electric sync service\ninternal only, no auth]
+    E -->|HTTP shape log| P["/api/realtime/shape\nauthenticated proxy\nshape whitelist + team ACLs"]
+    P -->|long-poll / SSE| B[Browser\n@electric-sql/react useShape]
+    B -.->|writes (unchanged)| API[Existing routes & actions] --> PG`}
+/>
+
+- **Electric sync service** (`electricsql/electric`, dev compose service `electric` on
+  host port `3010`; in Kubernetes an optional internal-only Deployment, `electric.enabled`
+  in the Helm chart). It connects to the same database as the app (`wal_level=logical`
+  required; the dev compose sets the flag on the Postgres service) and serves the HTTP
+  shape API.
+- **Authenticated shape proxy** — `GET /api/realtime/shape`
+  (`src/app/api/realtime/shape/route.ts`). Electric's shape API is unauthenticated by
+  design, so it is **never** exposed to browsers. The proxy implements Electric's
+  [proxy auth pattern](https://electric-sql.com/docs/guides/auth): it validates the
+  session, decides the shape definition server-side, forwards only the Electric
+  protocol params (`offset`, `handle`, `live`, `cursor`, `live_sse`), and streams the
+  response through with the `electric-*` headers intact (responses are always marked
+  `cache-control: private`).
+- **Client** — `@electric-sql/client` + `@electric-sql/react` (`useShape`) subscribe
+  through the proxy. Shared helpers live in `src/lib/realtime/shapes.ts`.
+
+## Shape whitelist
+
+The proxy serves exactly two shapes; anything else is rejected with `403`. Clients can
+pick a whitelisted shape but can never widen one — `table`, `where`, `params`, and
+`columns` are pinned server-side from the session:
+
+| Shape | Definition (server-side) | Access check |
+| --- | --- | --- |
+| `table=chat_message&threadId=<uuid>` | `chat_message WHERE thread_id = $1`, columns `id,created_at` | `canReadThread` — thread owner, or `team`-visible thread in a team folder the caller belongs to |
+| `table=agent_session` | `agent_session WHERE user_id = <caller>` | always scoped to the caller's own sessions |
+
+Unauthenticated requests get `401`; a valid session asking for a thread it cannot read
+gets `403` (same gate as the shared thread page itself).
+
+## Live shared-thread view
+
+The read-only shared view (`/shared/[threadId]`) stays a server component — it already
+owns the row → `UIMessage` mapping and the `PreviewMessage` rendering pipeline. A small
+client island (`src/components/realtime/live-thread-messages.tsx`) subscribes to the
+thread's `chat_message` shape (ids only) and calls `router.refresh()` (debounced) when
+the message set changes, so the server re-renders with the full pipeline. The shape is a
+*change signal*, not a second rendering path — that keeps SSR, i18n, and message
+rendering in one place and avoids parsing the `json[]` parts column client-side.
+
+## Phasing
+
+- **Phase 2 (this page, shipped)** — read-path-only sync: live shared threads and the
+  caller-scoped `agent_session` shape for run badges.
+- **Phase 3 (next)** — multiplayer presence/typing and shared model streams. Needs:
+  presence state (ephemeral, not table-backed — Electric only syncs tables, so this is
+  a separate channel), shape subscriptions for folder trees and unread badges, and
+  write attribution for multiple humans in one thread.
+
+## Configuration
+
+| Env var | Where | Meaning |
+| --- | --- | --- |
+| `ELECTRIC_URL` | app | Base URL of the Electric sync service the proxy forwards to. Default `http://localhost:3010` (dev compose). On Kubernetes the Helm chart injects the internal Service URL automatically when `electric.enabled=true`. |
+| `DATABASE_URL` | electric | Postgres connection string (user needs the `REPLICATION` attribute). In Helm it is read from the existing app secret (`electric.databaseUrlSecretKey`, default `POSTGRES_URL`). |
+
+Dev bring-up: `docker compose -f docker/compose.yml up -d postgres electric` (the
+Postgres service runs with `wal_level=logical`; changing that flag recreates the
+container but keeps the data volume), then `curl http://localhost:3010/v1/health` →
+`{"status":"active"}`.

@@ -59,6 +59,12 @@ live in the `asafe-ai-secrets` Secret on EKS (synced from AWS Secrets Manager).
 | `ASAFE_COMPRESSION_ENABLED` | Context-compression middleware toggle (ADR-0011). |
 | `ASAFE_RATE_LIMIT_RPM` | Chat requests per user per minute (default 60). |
 
+## Realtime sync
+
+| Variable | Notes |
+|---|---|
+| `ELECTRIC_URL` | Base URL of the internal Electric sync service used by the [authenticated shape proxy](/docs/collaboration/realtime). Default `http://localhost:3010` (dev compose); injected automatically by the Helm chart when `electric.enabled=true`. |
+
 ## Observability & operations
 
 | Variable | Notes |

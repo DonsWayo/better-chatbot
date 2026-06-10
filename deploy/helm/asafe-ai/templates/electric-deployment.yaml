@@ -1,0 +1,101 @@
+{{- if .Values.electric.enabled -}}
+# ElectricSQL sync service (read-path-only realtime — docs/next-gen-platform-blueprint.md
+# "Realtime & collaboration"). Reads Postgres logical replication (the database must run with
+# wal_level=logical) and serves the HTTP shape API. INTERNAL ONLY: it has no auth of its own,
+# so it is never exposed via Ingress — the app's authenticated proxy at /api/realtime/shape
+# (shape whitelist + team ACLs) is the only allowed consumer. The app reaches it through the
+# ClusterIP Service below; ELECTRIC_URL is injected into the app ConfigMap automatically.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "asafe-ai.fullname" . }}-electric
+  labels:
+    {{- include "asafe-ai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: electric
+spec:
+  # Electric keeps shape logs on local disk and owns a single replication slot:
+  # exactly one replica, Recreate so an upgrade never runs two consumers at once.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "asafe-ai.name" . }}-electric
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "asafe-ai.name" . }}-electric
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: electric
+      {{- with .Values.electric.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "asafe-ai.serviceAccountName" . }}
+      containers:
+        - name: electric
+          image: "{{ .Values.electric.image.repository }}:{{ .Values.electric.image.tag }}"
+          imagePullPolicy: {{ .Values.electric.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            # Electric connects as the same Postgres user as the app (needs the
+            # REPLICATION attribute). Key name in the existing secret is configurable.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: {{ .Values.electric.databaseUrlSecretKey }}
+            # The shape API carries no credentials of its own; isolation comes from
+            # being ClusterIP-only behind the app's authenticated proxy.
+            - name: ELECTRIC_INSECURE
+              value: "true"
+            {{- with .Values.electric.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.electric.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "asafe-ai.fullname" . }}-electric
+  labels:
+    {{- include "asafe-ai.labels" . | nindent 4 }}
+    app.kubernetes.io/component: electric
+spec:
+  # Internal only — never expose Electric through the Ingress/ALB.
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "asafe-ai.name" . }}-electric
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.electric.service.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

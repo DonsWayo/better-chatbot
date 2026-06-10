@@ -8,3 +8,7 @@ data:
   {{- range $k, $v := .Values.config }}
   {{ $k }}: {{ $v | quote }}
   {{- end }}
+  {{- if and .Values.electric.enabled (not (hasKey .Values.config "ELECTRIC_URL")) }}
+  # Internal Electric sync service for the authenticated shape proxy (/api/realtime/shape).
+  ELECTRIC_URL: {{ printf "http://%s-electric:%d" (include "asafe-ai.fullname" .) (int .Values.electric.service.port) | quote }}
+  {{- end }}

@@ -24,6 +24,9 @@ services:
     # Prod uses the SAME engine: a self-managed cloud-native Postgres on EKS with this AI-native
     # image (not RDS/Aurora, which lack timescale/pgvectorscale) — ADR-0006.
     image: timescale/timescaledb-ha:pg17
+    # wal_level=logical is required by the Electric sync service (logical replication reader).
+    # Config-only change: the data volume is untouched, but changing this recreates the container.
+    command: ["postgres", "-c", "wal_level=logical"]
     env_file:
       - .env
     ports:
@@ -34,6 +37,27 @@ services:
     volumes:
       - postgres_data:/home/postgres/pgdata/data
       - ./initdb:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+
+  electric:
+    # ElectricSQL sync service (read-path-only realtime — docs/next-gen-platform-blueprint.md
+    # "Realtime & collaboration"). Reads Postgres logical replication and serves the HTTP shape
+    # API. NEVER expose this port to end users in prod — the app's authenticated proxy at
+    # /api/realtime/shape is the only allowed consumer (shape whitelist + team ACLs live there).
+    image: electricsql/electric:1.6.10
+    environment:
+      # Dev credentials match the initialized dev volume (see repo .env.local POSTGRES_URL —
+      # host port 5433 maps to this in-network 5432). Override via ELECTRIC_DATABASE_URL.
+      DATABASE_URL: ${ELECTRIC_DATABASE_URL:-postgresql://asafe:asafe_local_pw@postgres:5432/asafe?sslmode=disable}
+      # Dev only: the shape API is reached exclusively through the app's auth proxy.
+      ELECTRIC_INSECURE: "true"
+    ports:
+      # host 3010 -> container 3000 (3000-3005 are taken by app/dev servers)
+      - "3010:3000"
+    networks:
+      - better-chatbot-networks
+    depends_on:
+      - postgres
     restart: unless-stopped
 
 volumes:

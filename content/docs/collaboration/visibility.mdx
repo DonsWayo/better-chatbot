@@ -65,8 +65,8 @@ server actions, each of which requires the caller to hold `manage` on the entity
 
 | Entity | Resolver wired? | Status |
 |---|---|---|
-| Workflows (live definitions) | **Yes** — `canAccess("workflow", …)` | `teamIds[]` column added; legacy `public` → company at read time; grants live once visibility can be set to `shared`. |
-| Agents | **Yes** — `canAccess("agent", …)` | Same as workflows. |
+| Workflows (live definitions) | **Yes** — `canAccess("workflow", …)` | `teamIds[]` column added; **`VisibilityPicker` live in the editor**; legacy `public` → company at read time; `shared` grants editable in-place. |
+| Agents | **Yes** — `canAccess("agent", …)` | Same as workflows — **`VisibilityPicker` live in the agent editor**. |
 | Threads | Not yet | Keep `private`/`team` via folders ([teamspaces phase 1](/docs/collaboration/teamspaces)); `canAccess` fails closed. |
 | Folders (teamspaces) | Not yet | Keep bespoke owner/team checks; `canAccess` fails closed. |
 | Knowledge collections | Not yet | org/team scoped today; alignment in a later round. |

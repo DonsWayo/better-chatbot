@@ -100,6 +100,33 @@ worker:
     limits:
       memory: 512Mi
 
+# ElectricSQL sync service (read-path-only realtime; phase 2 — see
+# content/docs/collaboration/realtime.mdx). Internal-only ClusterIP, consumed exclusively by
+# the app's authenticated shape proxy (/api/realtime/shape). Requires the database to run with
+# wal_level=logical and the DB user to have the REPLICATION attribute. When enabled, the app
+# ConfigMap automatically gets ELECTRIC_URL pointing at the internal Service.
+electric:
+  enabled: false
+  image:
+    repository: electricsql/electric
+    tag: "1.6.10"
+    pullPolicy: IfNotPresent
+  service:
+    port: 3000
+  # Key inside .Values.existingSecret holding the Postgres connection string Electric uses.
+  # Defaults to the app's POSTGRES_URL (same database, same user).
+  databaseUrlSecretKey: POSTGRES_URL
+  podAnnotations: {}
+  extraEnv: []
+  # - name: ELECTRIC_DB_POOL_SIZE
+  #   value: "10"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
 # Non-sensitive env -> ConfigMap. (APP_VERSION is injected from the image tag automatically.)
 config:
   NODE_ENV: "production"

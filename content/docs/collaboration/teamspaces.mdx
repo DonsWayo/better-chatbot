@@ -44,15 +44,18 @@ author's identity.
 
 <Mermaid
   chart={`flowchart LR
-    P1["Phase 1 (now)\nRead-only thread snapshots\nfolders, team visibility\nno Electric"] --> P2["Phase 2\nElectric sidecar in Helm\nPostgres logical replication\nread-path shapes: Runs rail,\nfolder trees, Inbox badges"] --> P3["Phase 3\nFull multiplayer:\nlive shared conversations,\npresence, shared model stream"]`}
+    P1["Phase 1 (shipped)\nRead-only thread snapshots\nfolders, team visibility\nno Electric"] --> P2["Phase 2 (shipped)\nElectric sidecar\nPostgres logical replication\nread-path shapes:\nlive shared threads, sessions"] --> P3["Phase 3\nFull multiplayer:\nlive shared conversations,\npresence, shared model stream"]`}
 />
 
 1. **Phase 1 (shipped)** — link-shared read-only thread snapshots with private/team
    visibility. Team checks recipient membership *and* the entitlement/KB scope of the
    thread's content. No new infrastructure.
-2. **Phase 2** — an Electric sidecar Deployment in the Helm chart reading Postgres
-   logical replication (no Redis), with shapes scoped by folder/team membership. Powers
-   the live Runs rail, folder trees, Inbox unread counts, and desktop badges.
+2. **Phase 2 (shipped)** — an Electric sync service (docker compose service in dev, an
+   optional Deployment in the Helm chart) reading Postgres logical replication (no
+   Redis), with shapes scoped by team membership behind an authenticated proxy. The
+   shared read-only thread view now updates live while open, and a caller-scoped
+   `agent_session` shape is available for live run badges. See
+   [Realtime sync](/docs/collaboration/realtime) for the architecture.
 3. **Phase 3** — full multiplayer: several humans + the agent in one thread, presence and
    typing indicators, everyone seeing the model stream — only after phase 2 proves the
    sync layer in production.
