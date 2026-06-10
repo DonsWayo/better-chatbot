@@ -2,9 +2,10 @@ import { getSession } from "auth/server";
 import {
   ELECTRIC_PROTOCOL_QUERY_PARAMS,
   electricBaseUrl,
+  isPresenceContextType,
   isUuid,
 } from "lib/realtime/shapes";
-import { canReadThread } from "lib/teamspaces/folders";
+import { canAccessFolder, canReadThread } from "lib/teamspaces/folders";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,12 @@ export const dynamic = "force-dynamic";
  *     caller is a member of). Powers the live shared-thread view.
  *   - table=agent_session                 → WHERE user_id = <caller>. Powers
  *     live run/badge updates for the caller's own sessions.
+ *   - table=asafe_presence&contextType=thread|folder&contextId=<uuid>
+ *     → WHERE context_type = $1 AND context_id = $2, gated by the same access
+ *     check as the context itself (canReadThread / canAccessFolder). Powers
+ *     the presence avatar stack; columns are pinned to
+ *     id,user_id,context_type,context_id,last_seen_at (no PII beyond ids —
+ *     names/avatars resolve via /api/realtime/presence-users).
  */
 export async function GET(request: Request) {
   const session = await getSession();
@@ -64,6 +71,36 @@ export async function GET(request: Request) {
     originUrl.searchParams.set("table", "agent_session");
     originUrl.searchParams.set("where", `"user_id" = $1`);
     originUrl.searchParams.set("params[1]", userId);
+  } else if (table === "asafe_presence") {
+    const contextType = url.searchParams.get("contextType");
+    const contextId = url.searchParams.get("contextId");
+    if (!isPresenceContextType(contextType)) {
+      return new Response("contextType (thread|folder) is required", {
+        status: 400,
+      });
+    }
+    if (!contextId || !isUuid(contextId)) {
+      return new Response("contextId (uuid) is required", { status: 400 });
+    }
+    const allowed =
+      contextType === "thread"
+        ? await canReadThread(contextId, userId)
+        : await canAccessFolder(contextId, userId);
+    if (!allowed) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    originUrl.searchParams.set("table", "asafe_presence");
+    originUrl.searchParams.set(
+      "where",
+      `"context_type" = $1 AND "context_id" = $2`,
+    );
+    originUrl.searchParams.set("params[1]", contextType);
+    originUrl.searchParams.set("params[2]", contextId);
+    // id (pk, required by Electric) + the change signal; never emails or names.
+    originUrl.searchParams.set(
+      "columns",
+      "id,user_id,context_type,context_id,last_seen_at",
+    );
   } else {
     return new Response("Shape not allowed", { status: 403 });
   }

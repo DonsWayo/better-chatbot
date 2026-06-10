@@ -359,6 +359,35 @@ export async function canReadThread(
   return isTeamMember(folder.teamId, userId);
 }
 
+/**
+ * Folder access gate (presence shape / heartbeats and other read paths):
+ * the folder owner, or — for team folders — any member of the team.
+ */
+export async function canAccessFolder(
+  folderId: string,
+  userId: string,
+): Promise<boolean> {
+  const folder = await getFolder(folderId);
+  if (!folder) return false;
+  if (folder.ownerId === userId) return true;
+  if (!folder.teamId) return false;
+  return isTeamMember(folder.teamId, userId);
+}
+
+/**
+ * True when a thread is actually shared: "team"-visible AND anchored in a
+ * team folder. Used to gate collaborative chrome (presence avatars) on the
+ * owner's own chat view — a private thread never shows presence.
+ */
+export async function isThreadShared(threadId: string): Promise<boolean> {
+  const thread = await getThread(threadId);
+  if (!thread) return false;
+  if (thread.visibility !== "team") return false;
+  if (!thread.folderId) return false;
+  const folder = await getFolder(thread.folderId);
+  return Boolean(folder?.teamId);
+}
+
 /** Team context of a shared thread (for the "Shared with <team>" banner). */
 export async function getThreadTeam(
   threadId: string,

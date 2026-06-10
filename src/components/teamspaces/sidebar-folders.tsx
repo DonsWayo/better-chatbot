@@ -5,6 +5,7 @@ import {
   deleteFolderAction,
   renameFolderAction,
 } from "@/app/api/teamspaces/actions";
+import { PresenceAvatars } from "@/components/realtime/presence-avatars";
 import { cn, fetcher } from "lib/utils";
 import {
   ChevronRight,
@@ -208,6 +209,16 @@ function FolderRow({
         </div>
         {open && (
           <div className="ml-2">
+            {/* Presence: teammates browsing this team folder right now.
+                Mounting also heartbeats the viewer into the folder context. */}
+            {folder.teamId && currentUserId && (
+              <PresenceAvatars
+                contextType="folder"
+                contextId={folder.id}
+                selfUserId={currentUserId}
+                className="px-2 py-1"
+              />
+            )}
             {depth < 3 &&
               children.map((child) => (
                 <FolderRow

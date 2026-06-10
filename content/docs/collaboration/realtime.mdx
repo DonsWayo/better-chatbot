@@ -37,7 +37,7 @@ authorization, budgets, or audit paths.
 
 ## Shape whitelist
 
-The proxy serves exactly two shapes; anything else is rejected with `403`. Clients can
+The proxy serves exactly three shapes; anything else is rejected with `403`. Clients can
 pick a whitelisted shape but can never widen one — `table`, `where`, `params`, and
 `columns` are pinned server-side from the session:
 
@@ -45,6 +45,7 @@ pick a whitelisted shape but can never widen one — `table`, `where`, `params`,
 | --- | --- | --- |
 | `table=chat_message&threadId=<uuid>` | `chat_message WHERE thread_id = $1`, columns `id,created_at` | `canReadThread` — thread owner, or `team`-visible thread in a team folder the caller belongs to |
 | `table=agent_session` | `agent_session WHERE user_id = <caller>` | always scoped to the caller's own sessions |
+| `table=asafe_presence&contextType=thread\|folder&contextId=<uuid>` | `asafe_presence WHERE context_type = $1 AND context_id = $2`, columns `id,user_id,context_type,context_id,last_seen_at` | same gate as the context itself — `canReadThread` for threads, `canAccessFolder` (owner or team member) for folders |
 
 Unauthenticated requests get `401`; a valid session asking for a thread it cannot read
 gets `403` (same gate as the shared thread page itself).
@@ -59,14 +60,58 @@ the message set changes, so the server re-renders with the full pipeline. The sh
 *change signal*, not a second rendering path — that keeps SSR, i18n, and message
 rendering in one place and avoids parsing the `json[]` parts column client-side.
 
+## Presence
+
+Phase 3 adds "who else is here" — a calm avatar stack on shared threads and open team
+folders showing teammates active in the same context. Presence keeps the same
+architecture as everything else on this page: **writes through a Server Action, reads
+through the shape proxy**. No websocket side-channel, no extra infrastructure — just a
+tiny table (`asafe_presence`) flowing through Electric like any other shape.
+
+### How it works
+
+1. **Heartbeat (write path)** — while a shared thread or team folder is open *and the
+   tab is visible*, the client island (`src/components/realtime/presence-avatars.tsx`)
+   calls the `heartbeatPresenceAction` Server Action
+   (`src/lib/realtime/presence-actions.ts`) on mount and every **30 seconds**. The
+   action validates the session, re-checks that the caller may read that context
+   (`canReadThread` / `canAccessFolder`), and performs a single idempotent upsert into
+   `asafe_presence` (unique on `user_id + context_type + context_id`, bumping
+   `last_seen_at`). A hidden tab stops beating — there is no explicit "leave" write.
+2. **Shape (read path)** — everyone in the context subscribes to the `asafe_presence`
+   shape through the authenticated proxy (see whitelist above). The shape carries ids
+   and timestamps only.
+3. **Active window** — a user renders as present while their `last_seen_at` is within
+   the last **90 seconds** (three heartbeats of slack), excluding the viewer
+   themselves. Stale rows simply age out of the window client-side; no cleanup job is
+   required for correctness.
+4. **Names and avatars** — resolved lazily via `GET /api/realtime/presence-users?ids=…`
+   (authenticated; returns `id`, `name`, `image` only — the same exposure level as
+   existing member lists).
+
+Presence only mounts on contexts that are actually shared: a `team`-visible thread
+inside a team folder (owner's chat view and the read-only `/shared` view) or an open
+team folder in the sidebar. Private threads and personal folders never heartbeat and
+never show avatars.
+
+### Privacy
+
+Presence is intentionally coarse: it records *"this user had this shared thread/folder
+open within the last 90 seconds"* — nothing else. No cursor positions, no typing
+content, no read receipts per message. The shape never exposes emails or any user
+fields beyond the id; heartbeats stop the moment the tab is hidden or the context is
+closed; and the data only flows to people who could already see the same context (the
+shape proxy applies the identical access checks as the content itself).
+
 ## Phasing
 
-- **Phase 2 (this page, shipped)** — read-path-only sync: live shared threads and the
+- **Phase 2 (shipped)** — read-path-only sync: live shared threads and the
   caller-scoped `agent_session` shape for run badges.
-- **Phase 3 (next)** — multiplayer presence/typing and shared model streams. Needs:
-  presence state (ephemeral, not table-backed — Electric only syncs tables, so this is
-  a separate channel), shape subscriptions for folder trees and unread badges, and
-  write attribution for multiple humans in one thread.
+- **Phase 3 (this page, shipped)** — presence heartbeats + avatar stacks over the
+  `asafe_presence` shape (table-backed, so it rides the existing Electric pipeline).
+- **Next** — typing indicators and shared model streams, shape subscriptions for
+  folder trees and unread badges, and write attribution for multiple humans in one
+  thread.
 
 ## Configuration
 

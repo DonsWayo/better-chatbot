@@ -1,5 +1,6 @@
 import { PreviewMessage } from "@/components/message";
 import { LiveThreadMessages } from "@/components/realtime/live-thread-messages";
+import { PresenceAvatars } from "@/components/realtime/presence-avatars";
 import { UIMessage } from "ai";
 import { getSession } from "auth/server";
 import { chatRepository } from "lib/db/repository";
@@ -50,13 +51,23 @@ export default async function SharedThreadPage({
       <LiveThreadMessages threadId={threadId} />
       <div className="flex flex-col gap-2 overflow-y-auto pb-20">
         <div className="w-full mx-auto max-w-3xl px-6 py-8">
-          <div className="mb-4 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-xs text-muted-foreground w-fit">
-            <Users className="size-3.5" />
-            <span>
-              {t("sharedWithTeamReadOnly", {
-                team: team?.name ?? t("team"),
-              })}
-            </span>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-xs text-muted-foreground w-fit">
+              <Users className="size-3.5" />
+              <span>
+                {t("sharedWithTeamReadOnly", {
+                  team: team?.name ?? t("team"),
+                })}
+              </span>
+            </div>
+            {/* Presence: teammates with this thread open right now (90s window). */}
+            {team && (
+              <PresenceAvatars
+                contextType="thread"
+                contextId={threadId}
+                selfUserId={userId}
+              />
+            )}
           </div>
           <h1
             className="font-display text-3xl font-semibold tracking-tight"

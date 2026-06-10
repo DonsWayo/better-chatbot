@@ -30,6 +30,7 @@ export const ELECTRIC_PROTOCOL_QUERY_PARAMS = [
 export const WHITELISTED_SHAPE_TABLES = [
   "chat_message",
   "agent_session",
+  "asafe_presence",
 ] as const;
 
 export type WhitelistedShapeTable = (typeof WHITELISTED_SHAPE_TABLES)[number];
@@ -42,6 +43,30 @@ export function isWhitelistedShapeTable(
     (WHITELISTED_SHAPE_TABLES as readonly string[]).includes(table)
   );
 }
+
+/**
+ * Presence (phase 3). Contexts a heartbeat can target — mirrors the
+ * `context_type` enum on asafe_presence. Shared by the Server Action, the
+ * shape proxy, and the client island so all three agree on the vocabulary.
+ */
+export const PRESENCE_CONTEXT_TYPES = ["thread", "folder"] as const;
+
+export type PresenceContextType = (typeof PRESENCE_CONTEXT_TYPES)[number];
+
+export function isPresenceContextType(
+  value: string | null,
+): value is PresenceContextType {
+  return (
+    value !== null &&
+    (PRESENCE_CONTEXT_TYPES as readonly string[]).includes(value)
+  );
+}
+
+/** Client heartbeat cadence while the tab is visible. */
+export const PRESENCE_HEARTBEAT_INTERVAL_MS = 30_000;
+
+/** A user counts as "active" when their last heartbeat is within this window. */
+export const PRESENCE_ACTIVE_WINDOW_MS = 90_000;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
