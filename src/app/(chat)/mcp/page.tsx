@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const session = await getSession();
   if (!session?.user) {
-    return redirect("/login");
+    return redirect("/sign-in");
   }
 
   const isAddingDisabled = process.env.NOT_ALLOW_ADD_MCP_SERVERS;

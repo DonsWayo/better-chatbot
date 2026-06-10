@@ -7,7 +7,7 @@ export const metadata = { title: "Acceptable Use Policy — Asafe AI" };
 
 export default async function AupPage() {
   const session = await getSession();
-  if (!session) redirect("/auth/signin");
+  if (!session) redirect("/sign-in");
 
   const accepted = await hasAcceptedAup(session.user.id);
   if (accepted) redirect("/");

@@ -23,7 +23,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
     unauthorized();
   }
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10));

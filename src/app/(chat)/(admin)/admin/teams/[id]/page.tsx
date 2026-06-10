@@ -21,7 +21,7 @@ export default async function TeamDetailPage({ params }: PageProps) {
 
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const team = await getTeamWithMembers(id);

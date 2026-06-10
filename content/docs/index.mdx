@@ -42,8 +42,28 @@ Three principles fall out of that (see the [decision log](/docs/decisions)):
 
 | Surface | What it is |
 |---|---|
-| **Web** | The Next.js app — chat, agents, workflows, the Runs rail, Triage, admin. The default for most employees. |
+| **Web** | The Next.js app — chat, agents, workflows, the Inbox (`/inbox`), the live Runs rail, admin console. The default for most employees. |
 | **[Desktop](/docs/desktop)** | An Electron **thin client** that loads the same web UI (no UI fork). Adds native niceties, `asafe://` deep links, and — gated behind ADR-0010 — local stdio MCP and a governed coding (opencode) surface. |
+
+## Navigation & settings
+
+The information architecture follows one rule: **sidebar slots are for objects users
+return to — never configuration** (see `docs/design/information-architecture.md` in the
+repo). In practice:
+
+- **Sidebar (everyone):** New Chat, Search (opens the Cmd-K palette), Workflow,
+  **Inbox** (`/inbox` — approvals badge, run history, routines; formerly `/triage`,
+  redirect kept), Agents, an **ephemeral Runs rail** that only appears while a run is
+  live, Folders, and Recents.
+- **Cmd-K command palette** — searches threads, folders, and agents; jumps to Inbox,
+  Settings tabs, and (for admins) admin pages; and falls back to
+  *"Ask A-SAFE AI: …"*, which starts a chat with the query prefilled.
+- **Settings hub** (`/settings`) — a full page with its own left nav and deep-linkable
+  tabs: **General** (theme, language), **Usage** (personal usage and budget), and
+  **Data controls** (GDPR export, Archives).
+- **Admin console** (`/admin`) — a hard mode-swap with its own left nav (Dashboard,
+  Users, Teams, Usage, MCP Catalog, Knowledge, Quality, Guardrails, Feature Flags,
+  Audit) and a "Back to app" link; reached from the footer avatar menu (admins only).
 
 ## Regulatory posture
 

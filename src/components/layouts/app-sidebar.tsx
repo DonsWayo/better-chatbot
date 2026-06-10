@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Particles from "ui/particles";
 import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
@@ -22,6 +22,7 @@ export function AppSidebar({
 }) {
   const userRole = user?.role;
   const router = useRouter();
+  const pathname = usePathname();
 
   // Handle new chat shortcut (specific to main app)
   useEffect(() => {
@@ -35,6 +36,11 @@ export function AppSidebar({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router]);
+
+  // Admin console is a hard mode-swap: /admin/* renders its own left nav
+  // (admin-sidebar.tsx in the (admin) route-group layout), not the daily
+  // sidebar. See docs/design/information-architecture.md §3.
+  if (pathname.startsWith("/admin")) return null;
 
   return (
     <Sidebar
@@ -63,7 +69,7 @@ export function AppSidebar({
 
       <SidebarContent className="mt-2 overflow-hidden relative">
         <div className="flex flex-col overflow-y-auto">
-          <AppSidebarMenus user={user} />
+          <AppSidebarMenus />
           <AppSidebarAgents userRole={userRole} />
           <AppSidebarRuns />
           <AppSidebarThreads />

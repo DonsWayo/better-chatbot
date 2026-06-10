@@ -144,7 +144,9 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
   }, []);
 
   const [input, setInput] = useState("");
-  const [ragCollectionId, setRagCollectionId] = useState<string | undefined>(undefined);
+  const [ragCollectionId, setRagCollectionId] = useState<string | undefined>(
+    undefined,
+  );
 
   const {
     messages,
@@ -369,6 +371,18 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
       }));
     }
   }, [pendingThreadMention, threadId, appStoreMutate]);
+
+  // Draft handed over by the Cmd-K palette ("Ask A-SAFE AI: …") — prefill
+  // the composer once, then clear it. Only the new-chat instance ("/")
+  // consumes it; ChatBot instances on /chat/[thread] must not steal the
+  // draft while the palette navigates home.
+  const pendingChatDraft = appStore((state) => state.pendingChatDraft);
+  useEffect(() => {
+    if (pendingChatDraft && window.location.pathname === "/") {
+      setInput(pendingChatDraft);
+      appStoreMutate({ pendingChatDraft: undefined });
+    }
+  }, [pendingChatDraft, appStoreMutate]);
 
   useEffect(() => {
     if (isInitialThreadEntry)

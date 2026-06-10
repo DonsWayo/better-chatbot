@@ -12,13 +12,20 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
-  if (pathname === "/admin") {
-    return NextResponse.redirect(new URL("/admin/users", request.url));
-  }
+  // /admin is the admin console Dashboard (admin-sidebar.tsx); Users lives
+  // at /admin/users — the old /admin → /admin/users redirect is gone.
 
   const sessionCookie = getSessionCookie(request);
 
   if (!sessionCookie) {
+    // API routes must answer with a machine-readable 401 rather than a 307
+    // redirect to the HTML sign-in page. A fetch/XHR client cannot consume a
+    // redirect to /sign-in, and following it (Playwright/browsers do) yields a
+    // misleading 200. Route handlers all call getSession → 401/403 themselves,
+    // so this only matters for the no-cookie short-circuit here.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
   return NextResponse.next();

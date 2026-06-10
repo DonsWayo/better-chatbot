@@ -341,7 +341,8 @@
       "confirmDeleteExport": "Are you sure you want to delete this export? This action cannot be undone.",
       "exportDeleted": "Export deleted successfully",
       "failedToDeleteExport": "Failed to delete export"
-    }
+    },
+    "addFiles": "Add files"
   },
   "Layout": {
     "workflow": "Workflow",
@@ -398,7 +399,11 @@
     "showLessChats": "Show less",
     "reportAnIssue": "Report an issue",
     "joinCommunity": "Join Community",
-    "userSettings": "User Settings"
+    "userSettings": "User Settings",
+    "search": "Search",
+    "inbox": "Inbox",
+    "settings": "Settings",
+    "adminConsole": "Admin console"
   },
   "Archive": {
     "title": "Archive",
@@ -486,7 +491,8 @@
     "openChatPreferences": "Open Chat Preferences",
     "deleteThread": "Delete Chat",
     "openShortcutsPopup": "Open Shortcuts Popup",
-    "toggleVoiceChat": "Toggle Voice Chat"
+    "toggleVoiceChat": "Toggle Voice Chat",
+    "openCommandPalette": "Command Palette"
   },
   "User": {
     "Profile": {
@@ -723,7 +729,9 @@
       "users": "Users",
       "toggleSidebar": "Toggle Sidebar",
       "adminPanel": "Admin Panel",
-      "backToApp": "Back to App"
+      "backToApp": "Back to App",
+      "dashboard": "Dashboard",
+      "audit": "Audit Log"
     },
     "Users": {
       "title": "Users",
@@ -781,7 +789,8 @@
       "memberEmail": "Member email",
       "memberRole": "Role",
       "addMemberSuccess": "Member added",
-      "addMemberError": "Failed to add member"
+      "addMemberError": "Failed to add member",
+      "backToTeams": "Back to Teams"
     },
     "Knowledge": {
       "title": "Knowledge Base",
@@ -793,7 +802,8 @@
       "visibilityOrg": "Org-wide",
       "visibilityTeam": "Team only",
       "ingestDocument": "Ingest Document",
-      "chunksIngested": "chunks ingested"
+      "chunksIngested": "chunks ingested",
+      "backToKnowledge": "Back to Knowledge"
     },
     "Usage": {
       "title": "Usage",
@@ -921,7 +931,7 @@
     "personalBudget": "personal"
   },
   "Triage": {
-    "title": "Triage",
+    "title": "Inbox",
     "subtitle": "Approvals and routines, in one calm place.",
     "inboxTab": "Inbox",
     "routinesTab": "Routines",
@@ -959,7 +969,9 @@
     "customCronPlaceholder": "e.g. 30 8 * * 1-5",
     "createRoutine": "Create routine",
     "routineCreated": "Routine scheduled",
-    "routineDeleted": "Routine deleted"
+    "routineDeleted": "Routine deleted",
+    "runsTab": "Runs",
+    "emptyRuns": "No runs yet. Agent and workflow runs will land here."
   },
   "Teamspaces": {
     "folders": "Folders",
@@ -979,5 +991,34 @@
     "noFolders": "No folders yet",
     "team": "team",
     "sharedWithTeamReadOnly": "Shared with {team} · read-only"
+  },
+  "Settings": {
+    "title": "Settings",
+    "general": "General",
+    "usage": "Usage",
+    "dataControls": "Data controls",
+    "backToApp": "Back to app",
+    "theme": "Theme",
+    "themeDescription": "Switch between light and dark.",
+    "themeStyle": "Theme style",
+    "themeStyleDescription": "Pick a color style for the interface.",
+    "language": "Language",
+    "languageDescription": "Choose your interface language.",
+    "gdprTitle": "Data & privacy",
+    "gdprDescription": "Download a copy of all your data stored in A-SAFE AI (GDPR Art. 20 — right to data portability).",
+    "downloadMyData": "Download my data",
+    "archivesDescription": "Spaces to store chat history."
+  },
+  "CommandPalette": {
+    "title": "Command palette",
+    "placeholder": "Search or jump to…",
+    "noResults": "No results found.",
+    "navigation": "Go to",
+    "threads": "Recent chats",
+    "folders": "Folders",
+    "agents": "Agents",
+    "admin": "Admin",
+    "back": "Back",
+    "askAi": "Ask A-SAFE AI: \"{query}\""
   }
 }

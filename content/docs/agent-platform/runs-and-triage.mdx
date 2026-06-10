@@ -1,14 +1,19 @@
 ---
-title: Runs & Triage
-description: The Runs rail (mission control), permanent run transcripts at /runs/[id], and the Triage inbox.
+title: Runs & Inbox
+description: The ephemeral Runs rail, permanent run transcripts at /runs/[id], and the Inbox (/inbox, formerly /triage).
 ---
 
-## The Runs rail
+## The Runs rail (ephemeral)
 
-The Runs drawer in the chat layout is the platform's **mission control**: every in-flight
-workflow/agent execution for the current user, with live status, cost-so-far, and
-abort/steer affordances. The yellow pulse dot — the one
-"[alive](/docs/design-language)" signal — marks running sessions.
+The Runs rail in the chat sidebar is the platform's **live ticker**: it renders **only
+while at least one session is non-terminal** (queued / running / awaiting approval /
+paused). The yellow pulse dot — the one "[alive](/docs/design-language)" signal — marks
+running sessions, with cost-so-far and abort affordances.
+
+When nothing is live the rail disappears entirely and **idle polling stops** — the
+client does one fetch on mount to know whether anything is active, then polls (5s)
+only while active runs exist. Completed-run history lives in the
+[Inbox](#the-inbox-inbox) under its **Runs** tab.
 
 Data flows over SWR routes (per the
 [Server Actions vs routes rule](/docs/development/server-actions-vs-routes), client-side
@@ -16,8 +21,9 @@ data fetching is route-based):
 
 | Route | Shape |
 |---|---|
-| `GET /api/runs` | The user's sessions (default page of 30). Optional `?origin=schedule` filters by `originSurface` (used by Triage's "Recent routine runs"). |
+| `GET /api/runs` | The user's sessions (default page of 30). Optional `?origin=schedule` filters by `originSurface` (used by the Inbox's "Recent routine runs"). |
 | `GET /api/runs/[id]` | One session with its ordered step rows (`getSessionWithSteps`). |
+| `GET /api/agent-platform/approvals/count` | Pending-approval count — the badge on the sidebar Inbox item. |
 
 Mutations — abort, steer — are Server Actions in `src/app/api/runs/actions.ts`.
 
@@ -32,17 +38,22 @@ The blueprint's audit story goes one step further: the run URL is injected into
 tool-execution context so agent outputs in Jira/Confluence/email can say *"produced by
 asafe-ai run \<link\>"* — the linkback compliance signs off on.
 
-## Triage
+## The Inbox (/inbox)
 
-`/triage` (`src/app/(chat)/triage`) is the inbox for things that need a human:
+`/inbox` (`src/app/(chat)/inbox`, formerly `/triage` — a server redirect protects old
+deep links) is the one always-visible sidebar destination for things that need a human.
+It carries a pending-approvals badge and is rendered for **everyone**, even with zero
+runs. Tabs:
 
-- **Pending approvals** — approval requests the current user can decide
+- **Inbox** — approval requests the current user can decide
   (`listPendingApprovalsForUser` respects the
   [`requestedRole`](/docs/agent-platform/approvals-and-autonomy#the-approval-gate) rules), with
-  approve/reject and a reason field.
-- **Recent routine runs** — sessions with `originSurface: "schedule"`, so routine findings
-  land somewhere visible instead of an unread dashboard. The design goal is signal-only:
-  empty runs auto-archive.
+  approve/reject and a reason field, plus recent routine runs
+  (`originSurface: "schedule"`), so routine findings land somewhere visible instead of
+  an unread dashboard. The design goal is signal-only: empty runs auto-archive.
+- **Runs** — the full recent-run history (all kinds, with status and cost), replacing
+  the old always-on rail as the home of completed runs.
+- **Routines** — the user's scheduled workflows (enable/disable, next/last run).
 
 ## Visibility of runs
 

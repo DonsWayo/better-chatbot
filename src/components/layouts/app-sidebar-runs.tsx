@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { Inbox, MessageCircle, Terminal, Workflow, X } from "lucide-react";
+import { MessageCircle, Terminal, Workflow, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
@@ -92,20 +92,16 @@ function KindIcon({ kind }: { kind: RunSession["kind"] }) {
 export function AppSidebarRuns() {
   const t = useTranslations("Runs");
 
+  // Ephemeral rail: one fetch on mount tells us whether anything is live;
+  // polling runs ONLY while at least one session is non-terminal. Idle
+  // polling is intentionally dead (refreshInterval 0) — completed-run
+  // history lives in the Inbox (/inbox), not here.
   const { data: runs } = useSWR<RunSession[]>("/api/runs", fetcher, {
     onError: handleErrorWithToast,
     fallbackData: [],
     refreshInterval: (latest) =>
-      latest?.some((run) => NON_TERMINAL.includes(run.status)) ? 5000 : 30000,
+      latest?.some((run) => NON_TERMINAL.includes(run.status)) ? 5000 : 0,
   });
-
-  // Pending-approvals badge for the Triage inbox link (#26).
-  const { data: approvalCount } = useSWR<{ pending: number }>(
-    "/api/agent-platform/approvals/count",
-    fetcher,
-    { fallbackData: { pending: 0 }, refreshInterval: 30000 },
-  );
-  const pendingApprovals = approvalCount?.pending ?? 0;
 
   const handleCancel = async (id: string) => {
     // Optimistic flip to cancelled, then reconcile with the server.
@@ -126,8 +122,8 @@ export function AppSidebarRuns() {
     }
   };
 
-  // No clutter: hide the whole group until the user has at least one run.
-  if (!runs || runs.length === 0) return null;
+  // Render ONLY while something is live; the rail disappears when idle.
+  if (!runs?.some((run) => NON_TERMINAL.includes(run.status))) return null;
 
   return (
     <SidebarGroup>
@@ -138,24 +134,6 @@ export function AppSidebarRuns() {
               <h4 className="text-xs text-muted-foreground group-hover/runs:text-foreground transition-colors">
                 {t("title")}
               </h4>
-              <Link
-                href="/triage"
-                className="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                title={t("triage")}
-                aria-label={t("triage")}
-                data-testid="sidebar-triage-link"
-              >
-                <Inbox className="size-3.5" />
-                {pendingApprovals > 0 && (
-                  <span
-                    className="rounded-full px-1.5 text-[10px] font-semibold tabular-nums text-black"
-                    style={{ backgroundColor: "#FFC72C" }}
-                    data-testid="sidebar-triage-count"
-                  >
-                    {pendingApprovals}
-                  </span>
-                )}
-              </Link>
             </SidebarGroupLabel>
           </SidebarMenuItem>
           {runs.slice(0, DISPLAY_LIMIT).map((run) => {

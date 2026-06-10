@@ -22,7 +22,7 @@ export default async function UsagePage({ searchParams }: PageProps) {
   }
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const params = await searchParams;

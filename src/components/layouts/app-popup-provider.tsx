@@ -1,6 +1,15 @@
 "use client";
 
+import { BasicUser } from "app-types/user";
 import dynamic from "next/dynamic";
+
+const CommandPalette = dynamic(
+  () =>
+    import("@/components/command-palette").then((mod) => mod.CommandPalette),
+  {
+    ssr: false,
+  },
+);
 
 const KeyboardShortcutsPopup = dynamic(
   () =>
@@ -61,11 +70,14 @@ const UserSettingsPopup = dynamic(
 
 export function AppPopupProvider({
   userSettingsComponent,
+  user,
 }: {
   userSettingsComponent: React.ReactNode;
+  user?: BasicUser;
 }) {
   return (
     <>
+      <CommandPalette user={user} />
       <KeyboardShortcutsPopup />
       <ChatPreferencesPopup />
       <UserSettingsPopup userSettingsComponent={userSettingsComponent} />

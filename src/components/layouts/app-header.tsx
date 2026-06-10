@@ -1,7 +1,5 @@
 "use client";
 
-import { useSidebar } from "ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import {
   AudioWaveformIcon,
   ChevronDown,
@@ -10,17 +8,19 @@ import {
 } from "lucide-react";
 import { Button } from "ui/button";
 import { Separator } from "ui/separator";
+import { useSidebar } from "ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 
-import { useEffect, useMemo } from "react";
-import { ThreadDropdown } from "../thread-dropdown";
 import { appStore } from "@/app/store";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useShallow } from "zustand/shallow";
-import { getShortcutKeyList, Shortcuts } from "lib/keyboard-shortcuts";
-import { useTranslations } from "next-intl";
-import { TextShimmer } from "ui/text-shimmer";
-import { buildReturnUrl } from "lib/admin/navigation-utils";
 import { BackButton } from "@/components/layouts/back-button";
+import { buildReturnUrl } from "lib/admin/navigation-utils";
+import { Shortcuts, getShortcutKeyList } from "lib/keyboard-shortcuts";
+import { useTranslations } from "next-intl";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { TextShimmer } from "ui/text-shimmer";
+import { useShallow } from "zustand/shallow";
+import { ThreadDropdown } from "../thread-dropdown";
 
 export function AppHeader() {
   const t = useTranslations();
@@ -29,12 +29,8 @@ export function AppHeader() {
   const currentPaths = usePathname();
   const searchParams = useSearchParams();
 
-  const showActionButtons = useMemo(() => {
-    if (currentPaths.startsWith("/admin")) {
-      return false;
-    }
-    return true;
-  }, [currentPaths]);
+  const isAdminPage = currentPaths.startsWith("/admin");
+  const showActionButtons = !isAdminPage;
 
   const componentByPage = useMemo(() => {
     if (currentPaths.startsWith("/chat/")) {
@@ -54,43 +50,77 @@ export function AppHeader() {
         />
       );
     }
+    if (
+      currentPaths.startsWith("/admin/teams/") &&
+      currentPaths.split("/").length > 3
+    ) {
+      const searchPageParams = searchParams.get("searchPageParams");
+      const returnUrl = buildReturnUrl("/admin/teams", searchPageParams || "");
+      return (
+        <BackButton
+          data-testid="admin-teams-back-button"
+          returnUrl={returnUrl}
+          title={t("Admin.Teams.backToTeams")}
+        />
+      );
+    }
+    if (
+      currentPaths.startsWith("/admin/knowledge/") &&
+      currentPaths.split("/").length > 3
+    ) {
+      const searchPageParams = searchParams.get("searchPageParams");
+      const returnUrl = buildReturnUrl(
+        "/admin/knowledge",
+        searchPageParams || "",
+      );
+      return (
+        <BackButton
+          data-testid="admin-knowledge-back-button"
+          returnUrl={returnUrl}
+          title={t("Admin.Knowledge.backToKnowledge")}
+        />
+      );
+    }
   }, [currentPaths, searchParams]);
 
   return (
     <header className="sticky top-0 z-50 flex items-center px-3 py-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle Sidebar"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleSidebar();
-            }}
-            data-testid="sidebar-toggle"
-            data-state={open ? "open" : "closed"}
-          >
-            <PanelLeft />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent align="start" side="bottom">
-          <div className="flex items-center gap-2">
-            {t("KeyboardShortcuts.toggleSidebar")}
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              {getShortcutKeyList(Shortcuts.toggleSidebar).map((key) => (
-                <span
-                  key={key}
-                  className="w-5 h-5 flex items-center justify-center bg-muted rounded "
-                >
-                  {key}
-                </span>
-              ))}
+      {/* The daily sidebar is hidden on /admin (mode-swap) — no toggle there. */}
+      {!isAdminPage && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Toggle Sidebar"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSidebar();
+              }}
+              data-testid="sidebar-toggle"
+              data-state={open ? "open" : "closed"}
+            >
+              <PanelLeft />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent align="start" side="bottom">
+            <div className="flex items-center gap-2">
+              {t("KeyboardShortcuts.toggleSidebar")}
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                {getShortcutKeyList(Shortcuts.toggleSidebar).map((key) => (
+                  <span
+                    key={key}
+                    className="w-5 h-5 flex items-center justify-center bg-muted rounded "
+                  >
+                    {key}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
+          </TooltipContent>
+        </Tooltip>
+      )}
 
       {componentByPage}
       <div className="flex-1" />

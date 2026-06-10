@@ -28,8 +28,8 @@ the session, and any worker resumes it from the
 The lifecycle lives in `src/lib/agent-platform/approvals.ts` (`createApprovalRequest`,
 `markSessionAwaitingApproval`, `decideApproval`, `canDecide`,
 `listPendingApprovalsForUser`). Approvals are **social**: `requestedRole: "team-admin"`
-means any admin of the session's team can approve — pending requests surface in web
-[Triage](/docs/agent-platform/runs-and-triage) (and, on the roadmap, the desktop "My Work"
+means any admin of the session's team can approve — pending requests surface in the web
+[Inbox](/docs/agent-platform/runs-and-triage) (and, on the roadmap, the desktop "My Work"
 tray).
 
 ## Autonomy: interactive / plan / autopilot

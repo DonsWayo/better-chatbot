@@ -16,7 +16,7 @@ export default async function KnowledgeListPage() {
 
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const collections = await db

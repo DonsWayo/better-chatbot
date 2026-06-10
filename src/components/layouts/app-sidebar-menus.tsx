@@ -1,51 +1,33 @@
 "use client";
-import {
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  useSidebar,
-} from "ui/sidebar";
+import { SidebarMenuButton, useSidebar } from "ui/sidebar";
 import { SidebarMenu, SidebarMenuItem } from "ui/sidebar";
 import { SidebarGroupContent } from "ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
+import { Tooltip } from "ui/tooltip";
 
-import { useArchives } from "@/hooks/queries/use-archives";
-import { BasicUser } from "app-types/user";
+import { appStore } from "@/app/store";
 import { Shortcuts, getShortcutKeyList } from "lib/keyboard-shortcuts";
-import { getIsUserAdmin } from "lib/user/utils";
-import {
-  FolderOpenIcon,
-  FolderSearchIcon,
-  PlusIcon,
-  Waypoints,
-} from "lucide-react";
+import { fetcher } from "lib/utils";
+import { Inbox, SearchIcon, Waypoints } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import useSWR from "swr";
 import { SidebarGroup } from "ui/sidebar";
-import { Skeleton } from "ui/skeleton";
 import { WriteIcon } from "ui/write-icon";
-import { ArchiveDialog } from "../archive-dialog";
-import { AppSidebarAdmin } from "./app-sidebar-menu-admin";
 
-export function AppSidebarMenus({ user }: { user?: BasicUser }) {
+export function AppSidebarMenus() {
   const router = useRouter();
   const t = useTranslations("");
   const { setOpenMobile } = useSidebar();
-  const [expandedArchive, setExpandedArchive] = useState(false);
-  const [addArchiveDialogOpen, setAddArchiveDialogOpen] = useState(false);
+  const appStoreMutate = appStore((state) => state.mutate);
 
-  // Zen sidebar: power surfaces (MCP config, Archive) are admin-only chrome.
-  // Plain users get New Chat, Workflow, Runs and their conversations.
-  const isAdmin = getIsUserAdmin(user);
-
-  const { data: archives, isLoading: isLoadingArchives } = useArchives();
-  const toggleArchive = useCallback(() => {
-    setExpandedArchive((prev) => !prev);
-  }, []);
+  // Pending-approvals badge for the always-visible Inbox item.
+  const { data: approvalCount } = useSWR<{ pending: number }>(
+    "/api/agent-platform/approvals/count",
+    fetcher,
+    { fallbackData: { pending: 0 }, refreshInterval: 30000 },
+  );
+  const pendingApprovals = approvalCount?.pending ?? 0;
 
   return (
     <SidebarGroup>
@@ -80,6 +62,35 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
+        <SidebarMenu>
+          <Tooltip>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="flex font-semibold group/search"
+                data-testid="sidebar-search"
+                onClick={() => {
+                  setOpenMobile(false);
+                  appStoreMutate({ openCommandPalette: true });
+                }}
+              >
+                <SearchIcon className="size-4" />
+                {t("Layout.search")}
+                <div className="flex items-center gap-1 text-xs font-medium ml-auto opacity-0 group-hover/search:opacity-100 transition-opacity">
+                  {getShortcutKeyList(Shortcuts.openCommandPalette).map(
+                    (key) => (
+                      <span
+                        key={key}
+                        className="border w-5 h-5 flex items-center justify-center bg-accent rounded"
+                      >
+                        {key}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </Tooltip>
+        </SidebarMenu>
         {/* MCP management lives under Admin → MCP Catalog; /mcp stays routable */}
         <SidebarMenu>
           <Tooltip>
@@ -93,77 +104,30 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        {isAdmin && <AppSidebarAdmin />}
-        {isAdmin && (
-          <SidebarMenu className="group/archive">
-            <Tooltip>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={toggleArchive}
-                  className="font-semibold"
-                >
-                  {expandedArchive ? (
-                    <FolderOpenIcon className="size-4" />
-                  ) : (
-                    <FolderSearchIcon className="size-4" />
+        {/* Inbox is always rendered for everyone — the one door to approvals,
+            run history and routines (docs/design/information-architecture.md §5). */}
+        <SidebarMenu>
+          <Tooltip>
+            <SidebarMenuItem>
+              <Link href="/inbox" data-testid="sidebar-inbox-link">
+                <SidebarMenuButton className="font-semibold">
+                  <Inbox className="size-4" />
+                  {t("Layout.inbox")}
+                  {pendingApprovals > 0 && (
+                    <span
+                      className="ml-auto rounded-full px-1.5 text-[10px] font-semibold tabular-nums text-black"
+                      style={{ backgroundColor: "#FFC72C" }}
+                      data-testid="sidebar-inbox-count"
+                    >
+                      {pendingApprovals}
+                    </span>
                   )}
-                  {t("Archive.title")}
                 </SidebarMenuButton>
-                <SidebarMenuAction
-                  className="group-hover/archive:opacity-100 opacity-0 transition-opacity"
-                  onClick={() => setAddArchiveDialogOpen(true)}
-                >
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <PlusIcon className="size-4" />
-                    </TooltipTrigger>
-                    <TooltipContent side="right" align="center">
-                      {t("Archive.addArchive")}
-                    </TooltipContent>
-                  </Tooltip>
-                </SidebarMenuAction>
-              </SidebarMenuItem>
-            </Tooltip>
-            {expandedArchive && (
-              <>
-                <SidebarMenuSub>
-                  {isLoadingArchives ? (
-                    <div className="gap-2 flex flex-col">
-                      {Array.from({ length: 2 }).map((_, index) => (
-                        <Skeleton key={index} className="h-6 w-full" />
-                      ))}
-                    </div>
-                  ) : archives!.length === 0 ? (
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton className="text-muted-foreground">
-                        {t("Archive.noArchives")}
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ) : (
-                    archives!.map((archive) => (
-                      <SidebarMenuSubItem
-                        onClick={() => {
-                          router.push(`/archive/${archive.id}`);
-                        }}
-                        key={archive.id}
-                        className="cursor-pointer"
-                      >
-                        <SidebarMenuSubButton>
-                          {archive.name}
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))
-                  )}
-                </SidebarMenuSub>
-              </>
-            )}
-          </SidebarMenu>
-        )}
+              </Link>
+            </SidebarMenuItem>
+          </Tooltip>
+        </SidebarMenu>
       </SidebarGroupContent>
-      <ArchiveDialog
-        open={addArchiveDialogOpen}
-        onOpenChange={setAddArchiveDialogOpen}
-      />
     </SidebarGroup>
   );
 }

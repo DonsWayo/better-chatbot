@@ -206,7 +206,8 @@
       "mcpInstructions": "MCP 说明",
       "mcpInstructionsDescription": "自定义 MCP 服务器说明。",
       "userSettings": "用户设置"
-    }
+    },
+    "addFiles": "添加文件"
   },
   "Layout": {
     "toggleSidebar": "切换侧边栏",
@@ -256,7 +257,11 @@
     "reportAnIssue": "报告问题",
     "joinCommunity": "加入社区",
     "workflow": "工作流",
-    "userSettings": "用户设置"
+    "userSettings": "用户设置",
+    "search": "搜索",
+    "inbox": "收件箱",
+    "settings": "设置",
+    "adminConsole": "管理控制台"
   },
   "Archive": {
     "title": "归档",
@@ -338,7 +343,8 @@
     "openChatPreferences": "打开聊天偏好",
     "deleteThread": "删除聊天",
     "openShortcutsPopup": "打开快捷键弹窗",
-    "toggleVoiceChat": "切换语音聊天"
+    "toggleVoiceChat": "切换语音聊天",
+    "openCommandPalette": "命令面板"
   },
   "MCP": {
     "marketplace": "市场",
@@ -535,6 +541,16 @@
     },
     "Quality": {
       "title": "质量"
+    },
+    "Sidebar": {
+      "dashboard": "仪表盘",
+      "audit": "审计日志"
+    },
+    "Teams": {
+      "backToTeams": "返回团队列表"
+    },
+    "Knowledge": {
+      "backToKnowledge": "返回知识库列表"
     }
   },
   "Runs": {
@@ -561,7 +577,7 @@
     "personalBudget": "个人"
   },
   "Triage": {
-    "title": "分流",
+    "title": "收件箱",
     "subtitle": "审批与例行任务，汇聚于一处宁静之地。",
     "inboxTab": "收件箱",
     "routinesTab": "例行任务",
@@ -599,7 +615,9 @@
     "customCronPlaceholder": "例如 30 8 * * 1-5",
     "createRoutine": "创建例行任务",
     "routineCreated": "例行任务已安排",
-    "routineDeleted": "例行任务已删除"
+    "routineDeleted": "例行任务已删除",
+    "runsTab": "运行",
+    "emptyRuns": "暂无运行记录。智能体和工作流的运行将显示在这里。"
   },
   "Teamspaces": {
     "folders": "文件夹",
@@ -619,5 +637,34 @@
     "noFolders": "还没有文件夹",
     "team": "团队",
     "sharedWithTeamReadOnly": "与{team}共享 · 只读"
+  },
+  "Settings": {
+    "title": "设置",
+    "general": "通用",
+    "usage": "用量",
+    "dataControls": "数据管理",
+    "backToApp": "返回应用",
+    "theme": "主题",
+    "themeDescription": "在浅色和深色之间切换。",
+    "themeStyle": "主题样式",
+    "themeStyleDescription": "为界面选择配色样式。",
+    "language": "语言",
+    "languageDescription": "选择界面语言。",
+    "gdprTitle": "数据与隐私",
+    "gdprDescription": "下载存储在 A-SAFE AI 中的所有数据副本（GDPR 第 20 条 — 数据可携权）。",
+    "downloadMyData": "下载我的数据",
+    "archivesDescription": "用于保存聊天历史的空间。"
+  },
+  "CommandPalette": {
+    "title": "命令面板",
+    "placeholder": "搜索或跳转…",
+    "noResults": "未找到结果。",
+    "navigation": "前往",
+    "threads": "最近聊天",
+    "folders": "文件夹",
+    "agents": "智能体",
+    "admin": "管理",
+    "back": "返回",
+    "askAi": "向 A-SAFE AI 提问：\"{query}\""
   }
 }

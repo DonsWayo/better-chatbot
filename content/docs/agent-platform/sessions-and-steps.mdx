@@ -13,7 +13,7 @@ Every execution is a row in `agent_session` (`src/lib/db/pg/schema.pg.ts`):
 | `definitionId` | Polymorphic pointer into the agent/workflow tables (intentionally FK-less). |
 | `revisionId` | The **pinned immutable revision** this run executes. |
 | `teamId`, `userId` | Who runs it and which budget it charges. |
-| `originSurface` | `web` \| `desktop` \| `schedule` \| `webhook` \| `api` — powers Triage filtering and audit. |
+| `originSurface` | `web` \| `desktop` \| `schedule` \| `webhook` \| `api` — powers Inbox filtering and audit. |
 | `mode` | `interactive` \| `plan` \| `autopilot` — see [Approvals & autonomy](/docs/agent-platform/approvals-and-autonomy). |
 | `status` | `queued` → `running` → (`awaiting_approval` \| `paused`) → `completed` \| `failed` \| `cancelled` |
 | `costSoFar` | Live cost meter; rolls up through `parentSessionId`. |

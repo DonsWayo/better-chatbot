@@ -23,7 +23,7 @@ export default async function KnowledgeCollectionPage({ params }: PageProps) {
   }
 
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
 
   const { id } = await params;
 

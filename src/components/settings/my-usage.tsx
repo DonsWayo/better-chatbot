@@ -1,9 +1,9 @@
 "use client";
 
+import { Coins, MessageSquare, Wallet, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
 import { Badge } from "ui/badge";
-import { Coins, MessageSquare, Zap, Wallet } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
 
 interface UsageByModel {
   model: string;
@@ -87,7 +87,9 @@ export function MyUsageSection() {
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <Coins className="size-4 mx-auto mb-1 text-muted-foreground" />
-            <p className="text-xl font-semibold">{fmtCost(summary.totalCostUsd)}</p>
+            <p className="text-xl font-semibold">
+              {fmtCost(summary.totalCostUsd)}
+            </p>
             <p className="text-xs text-muted-foreground">Cost</p>
           </CardContent>
         </Card>
@@ -118,7 +120,9 @@ export function MyUsageSection() {
           </CardHeader>
           <CardContent className="pb-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className={budgetColor + " font-medium"}>{budget.pct}% used</span>
+              <span className={budgetColor + " font-medium"}>
+                {budget.pct}% used
+              </span>
               <span className="text-muted-foreground">
                 {fmtCost(budget.usedUsd)} / {fmtCost(budget.budgetUsd)}
               </span>
@@ -131,9 +135,16 @@ export function MyUsageSection() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Period:{" "}
-              {new Date(budget.periodStart).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              {new Date(budget.periodStart).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
               {" – "}
-              {new Date(budget.periodEnd).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+              {new Date(budget.periodEnd).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
             </p>
           </CardContent>
         </Card>
@@ -148,16 +159,22 @@ export function MyUsageSection() {
           <CardContent className="pb-4">
             <div className="space-y-2">
               {byModel.map((row) => (
-                <div key={`${row.provider}/${row.model}`} className="flex items-center justify-between text-sm">
+                <div
+                  key={`${row.provider}/${row.model}`}
+                  className="flex items-center justify-between text-sm"
+                >
                   <div className="flex items-center gap-2 min-w-0">
                     <Badge variant="outline" className="text-xs shrink-0">
                       {row.model}
                     </Badge>
                     <span className="text-muted-foreground text-xs truncate">
-                      {fmtTokens(row.promptTokens + row.completionTokens)} tokens · {row.requestCount} req
+                      {fmtTokens(row.promptTokens + row.completionTokens)}{" "}
+                      tokens · {row.requestCount} req
                     </span>
                   </div>
-                  <span className="font-medium shrink-0">{fmtCost(row.costUsd)}</span>
+                  <span className="font-medium shrink-0">
+                    {fmtCost(row.costUsd)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -166,7 +183,9 @@ export function MyUsageSection() {
       )}
 
       {byModel.length === 0 && summary.requestCount === 0 && (
-        <p className="text-sm text-muted-foreground">No activity in the last 30 days.</p>
+        <p className="text-sm text-muted-foreground">
+          No activity in the last 30 days.
+        </p>
       )}
     </section>
   );

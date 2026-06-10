@@ -1,18 +1,18 @@
-import { SidebarProvider } from "ui/sidebar";
-import { AppSidebar } from "@/components/layouts/app-sidebar";
 import { AppHeader } from "@/components/layouts/app-header";
+import { AppSidebar } from "@/components/layouts/app-sidebar";
 import { cookies } from "next/headers";
+import { SidebarProvider } from "ui/sidebar";
 
-import { getSession } from "lib/auth/server";
-import { COOKIE_KEY_SIDEBAR_STATE } from "lib/const";
 import { AppPopupProvider } from "@/components/layouts/app-popup-provider";
-import { SWRConfigProvider } from "./swr-config";
 import { UserDetailContent } from "@/components/user/user-detail/user-detail-content";
 import { UserDetailContentSkeleton } from "@/components/user/user-detail/user-detail-content-skeleton";
+import { getSession } from "lib/auth/server";
+import { COOKIE_KEY_SIDEBAR_STATE } from "lib/const";
+import { SWRConfigProvider } from "./swr-config";
 
-import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { AupModal } from "@/components/compliance/aup-modal";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 export const experimental_ppr = true;
 
 export default async function ChatLayout({
@@ -29,6 +29,7 @@ export default async function ChatLayout({
     <SidebarProvider defaultOpen={!isCollapsed}>
       <SWRConfigProvider user={session.user}>
         <AppPopupProvider
+          user={session.user}
           userSettingsComponent={
             <Suspense fallback={<UserDetailContentSkeleton />}>
               <UserDetailContent view="user" />

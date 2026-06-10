@@ -220,7 +220,8 @@
       "exportDeleted": "공유가 성공적으로 삭제되었습니다",
       "failedToDeleteExport": "공유 삭제에 실패했습니다",
       "userSettings": "사용자 설정"
-    }
+    },
+    "addFiles": "파일 추가"
   },
   "Layout": {
     "workflow": "워크플로우",
@@ -270,7 +271,11 @@
     "showLessChats": "간략히 보기",
     "reportAnIssue": "도움 받기",
     "joinCommunity": "커뮤니티 가입",
-    "userSettings": "사용자 설정"
+    "userSettings": "사용자 설정",
+    "search": "검색",
+    "inbox": "받은 편지함",
+    "settings": "설정",
+    "adminConsole": "관리 콘솔"
   },
   "Archive": {
     "title": "아카이브",
@@ -351,7 +356,8 @@
     "openChatPreferences": "채팅 환경설정 열기",
     "deleteThread": "채팅 삭제",
     "openShortcutsPopup": "단축키 팝업 열기",
-    "toggleVoiceChat": "음성 채팅 토글"
+    "toggleVoiceChat": "음성 채팅 토글",
+    "openCommandPalette": "명령 팔레트"
   },
   "MCP": {
     "marketplace": "마켓플레이스",
@@ -548,6 +554,16 @@
     },
     "Quality": {
       "title": "품질"
+    },
+    "Sidebar": {
+      "dashboard": "대시보드",
+      "audit": "감사 로그"
+    },
+    "Teams": {
+      "backToTeams": "팀 목록으로 돌아가기"
+    },
+    "Knowledge": {
+      "backToKnowledge": "지식 목록으로 돌아가기"
     }
   },
   "Runs": {
@@ -574,7 +590,7 @@
     "personalBudget": "개인"
   },
   "Triage": {
-    "title": "트리아지",
+    "title": "받은 편지함",
     "subtitle": "승인과 루틴을 하나의 차분한 공간에서.",
     "inboxTab": "받은 편지함",
     "routinesTab": "루틴",
@@ -612,7 +628,9 @@
     "customCronPlaceholder": "예: 30 8 * * 1-5",
     "createRoutine": "루틴 만들기",
     "routineCreated": "루틴이 예약되었습니다",
-    "routineDeleted": "루틴이 삭제되었습니다"
+    "routineDeleted": "루틴이 삭제되었습니다",
+    "runsTab": "실행",
+    "emptyRuns": "아직 실행이 없습니다. 에이전트와 워크플로 실행이 여기에 표시됩니다."
   },
   "Teamspaces": {
     "folders": "폴더",
@@ -632,5 +650,34 @@
     "noFolders": "아직 폴더가 없습니다",
     "team": "팀",
     "sharedWithTeamReadOnly": "{team}과(와) 공유됨 · 읽기 전용"
+  },
+  "Settings": {
+    "title": "설정",
+    "general": "일반",
+    "usage": "사용량",
+    "dataControls": "데이터 관리",
+    "backToApp": "앱으로 돌아가기",
+    "theme": "테마",
+    "themeDescription": "라이트와 다크를 전환합니다.",
+    "themeStyle": "테마 스타일",
+    "themeStyleDescription": "인터페이스 색상 스타일을 선택하세요.",
+    "language": "언어",
+    "languageDescription": "인터페이스 언어를 선택하세요.",
+    "gdprTitle": "데이터 및 개인정보",
+    "gdprDescription": "A-SAFE AI에 저장된 모든 데이터의 사본을 다운로드합니다 (GDPR 제20조 — 데이터 이동권).",
+    "downloadMyData": "내 데이터 다운로드",
+    "archivesDescription": "채팅 기록을 보관하는 공간입니다."
+  },
+  "CommandPalette": {
+    "title": "명령 팔레트",
+    "placeholder": "검색 또는 이동…",
+    "noResults": "결과가 없습니다.",
+    "navigation": "이동",
+    "threads": "최근 채팅",
+    "folders": "폴더",
+    "agents": "에이전트",
+    "admin": "관리",
+    "back": "뒤로",
+    "askAi": "A-SAFE AI에 질문: \"{query}\""
   }
 }

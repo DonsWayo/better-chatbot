@@ -14,7 +14,7 @@ export default async function AdminHomePage() {
     unauthorized();
   }
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
 
   const [stats, budgetAlerts] = await Promise.all([
     getDashboardStats(),

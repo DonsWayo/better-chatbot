@@ -32,7 +32,7 @@ export default async function UserListPage({ searchParams }: PageProps) {
   }
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const params = await searchParams;

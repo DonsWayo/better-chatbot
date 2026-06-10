@@ -545,7 +545,7 @@ export default function PromptInput({
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <PaperclipIcon className="mr-2 size-4" />
-                      {t("uploadImage")}
+                      {t("addFiles")}
                     </DropdownMenuItem>
 
                     <DropdownMenuSub>

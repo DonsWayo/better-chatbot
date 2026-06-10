@@ -25,7 +25,7 @@ export default async function UserDetailPage({ params }: PageProps) {
   }
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
   const [user, userAccountInfo] = await Promise.all([
     getUser(id),

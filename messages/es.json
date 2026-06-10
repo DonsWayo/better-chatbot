@@ -341,7 +341,8 @@
       "confirmDeleteExport": "¿Estás seguro de que deseas eliminar esta exportación? Esta acción no se puede deshacer.",
       "exportDeleted": "Exportación eliminada correctamente",
       "failedToDeleteExport": "Error al eliminar la exportación"
-    }
+    },
+    "addFiles": "Añadir archivos"
   },
   "Layout": {
     "workflow": "Flujo de Trabajo",
@@ -398,7 +399,11 @@
     "showLessChats": "Mostrar menos",
     "reportAnIssue": "Informar de un problema",
     "joinCommunity": "Unirse a la Comunidad",
-    "userSettings": "Configuración de Usuario"
+    "userSettings": "Configuración de Usuario",
+    "search": "Buscar",
+    "inbox": "Bandeja de entrada",
+    "settings": "Configuración",
+    "adminConsole": "Consola de administración"
   },
   "Archive": {
     "title": "Archivo",
@@ -486,7 +491,8 @@
     "openChatPreferences": "Abrir Preferencias de Chat",
     "deleteThread": "Eliminar Chat",
     "openShortcutsPopup": "Abrir Ventana de Atajos",
-    "toggleVoiceChat": "Alternar Chat por Voz"
+    "toggleVoiceChat": "Alternar Chat por Voz",
+    "openCommandPalette": "Paleta de comandos"
   },
   "User": {
     "Profile": {
@@ -723,7 +729,9 @@
       "users": "Usuarios",
       "toggleSidebar": "Alternar Barra Lateral",
       "adminPanel": "Panel de Admin",
-      "backToApp": "Volver a la Aplicación"
+      "backToApp": "Volver a la Aplicación",
+      "dashboard": "Panel",
+      "audit": "Registro de auditoría"
     },
     "Users": {
       "title": "Usuarios",
@@ -781,7 +789,8 @@
       "memberEmail": "Email del miembro",
       "memberRole": "Rol",
       "addMemberSuccess": "Miembro añadido",
-      "addMemberError": "Error al añadir el miembro"
+      "addMemberError": "Error al añadir el miembro",
+      "backToTeams": "Volver a equipos"
     },
     "Knowledge": {
       "title": "Base de conocimiento",
@@ -793,7 +802,8 @@
       "visibilityOrg": "Toda la organización",
       "visibilityTeam": "Solo el equipo",
       "ingestDocument": "Ingerir documento",
-      "chunksIngested": "fragmentos ingeridos"
+      "chunksIngested": "fragmentos ingeridos",
+      "backToKnowledge": "Volver a conocimiento"
     },
     "Usage": {
       "title": "Uso",
@@ -921,7 +931,7 @@
     "personalBudget": "personal"
   },
   "Triage": {
-    "title": "Bandeja",
+    "title": "Bandeja de entrada",
     "subtitle": "Aprobaciones y rutinas, en un solo lugar tranquilo.",
     "inboxTab": "Bandeja de entrada",
     "routinesTab": "Rutinas",
@@ -959,7 +969,9 @@
     "customCronPlaceholder": "p. ej. 30 8 * * 1-5",
     "createRoutine": "Crear rutina",
     "routineCreated": "Rutina programada",
-    "routineDeleted": "Rutina eliminada"
+    "routineDeleted": "Rutina eliminada",
+    "runsTab": "Ejecuciones",
+    "emptyRuns": "Aún no hay ejecuciones. Las ejecuciones de agentes y flujos aparecerán aquí."
   },
   "Teamspaces": {
     "folders": "Carpetas",
@@ -979,5 +991,34 @@
     "noFolders": "Aún no hay carpetas",
     "team": "equipo",
     "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura"
+  },
+  "Settings": {
+    "title": "Configuración",
+    "general": "General",
+    "usage": "Uso",
+    "dataControls": "Control de datos",
+    "backToApp": "Volver a la aplicación",
+    "theme": "Tema",
+    "themeDescription": "Cambia entre claro y oscuro.",
+    "themeStyle": "Estilo del tema",
+    "themeStyleDescription": "Elige un estilo de color para la interfaz.",
+    "language": "Idioma",
+    "languageDescription": "Elige el idioma de la interfaz.",
+    "gdprTitle": "Datos y privacidad",
+    "gdprDescription": "Descarga una copia de todos tus datos almacenados en A-SAFE AI (art. 20 del RGPD — derecho a la portabilidad de los datos).",
+    "downloadMyData": "Descargar mis datos",
+    "archivesDescription": "Espacios para guardar el historial de chats."
+  },
+  "CommandPalette": {
+    "title": "Paleta de comandos",
+    "placeholder": "Busca o navega a…",
+    "noResults": "Sin resultados.",
+    "navigation": "Ir a",
+    "threads": "Chats recientes",
+    "folders": "Carpetas",
+    "agents": "Agentes",
+    "admin": "Administración",
+    "back": "Atrás",
+    "askAi": "Preguntar a A-SAFE AI: \"{query}\""
   }
 }

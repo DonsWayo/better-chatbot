@@ -341,7 +341,8 @@
       "confirmDeleteExport": "Er du sikker på at du vil slette denne eksporten? Denne handlingen kan ikke angres.",
       "exportDeleted": "Eksport slettet",
       "failedToDeleteExport": "Kunne ikke slette eksport"
-    }
+    },
+    "addFiles": "Legg til filer"
   },
   "Layout": {
     "workflow": "Arbeidsflyt",
@@ -398,7 +399,11 @@
     "showLessChats": "Vis færre",
     "reportAnIssue": "Rapporter et problem",
     "joinCommunity": "Bli med i fellesskapet",
-    "userSettings": "Brukerinnstillinger"
+    "userSettings": "Brukerinnstillinger",
+    "search": "Søk",
+    "inbox": "Innboks",
+    "settings": "Innstillinger",
+    "adminConsole": "Administrasjonskonsoll"
   },
   "Archive": {
     "title": "Arkiv",
@@ -486,7 +491,8 @@
     "openChatPreferences": "Åpne chatpreferanser",
     "deleteThread": "Slett chat",
     "openShortcutsPopup": "Åpne snarveier-popup",
-    "toggleVoiceChat": "Åpne talechat"
+    "toggleVoiceChat": "Åpne talechat",
+    "openCommandPalette": "Kommandopalett"
   },
   "User": {
     "Profile": {
@@ -723,7 +729,9 @@
       "users": "Brukere",
       "toggleSidebar": "Åpne sidefelt",
       "adminPanel": "Adminpanel",
-      "backToApp": "Tilbake til appen"
+      "backToApp": "Tilbake til appen",
+      "dashboard": "Dashbord",
+      "audit": "Revisjonslogg"
     },
     "Users": {
       "title": "Brukere",
@@ -782,6 +790,12 @@
     },
     "Quality": {
       "title": "Kvalitet"
+    },
+    "Teams": {
+      "backToTeams": "Tilbake til team"
+    },
+    "Knowledge": {
+      "backToKnowledge": "Tilbake til kunnskap"
     }
   },
   "MCP": {
@@ -862,7 +876,7 @@
     "personalBudget": "personlig"
   },
   "Triage": {
-    "title": "Triage",
+    "title": "Innboks",
     "subtitle": "Godkjenninger og rutiner, samlet på ett rolig sted.",
     "inboxTab": "Innboks",
     "routinesTab": "Rutiner",
@@ -900,7 +914,9 @@
     "customCronPlaceholder": "f.eks. 30 8 * * 1-5",
     "createRoutine": "Opprett rutine",
     "routineCreated": "Rutine planlagt",
-    "routineDeleted": "Rutine slettet"
+    "routineDeleted": "Rutine slettet",
+    "runsTab": "Kjøringer",
+    "emptyRuns": "Ingen kjøringer ennå. Agent- og arbeidsflytkjøringer vises her."
   },
   "Teamspaces": {
     "folders": "Mapper",
@@ -920,5 +936,34 @@
     "noFolders": "Ingen mapper ennå",
     "team": "team",
     "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet"
+  },
+  "Settings": {
+    "title": "Innstillinger",
+    "general": "Generelt",
+    "usage": "Forbruk",
+    "dataControls": "Datakontroll",
+    "backToApp": "Tilbake til appen",
+    "theme": "Tema",
+    "themeDescription": "Bytt mellom lyst og mørkt.",
+    "themeStyle": "Temastil",
+    "themeStyleDescription": "Velg en fargestil for grensesnittet.",
+    "language": "Språk",
+    "languageDescription": "Velg språk for grensesnittet.",
+    "gdprTitle": "Data og personvern",
+    "gdprDescription": "Last ned en kopi av alle dataene dine lagret i A-SAFE AI (GDPR art. 20 — rett til dataportabilitet).",
+    "downloadMyData": "Last ned mine data",
+    "archivesDescription": "Områder for å lagre chathistorikk."
+  },
+  "CommandPalette": {
+    "title": "Kommandopalett",
+    "placeholder": "Søk eller gå til…",
+    "noResults": "Ingen resultater.",
+    "navigation": "Gå til",
+    "threads": "Nylige chatter",
+    "folders": "Mapper",
+    "agents": "Agenter",
+    "admin": "Administrasjon",
+    "back": "Tilbake",
+    "askAi": "Spør A-SAFE AI: \"{query}\""
   }
 }

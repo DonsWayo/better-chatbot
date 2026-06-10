@@ -205,7 +205,8 @@
       "mcpInstructions": "MCP 指示",
       "mcpInstructionsDescription": "MCP サーバーの指示をカスタマイズします。",
       "userSettings": "ユーザー設定"
-    }
+    },
+    "addFiles": "ファイルを追加"
   },
   "Layout": {
     "toggleSidebar": "サイドバーの切り替え",
@@ -255,7 +256,11 @@
     "reportAnIssue": "問題を報告",
     "joinCommunity": "コミュニティに参加",
     "workflow": "ワークフロー",
-    "userSettings": "ユーザー設定"
+    "userSettings": "ユーザー設定",
+    "search": "検索",
+    "inbox": "受信トレイ",
+    "settings": "設定",
+    "adminConsole": "管理コンソール"
   },
   "Archive": {
     "title": "アーカイブ",
@@ -336,7 +341,8 @@
     "openChatPreferences": "チャット設定を開く",
     "deleteThread": "チャットを削除",
     "openShortcutsPopup": "ショートカットポップアップを開く",
-    "toggleVoiceChat": "音声チャットの切り替え"
+    "toggleVoiceChat": "音声チャットの切り替え",
+    "openCommandPalette": "コマンドパレット"
   },
   "MCP": {
     "marketplace": "マーケットプレイス",
@@ -533,6 +539,16 @@
     },
     "Quality": {
       "title": "品質"
+    },
+    "Sidebar": {
+      "dashboard": "ダッシュボード",
+      "audit": "監査ログ"
+    },
+    "Teams": {
+      "backToTeams": "チーム一覧に戻る"
+    },
+    "Knowledge": {
+      "backToKnowledge": "ナレッジ一覧に戻る"
     }
   },
   "Runs": {
@@ -559,7 +575,7 @@
     "personalBudget": "個人"
   },
   "Triage": {
-    "title": "トリアージ",
+    "title": "受信トレイ",
     "subtitle": "承認とルーチンを、ひとつの落ち着いた場所に。",
     "inboxTab": "受信箱",
     "routinesTab": "ルーチン",
@@ -597,7 +613,9 @@
     "customCronPlaceholder": "例: 30 8 * * 1-5",
     "createRoutine": "ルーチンを作成",
     "routineCreated": "ルーチンをスケジュールしました",
-    "routineDeleted": "ルーチンを削除しました"
+    "routineDeleted": "ルーチンを削除しました",
+    "runsTab": "実行",
+    "emptyRuns": "まだ実行はありません。エージェントとワークフローの実行がここに表示されます。"
   },
   "Teamspaces": {
     "folders": "フォルダ",
@@ -617,5 +635,34 @@
     "noFolders": "まだフォルダがありません",
     "team": "チーム",
     "sharedWithTeamReadOnly": "{team}と共有 · 読み取り専用"
+  },
+  "Settings": {
+    "title": "設定",
+    "general": "一般",
+    "usage": "使用状況",
+    "dataControls": "データ管理",
+    "backToApp": "アプリに戻る",
+    "theme": "テーマ",
+    "themeDescription": "ライトとダークを切り替えます。",
+    "themeStyle": "テーマスタイル",
+    "themeStyleDescription": "インターフェースのカラースタイルを選択します。",
+    "language": "言語",
+    "languageDescription": "インターフェースの言語を選択します。",
+    "gdprTitle": "データとプライバシー",
+    "gdprDescription": "A-SAFE AI に保存されているすべてのデータのコピーをダウンロードします（GDPR 第20条 — データポータビリティの権利）。",
+    "downloadMyData": "自分のデータをダウンロード",
+    "archivesDescription": "チャット履歴を保存するスペースです。"
+  },
+  "CommandPalette": {
+    "title": "コマンドパレット",
+    "placeholder": "検索または移動…",
+    "noResults": "結果が見つかりません。",
+    "navigation": "移動",
+    "threads": "最近のチャット",
+    "folders": "フォルダー",
+    "agents": "エージェント",
+    "admin": "管理",
+    "back": "戻る",
+    "askAi": "A-SAFE AI に質問: \"{query}\""
   }
 }

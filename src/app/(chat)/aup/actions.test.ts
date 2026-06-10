@@ -26,8 +26,8 @@ describe("acceptAupAction", () => {
   it("redirects to signin when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { acceptAupAction } = await import("./actions");
-    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT.*signin/);
-    expect(redirectMock).toHaveBeenCalledWith("/auth/signin");
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT.*sign-in/);
+    expect(redirectMock).toHaveBeenCalledWith("/sign-in");
     expect(recordAupAcceptanceMock).not.toHaveBeenCalled();
   });
 
@@ -88,11 +88,11 @@ describe("acceptAupAction", () => {
     expect(redirectMock).not.toHaveBeenCalledWith("/dashboard");
   });
 
-  it("redirect destination on unauthenticated is exactly '/auth/signin'", async () => {
+  it("redirect destination on unauthenticated is exactly '/sign-in'", async () => {
     getSessionMock.mockResolvedValue(null);
     const { acceptAupAction } = await import("./actions");
     await expect(acceptAupAction()).rejects.toThrow();
-    expect(redirectMock).toHaveBeenCalledWith("/auth/signin");
+    expect(redirectMock).toHaveBeenCalledWith("/sign-in");
   });
 
   it("getSession is called exactly once per invocation", async () => {
@@ -132,7 +132,7 @@ describe("acceptAupAction — additional", () => {
   it("recordAupAcceptance not called when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { acceptAupAction } = await import("./actions");
-    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT.*signin/);
+    await expect(acceptAupAction()).rejects.toThrow(/NEXT_REDIRECT.*sign-in/);
     expect(recordAupAcceptanceMock).not.toHaveBeenCalled();
   });
 

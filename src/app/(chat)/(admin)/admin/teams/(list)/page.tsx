@@ -15,7 +15,7 @@ export default async function TeamListPage() {
 
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const teams = await getAdminTeams();

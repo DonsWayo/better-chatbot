@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 export async function acceptAupAction(): Promise<void> {
   const session = await getSession();
-  if (!session) redirect("/auth/signin");
+  if (!session) redirect("/sign-in");
 
   await recordAupAcceptance(session.user.id);
   redirect("/");

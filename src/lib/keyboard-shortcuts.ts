@@ -19,11 +19,22 @@ const openNewChatShortcut: Shortcut = {
   },
 };
 
+// Cmd+K belongs to the command palette (the universal convention);
+// temporary chat moved to Cmd+Shift+K.
+const openCommandPaletteShortcut: Shortcut = {
+  description: "openCommandPalette",
+  shortcut: {
+    key: "K",
+    command: true,
+  },
+};
+
 const toggleTemporaryChatShortcut: Shortcut = {
   description: "toggleTemporaryChat",
   shortcut: {
     key: "K",
     command: true,
+    shift: true,
   },
 };
 
@@ -89,6 +100,7 @@ const openShortcutsPopupShortcut: Shortcut = {
 
 export const Shortcuts = {
   openNewChat: openNewChatShortcut,
+  openCommandPalette: openCommandPaletteShortcut,
   openChatPreferences: openChatPreferencesShortcut,
   toggleTemporaryChat: toggleTemporaryChatShortcut,
   toggleVoiceChat: toggleVoiceChatShortcut,

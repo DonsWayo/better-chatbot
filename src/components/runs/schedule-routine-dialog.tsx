@@ -238,7 +238,7 @@ export function ScheduleRoutineDialog() {
 
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
           <Link
-            href="/triage"
+            href="/inbox"
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => setOpen(false)}
           >
