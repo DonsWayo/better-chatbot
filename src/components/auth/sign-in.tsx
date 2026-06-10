@@ -89,7 +89,7 @@ export default function SignIn({
             When no SSO provider is configured (e.g. local dev), the email form shows directly
             so the admin can always log in.
           */}
-          {hasSocial && !showAdmin && !isFirstUser && (
+          {hasSocial && !showAdmin && (
             <div className="flex flex-col gap-2 w-full">
               {socialAuthenticationProviders.includes("microsoft") && (
                 <Button
@@ -123,55 +123,54 @@ export default function SignIn({
               )}
             </div>
           )}
-          {emailAndPasswordEnabled &&
-            (showAdmin || isFirstUser || !hasSocial) && (
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    autoFocus
-                    disabled={loading}
-                    value={formData.email}
-                    onChange={(e) => setFormData({ email: e.target.value })}
-                    type="email"
-                    placeholder="admin@example.com"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
-                  </div>
-                  <Input
-                    id="password"
-                    disabled={loading}
-                    value={formData.password}
-                    placeholder="********"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        emailAndPasswordSignIn();
-                      }
-                    }}
-                    onChange={(e) => setFormData({ password: e.target.value })}
-                    type="password"
-                    required
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={emailAndPasswordSignIn}
+          {emailAndPasswordEnabled && (showAdmin || !hasSocial) && (
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  autoFocus
                   disabled={loading}
-                  data-testid="signin-submit-button"
-                >
-                  {loading ? (
-                    <Loader className="size-4 animate-spin ml-1" />
-                  ) : (
-                    t("signIn")
-                  )}
-                </Button>
+                  value={formData.email}
+                  onChange={(e) => setFormData({ email: e.target.value })}
+                  type="email"
+                  placeholder="admin@example.com"
+                  required
+                />
               </div>
-            )}
+              <div className="grid gap-2">
+                <div className="flex items-center">
+                  <Label htmlFor="password">Password</Label>
+                </div>
+                <Input
+                  id="password"
+                  disabled={loading}
+                  value={formData.password}
+                  placeholder="********"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      emailAndPasswordSignIn();
+                    }
+                  }}
+                  onChange={(e) => setFormData({ password: e.target.value })}
+                  type="password"
+                  required
+                />
+              </div>
+              <Button
+                className="w-full"
+                onClick={emailAndPasswordSignIn}
+                disabled={loading}
+                data-testid="signin-submit-button"
+              >
+                {loading ? (
+                  <Loader className="size-4 animate-spin ml-1" />
+                ) : (
+                  t("signIn")
+                )}
+              </Button>
+            </div>
+          )}
           {emailAndPasswordEnabled && hasSocial && !isFirstUser && (
             <div className="mt-6 text-center text-sm">
               <button
