@@ -8,6 +8,18 @@ A Safe Digital's internal AI assistant for ~800 employees: a self-hosted, web **
 
 **Working name:** `asafe-ai` (placeholder — rename freely).
 
+## Mandatory rule: every feature ships with docs
+
+Every new feature, behavioral change, new env var, new table, or new endpoint MUST update
+the in-app documentation site in the **same change**:
+
+- Docs live in `content/docs/**` (MDX, Fumadocs) and are served at `/docs`.
+- Add or update the relevant page (and `meta.json` if adding a page); keep claims accurate
+  to the code — verify against the actual modules, never invent behavior.
+- New env vars also go in `.env.example` AND `content/docs/operations/environment-variables.mdx`.
+- Agents/subagents implementing features must be instructed to do this; reviews should
+  reject feature changes that do not touch `content/docs/`.
+
 ## The single most important rule: we FORK, we do not REBUILD
 
 The base is **`cgoinglove/better-chatbot`** (MIT). We clone it and build on top. We do **not** rewrite it, and we do **not** reimplement things it already does well. The reasons it was chosen:
