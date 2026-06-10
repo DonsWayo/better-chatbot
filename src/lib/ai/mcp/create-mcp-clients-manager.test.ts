@@ -24,26 +24,62 @@ vi.mock("lib/utils", () => ({
     isLocked: false,
   })),
   generateUUID: vi.fn(() => "mock-uuid-12345678"),
+  toAny: <T>(v: T) => v,
+  errorToString: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  safeJSONParse: (text: string) => {
+    try {
+      return { success: true, value: JSON.parse(text) };
+    } catch {
+      return { success: false };
+    }
+  },
 }));
 
-vi.mock("ts-safe", () => ({
-  safe: vi.fn((fn) => ({
-    // ifOk: vi.fn((nextFn) => ({
-    ifOk: vi.fn((anotherFn) => ({
-      watch: vi.fn((watchFn) => ({
-        unwrap: vi.fn(() => {
-          fn();
-          // nextFn();
-          if (typeof anotherFn === "function") {
-            return anotherFn();
-          }
-          watchFn();
+// Faithful mini-implementation of the ts-safe chain (map/ifOk/ifFail/watch/
+// unwrap) so both the init flow and toolCall error handling behave like prod.
+vi.mock("ts-safe", () => {
+  type Chain = {
+    map: (fn: (v: unknown) => unknown) => Chain;
+    ifOk: (fn: (v: unknown) => unknown) => Chain;
+    ifFail: (fn: (e: unknown) => unknown) => Chain;
+    watch: (fn: (r: unknown) => unknown) => Chain;
+    unwrap: () => Promise<unknown>;
+  };
+  const wrap = (p: Promise<unknown>): Chain => ({
+    map: (fn) => wrap(p.then(fn)),
+    ifOk: (fn) =>
+      wrap(
+        p.then(async (v) => {
+          await fn(v);
+          return v;
         }),
-      })),
-    })),
-    // })),
-  })),
-}));
+      ),
+    ifFail: (fn) => wrap(p.catch((e) => fn(e))),
+    watch: (fn) =>
+      wrap(
+        p.then(
+          (v) => {
+            fn({ isOk: true, value: v });
+            return v;
+          },
+          (e) => {
+            fn({ isOk: false, error: e });
+            throw e;
+          },
+        ),
+      ),
+    unwrap: () => p,
+  });
+  return {
+    safe: (fn: () => unknown) => {
+      try {
+        return wrap(Promise.resolve(fn()));
+      } catch (e) {
+        return wrap(Promise.reject(e));
+      }
+    },
+  };
+});
 
 const mockCreateMCPClient = await import("./create-mcp-client").then(
   (m) => m.createMCPClient,
@@ -438,6 +474,135 @@ describe("MCPClientsManager", () => {
 
       const tools = await manager.tools();
       expect(tools).toEqual({});
+    });
+  });
+
+  describe("disabled tools (per-tool entitlements)", () => {
+    const toolInfo = [
+      { name: "tool-a", description: "Tool A", inputSchema: {} },
+      { name: "tool-b", description: "Tool B", inputSchema: {} },
+    ];
+
+    let clientWithTools: MCPClient;
+
+    beforeEach(() => {
+      clientWithTools = {
+        ...mockClient,
+        toolInfo,
+        callTool: vi.fn().mockResolvedValue({ content: [] }),
+      } as unknown as MCPClient;
+      vi.mocked(mockCreateMCPClient).mockReturnValue(clientWithTools);
+      manager = new MCPClientsManager(mockStorage);
+    });
+
+    it("hydrates the gate from storage on init and filters tools()", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo, disabledTools: ["tool-b"] },
+      ]);
+
+      await manager.init();
+      const tools = await manager.tools();
+
+      expect(Object.keys(tools)).toEqual(["test-server:tool-a"]);
+      expect(manager.isToolDisabled("test-server", "tool-b")).toBe(true);
+      expect(manager.isToolDisabled("test-server", "tool-a")).toBe(false);
+    });
+
+    it("exposes every tool when disabledTools is null or empty", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo, disabledTools: null },
+      ]);
+
+      await manager.init();
+      const tools = await manager.tools();
+
+      expect(Object.keys(tools).sort()).toEqual([
+        "test-server:tool-a",
+        "test-server:tool-b",
+      ]);
+    });
+
+    it("setDisabledTools updates filtering immediately without a refresh", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo },
+      ]);
+      await manager.init();
+
+      manager.setDisabledTools("test-server", ["tool-a"]);
+      expect(Object.keys(await manager.tools())).toEqual([
+        "test-server:tool-b",
+      ]);
+
+      // Re-enabling everything restores the full list
+      manager.setDisabledTools("test-server", []);
+      expect(Object.keys(await manager.tools()).sort()).toEqual([
+        "test-server:tool-a",
+        "test-server:tool-b",
+      ]);
+    });
+
+    it("rejects direct invocation of a disabled tool with a clear error", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo, disabledTools: ["tool-b"] },
+      ]);
+      await manager.init();
+
+      const result = (await manager.toolCall("test-server", "tool-b", {})) as {
+        isError?: boolean;
+        error?: { message: string };
+      };
+
+      expect(result.isError).toBe(true);
+      expect(result.error?.message).toMatch(/switched off/i);
+      expect(
+        (clientWithTools as unknown as { callTool: ReturnType<typeof vi.fn> })
+          .callTool,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("allows invocation of enabled tools on the same server", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo, disabledTools: ["tool-b"] },
+      ]);
+      await manager.init();
+
+      await manager.toolCall("test-server", "tool-a", {});
+
+      expect(
+        (clientWithTools as unknown as { callTool: ReturnType<typeof vi.fn> })
+          .callTool,
+      ).toHaveBeenCalledWith("tool-a", {});
+    });
+
+    it("refreshClient re-hydrates the gate from storage", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo },
+      ]);
+      await manager.init();
+      expect(Object.keys(await manager.tools())).toHaveLength(2);
+
+      vi.mocked(mockStorage.get).mockResolvedValue({
+        ...mockServer,
+        toolInfo,
+        disabledTools: ["tool-a"],
+      });
+      await manager.refreshClient("test-server");
+
+      expect(Object.keys(await manager.tools())).toEqual([
+        "test-server:tool-b",
+      ]);
+    });
+
+    it("removeClient clears the gate for that server", async () => {
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        { ...mockServer, toolInfo, disabledTools: ["tool-b"] },
+      ]);
+      await manager.init();
+      vi.mocked(mockStorage.has).mockResolvedValue(true);
+
+      await manager.removeClient("test-server");
+
+      expect(manager.isToolDisabled("test-server", "tool-b")).toBe(false);
     });
   });
 

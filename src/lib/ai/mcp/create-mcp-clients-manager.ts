@@ -1,27 +1,27 @@
+import { ToolCallOptions, jsonSchema } from "ai";
 import {
-  VercelAIMcpToolTag,
   type MCPConnectionStatus,
   type MCPServerConfig,
   type MCPToolInfo,
   type McpServerInsert,
   type McpServerSelect,
   type VercelAIMcpTool,
+  VercelAIMcpToolTag,
 } from "app-types/mcp";
-import { createMCPClient, type MCPClient } from "./create-mcp-client";
+import { colorize } from "consola/utils";
+import { McpServerTable } from "lib/db/pg/schema.pg";
 import {
+  Locker,
   errorToString,
   generateUUID,
-  Locker,
   safeJSONParse,
   toAny,
 } from "lib/utils";
-import { safe } from "ts-safe";
-import { McpServerTable } from "lib/db/pg/schema.pg";
-import { createMCPToolId } from "./mcp-tool-id";
 import globalLogger from "logger";
-import { jsonSchema, ToolCallOptions } from "ai";
+import { safe } from "ts-safe";
+import { type MCPClient, createMCPClient } from "./create-mcp-client";
+import { createMCPToolId } from "./mcp-tool-id";
 import { createMemoryMCPConfigStorage } from "./memory-mcp-config-storage";
-import { colorize } from "consola/utils";
 
 /**
  * Interface for storage of MCP server configurations.
@@ -56,6 +56,12 @@ export class MCPClientsManager {
   >();
   private initializedLock = new Locker();
   private initialized = false;
+  /**
+   * Per-server entitlement gate: tool names admins switched off.
+   * Kept in memory so filtering tool lists / rejecting calls is O(1);
+   * hydrated from storage on init/refresh and updated via setDisabledTools.
+   */
+  private disabledToolsByServer = new Map<string, Set<string>>();
   private logger = globalLogger.withDefaults({
     message: colorize("dim", `[${generateUUID().slice(0, 4)}] MCP Manager: `),
   });
@@ -99,7 +105,15 @@ export class MCPClientsManager {
           const configs = await this.storage.loadAll();
           await Promise.all(
             configs.map(
-              ({ id, name, config, toolInfo, lastConnectionStatus }) => {
+              ({
+                id,
+                name,
+                config,
+                toolInfo,
+                lastConnectionStatus,
+                disabledTools,
+              }) => {
+                this.setDisabledTools(id, disabledTools);
                 if (toolInfo?.length) {
                   this.logger.info(
                     `Loading cached tool info for ${name} (${toolInfo.length} tools)`,
@@ -133,7 +147,25 @@ export class MCPClientsManager {
   }
 
   /**
-   * Returns all tools from all clients as a flat object
+   * Replaces the in-memory disabled-tool set for a server.
+   * null / [] means every tool is enabled.
+   */
+  setDisabledTools(id: string, disabledTools?: string[] | null) {
+    if (disabledTools?.length) {
+      this.disabledToolsByServer.set(id, new Set(disabledTools));
+    } else {
+      this.disabledToolsByServer.delete(id);
+    }
+  }
+
+  /** Whether an admin switched this tool off for the given server. */
+  isToolDisabled(id: string, toolName: string): boolean {
+    return this.disabledToolsByServer.get(id)?.has(toolName) ?? false;
+  }
+
+  /**
+   * Returns all tools from all clients as a flat object.
+   * Tools an admin switched off (server.disabledTools) are never exposed.
    */
   async tools(): Promise<Record<string, VercelAIMcpTool>> {
     await this.waitInitialized();
@@ -141,9 +173,13 @@ export class MCPClientsManager {
       (acc, [id, client]) => {
         if (!client.client?.toolInfo?.length) return acc;
         const clientName = client.name;
+        const disabled = this.disabledToolsByServer.get(id);
+        const enabledToolInfo = disabled
+          ? client.client.toolInfo.filter((tool) => !disabled.has(tool.name))
+          : client.client.toolInfo;
         return {
           ...acc,
-          ...client.client.toolInfo.reduce(
+          ...enabledToolInfo.reduce(
             (bcc, tool) => {
               return {
                 ...bcc,
@@ -230,6 +266,7 @@ export class MCPClientsManager {
     if (this.storage) {
       const entity = await this.storage.save(server);
       id = entity.id;
+      this.setDisabledTools(id, entity.disabledTools);
     }
     await this.addClient(id, server.name, server.config).catch((err) => {
       if (!server.id) {
@@ -250,6 +287,7 @@ export class MCPClientsManager {
         await this.storage.delete(id);
       }
     }
+    this.disabledToolsByServer.delete(id);
     this.disconnectClient(id);
   }
 
@@ -271,6 +309,7 @@ export class MCPClientsManager {
       throw new Error(`Client ${id} not found`);
     }
     this.logger.info(`Refreshing client ${server.name}`);
+    this.setDisabledTools(id, server.disabledTools);
     await this.addClient(id, server.name, server.config);
     return this.clients.get(id)!;
   }
@@ -317,7 +356,14 @@ export class MCPClientsManager {
     return this.toolCall(client.id, toolName, input);
   }
   async toolCall(id: string, toolName: string, input: unknown) {
-    return safe(() => this.getClient(id))
+    return safe(() => {
+      if (this.isToolDisabled(id, toolName)) {
+        throw new Error(
+          `Tool "${toolName}" is switched off for this connector by an administrator.`,
+        );
+      }
+      return this.getClient(id);
+    })
       .map((client) => {
         if (!client) throw new Error(`Client ${id} not found`);
         return client.client;

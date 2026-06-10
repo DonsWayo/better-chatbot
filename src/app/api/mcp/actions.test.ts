@@ -3,29 +3,39 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   getCurrentUserMock,
   canCreateMCPMock,
+  canManageMCPServerMock,
   insertMcpServerMock,
   refreshClientMock,
   getClientsMock,
   selectAllForUserMock,
+  selectByIdMock,
+  updateDisabledToolsMock,
+  setDisabledToolsMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
   canCreateMCPMock: vi.fn(),
+  canManageMCPServerMock: vi.fn().mockResolvedValue(true),
   insertMcpServerMock: vi.fn(),
   refreshClientMock: vi.fn(),
   getClientsMock: vi.fn(),
   selectAllForUserMock: vi.fn(),
+  selectByIdMock: vi.fn(),
+  updateDisabledToolsMock: vi.fn(),
+  setDisabledToolsMock: vi.fn(),
 }));
 
 vi.mock("lib/auth/permissions", () => ({
   getCurrentUser: getCurrentUserMock,
   canCreateMCP: canCreateMCPMock,
-  canManageMCPServer: vi.fn().mockResolvedValue(true),
+  canManageMCPServer: canManageMCPServerMock,
   canShareMCPServer: vi.fn().mockResolvedValue(true),
 }));
 vi.mock("lib/db/repository", () => ({
   mcpRepository: {
     insertMcpServer: insertMcpServerMock,
     selectAllForUser: selectAllForUserMock,
+    selectById: selectByIdMock,
+    updateDisabledTools: updateDisabledToolsMock,
   },
   mcpOAuthRepository: {},
 }));
@@ -34,6 +44,7 @@ vi.mock("lib/ai/mcp/mcp-manager", () => ({
     refreshClient: refreshClientMock,
     getClient: vi.fn().mockResolvedValue(null),
     getClients: getClientsMock,
+    setDisabledTools: setDisabledToolsMock,
   },
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({ McpServerTable: {} }));
@@ -305,6 +316,109 @@ describe("saveMcpClientAction — additional", () => {
         config: {},
       } as any),
     ).rejects.toThrow(/admin/i);
+  });
+});
+
+describe("setMcpToolEnabledAction", () => {
+  const baseServer = {
+    id: "srv-1",
+    name: "github",
+    config: { url: "http://mcp" },
+    userId: "owner-1",
+    visibility: "private" as const,
+    disabledTools: null as string[] | null,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    canManageMCPServerMock.mockResolvedValue(true);
+    updateDisabledToolsMock.mockResolvedValue(undefined);
+  });
+
+  it("throws when the server does not exist", async () => {
+    selectByIdMock.mockResolvedValue(null);
+    const { setMcpToolEnabledAction } = await import("./actions");
+    await expect(
+      setMcpToolEnabledAction("missing", "create_issue", false),
+    ).rejects.toThrow(/not found/i);
+    expect(updateDisabledToolsMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when the user cannot manage the server", async () => {
+    selectByIdMock.mockResolvedValue(baseServer);
+    canManageMCPServerMock.mockResolvedValue(false);
+    const { setMcpToolEnabledAction } = await import("./actions");
+    await expect(
+      setMcpToolEnabledAction("srv-1", "create_issue", false),
+    ).rejects.toThrow(/permission/i);
+    expect(updateDisabledToolsMock).not.toHaveBeenCalled();
+    expect(setDisabledToolsMock).not.toHaveBeenCalled();
+  });
+
+  it("checks permission against the server owner and visibility", async () => {
+    selectByIdMock.mockResolvedValue({
+      ...baseServer,
+      visibility: "public" as const,
+    });
+    const { setMcpToolEnabledAction } = await import("./actions");
+    await setMcpToolEnabledAction("srv-1", "create_issue", false);
+    expect(canManageMCPServerMock).toHaveBeenCalledWith("owner-1", "public");
+  });
+
+  it("disabling a tool adds it to disabledTools", async () => {
+    selectByIdMock.mockResolvedValue(baseServer);
+    const { setMcpToolEnabledAction } = await import("./actions");
+    const result = await setMcpToolEnabledAction(
+      "srv-1",
+      "create_issue",
+      false,
+    );
+    expect(updateDisabledToolsMock).toHaveBeenCalledWith("srv-1", [
+      "create_issue",
+    ]);
+    expect(result.disabledTools).toEqual(["create_issue"]);
+  });
+
+  it("re-enabling a tool removes it from disabledTools", async () => {
+    selectByIdMock.mockResolvedValue({
+      ...baseServer,
+      disabledTools: ["create_issue", "delete_repo"],
+    });
+    const { setMcpToolEnabledAction } = await import("./actions");
+    const result = await setMcpToolEnabledAction("srv-1", "create_issue", true);
+    expect(updateDisabledToolsMock).toHaveBeenCalledWith("srv-1", [
+      "delete_repo",
+    ]);
+    expect(result.disabledTools).toEqual(["delete_repo"]);
+  });
+
+  it("disabling an already-disabled tool does not duplicate it", async () => {
+    selectByIdMock.mockResolvedValue({
+      ...baseServer,
+      disabledTools: ["create_issue"],
+    });
+    const { setMcpToolEnabledAction } = await import("./actions");
+    const result = await setMcpToolEnabledAction(
+      "srv-1",
+      "create_issue",
+      false,
+    );
+    expect(result.disabledTools).toEqual(["create_issue"]);
+  });
+
+  it("updates the in-memory manager gate so enforcement is immediate", async () => {
+    selectByIdMock.mockResolvedValue(baseServer);
+    const { setMcpToolEnabledAction } = await import("./actions");
+    await setMcpToolEnabledAction("srv-1", "create_issue", false);
+    expect(setDisabledToolsMock).toHaveBeenCalledWith("srv-1", [
+      "create_issue",
+    ]);
+  });
+
+  it("rejects empty tool names", async () => {
+    const { setMcpToolEnabledAction } = await import("./actions");
+    await expect(setMcpToolEnabledAction("srv-1", "", false)).rejects.toThrow();
+    expect(updateDisabledToolsMock).not.toHaveBeenCalled();
   });
 });
 

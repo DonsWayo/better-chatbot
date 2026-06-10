@@ -1,8 +1,8 @@
-import { pgDb as db } from "../db.pg";
-import { McpServerTable, UserTable, AsafeTeamMemberTable } from "../schema.pg";
-import { eq, or, and, inArray, desc } from "drizzle-orm";
-import { generateUUID } from "lib/utils";
 import type { MCPRepository } from "app-types/mcp";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { generateUUID } from "lib/utils";
+import { pgDb as db } from "../db.pg";
+import { AsafeTeamMemberTable, McpServerTable, UserTable } from "../schema.pg";
 
 export const pgMcpRepository: MCPRepository = {
   async save(server) {
@@ -78,6 +78,7 @@ export const pgMcpRepository: MCPRepository = {
         userId: McpServerTable.userId,
         visibility: McpServerTable.visibility,
         lastConnectionStatus: McpServerTable.lastConnectionStatus,
+        disabledTools: McpServerTable.disabledTools,
         createdAt: McpServerTable.createdAt,
         updatedAt: McpServerTable.updatedAt,
         userName: UserTable.name,
@@ -114,6 +115,16 @@ export const pgMcpRepository: MCPRepository = {
       .set({
         toolInfo,
         toolInfoUpdatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(McpServerTable.id, id));
+  },
+
+  async updateDisabledTools(id, disabledTools) {
+    await db
+      .update(McpServerTable)
+      .set({
+        disabledTools,
         updatedAt: new Date(),
       })
       .where(eq(McpServerTable.id, id));

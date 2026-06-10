@@ -67,5 +67,27 @@ injected when that tool is loaded, e.g. "always answer with our Jira project key
 conventions". Customizations are per-user and do not change the server's actual tool
 schema.
 
+## Per-tool controls
+
+Admins (and owners of their own private servers) can switch **individual tools** of a
+connector off without disconnecting the whole server — e.g. keep `search_issues` but turn
+off `delete_repo`.
+
+- **Where**: Settings → Connectors → *connector* — each tool row gets a switch (visible
+  only to users who may manage the server; everyone else sees a read-only `off` badge).
+- **Storage**: `mcp_server.disabled_tools` (jsonb array of tool names; `null`/`[]` means
+  every tool is enabled). Toggled through the `setMcpToolEnabledAction` server action,
+  which is gated by the same `canManageMCPServer` check as editing or deleting the server.
+- **Enforcement** happens at the MCP manager layer (`src/lib/ai/mcp/create-mcp-clients-manager.ts`),
+  not in the UI: disabled tools are filtered out of `tools()` so they never reach the
+  model's tool list, and a direct `toolCall` against a disabled tool is rejected with
+  *"Tool … is switched off for this connector by an administrator."* The gate is an
+  in-memory set per server (O(1) per lookup), hydrated from the database on startup and
+  refresh, and updated immediately when an admin flips a switch.
+
+Per-tool controls are an *entitlement* (who may use what), distinct from the per-user
+instruction customizations above and from the per-chat tool picker, which can only narrow
+the already-entitled set.
+
 Guardrails treat all MCP tool output as **untrusted input** — see
 [Guardrails](/docs/governance/guardrails#untrusted-tool-output).

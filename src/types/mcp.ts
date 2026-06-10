@@ -55,6 +55,13 @@ export type MCPServerInfo = {
   status: "connected" | "disconnected" | "loading" | "authorizing";
   lastConnectionStatus?: MCPConnectionStatus | null;
   toolInfo: MCPToolInfo[];
+  /**
+   * Tool names an admin/owner switched off for this server.
+   * null/[] = every tool the server exposes is available.
+   */
+  disabledTools?: string[] | null;
+  /** Whether the current viewer may manage this server (per-tool toggles etc.). */
+  canManage?: boolean;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   userName?: string | null;
@@ -86,6 +93,7 @@ export type McpServerSelect = {
   toolInfo?: MCPToolInfo[] | null;
   toolInfoUpdatedAt?: Date | null;
   lastConnectionStatus?: MCPConnectionStatus | null;
+  disabledTools?: string[] | null;
 };
 
 export type VercelAIMcpTool = Tool & {
@@ -106,6 +114,7 @@ export interface MCPRepository {
   existsByServerName(name: string): Promise<boolean>;
   updateVisibility(id: string, visibility: "public" | "private"): Promise<void>;
   updateToolInfo(id: string, toolInfo: MCPToolInfo[]): Promise<void>;
+  updateDisabledTools(id: string, disabledTools: string[]): Promise<void>;
   updateConnectionStatus(
     id: string,
     status: MCPConnectionStatus,

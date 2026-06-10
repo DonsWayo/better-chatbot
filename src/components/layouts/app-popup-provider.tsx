@@ -1,5 +1,6 @@
 "use client";
 
+import { GChordNavigation } from "@/components/g-chord-navigation";
 import { BasicUser } from "app-types/user";
 import dynamic from "next/dynamic";
 
@@ -67,6 +68,7 @@ export function AppPopupProvider({
 }) {
   return (
     <>
+      <GChordNavigation userRole={user?.role} />
       <CommandPalette user={user} />
       <KeyboardShortcutsPopup />
       <ChatPreferencesPopup />

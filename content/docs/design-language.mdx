@@ -58,3 +58,35 @@ purple gradients.
 - Voice: calm, specific, no exclamation marks in UI chrome. **Cost and consequences stated
   plainly before actions** — "~$0.40 · charged to Engineering budget" — which is also a
   [governance feature](/docs/governance/budgets-and-usage#cost-preview).
+
+## Keyboard shortcuts
+
+Keyboard-first density (the Raycast inspiration) — press <kbd>⌘ /</kbd> anywhere to open
+the in-app shortcuts reference.
+
+| Shortcut | Action |
+|---|---|
+| `⌘ K` | Command palette |
+| `⌘ ⇧ O` | New chat |
+| `⌘ ⇧ K` | Temporary chat |
+| `⌘ ⇧ S` | Toggle sidebar |
+| `⌘ ⇧ L` | Personalization settings |
+| `⌘ /` | Shortcuts reference |
+
+### Go-to chords
+
+Two-key sequences, Linear/Superhuman style: press `g`, release, then the second key within
+1.5 seconds. Typing in an input never triggers them; `Esc` (or waiting) cancels the chord.
+
+| Chord | Destination |
+|---|---|
+| `g` then `h` | Home (new chat) |
+| `g` then `i` | Inbox |
+| `g` then `s` | Studio — only for builders/admins who can see Studio |
+| `g` then `a` | Agents |
+| `g` then `c` | Settings → Connectors |
+| `g` then `p` | Settings → Personalization |
+
+Registry and the pure chord state machine live in `src/lib/keyboard-shortcuts.ts`
+(`NavigationChords`, `resolveChordKey`); the global listener is
+`src/components/g-chord-navigation.tsx`.

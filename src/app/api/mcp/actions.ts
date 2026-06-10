@@ -2,16 +2,16 @@
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { z } from "zod";
 
-import { McpServerTable } from "lib/db/pg/schema.pg";
-import { mcpOAuthRepository, mcpRepository } from "lib/db/repository";
+import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
 import {
   canCreateMCP,
   canManageMCPServer,
   canShareMCPServer,
   getCurrentUser,
 } from "lib/auth/permissions";
-import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
 import { IS_MCP_SERVER_REMOTE_ONLY } from "lib/const";
+import { McpServerTable } from "lib/db/pg/schema.pg";
+import { mcpOAuthRepository, mcpRepository } from "lib/db/repository";
 
 export async function isMcpServerRemoteOnlyAction() {
   return IS_MCP_SERVER_REMOTE_ONLY;
@@ -194,6 +194,56 @@ export async function callMcpToolByServerNameAction(
   input: unknown,
 ) {
   return mcpClientsManager.toolCallByServerName(serverName, toolName, input);
+}
+
+/**
+ * Per-tool entitlement toggle: switch a single tool of a connector on/off.
+ * Disabled tools never reach the chat tool list and direct invocations are
+ * rejected at the MCP manager layer. Gated by the same canManage check used
+ * for editing/deleting the server (owner of a private server, or admin).
+ */
+export async function setMcpToolEnabledAction(
+  serverId: string,
+  toolName: string,
+  enabled: boolean,
+) {
+  const parsed = z
+    .object({
+      serverId: z.string().min(1),
+      toolName: z.string().min(1),
+      enabled: z.boolean(),
+    })
+    .parse({ serverId, toolName, enabled });
+
+  const mcpServer = await mcpRepository.selectById(parsed.serverId);
+  if (!mcpServer) {
+    throw new Error("MCP server not found");
+  }
+
+  const canManage = await canManageMCPServer(
+    mcpServer.userId,
+    mcpServer.visibility,
+  );
+  if (!canManage) {
+    throw new Error(
+      "You don't have permission to manage tools on this MCP connection",
+    );
+  }
+
+  const next = new Set(mcpServer.disabledTools ?? []);
+  if (parsed.enabled) {
+    next.delete(parsed.toolName);
+  } else {
+    next.add(parsed.toolName);
+  }
+  const disabledTools = Array.from(next);
+
+  // Persist (bumps updatedAt) and update the in-memory gate so enforcement
+  // applies immediately without a client refresh.
+  await mcpRepository.updateDisabledTools(parsed.serverId, disabledTools);
+  mcpClientsManager.setDisabledTools(parsed.serverId, disabledTools);
+
+  return { disabledTools };
 }
 
 export async function shareMcpServerAction(

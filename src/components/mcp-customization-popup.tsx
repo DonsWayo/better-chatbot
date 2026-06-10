@@ -1,23 +1,19 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
-import {
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "ui/dialog";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { DialogDescription, DialogHeader, DialogTitle } from "ui/dialog";
 
-import useSWR from "swr";
 import { cn, fetcher } from "lib/utils";
+import useSWR from "swr";
 
-import { useTranslations } from "next-intl";
+import { setMcpToolEnabledAction } from "@/app/api/mcp/actions";
+import { useMcpList } from "@/hooks/queries/use-mcp-list";
 import {
-  McpServerCustomization,
   MCPServerInfo,
-  McpToolCustomization,
   MCPToolInfo,
+  McpServerCustomization,
+  McpToolCustomization,
 } from "app-types/mcp";
-import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import {
   ArrowLeft,
   ChevronRight,
@@ -26,23 +22,26 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
-import { Button } from "ui/button";
-import { Textarea } from "ui/textarea";
+import { useTranslations } from "next-intl";
 import { safe } from "ts-safe";
-import { z } from "zod";
-import { handleErrorWithToast } from "ui/shared-toast";
-import { Skeleton } from "ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "ui/alert";
-import { ToolDetailPopupContent } from "./tool-detail-popup";
+import { Button } from "ui/button";
 import { ExamplePlaceholder } from "ui/example-placeholder";
 import { Input } from "ui/input";
+import { handleErrorWithToast } from "ui/shared-toast";
+import { Skeleton } from "ui/skeleton";
+import { Switch } from "ui/switch";
+import { Textarea } from "ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
+import { z } from "zod";
+import { ToolDetailPopupContent } from "./tool-detail-popup";
 
 // The global McpCustomizationPopup was retired; this content now renders
 // inline on each connector row (Settings › Connectors › [id]).
 // docs/design/information-architecture.md §2.
 
 export function McpServerCustomizationContent({
-  mcpServerInfo: { id, name, toolInfo, error },
+  mcpServerInfo: { id, name, toolInfo, error, disabledTools, canManage },
   title,
   inline = false,
 }: {
@@ -59,6 +58,43 @@ export function McpServerCustomizationContent({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [selectedTool, setSelectedTool] = useState<MCPToolInfo | null>(null);
+
+  // Per-tool entitlement gate (admin/owner only). Optimistic local copy of
+  // server.disabledTools; revalidated through the MCP list after each toggle.
+  const { mutate: refreshMcpList } = useMcpList();
+  const [disabledToolSet, setDisabledToolSet] = useState<Set<string>>(
+    () => new Set(disabledTools ?? []),
+  );
+  const [togglingTool, setTogglingTool] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDisabledToolSet(new Set(disabledTools ?? []));
+  }, [disabledTools]);
+
+  const handleToggleTool = async (toolName: string, enabled: boolean) => {
+    setTogglingTool(toolName);
+    setDisabledToolSet((prev) => {
+      const next = new Set(prev);
+      if (enabled) next.delete(toolName);
+      else next.add(toolName);
+      return next;
+    });
+    try {
+      await setMcpToolEnabledAction(id, toolName, enabled);
+      await refreshMcpList();
+    } catch (e) {
+      // Revert the optimistic change
+      setDisabledToolSet((prev) => {
+        const next = new Set(prev);
+        if (enabled) next.add(toolName);
+        else next.delete(toolName);
+        return next;
+      });
+      handleErrorWithToast(e as Error);
+    } finally {
+      setTogglingTool(null);
+    }
+  };
 
   const handleSave = () => {
     setIsProcessing(true);
@@ -288,6 +324,7 @@ export function McpServerCustomizationContent({
               </Alert>
             ) : (
               toolCustomizations.map((tool) => {
+                const isToolOff = disabledToolSet.has(tool.name);
                 return (
                   <Alert
                     key={tool.name}
@@ -296,8 +333,20 @@ export function McpServerCustomizationContent({
                   >
                     <Wrench className="size-3.5" />
                     <div className="flex w-full gap-2 items-center">
-                      <div className="flex-1 min-w-0">
-                        <AlertTitle>{tool.name}</AlertTitle>
+                      <div
+                        className={cn(
+                          "flex-1 min-w-0",
+                          isToolOff && "opacity-60",
+                        )}
+                      >
+                        <AlertTitle className="flex items-center gap-2">
+                          {tool.name}
+                          {isToolOff && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium lowercase text-muted-foreground">
+                              {t("MCP.toolOff")}
+                            </span>
+                          )}
+                        </AlertTitle>
                         <AlertDescription className="flex gap-2 w-full min-w-0 items-start">
                           <p
                             className={cn(
@@ -309,6 +358,27 @@ export function McpServerCustomizationContent({
                           </p>
                         </AlertDescription>
                       </div>
+                      {canManage && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className="flex shrink-0 items-center"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Switch
+                                checked={!isToolOff}
+                                disabled={togglingTool === tool.name}
+                                onCheckedChange={(checked) =>
+                                  handleToggleTool(tool.name, checked)
+                                }
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t("MCP.toolToggleDescription")}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       <ChevronRight className="size-3.5 flex-shrink-0" />
                     </div>
                   </Alert>

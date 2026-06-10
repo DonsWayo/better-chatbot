@@ -1,21 +1,22 @@
 "use client";
 
 import {
+  NavigationChords,
+  Shortcuts,
   getShortcutKeyList,
   isShortcutEvent,
-  Shortcuts,
 } from "lib/keyboard-shortcuts";
 
+import { appStore } from "@/app/store";
+import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "ui/dialog";
-import { useTranslations } from "next-intl";
 import { useShallow } from "zustand/shallow";
-import { appStore } from "@/app/store";
-import { useEffect } from "react";
 
 export function KeyboardShortcutsPopup({}) {
   const [openShortcutsPopup, appStoreMutate] = appStore(
@@ -65,6 +66,27 @@ export function KeyboardShortcutsPopup({}) {
                   </div>
                 );
               })}
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 px-2 text-xs font-medium text-muted-foreground">
+          {t("goTo")}
+        </p>
+        <div className="grid grid-cols-2 gap-5">
+          {NavigationChords.map((chord) => (
+            <div
+              key={chord.description}
+              className="flex items-center gap-2 w-full text-sm px-2"
+            >
+              <p>{t(chord.description)}</p>
+              <div className="flex-1" />
+              <div className="p-1.5 text-xs border min-w-8 min-h-8 flex items-center justify-center rounded-md bg-muted">
+                <span>{chord.keys[0].toUpperCase()}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">{t("then")}</span>
+              <div className="p-1.5 text-xs border min-w-8 min-h-8 flex items-center justify-center rounded-md bg-muted">
+                <span>{chord.keys[1].toUpperCase()}</span>
+              </div>
             </div>
           ))}
         </div>

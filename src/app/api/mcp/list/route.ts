@@ -1,7 +1,7 @@
 import { MCPServerInfo } from "app-types/mcp";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
-import { mcpRepository } from "lib/db/repository";
 import { getCurrentUser } from "lib/auth/permissions";
+import { mcpRepository } from "lib/db/repository";
 
 export async function GET() {
   const currentUser = await getCurrentUser();
@@ -42,6 +42,12 @@ export async function GET() {
       lastConnectionStatus: server.lastConnectionStatus,
       error: info?.error,
       toolInfo: info?.toolInfo ?? [],
+      disabledTools: server.disabledTools ?? null,
+      // Same rule as canManageMCPServer: admins manage everything,
+      // owners manage their own private servers.
+      canManage:
+        currentUser.role === "admin" ||
+        (isOwner && server.visibility === "private"),
     };
     return mcpInfo;
   });
