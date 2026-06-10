@@ -204,6 +204,7 @@ function fillMcpServerTable(
     toolInfo: server.toolInfo ?? null,
     toolInfoUpdatedAt: server.toolInfoUpdatedAt ?? null,
     lastConnectionStatus: server.lastConnectionStatus ?? null,
+    disabledTools: server.disabledTools ?? null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
