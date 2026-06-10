@@ -7,29 +7,29 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { SidebarMenu, SidebarMenuItem } from "ui/sidebar";
 import { SidebarGroupContent } from "ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 
-import { SidebarGroup } from "ui/sidebar";
-import Link from "next/link";
-import { getShortcutKeyList, Shortcuts } from "lib/keyboard-shortcuts";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { MCPIcon } from "ui/mcp-icon";
-import { WriteIcon } from "ui/write-icon";
+import { useArchives } from "@/hooks/queries/use-archives";
+import { BasicUser } from "app-types/user";
+import { Shortcuts, getShortcutKeyList } from "lib/keyboard-shortcuts";
+import { getIsUserAdmin } from "lib/user/utils";
 import {
   FolderOpenIcon,
   FolderSearchIcon,
   PlusIcon,
   Waypoints,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { MCPIcon } from "ui/mcp-icon";
+import { SidebarGroup } from "ui/sidebar";
 import { Skeleton } from "ui/skeleton";
-import { useArchives } from "@/hooks/queries/use-archives";
+import { WriteIcon } from "ui/write-icon";
 import { ArchiveDialog } from "../archive-dialog";
-import { getIsUserAdmin } from "lib/user/utils";
-import { BasicUser } from "app-types/user";
 import { AppSidebarAdmin } from "./app-sidebar-menu-admin";
 
 export function AppSidebarMenus({ user }: { user?: BasicUser }) {
@@ -38,6 +38,10 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
   const { setOpenMobile } = useSidebar();
   const [expandedArchive, setExpandedArchive] = useState(false);
   const [addArchiveDialogOpen, setAddArchiveDialogOpen] = useState(false);
+
+  // Zen sidebar: power surfaces (MCP config, Archive) are admin-only chrome.
+  // Plain users get New Chat, Workflow, Runs and their conversations.
+  const isAdmin = getIsUserAdmin(user);
 
   const { data: archives, isLoading: isLoadingArchives } = useArchives();
   const toggleArchive = useCallback(() => {
@@ -77,18 +81,20 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        <SidebarMenu>
-          <Tooltip>
-            <SidebarMenuItem>
-              <Link href="/mcp">
-                <SidebarMenuButton className="font-semibold">
-                  <MCPIcon className="size-4 fill-accent-foreground" />
-                  {t("Layout.mcpConfiguration")}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </Tooltip>
-        </SidebarMenu>
+        {isAdmin && (
+          <SidebarMenu>
+            <Tooltip>
+              <SidebarMenuItem>
+                <Link href="/mcp">
+                  <SidebarMenuButton className="font-semibold">
+                    <MCPIcon className="size-4 fill-accent-foreground" />
+                    {t("Layout.mcpConfiguration")}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            </Tooltip>
+          </SidebarMenu>
+        )}
         <SidebarMenu>
           <Tooltip>
             <SidebarMenuItem>
@@ -101,70 +107,72 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        {getIsUserAdmin(user) && <AppSidebarAdmin />}
-        <SidebarMenu className="group/archive">
-          <Tooltip>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={toggleArchive}
-                className="font-semibold"
-              >
-                {expandedArchive ? (
-                  <FolderOpenIcon className="size-4" />
-                ) : (
-                  <FolderSearchIcon className="size-4" />
-                )}
-                {t("Archive.title")}
-              </SidebarMenuButton>
-              <SidebarMenuAction
-                className="group-hover/archive:opacity-100 opacity-0 transition-opacity"
-                onClick={() => setAddArchiveDialogOpen(true)}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <PlusIcon className="size-4" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right" align="center">
-                    {t("Archive.addArchive")}
-                  </TooltipContent>
-                </Tooltip>
-              </SidebarMenuAction>
-            </SidebarMenuItem>
-          </Tooltip>
-          {expandedArchive && (
-            <>
-              <SidebarMenuSub>
-                {isLoadingArchives ? (
-                  <div className="gap-2 flex flex-col">
-                    {Array.from({ length: 2 }).map((_, index) => (
-                      <Skeleton key={index} className="h-6 w-full" />
-                    ))}
-                  </div>
-                ) : archives!.length === 0 ? (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton className="text-muted-foreground">
-                      {t("Archive.noArchives")}
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ) : (
-                  archives!.map((archive) => (
-                    <SidebarMenuSubItem
-                      onClick={() => {
-                        router.push(`/archive/${archive.id}`);
-                      }}
-                      key={archive.id}
-                      className="cursor-pointer"
-                    >
-                      <SidebarMenuSubButton>
-                        {archive.name}
+        {isAdmin && <AppSidebarAdmin />}
+        {isAdmin && (
+          <SidebarMenu className="group/archive">
+            <Tooltip>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={toggleArchive}
+                  className="font-semibold"
+                >
+                  {expandedArchive ? (
+                    <FolderOpenIcon className="size-4" />
+                  ) : (
+                    <FolderSearchIcon className="size-4" />
+                  )}
+                  {t("Archive.title")}
+                </SidebarMenuButton>
+                <SidebarMenuAction
+                  className="group-hover/archive:opacity-100 opacity-0 transition-opacity"
+                  onClick={() => setAddArchiveDialogOpen(true)}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PlusIcon className="size-4" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center">
+                      {t("Archive.addArchive")}
+                    </TooltipContent>
+                  </Tooltip>
+                </SidebarMenuAction>
+              </SidebarMenuItem>
+            </Tooltip>
+            {expandedArchive && (
+              <>
+                <SidebarMenuSub>
+                  {isLoadingArchives ? (
+                    <div className="gap-2 flex flex-col">
+                      {Array.from({ length: 2 }).map((_, index) => (
+                        <Skeleton key={index} className="h-6 w-full" />
+                      ))}
+                    </div>
+                  ) : archives!.length === 0 ? (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton className="text-muted-foreground">
+                        {t("Archive.noArchives")}
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
-                  ))
-                )}
-              </SidebarMenuSub>
-            </>
-          )}
-        </SidebarMenu>
+                  ) : (
+                    archives!.map((archive) => (
+                      <SidebarMenuSubItem
+                        onClick={() => {
+                          router.push(`/archive/${archive.id}`);
+                        }}
+                        key={archive.id}
+                        className="cursor-pointer"
+                      >
+                        <SidebarMenuSubButton>
+                          {archive.name}
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))
+                  )}
+                </SidebarMenuSub>
+              </>
+            )}
+          </SidebarMenu>
+        )}
       </SidebarGroupContent>
       <ArchiveDialog
         open={addArchiveDialogOpen}
