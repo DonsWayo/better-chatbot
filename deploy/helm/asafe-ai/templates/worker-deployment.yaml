@@ -3,9 +3,9 @@
 # queued/stale agent_session rows with FOR UPDATE SKIP LOCKED and executes workflows out-of-band
 # of web requests. Same image and env as the app; no Service — it serves no traffic. Uses its own
 # selector labels (component suffix on the name) so the app Service NEVER routes to worker pods.
-# NOTE: the production runner image is the Next standalone output (no pnpm/tsx), so
-# .Values.worker.command must point at an entrypoint bundled into the image — mirror the
-# scripts/standalone-migrate.mjs esbuild pattern in docker/Dockerfile for scripts/agent-worker.ts.
+# NOTE: the production runner image is the Next standalone output (no pnpm/tsx);
+# docker/Dockerfile esbuild-bundles scripts/agent-worker.ts into scripts/agent-worker.mjs
+# (same mechanism as scripts/standalone-migrate.mjs), which .Values.worker.command runs.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -52,6 +52,10 @@ spec:
             {{- with .Values.worker.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- with .Values.worker.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           securityContext:

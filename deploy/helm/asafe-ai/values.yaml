@@ -74,13 +74,25 @@ migrateJob:
 worker:
   enabled: false
   replicaCount: 1
-  # The production runner image is the Next standalone output (no pnpm/tsx) — this entrypoint
-  # must be bundled into the image like scripts/standalone-migrate.mjs. Override per environment.
+  # The production runner image is the Next standalone output (no pnpm/tsx) — docker/Dockerfile
+  # esbuild-bundles scripts/agent-worker.ts into /app/scripts/agent-worker.mjs (same mechanism as
+  # scripts/standalone-migrate.mjs). Override per environment if the image layout changes.
   command: ["node", "scripts/agent-worker.mjs"]
   podAnnotations: {}
   extraEnv: []
   # - name: AGENT_WORKER_INTERVAL_MS
   #   value: "5000"
+  # The worker serves no HTTP, so no httpGet probe (the app's /api/health pattern doesn't
+  # apply). This exec probe only proves the container can still fork a node process —
+  # catches a wedged/OOM runtime, not a stuck loop; sessions whose heartbeat goes stale
+  # are reclaimed by other workers regardless (FOR UPDATE SKIP LOCKED reclaim path).
+  livenessProbe:
+    exec:
+      command: ["node", "-e", "process.exit(0)"]
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
   resources:
     requests:
       cpu: 100m

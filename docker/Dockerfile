@@ -15,6 +15,18 @@ ENV NEXT_STANDALONE_OUTPUT="true"
 
 RUN pnpm build
 
+# Bundle the detached agent worker (Agent Platform #22) the same way as the migrate
+# entrypoint below: esbuild, fully self-contained, no node_modules needed at runtime.
+# --conditions=react-server resolves `import "server-only"` inside src/lib to its no-op
+# react-server build (the same condition the dev `pnpm worker:agents` script sets via
+# NODE_OPTIONS). pg-native is pg's optional native binding — external, never installed.
+RUN npx --yes esbuild scripts/agent-worker.ts \
+      --bundle --platform=node --format=esm \
+      --conditions=react-server \
+      --external:pg-native \
+      --banner:js="import{createRequire}from'module';const require=createRequire(import.meta.url);" \
+      --outfile=scripts/agent-worker.bundled.mjs
+
 FROM node:23-alpine AS migrate-bundler
 WORKDIR /app
 COPY scripts/standalone-migrate.mjs ./scripts/
@@ -48,6 +60,11 @@ COPY --from=builder /app/src/lib/db/migrations ./src/lib/db/migrations
 
 # Standalone migration entrypoint (bundled — no external module deps required)
 COPY --from=migrate-bundler /app/scripts/standalone-migrate.bundled.mjs ./scripts/standalone-migrate.mjs
+
+# Detached agent-worker entrypoint (bundled — no external module deps required).
+# The Helm worker Deployment runs `node scripts/agent-worker.mjs`
+# (deploy/helm/asafe-ai/values.yaml: worker.command).
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/agent-worker.bundled.mjs ./scripts/agent-worker.mjs
 
 USER nextjs
 

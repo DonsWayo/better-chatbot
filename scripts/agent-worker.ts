@@ -11,7 +11,17 @@ import "load-env";
 
 const intervalMs = Number(process.env.AGENT_WORKER_INTERVAL_MS ?? "5000");
 
-const { startWorkerLoop } = await import("lib/agent-platform/worker");
+const { startWorkerLoop, tickOnce } = await import("lib/agent-platform/worker");
+
+// ASAFE_WORKER_ONESHOT=1 — run exactly one tick and exit (smoke test for the
+// production bundle: `ASAFE_WORKER_ONESHOT=1 node scripts/agent-worker.mjs`).
+if (process.env.ASAFE_WORKER_ONESHOT) {
+  const result = await tickOnce();
+  console.info(
+    `oneshot tick: scheduled=${result.scheduled} executed=${result.executed} failed=${result.failed}`,
+  );
+  process.exit(0);
+}
 
 console.info(`🤖 agent worker starting (tick interval ${intervalMs}ms)`);
 
