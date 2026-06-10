@@ -225,6 +225,13 @@
       "when": 1771595107815,
       "tag": "0031_asafe_org_model_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1771595108815,
+      "tag": "0032_agent_sessions",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,15 @@
 import { getSession } from "auth/server";
-import { createWorkflowExecutor } from "lib/ai/workflow/executor/workflow-executor";
-import { workflowRepository } from "lib/db/repository";
-import { encodeWorkflowEvent } from "lib/ai/workflow/shared.workflow";
-import logger from "logger";
 import { colorize } from "consola/utils";
+import {
+  type SubscribableExecutor,
+  attachSessionPersistence,
+} from "lib/agent-platform/persistent-executor";
+import { createSession as createAgentSession } from "lib/agent-platform/sessions";
+import { createWorkflowExecutor } from "lib/ai/workflow/executor/workflow-executor";
+import { encodeWorkflowEvent } from "lib/ai/workflow/shared.workflow";
+import { workflowRepository } from "lib/db/repository";
 import { safeJSONParse, toAny } from "lib/utils";
+import logger from "logger";
 
 export async function POST(
   request: Request,
@@ -33,6 +38,24 @@ export async function POST(
     nodes: workflow.nodes,
     logger: wfLogger,
   });
+
+  // Agent Platform #21: mirror this run into agent_session/agent_step.
+  // Strictly best-effort — the route must never fail because of persistence.
+  try {
+    const agentSession = await createAgentSession({
+      kind: "workflow",
+      definitionId: id,
+      userId: session.user.id,
+      originSurface: "web",
+      inputPayload: { query },
+    });
+    attachSessionPersistence(
+      app as unknown as SubscribableExecutor,
+      agentSession.id,
+    );
+  } catch (error) {
+    logger.error("Failed to attach agent session persistence:", error);
+  }
 
   const encoder = new TextEncoder();
 

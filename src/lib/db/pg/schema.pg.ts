@@ -8,6 +8,7 @@ import { DBEdge, DBNode, DBWorkflow } from "app-types/workflow";
 import { relations, sql } from "drizzle-orm";
 import { isNotNull } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   customType,
   index,
@@ -17,6 +18,7 @@ import {
   numeric,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   unique,
@@ -895,3 +897,117 @@ export const AsafeAupAcceptanceTable = pgTable(
 
 export type AsafeAupAcceptanceEntity =
   typeof AsafeAupAcceptanceTable.$inferSelect;
+
+// ── Agent Platform #21: sessions + steps (docs/design/agent-platform.md) ─────
+// One governed execution of an agent/workflow revision. `definitionId` is
+// intentionally FK-less: it is polymorphic across the agent and workflow
+// tables. `revisionId` / `folderId` gain FKs once those tables land (#19/#17).
+
+export const AgentSessionTable = pgTable(
+  "agent_session",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    kind: varchar("kind", {
+      enum: ["workflow", "conversational", "opencode"],
+    }).notNull(),
+    // Polymorphic pointer into agent/workflow tables — no FK on purpose.
+    definitionId: uuid("definition_id").notNull(),
+    // Pinned immutable revision; nullable until the revisions table exists.
+    revisionId: uuid("revision_id"),
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    // Folders/teamspaces table comes later (#17) — no FK yet.
+    folderId: uuid("folder_id"),
+    originSurface: varchar("origin_surface", {
+      enum: ["web", "desktop", "schedule", "webhook", "api"],
+    })
+      .notNull()
+      .default("web"),
+    mode: varchar("mode", {
+      enum: ["interactive", "plan", "autopilot"],
+    })
+      .notNull()
+      .default("interactive"),
+    status: varchar("status", {
+      enum: [
+        "queued",
+        "running",
+        "awaiting_approval",
+        "paused",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+    })
+      .notNull()
+      .default("queued"),
+    costSoFar: real("cost_so_far").notNull().default(0),
+    inputPayload: jsonb("input_payload").$type<unknown>(),
+    error: text("error"),
+    // Sub-agent tree (cost rolls up; Runs drawer shows the tree).
+    parentSessionId: uuid("parent_session_id").references(
+      (): AnyPgColumn => AgentSessionTable.id,
+      { onDelete: "set null" },
+    ),
+    // Worker-liveness heartbeat for detached runs (SKIP LOCKED reclaim).
+    heartbeatAt: timestamp("heartbeat_at"),
+    startedAt: timestamp("started_at"),
+    endedAt: timestamp("ended_at"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("agent_session_user_id_idx").on(t.userId),
+    index("agent_session_team_id_idx").on(t.teamId),
+    index("agent_session_status_idx").on(t.status),
+    index("agent_session_parent_session_id_idx").on(t.parentSessionId),
+  ],
+);
+
+// Per-node / per-turn checkpoint within a session. Upserted on
+// (sessionId, stepIndex): NODE_START inserts `running`, NODE_END flips it to
+// completed/failed with output — that unique pair is the resume key.
+
+export const AgentStepTable = pgTable(
+  "agent_step",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => AgentSessionTable.id, { onDelete: "cascade" }),
+    nodeId: text("node_id").notNull(),
+    nodeKind: text("node_kind"),
+    stepIndex: integer("step_index").notNull(),
+    status: varchar("status", {
+      enum: ["running", "completed", "failed", "skipped"],
+    })
+      .notNull()
+      .default("running"),
+    input: jsonb("input").$type<unknown>(),
+    output: jsonb("output").$type<unknown>(),
+    error: text("error"),
+    costUsd: real("cost_usd").notNull().default(0),
+    startedAt: timestamp("started_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    endedAt: timestamp("ended_at"),
+  },
+  (t) => [
+    index("agent_step_session_id_idx").on(t.sessionId),
+    unique("agent_step_session_id_step_index_unique").on(
+      t.sessionId,
+      t.stepIndex,
+    ),
+  ],
+);
+
+export type AgentSessionEntity = typeof AgentSessionTable.$inferSelect;
+export type AgentStepEntity = typeof AgentStepTable.$inferSelect;
