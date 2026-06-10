@@ -25,7 +25,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { MCPIcon } from "ui/mcp-icon";
 import { SidebarGroup } from "ui/sidebar";
 import { Skeleton } from "ui/skeleton";
 import { WriteIcon } from "ui/write-icon";
