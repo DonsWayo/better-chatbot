@@ -8,6 +8,7 @@ import { agentRepository } from "lib/db/repository";
 import { redirect } from "next/navigation";
 
 import { AgentsList } from "@/components/agent/agents-list";
+import { KnowledgeCollections } from "@/components/knowledge/knowledge-collections";
 import { StudioTabs } from "@/components/studio/studio-tabs";
 import WorkflowListPage from "@/components/workflow/workflow-list-page";
 
@@ -52,6 +53,7 @@ export default async function StudioPage() {
         />
       }
       workflowsSlot={<WorkflowListPage userRole={role} />}
+      knowledgeSlot={<KnowledgeCollections />}
     />
   );
 }

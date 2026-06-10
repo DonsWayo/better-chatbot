@@ -8,26 +8,32 @@ import React, {
   useEffect,
 } from "react";
 
-import { CheckIcon, HammerIcon, SearchIcon } from "lucide-react";
+import {
+  CheckIcon,
+  HammerIcon,
+  LibraryBigIcon,
+  SearchIcon,
+} from "lucide-react";
+import useSWR from "swr";
 import { MCPIcon } from "ui/mcp-icon";
 
 import { ChatMention } from "app-types/chat";
 
-import MentionInput from "./mention-input";
 import { useTranslations } from "next-intl";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
+import MentionInput from "./mention-input";
 
 import { appStore } from "@/app/store";
-import { cn, toAny } from "lib/utils";
-import { useShallow } from "zustand/shallow";
-import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Editor } from "@tiptap/react";
 import { DefaultToolName } from "lib/ai/tools";
-import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
-import { DefaultToolIcon } from "./default-tool-icon";
-import equal from "lib/equal";
 import { EMOJI_DATA } from "lib/const";
-import { useIsMobile } from "@/hooks/use-mobile";
+import equal from "lib/equal";
+import { cn, fetcher, toAny } from "lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
+import { useShallow } from "zustand/shallow";
+import { DefaultToolIcon } from "./default-tool-icon";
 
 type MentionItemType = {
   id: string;
@@ -153,7 +159,7 @@ export function ChatMentionInputSuggestion({
   onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
   style?: React.CSSProperties;
-  disabledType?: ("mcp" | "workflow" | "defaultTool" | "agent")[];
+  disabledType?: ("mcp" | "workflow" | "defaultTool" | "agent" | "knowledge")[];
 }) {
   const t = useTranslations("Common");
   const [mcpList, workflowList, agentList] = appStore(
@@ -300,6 +306,54 @@ export function ChatMentionInputSuggestion({
       });
   }, [agentList, selectedIds, disabledType, searchValue]);
 
+  // Knowledge collections the viewer can read — same endpoint the Studio tab
+  // uses; the API already applies the unified visibility model.
+  const { data: knowledgeData } = useSWR<{
+    collections?: {
+      id: string;
+      name: string;
+      description: string | null;
+    }[];
+  }>(
+    disabledType?.includes("knowledge") ? null : "/api/knowledge/collections",
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+
+  const knowledgeMentions = useMemo(() => {
+    if (disabledType?.includes("knowledge")) return [];
+    const collections = knowledgeData?.collections ?? [];
+
+    return collections
+      .filter(
+        (collection) =>
+          !searchValue ||
+          collection.name.toLowerCase().includes(searchValue.toLowerCase()),
+      )
+      .map((collection) => {
+        const id = JSON.stringify({
+          type: "knowledge",
+          name: collection.name,
+          collectionId: collection.id,
+          description: collection.description,
+        });
+        return {
+          id: collection.id,
+          type: "knowledge",
+          label: collection.name,
+          onSelect: () =>
+            onSelectMention({
+              label: `knowledge("${collection.name}")`,
+              id,
+            }),
+          icon: <LibraryBigIcon className="size-3.5" />,
+          suffix: selectedIds?.includes(id) && (
+            <CheckIcon className="size-3 ml-auto" />
+          ),
+        } satisfies MentionItemType;
+      });
+  }, [knowledgeData, selectedIds, disabledType, searchValue]);
+
   const workflowMentions = useMemo(() => {
     if (disabledType?.includes("workflow")) return [];
     if (!workflowList.length) return [];
@@ -443,10 +497,17 @@ export function ChatMentionInputSuggestion({
     return [
       ...agentMentions,
       ...workflowMentions,
+      ...knowledgeMentions,
       ...defaultToolMentions,
       ...mcpMentions,
     ];
-  }, [agentMentions, workflowMentions, defaultToolMentions, mcpMentions]);
+  }, [
+    agentMentions,
+    workflowMentions,
+    knowledgeMentions,
+    defaultToolMentions,
+    mcpMentions,
+  ]);
 
   // Reset selected index when mentions change
   useEffect(() => {
