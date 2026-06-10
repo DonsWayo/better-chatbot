@@ -82,6 +82,8 @@ interface PromptInputProps {
   threadId?: string;
   disabledMention?: boolean;
   onFocus?: () => void;
+  /** Fired on every editor input event; the typing beacon throttles it. */
+  onTyping?: () => void;
   ragCollectionId?: string;
   onRagCollectionChange?: (id: string | undefined) => void;
 }
@@ -112,6 +114,7 @@ export default function PromptInput({
   voiceDisabled,
   threadId,
   disabledMention,
+  onTyping,
   ragCollectionId,
   onRagCollectionChange,
 }: PromptInputProps) {
@@ -344,6 +347,16 @@ export default function PromptInput({
     [addMention],
   );
 
+  // Keep setInput's identity flowing through while letting the (optional)
+  // typing beacon observe keystrokes — see use-typing-beacon.ts.
+  const handleEditorChange = useCallback(
+    (value: string) => {
+      setInput(value);
+      onTyping?.();
+    },
+    [setInput, onTyping],
+  );
+
   const submit = () => {
     if (isLoading) return;
     if (uploadedFiles.some((file) => file.isUploading)) {
@@ -502,7 +515,7 @@ export default function PromptInput({
               <div className="relative min-h-[2rem]">
                 <ChatMentionInput
                   input={input}
-                  onChange={setInput}
+                  onChange={handleEditorChange}
                   onChangeMention={onChangeMention}
                   onEnter={submit}
                   placeholder={placeholder ?? t("placeholder")}

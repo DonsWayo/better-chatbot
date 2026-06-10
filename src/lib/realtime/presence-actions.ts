@@ -19,10 +19,17 @@ import { canAccessFolder, canReadThread } from "lib/teamspaces/folders";
  * everyone in the context via the `asafe_presence` shape through the
  * authenticated proxy. One cheap upsert per call — the unique
  * (user_id, context_type, context_id) constraint makes it idempotent.
+ *
+ * `typing` piggybacks on the same row: the composer's typing beacon
+ * (src/components/realtime/use-typing-beacon.ts) sends typing=true beats while
+ * the user types and one typing=false beat when they stop. All other callers
+ * omit the param, so every regular 30s heartbeat doubles as a typing clear —
+ * a stuck typing=true can never outlive the next plain beat.
  */
 export async function heartbeatPresenceAction(
   contextType: PresenceContextType,
   contextId: string,
+  typing = false,
 ): Promise<void> {
   const session = await getSession();
   const userId = session?.user?.id;
@@ -48,13 +55,13 @@ export async function heartbeatPresenceAction(
 
   await db
     .insert(AsafePresenceTable)
-    .values({ userId, contextType, contextId, lastSeenAt: new Date() })
+    .values({ userId, contextType, contextId, lastSeenAt: new Date(), typing })
     .onConflictDoUpdate({
       target: [
         AsafePresenceTable.userId,
         AsafePresenceTable.contextType,
         AsafePresenceTable.contextId,
       ],
-      set: { lastSeenAt: new Date() },
+      set: { lastSeenAt: new Date(), typing },
     });
 }

@@ -68,6 +68,38 @@ export const PRESENCE_HEARTBEAT_INTERVAL_MS = 30_000;
 /** A user counts as "active" when their last heartbeat is within this window. */
 export const PRESENCE_ACTIVE_WINDOW_MS = 90_000;
 
+/**
+ * Typing indicators ride the presence row (asafe_presence.typing): while a
+ * user types in a shared context the composer sends heartbeat(typing=true) at
+ * most once per throttle window, and one heartbeat(typing=false) after the
+ * silence window (or on unmount/send). Readers only render the flag while
+ * last_seen_at is within the display window, so a lost "clear" beat ages out
+ * on its own.
+ */
+
+/** While typing continues, send at most one typing=true beat per this window. */
+export const TYPING_BEAT_THROTTLE_MS = 4_000;
+
+/** After this much keyboard silence, send a single typing=false clear beat. */
+export const TYPING_SILENCE_CLEAR_MS = 5_000;
+
+/** Readers show "is typing…" only while last_seen_at is within this window. */
+export const TYPING_DISPLAY_WINDOW_MS = 10_000;
+
+/**
+ * Pure throttle decision for the typing beacon (unit-testable without timers):
+ * beat immediately on the first keystroke, then at most once per
+ * TYPING_BEAT_THROTTLE_MS while typing continues.
+ */
+export function shouldSendTypingBeat(
+  nowMs: number,
+  lastBeatAtMs: number | null,
+): boolean {
+  return (
+    lastBeatAtMs === null || nowMs - lastBeatAtMs >= TYPING_BEAT_THROTTLE_MS
+  );
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -7,6 +7,7 @@ import {
   PRESENCE_HEARTBEAT_INTERVAL_MS,
   type PresenceContextType,
   SHAPE_PROXY_PATH,
+  TYPING_DISPLAY_WINDOW_MS,
 } from "lib/realtime/shapes";
 import { cn, fetcher } from "lib/utils";
 import { useEffect, useMemo, useState } from "react";
@@ -35,6 +36,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 const MAX_VISIBLE_AVATARS = 5;
 /** How often the "active in the last 90s" window re-evaluates client-side. */
 const ACTIVITY_TICK_MS = 15_000;
+/** Faster tick while someone is typing so the 10s window expires promptly. */
+const TYPING_TICK_MS = 2_000;
+/** "A and B are typing…" caps at two names; the rest fold into "+N others". */
+const MAX_TYPING_NAMES = 2;
 
 type PresenceRow = {
   id: string;
@@ -42,6 +47,7 @@ type PresenceRow = {
   context_type: string;
   context_id: string;
   last_seen_at: string;
+  typing: boolean;
 };
 
 type PresenceUser = {
@@ -72,6 +78,19 @@ function initialsOf(name: string): string {
       .map((part) => part[0]?.toUpperCase() ?? "")
       .join("") || "?"
   );
+}
+
+/** "Ana is typing…" / "Ana and Ben are typing…" / "Ana, Ben +2 others are typing…" */
+function typingLabel(names: string[]): string {
+  const visible = names.slice(0, MAX_TYPING_NAMES);
+  const overflow = names.length - visible.length;
+  if (overflow > 0) {
+    return `${visible.join(", ")} +${overflow} ${overflow === 1 ? "other" : "others"} are typing…`;
+  }
+  if (visible.length === 2) {
+    return `${visible[0]} and ${visible[1]} are typing…`;
+  }
+  return `${visible[0]} is typing…`;
 }
 
 function PresenceAvatarsSubscriber({
@@ -120,6 +139,35 @@ function PresenceAvatarsSubscriber({
     ].sort();
   }, [isLoading, data, now, selfUserId]);
 
+  // Typing indicators ride the same rows: typing=true beats arrive every ≤4s
+  // while a teammate types, so a fresh last_seen_at (10s window) is the
+  // liveness signal — a lost typing=false clear simply ages out.
+  const typingUserIds = useMemo(() => {
+    if (isLoading || !data) return [];
+    const cutoff = now - TYPING_DISPLAY_WINDOW_MS;
+    return [
+      ...new Set(
+        data
+          .filter(
+            (row) =>
+              row.user_id !== selfUserId &&
+              row.typing === true &&
+              parsePresenceTimestamp(row.last_seen_at) >= cutoff,
+          )
+          .map((row) => row.user_id),
+      ),
+    ].sort();
+  }, [isLoading, data, now, selfUserId]);
+
+  // The 15s activity tick is too slow for the 10s typing window; tick faster
+  // only while someone is actually typing.
+  const someoneTyping = typingUserIds.length > 0;
+  useEffect(() => {
+    if (!someoneTyping) return;
+    const tick = setInterval(() => setNow(Date.now()), TYPING_TICK_MS);
+    return () => clearInterval(tick);
+  }, [someoneTyping]);
+
   const { data: usersResponse } = useSWR<{ users: PresenceUser[] }>(
     activeUserIds.length > 0
       ? `/api/realtime/presence-users?ids=${activeUserIds.join(",")}`
@@ -135,36 +183,56 @@ function PresenceAvatarsSubscriber({
   );
   const visibleIds = activeUserIds.slice(0, MAX_VISIBLE_AVATARS);
   const overflow = activeUserIds.length - visibleIds.length;
+  // Typing users are a subset of active users, so their names resolve through
+  // the same presence-users fetch; fall back while the lookup is in flight.
+  const typingNames = typingUserIds.map(
+    (userId) => userById.get(userId)?.name || "Someone",
+  );
 
   return (
-    <div
-      className={cn("flex items-center -space-x-2", className)}
-      data-testid="presence-avatars"
-    >
-      {visibleIds.map((userId) => {
-        const user = userById.get(userId);
-        const name = user?.name ?? "";
-        return (
-          <Tooltip key={userId}>
-            <TooltipTrigger asChild>
-              <Avatar className="size-6 border border-border ring-2 ring-background">
-                {user?.image ? (
-                  <AvatarImage src={user.image} alt={name} />
-                ) : null}
-                <AvatarFallback className="text-[9px] font-medium text-muted-foreground">
-                  {initialsOf(name)}
-                </AvatarFallback>
-              </Avatar>
-            </TooltipTrigger>
-            {name ? (
-              <TooltipContent side="bottom">{name}</TooltipContent>
-            ) : null}
-          </Tooltip>
-        );
-      })}
-      {overflow > 0 && (
-        <div className="size-6 rounded-full border border-border ring-2 ring-background bg-muted flex items-center justify-center text-[9px] font-medium text-muted-foreground">
-          +{overflow}
+    <div className={cn("flex flex-col items-end gap-1", className)}>
+      <div
+        className="flex items-center -space-x-2"
+        data-testid="presence-avatars"
+      >
+        {visibleIds.map((userId) => {
+          const user = userById.get(userId);
+          const name = user?.name ?? "";
+          return (
+            <Tooltip key={userId}>
+              <TooltipTrigger asChild>
+                <Avatar className="size-6 border border-border ring-2 ring-background">
+                  {user?.image ? (
+                    <AvatarImage src={user.image} alt={name} />
+                  ) : null}
+                  <AvatarFallback className="text-[9px] font-medium text-muted-foreground">
+                    {initialsOf(name)}
+                  </AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              {name ? (
+                <TooltipContent side="bottom">{name}</TooltipContent>
+              ) : null}
+            </Tooltip>
+          );
+        })}
+        {overflow > 0 && (
+          <div className="size-6 rounded-full border border-border ring-2 ring-background bg-muted flex items-center justify-center text-[9px] font-medium text-muted-foreground">
+            +{overflow}
+          </div>
+        )}
+      </div>
+      {typingNames.length > 0 && (
+        <div
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          data-testid="presence-typing"
+        >
+          <span className="flex items-center gap-0.5" aria-hidden="true">
+            <span className="size-1 rounded-full bg-current animate-pulse" />
+            <span className="size-1 rounded-full bg-current animate-pulse [animation-delay:150ms]" />
+            <span className="size-1 rounded-full bg-current animate-pulse [animation-delay:300ms]" />
+          </span>
+          <span>{typingLabel(typingNames)}</span>
         </div>
       )}
     </div>

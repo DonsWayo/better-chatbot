@@ -253,7 +253,7 @@ describe("GET /api/realtime/shape — asafe_presence", () => {
     expect(upstream.searchParams.get("params[1]")).toBe("thread");
     expect(upstream.searchParams.get("params[2]")).toBe(THREAD_ID);
     expect(upstream.searchParams.get("columns")).toBe(
-      "id,user_id,context_type,context_id,last_seen_at",
+      "id,user_id,context_type,context_id,last_seen_at,typing",
     );
   });
 
@@ -273,7 +273,7 @@ describe("GET /api/realtime/shape — asafe_presence", () => {
     expect(upstream.searchParams.get("params[1]")).toBe("folder");
     expect(upstream.searchParams.get("params[2]")).toBe(FOLDER_ID);
     expect(upstream.searchParams.get("columns")).toBe(
-      "id,user_id,context_type,context_id,last_seen_at",
+      "id,user_id,context_type,context_id,last_seen_at,typing",
     );
   });
 });

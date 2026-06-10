@@ -32,9 +32,9 @@ export const dynamic = "force-dynamic";
  *   - table=asafe_presence&contextType=thread|folder&contextId=<uuid>
  *     → WHERE context_type = $1 AND context_id = $2, gated by the same access
  *     check as the context itself (canReadThread / canAccessFolder). Powers
- *     the presence avatar stack; columns are pinned to
- *     id,user_id,context_type,context_id,last_seen_at (no PII beyond ids —
- *     names/avatars resolve via /api/realtime/presence-users).
+ *     the presence avatar stack + typing indicators; columns are pinned to
+ *     id,user_id,context_type,context_id,last_seen_at,typing (no PII beyond
+ *     ids — names/avatars resolve via /api/realtime/presence-users).
  */
 export async function GET(request: Request) {
   const session = await getSession();
@@ -96,10 +96,11 @@ export async function GET(request: Request) {
     );
     originUrl.searchParams.set("params[1]", contextType);
     originUrl.searchParams.set("params[2]", contextId);
-    // id (pk, required by Electric) + the change signal; never emails or names.
+    // id (pk, required by Electric) + the change signal + the typing flag;
+    // never emails or names.
     originUrl.searchParams.set(
       "columns",
-      "id,user_id,context_type,context_id,last_seen_at",
+      "id,user_id,context_type,context_id,last_seen_at,typing",
     );
   } else {
     return new Response("Shape not allowed", { status: 403 });

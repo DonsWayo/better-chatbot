@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ChatGreeting } from "./chat-greeting";
 import { ErrorMessage, PreviewMessage } from "./message";
 import PromptInput from "./prompt-input";
+import { useTypingBeacon } from "./realtime/use-typing-beacon";
 
 import {
   DefaultChatTransport,
@@ -54,6 +55,9 @@ type Props = {
   threadId: string;
   initialMessages: Array<UIMessage>;
   selectedChatModel?: string;
+  /** True when the thread is team-shared — gates the typing beacon (same
+   * server-side check that mounts the presence avatars). */
+  threadShared?: boolean;
 };
 
 const LightRays = dynamic(() => import("ui/light-rays"), {
@@ -70,7 +74,11 @@ const firstTimeStorage = getStorageManager("IS_FIRST");
 const isFirstTime = firstTimeStorage.get() ?? true;
 firstTimeStorage.set(false);
 
-export default function ChatBot({ threadId, initialMessages }: Props) {
+export default function ChatBot({
+  threadId,
+  initialMessages,
+  threadShared,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const { uploadFiles } = useThreadFileUploader(threadId);
@@ -259,6 +267,17 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
     () => status === "streaming" || status === "submitted",
     [status],
   );
+
+  // Typing indicator beacon (shared threads only): the composer reports
+  // keystrokes via onTyping; sending a message clears the flag right away.
+  const { onTyping, stopTyping } = useTypingBeacon(
+    "thread",
+    threadId,
+    threadShared === true,
+  );
+  useEffect(() => {
+    if (isLoading) stopTyping();
+  }, [isLoading, stopTyping]);
 
   const emptyMessage = useMemo(
     () => messages.length === 0 && !error,
@@ -520,6 +539,7 @@ export default function ChatBot({ threadId, initialMessages }: Props) {
             isLoading={isLoading || isPendingToolCall}
             onStop={stop}
             onFocus={isFirstTime ? undefined : handleFocus}
+            onTyping={threadShared ? onTyping : undefined}
             ragCollectionId={ragCollectionId}
             onRagCollectionChange={setRagCollectionId}
           />
