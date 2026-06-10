@@ -742,6 +742,13 @@
       "implicitExtractionDescription": "Let the assistant save memories in the background without an explicit \"remember\" request. Off by default pending legal sign-off.",
       "updateFailed": "Failed to update. Please try again."
     },
+    "LocalMcpPolicy": {
+      "title": "Local MCP (desktop)",
+      "description": "Org-wide policy for local (stdio) MCP servers — processes launched on the user's machine (desktop app / local dev). Default-deny; per-team overrides can be layered via the team_local_mcp_enabled:* settings keys.",
+      "enabled": "Allow local MCP servers",
+      "enabledDescription": "Let entitled users register and run local stdio connectors. Turning this off immediately hides local tools and blocks calls; saved configs are kept.",
+      "updateFailed": "Failed to update. Please try again."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Users",
@@ -937,7 +944,11 @@
     "featured": "Featured",
     "featuredDescription": "Featured for all users to use",
     "localServersNotAvailableTitle": "Local MCP servers not available",
-    "localServersNotAvailableOnThisDeployment": "Local (stdio) MCP servers are not supported on this deployment. Connect to a remote MCP server URL instead — local servers are only available in the desktop app."
+    "localServersNotAvailableOnThisDeployment": "Local (stdio) MCP servers are not supported on this deployment. Connect to a remote MCP server URL instead — local servers are only available in the desktop app.",
+    "localToolsSessionTitle": "Local tools",
+    "localToolsConsentHint": "Local (stdio) tools run on this machine. Enable them once per session before first use.",
+    "enableLocalToolsForSession": "Enable local tools for this session",
+    "localToolsArmed": "Local tools are enabled for this session (until {time})."
   },
   "Runs": {
     "title": "Runs",

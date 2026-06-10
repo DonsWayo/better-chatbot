@@ -96,6 +96,16 @@ exactly this surface.
    hash, outcome).
 5. **Formal Security review** of the local execution model.
 
+**Status — governance plane v1 shipped (in the web app, so the desktop inherits it):**
+gate 1 is live as the layered `local_mcp_enabled` org→team policy (default-deny;
+Admin → Feature flags → "Local MCP (desktop)"), gate 2 ships as **per-session arming**
+("Enable local tools for this session" on the connector page, 8h window) with
+per-*action* consent via the approvals/Inbox system as the v2 follow-up, and gate 4 is
+live for stdio: every local invocation — allowed and denied — lands in
+`asafe_mcp_invocation_log`. See
+[Local (stdio) servers: governance plane](/docs/mcp#local-stdio-servers-governance-plane).
+Gates 3 and 5 remain open before the bridge itself ships.
+
 The blueprint adds a sequencing rule: a **signed, server-distributed policy plane ships
 before the bridge** — Electron pulls a signed policy document (allowed stdio servers,
 filesystem roots, egress rules) that local config can never widen, enforced in the bridge

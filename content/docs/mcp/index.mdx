@@ -29,6 +29,41 @@ export const IS_MCP_SERVER_REMOTE_ONLY =
 | Local dev (`IS_DEV`) | Yes. |
 | Self-hosted single-user opt-in (`MCP_ALLOW_LOCAL_SERVERS=true`) | Yes — trusted machines only. |
 
+## Local (stdio) servers: governance plane
+
+Where stdio is technically possible (desktop app, local dev, `MCP_ALLOW_LOCAL_SERVERS`),
+a second, **policy** gate applies on top (ADR-0010 v1; default-deny per ADR-0009).
+Local stdio servers stay off for everyone until an admin opts the org — or a team — in.
+
+1. **Policy** (`src/lib/ai/mcp/local-policy.ts`) — layered org → team in
+   `asafe_org_settings`, same pattern as the memory policy and model entitlements:
+   - `local_mcp_enabled` — org base; **unset = FALSE** (default-deny).
+   - `team_local_mcp_enabled:<teamId>` — team override (wins when set; no admin UI
+     yet — set via `setTeamLocalMcpEnabled`).
+
+   The org switch lives on **Admin → Feature flags → "Local MCP (desktop)"**; toggles
+   are audit-logged (`admin_action`) and take effect immediately — the MCP manager's
+   in-memory gate is flipped without restarting or deleting configs.
+2. **Enforcement** — two layers:
+   - *Save time* (`saveMcpClientAction`): a stdio config is rejected unless the saving
+     user's org/team policy allows local MCP.
+   - *Runtime* (`src/lib/ai/mcp/create-mcp-clients-manager.ts`): while the gate is off,
+     stdio servers' tools are filtered out of `tools()` (never reach the model) and
+     direct `toolCall`s are rejected. The manager is process-wide, so its gate resolves
+     "org base OR any team override on"; per-team precision is enforced at save and
+     arming time, where the user is known.
+3. **Per-session consent (arming)** — a stdio server's first invocation in a server
+   session requires arming: the connector detail page (Settings → Connectors →
+   *connector*) shows an **"Enable local tools for this session"** button (stdio
+   servers only, policy permitting, owner/admin only). Arming lasts 8 hours; unarmed
+   calls return a clear error telling the user where to enable. Arming events are
+   audit-logged. Per-**action** consent through the approvals/Inbox system is the v2
+   follow-up (ADR-0010 gate 2).
+4. **Audit** — every local stdio `toolCall` (allowed *and* denied) is written to
+   `asafe_mcp_invocation_log` from the manager, attributed to the server owner with
+   `mcp_server_id`, outcome, and duration. Chat-loop invocations are additionally
+   audited by the chat route with the calling user (a known duplicate for stdio).
+
 ## Server config shape
 
 `src/types/mcp.ts` defines two config variants (Zod-validated):

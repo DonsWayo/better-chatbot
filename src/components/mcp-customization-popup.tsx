@@ -6,7 +6,11 @@ import { DialogDescription, DialogHeader, DialogTitle } from "ui/dialog";
 import { cn, fetcher } from "lib/utils";
 import useSWR from "swr";
 
-import { setMcpToolEnabledAction } from "@/app/api/mcp/actions";
+import {
+  armLocalMcpServerAction,
+  getLocalMcpStatusAction,
+  setMcpToolEnabledAction,
+} from "@/app/api/mcp/actions";
 import { useMcpList } from "@/hooks/queries/use-mcp-list";
 import {
   MCPServerInfo,
@@ -14,11 +18,14 @@ import {
   McpServerCustomization,
   McpToolCustomization,
 } from "app-types/mcp";
+import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
 import {
   ArrowLeft,
   ChevronRight,
   Info,
   Loader,
+  ShieldCheck,
+  TerminalSquare,
   Trash2,
   Wrench,
 } from "lucide-react";
@@ -41,7 +48,15 @@ import { ToolDetailPopupContent } from "./tool-detail-popup";
 // docs/design/information-architecture.md §2.
 
 export function McpServerCustomizationContent({
-  mcpServerInfo: { id, name, toolInfo, error, disabledTools, canManage },
+  mcpServerInfo: {
+    id,
+    name,
+    toolInfo,
+    error,
+    disabledTools,
+    canManage,
+    config,
+  },
   title,
   inline = false,
 }: {
@@ -70,6 +85,29 @@ export function McpServerCustomizationContent({
   useEffect(() => {
     setDisabledToolSet(new Set(disabledTools ?? []));
   }, [disabledTools]);
+
+  // Local-MCP per-session consent (ADR-0010 v1): stdio servers must be armed
+  // before their first invocation in a server session. Per-action consent via
+  // the approvals/Inbox system is the v2 follow-up.
+  const isStdio = isMaybeStdioConfig(config);
+  const [isArming, setIsArming] = useState(false);
+  const { data: localMcpStatus, mutate: refreshLocalMcpStatus } = useSWR(
+    isStdio ? `/mcp/local-status/${id}` : null,
+    () => getLocalMcpStatusAction(id),
+    { revalidateOnFocus: false },
+  );
+
+  const handleArmLocalServer = async () => {
+    setIsArming(true);
+    try {
+      await armLocalMcpServerAction(id);
+      await refreshLocalMcpStatus();
+    } catch (e) {
+      handleErrorWithToast(e as Error);
+    } finally {
+      setIsArming(false);
+    }
+  };
 
   const handleToggleTool = async (toolName: string, enabled: boolean) => {
     setTogglingTool(toolName);
@@ -223,6 +261,43 @@ export function McpServerCustomizationContent({
           </DialogTitle>
           <DialogDescription>{/*  */}</DialogDescription>
         </DialogHeader>
+      )}
+      {isStdio && localMcpStatus?.policyEnabled && (
+        <Alert className="mb-2">
+          <TerminalSquare className="size-3.5" />
+          <div className="flex w-full items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <AlertTitle>{t("MCP.localToolsSessionTitle")}</AlertTitle>
+              <AlertDescription>
+                <p className="text-xs text-muted-foreground">
+                  {localMcpStatus.armed && localMcpStatus.armedUntil
+                    ? t("MCP.localToolsArmed", {
+                        time: new Date(
+                          localMcpStatus.armedUntil,
+                        ).toLocaleTimeString(),
+                      })
+                    : t("MCP.localToolsConsentHint")}
+                </p>
+              </AlertDescription>
+            </div>
+            {localMcpStatus.armed ? (
+              <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={isArming}
+                onClick={handleArmLocalServer}
+              >
+                {isArming ? (
+                  <Loader className="size-3 animate-spin" />
+                ) : (
+                  t("MCP.enableLocalToolsForSession")
+                )}
+              </Button>
+            )}
+          </div>
+        </Alert>
       )}
       <div className="flex items-center">
         <h5 className="mr-auto flex items-center py-2">

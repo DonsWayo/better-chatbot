@@ -393,7 +393,11 @@
     "mcpServerCustomizationPlaceholder": "例：入力値がメールの場合、常にexample@example.comの形式でメールを入力してください。",
     "noInstructions": "なし",
     "localServersNotAvailableTitle": "ローカルMCPサーバーは利用できません",
-    "localServersNotAvailableOnThisDeployment": "このデプロイメントではローカル（stdio）MCPサーバーはサポートされていません。リモートMCPサーバーのURLに接続してください — ローカルサーバーはデスクトップアプリでのみ利用可能です。"
+    "localServersNotAvailableOnThisDeployment": "このデプロイメントではローカル（stdio）MCPサーバーはサポートされていません。リモートMCPサーバーのURLに接続してください — ローカルサーバーはデスクトップアプリでのみ利用可能です。",
+    "localToolsSessionTitle": "ローカルツール",
+    "localToolsConsentHint": "ローカル（stdio）ツールはこのマシン上で実行されます。各セッションで初回使用前に有効化してください。",
+    "enableLocalToolsForSession": "このセッションでローカルツールを有効にする",
+    "localToolsArmed": "このセッションではローカルツールが有効です（{time} まで）。"
   },
   "Error": {},
   "Info": {
@@ -537,6 +541,13 @@
       "memoryEnabledDescription": "ユーザーごとのメモリの保存と使用を許可します。オフにすると読み書きが直ちに停止します。保存済みデータは保持されます。",
       "implicitExtraction": "暗黙的な抽出",
       "implicitExtractionDescription": "明示的な「覚えて」の依頼がなくても、バックグラウンドでメモリを保存できるようにします。法務承認まではデフォルトでオフです。",
+      "updateFailed": "更新に失敗しました。もう一度お試しください。"
+    },
+    "LocalMcpPolicy": {
+      "title": "ローカルMCP（デスクトップ）",
+      "description": "ローカル（stdio）MCPサーバーに関する組織全体のポリシーです。ユーザーのマシン（デスクトップアプリ／ローカル開発）でプロセスを起動します。デフォルトは拒否で、チームごとの上書きは team_local_mcp_enabled:* 設定で行えます。",
+      "enabled": "ローカルMCPサーバーを許可",
+      "enabledDescription": "権限のあるユーザーがローカルの stdio コネクタを登録・実行できるようにします。オフにするとローカルツールは即座に非表示・ブロックされます。保存された設定は保持されます。",
       "updateFailed": "更新に失敗しました。もう一度お試しください。"
     },
     "RolePacks": {

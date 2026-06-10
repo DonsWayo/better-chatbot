@@ -393,7 +393,11 @@
     "mcpServerCustomizationPlaceholder": "ex. Si la valeur d'entrée est un email, toujours entrer l'email au format exemple@exemple.com.",
     "noInstructions": "Aucun",
     "localServersNotAvailableTitle": "Serveurs MCP locaux non disponibles",
-    "localServersNotAvailableOnThisDeployment": "Les serveurs MCP locaux (stdio) ne sont pas pris en charge sur ce déploiement. Connectez-vous à une URL de serveur MCP distant — les serveurs locaux ne sont disponibles que dans l'application de bureau."
+    "localServersNotAvailableOnThisDeployment": "Les serveurs MCP locaux (stdio) ne sont pas pris en charge sur ce déploiement. Connectez-vous à une URL de serveur MCP distant — les serveurs locaux ne sont disponibles que dans l'application de bureau.",
+    "localToolsSessionTitle": "Outils locaux",
+    "localToolsConsentHint": "Les outils locaux (stdio) s'exécutent sur cette machine. Activez-les une fois par session avant la première utilisation.",
+    "enableLocalToolsForSession": "Activer les outils locaux pour cette session",
+    "localToolsArmed": "Outils locaux activés pour cette session (jusqu'à {time})."
   },
   "Error": {},
   "Info": {
@@ -537,6 +541,13 @@
       "memoryEnabledDescription": "Autorise l'assistant à enregistrer et utiliser des souvenirs par utilisateur. La désactivation stoppe immédiatement lecture et écriture ; les données stockées sont conservées.",
       "implicitExtraction": "Extraction implicite",
       "implicitExtractionDescription": "Permet d'enregistrer des souvenirs en arrière-plan sans demande explicite. Désactivée par défaut dans l'attente de la validation juridique.",
+      "updateFailed": "Échec de la mise à jour. Veuillez réessayer."
+    },
+    "LocalMcpPolicy": {
+      "title": "MCP local (bureau)",
+      "description": "Politique d'organisation pour les serveurs MCP locaux (stdio) — des processus lancés sur la machine de l'utilisateur (application de bureau / développement local). Refus par défaut ; des exceptions par équipe sont possibles via les clés team_local_mcp_enabled:*.",
+      "enabled": "Autoriser les serveurs MCP locaux",
+      "enabledDescription": "Permet aux utilisateurs habilités d'enregistrer et d'exécuter des connecteurs stdio locaux. La désactivation masque et bloque immédiatement les outils locaux ; les configurations enregistrées sont conservées.",
       "updateFailed": "Échec de la mise à jour. Veuillez réessayer."
     },
     "RolePacks": {

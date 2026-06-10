@@ -12,6 +12,20 @@ vi.mock("./create-mcp-client", () => ({
   createMCPClient: vi.fn(),
 }));
 
+// Local-MCP governance plane: policy resolution + audit are db-backed; tests
+// drive them through these controllable mocks. Default enabled so the
+// pre-existing suites (which use a stdio config) keep exercising tool flow.
+const localMcp = vi.hoisted(() => ({
+  runtimeEnabled: true,
+  auditMock: vi.fn(async () => {}),
+}));
+vi.mock("./local-policy", () => ({
+  isLocalMcpRuntimeEnabled: vi.fn(async () => localMcp.runtimeEnabled),
+}));
+vi.mock("./audit", () => ({
+  auditMcpInvocation: localMcp.auditMock,
+}));
+
 vi.mock("./mcp-tool-id", () => ({
   createMCPToolId: vi.fn((serverName, toolName) => `${serverName}:${toolName}`),
 }));
@@ -108,6 +122,7 @@ describe("MCPClientsManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localMcp.runtimeEnabled = true;
 
     // Mock process.on to prevent actual listener registration
     vi.spyOn(process, "on").mockImplementation(() => process);
@@ -565,6 +580,8 @@ describe("MCPClientsManager", () => {
         { ...mockServer, toolInfo, disabledTools: ["tool-b"] },
       ]);
       await manager.init();
+      // stdio config → per-session consent is also required
+      manager.armLocalServer("test-server");
 
       await manager.toolCall("test-server", "tool-a", {});
 
@@ -603,6 +620,238 @@ describe("MCPClientsManager", () => {
       await manager.removeClient("test-server");
 
       expect(manager.isToolDisabled("test-server", "tool-b")).toBe(false);
+    });
+  });
+
+  describe("local stdio governance (ADR-0010)", () => {
+    const toolInfo = [
+      { name: "local-tool", description: "Local tool", inputSchema: {} },
+    ];
+    const remoteConfig: MCPServerConfig = { url: "https://mcp.example.com" };
+
+    const stdioServer = { ...mockServer, toolInfo };
+    const remoteServer = {
+      ...mockServer,
+      id: "remote-server",
+      name: "remote-server",
+      config: remoteConfig,
+      toolInfo,
+    };
+
+    const flushAudit = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    let clientsByName: Record<string, MCPClient>;
+
+    const makeClient = (name: string, config: MCPServerConfig) =>
+      ({
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        getInfo: vi.fn(() => ({
+          name,
+          config,
+          status: "connected" as const,
+          toolInfo,
+        })),
+        toolInfo,
+        callTool: vi.fn().mockResolvedValue({ content: [] }),
+      }) as unknown as MCPClient;
+
+    beforeEach(() => {
+      clientsByName = {};
+      vi.mocked(mockCreateMCPClient).mockImplementation((_id, name, config) => {
+        const client = makeClient(name, config);
+        clientsByName[name] = client;
+        return client;
+      });
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        stdioServer,
+        remoteServer,
+      ]);
+      vi.mocked(mockStorage.get).mockImplementation(async (id: string) =>
+        id === "test-server" ? stdioServer : remoteServer,
+      );
+      manager = new MCPClientsManager(mockStorage);
+    });
+
+    const callToolOf = (name: string) =>
+      (clientsByName[name] as unknown as { callTool: ReturnType<typeof vi.fn> })
+        .callTool;
+
+    it("hydrates the gate on init: policy off filters stdio tools but keeps remote tools", async () => {
+      localMcp.runtimeEnabled = false;
+      await manager.init();
+
+      expect(Object.keys(await manager.tools())).toEqual([
+        "remote-server:local-tool",
+      ]);
+      expect(manager.isLocalMcpEnabled()).toBe(false);
+    });
+
+    it("policy off rejects stdio toolCall with a policy message and audits the denial", async () => {
+      localMcp.runtimeEnabled = false;
+      await manager.init();
+
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as {
+        isError?: boolean;
+        error?: { message: string };
+      };
+
+      expect(result.isError).toBe(true);
+      expect(result.error?.message).toMatch(/disabled by your organization/i);
+      expect(callToolOf("test-server")).not.toHaveBeenCalled();
+
+      await flushAudit();
+      expect(localMcp.auditMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "test-user-id",
+          mcpServerId: "test-server",
+          toolName: "local-tool",
+          outcome: "error",
+        }),
+      );
+    });
+
+    it("policy off leaves remote toolCall untouched (no audit row from the manager)", async () => {
+      localMcp.runtimeEnabled = false;
+      await manager.init();
+
+      await manager.toolCall("remote-server", "local-tool", {});
+
+      expect(callToolOf("remote-server")).toHaveBeenCalledWith(
+        "local-tool",
+        {},
+      );
+      await flushAudit();
+      expect(localMcp.auditMock).not.toHaveBeenCalled();
+    });
+
+    it("policy on but unarmed: first stdio invocation is rejected with the session-consent message", async () => {
+      await manager.init();
+
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as {
+        isError?: boolean;
+        error?: { message: string };
+      };
+
+      expect(result.isError).toBe(true);
+      expect(result.error?.message).toMatch(/not enabled for this session/i);
+      expect(callToolOf("test-server")).not.toHaveBeenCalled();
+
+      await flushAudit();
+      expect(localMcp.auditMock).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: "error" }),
+      );
+    });
+
+    it("arming allows the call and audits a success attributed to the server owner", async () => {
+      await manager.init();
+
+      const armedUntil = manager.armLocalServer("test-server");
+      expect(armedUntil).toBeGreaterThan(Date.now());
+      expect(manager.isLocalServerArmed("test-server")).toBe(true);
+      expect(manager.localServerArmedUntil("test-server")).toBe(armedUntil);
+
+      await manager.toolCall("test-server", "local-tool", {});
+
+      expect(callToolOf("test-server")).toHaveBeenCalledWith("local-tool", {});
+      await flushAudit();
+      expect(localMcp.auditMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "test-user-id",
+          mcpServerId: "test-server",
+          toolName: "local-tool",
+          outcome: "success",
+          durationMs: expect.any(Number),
+        }),
+      );
+    });
+
+    it("arming expires", async () => {
+      await manager.init();
+
+      manager.armLocalServer("test-server", -1);
+      expect(manager.isLocalServerArmed("test-server")).toBe(false);
+      expect(manager.localServerArmedUntil("test-server")).toBeNull();
+
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as {
+        isError?: boolean;
+      };
+      expect(result.isError).toBe(true);
+    });
+
+    it("disarmLocalServer withdraws consent", async () => {
+      await manager.init();
+      manager.armLocalServer("test-server");
+      manager.disarmLocalServer("test-server");
+      expect(manager.isLocalServerArmed("test-server")).toBe(false);
+    });
+
+    it("setLocalMcpEnabled(false) takes effect immediately and clears armed servers", async () => {
+      await manager.init();
+      manager.armLocalServer("test-server");
+      expect(Object.keys(await manager.tools()).sort()).toEqual([
+        "remote-server:local-tool",
+        "test-server:local-tool",
+      ]);
+
+      manager.setLocalMcpEnabled(false);
+
+      expect(Object.keys(await manager.tools())).toEqual([
+        "remote-server:local-tool",
+      ]);
+      expect(manager.isLocalServerArmed("test-server")).toBe(false);
+
+      // Re-enabling restores the tool list but NOT the consent (re-arm needed)
+      manager.setLocalMcpEnabled(true);
+      expect(Object.keys(await manager.tools()).sort()).toEqual([
+        "remote-server:local-tool",
+        "test-server:local-tool",
+      ]);
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as {
+        isError?: boolean;
+        error?: { message: string };
+      };
+      expect(result.isError).toBe(true);
+      expect(result.error?.message).toMatch(/not enabled for this session/i);
+    });
+
+    it("refreshClient re-resolves the policy gate", async () => {
+      await manager.init();
+      expect(manager.isLocalMcpEnabled()).toBe(true);
+
+      localMcp.runtimeEnabled = false;
+      await manager.refreshClient("test-server");
+
+      expect(manager.isLocalMcpEnabled()).toBe(false);
+      expect(Object.keys(await manager.tools())).toEqual([
+        "remote-server:local-tool",
+      ]);
+    });
+
+    it("removeClient disarms the server", async () => {
+      await manager.init();
+      manager.armLocalServer("test-server");
+      vi.mocked(mockStorage.has).mockResolvedValue(true);
+
+      await manager.removeClient("test-server");
+
+      expect(manager.isLocalServerArmed("test-server")).toBe(false);
     });
   });
 

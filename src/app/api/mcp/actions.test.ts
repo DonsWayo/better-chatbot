@@ -11,6 +11,12 @@ const {
   selectByIdMock,
   updateDisabledToolsMock,
   setDisabledToolsMock,
+  persistClientMock,
+  armLocalServerMock,
+  localServerArmedUntilMock,
+  getUserPrimaryTeamIdMock,
+  resolveLocalMcpPolicyMock,
+  writeAuditLogMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
   canCreateMCPMock: vi.fn(),
@@ -22,6 +28,12 @@ const {
   selectByIdMock: vi.fn(),
   updateDisabledToolsMock: vi.fn(),
   setDisabledToolsMock: vi.fn(),
+  persistClientMock: vi.fn(),
+  armLocalServerMock: vi.fn(),
+  localServerArmedUntilMock: vi.fn(),
+  getUserPrimaryTeamIdMock: vi.fn().mockResolvedValue(null),
+  resolveLocalMcpPolicyMock: vi.fn().mockResolvedValue(false),
+  writeAuditLogMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("lib/auth/permissions", () => ({
@@ -45,7 +57,19 @@ vi.mock("lib/ai/mcp/mcp-manager", () => ({
     getClient: vi.fn().mockResolvedValue(null),
     getClients: getClientsMock,
     setDisabledTools: setDisabledToolsMock,
+    persistClient: persistClientMock,
+    armLocalServer: armLocalServerMock,
+    localServerArmedUntil: localServerArmedUntilMock,
   },
+}));
+vi.mock("lib/admin/teams", () => ({
+  getUserPrimaryTeamId: getUserPrimaryTeamIdMock,
+}));
+vi.mock("lib/ai/mcp/local-policy", () => ({
+  resolveLocalMcpPolicy: resolveLocalMcpPolicyMock,
+}));
+vi.mock("lib/compliance/audit", () => ({
+  writeAuditLog: writeAuditLogMock,
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({ McpServerTable: {} }));
 vi.mock("better-auth", () => ({ logger: { error: vi.fn() } }));
@@ -462,5 +486,220 @@ describe("selectMcpClientsAction — return type invariants", () => {
     const { selectMcpClientsAction } = await import("./actions");
     await selectMcpClientsAction();
     expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Local-MCP governance plane (ADR-0010, default-deny per ADR-0009) ─────────
+
+const STDIO_CONFIG = { command: "npx", args: ["-y", "some-mcp"] };
+
+// Partial payloads cast through unknown (the schema module is mocked, so the
+// inferred insert type is unavailable; the action validates at runtime).
+type SaveMcpPayload = Parameters<
+  typeof import("./actions").saveMcpClientAction
+>[0];
+
+describe("saveMcpClientAction — local-MCP policy gate (stdio)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.NOT_ALLOW_ADD_MCP_SERVERS;
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    canCreateMCPMock.mockResolvedValue(true);
+    getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
+    persistClientMock.mockResolvedValue({ id: "srv-1" });
+  });
+
+  it("rejects stdio configs when the policy denies (default)", async () => {
+    resolveLocalMcpPolicyMock.mockResolvedValue(false);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(
+      saveMcpClientAction({
+        name: "local-server",
+        config: STDIO_CONFIG,
+      } as unknown as SaveMcpPayload),
+    ).rejects.toThrow(/organization's policy/i);
+    expect(persistClientMock).not.toHaveBeenCalled();
+  });
+
+  it("resolves the policy for the saving user's team", async () => {
+    resolveLocalMcpPolicyMock.mockResolvedValue(false);
+    const { saveMcpClientAction } = await import("./actions");
+    await expect(
+      saveMcpClientAction({
+        name: "local-server",
+        config: STDIO_CONFIG,
+      } as unknown as SaveMcpPayload),
+    ).rejects.toThrow();
+    expect(getUserPrimaryTeamIdMock).toHaveBeenCalledWith("u1");
+    expect(resolveLocalMcpPolicyMock).toHaveBeenCalledWith("team-1");
+  });
+
+  it("allows stdio configs when the policy is enabled", async () => {
+    resolveLocalMcpPolicyMock.mockResolvedValue(true);
+    const { saveMcpClientAction } = await import("./actions");
+    await saveMcpClientAction({
+      name: "local-server",
+      config: STDIO_CONFIG,
+    } as unknown as SaveMcpPayload);
+    expect(persistClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "local-server", userId: "u1" }),
+    );
+  });
+
+  it("never resolves the local policy for remote configs", async () => {
+    const { saveMcpClientAction } = await import("./actions");
+    await saveMcpClientAction({
+      name: "remote-server",
+      config: { url: "https://mcp.example.com" },
+    } as unknown as SaveMcpPayload);
+    expect(resolveLocalMcpPolicyMock).not.toHaveBeenCalled();
+    expect(persistClientMock).toHaveBeenCalled();
+  });
+});
+
+describe("armLocalMcpServerAction — per-session consent", () => {
+  const stdioServer = {
+    id: "srv-local",
+    name: "local-server",
+    config: STDIO_CONFIG,
+    userId: "owner-1",
+    visibility: "private" as const,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUserMock.mockResolvedValue({ id: "owner-1", role: "user" });
+    canManageMCPServerMock.mockResolvedValue(true);
+    getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
+    resolveLocalMcpPolicyMock.mockResolvedValue(true);
+    selectByIdMock.mockResolvedValue(stdioServer);
+    armLocalServerMock.mockReturnValue(1234567890);
+  });
+
+  it("arms the server and writes an audit event", async () => {
+    const { armLocalMcpServerAction } = await import("./actions");
+    const result = await armLocalMcpServerAction("srv-local");
+    expect(result).toEqual({ armedUntil: 1234567890 });
+    expect(armLocalServerMock).toHaveBeenCalledWith("srv-local");
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "owner-1",
+        teamId: "team-1",
+        eventType: "admin_action",
+        details: expect.objectContaining({
+          action: "local_mcp_server_armed",
+          serverId: "srv-local",
+        }),
+      }),
+    );
+  });
+
+  it("rejects when unauthenticated", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { armLocalMcpServerAction } = await import("./actions");
+    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
+      /logged in/i,
+    );
+    expect(armLocalServerMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the server does not exist", async () => {
+    selectByIdMock.mockResolvedValue(null);
+    const { armLocalMcpServerAction } = await import("./actions");
+    await expect(armLocalMcpServerAction("missing")).rejects.toThrow(
+      /not found/i,
+    );
+  });
+
+  it("rejects non-stdio servers", async () => {
+    selectByIdMock.mockResolvedValue({
+      ...stdioServer,
+      config: { url: "https://mcp.example.com" },
+    });
+    const { armLocalMcpServerAction } = await import("./actions");
+    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
+      /stdio/i,
+    );
+    expect(armLocalServerMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects users who cannot manage the server", async () => {
+    canManageMCPServerMock.mockResolvedValue(false);
+    const { armLocalMcpServerAction } = await import("./actions");
+    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
+      /permission/i,
+    );
+    expect(armLocalServerMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the org/team policy denies local MCP", async () => {
+    resolveLocalMcpPolicyMock.mockResolvedValue(false);
+    const { armLocalMcpServerAction } = await import("./actions");
+    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
+      /organization's policy/i,
+    );
+    expect(armLocalServerMock).not.toHaveBeenCalled();
+    expect(writeAuditLogMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("getLocalMcpStatusAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    getUserPrimaryTeamIdMock.mockResolvedValue(null);
+  });
+
+  it("reports non-stdio servers as not requiring arming", async () => {
+    selectByIdMock.mockResolvedValue({
+      id: "srv-remote",
+      config: { url: "https://mcp.example.com" },
+      userId: "u1",
+      visibility: "private",
+    });
+    const { getLocalMcpStatusAction } = await import("./actions");
+    await expect(getLocalMcpStatusAction("srv-remote")).resolves.toEqual({
+      isStdio: false,
+      policyEnabled: false,
+      armed: false,
+      armedUntil: null,
+    });
+  });
+
+  it("reports policy + arming state for stdio servers", async () => {
+    selectByIdMock.mockResolvedValue({
+      id: "srv-local",
+      config: STDIO_CONFIG,
+      userId: "u1",
+      visibility: "private",
+    });
+    resolveLocalMcpPolicyMock.mockResolvedValue(true);
+    const future = Date.now() + 60_000;
+    localServerArmedUntilMock.mockReturnValue(future);
+    const { getLocalMcpStatusAction } = await import("./actions");
+    await expect(getLocalMcpStatusAction("srv-local")).resolves.toEqual({
+      isStdio: true,
+      policyEnabled: true,
+      armed: true,
+      armedUntil: future,
+    });
+  });
+
+  it("reports unarmed stdio servers", async () => {
+    selectByIdMock.mockResolvedValue({
+      id: "srv-local",
+      config: STDIO_CONFIG,
+      userId: "u1",
+      visibility: "private",
+    });
+    resolveLocalMcpPolicyMock.mockResolvedValue(true);
+    localServerArmedUntilMock.mockReturnValue(null);
+    const { getLocalMcpStatusAction } = await import("./actions");
+    await expect(getLocalMcpStatusAction("srv-local")).resolves.toEqual({
+      isStdio: true,
+      policyEnabled: true,
+      armed: false,
+      armedUntil: null,
+    });
   });
 });

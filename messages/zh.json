@@ -395,7 +395,11 @@
     "mcpServerCustomizationPlaceholder": "例如：如果输入值是电子邮件，始终以 example@example.com 格式输入电子邮件。",
     "noInstructions": "无",
     "localServersNotAvailableTitle": "本地 MCP 服务器不可用",
-    "localServersNotAvailableOnThisDeployment": "此部署不支持本地（stdio）MCP 服务器。请连接到远程 MCP 服务器 URL — 本地服务器仅在桌面应用中可用。"
+    "localServersNotAvailableOnThisDeployment": "此部署不支持本地（stdio）MCP 服务器。请连接到远程 MCP 服务器 URL — 本地服务器仅在桌面应用中可用。",
+    "localToolsSessionTitle": "本地工具",
+    "localToolsConsentHint": "本地（stdio）工具在本机上运行。每个会话首次使用前需先启用。",
+    "enableLocalToolsForSession": "在本会话中启用本地工具",
+    "localToolsArmed": "本会话已启用本地工具（至 {time}）。"
   },
   "Error": {},
   "Info": {
@@ -539,6 +543,13 @@
       "memoryEnabledDescription": "允许助手按用户保存并使用记忆。关闭后将立即停止读写；已存数据会保留。",
       "implicitExtraction": "隐式提取",
       "implicitExtractionDescription": "允许助手在没有明确“记住”请求时在后台保存记忆。在法务批准前默认关闭。",
+      "updateFailed": "更新失败，请重试。"
+    },
+    "LocalMcpPolicy": {
+      "title": "本地 MCP（桌面）",
+      "description": "本地（stdio）MCP 服务器的组织级策略 — 在用户机器上启动进程（桌面应用/本地开发）。默认拒绝；可通过 team_local_mcp_enabled:* 设置按团队覆盖。",
+      "enabled": "允许本地 MCP 服务器",
+      "enabledDescription": "允许获授权的用户注册并运行本地 stdio 连接器。关闭后本地工具会立即隐藏并被阻止；已保存的配置会保留。",
       "updateFailed": "更新失败，请重试。"
     },
     "RolePacks": {

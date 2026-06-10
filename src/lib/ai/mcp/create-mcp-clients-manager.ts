@@ -19,7 +19,10 @@ import {
 } from "lib/utils";
 import globalLogger from "logger";
 import { safe } from "ts-safe";
+import { auditMcpInvocation } from "./audit";
 import { type MCPClient, createMCPClient } from "./create-mcp-client";
+import { isMaybeStdioConfig } from "./is-mcp-config";
+import { isLocalMcpRuntimeEnabled } from "./local-policy";
 import { createMCPToolId } from "./mcp-tool-id";
 import { createMemoryMCPConfigStorage } from "./memory-mcp-config-storage";
 
@@ -62,6 +65,22 @@ export class MCPClientsManager {
    * hydrated from storage on init/refresh and updated via setDisabledTools.
    */
   private disabledToolsByServer = new Map<string, Set<string>>();
+  /**
+   * Local-MCP governance plane (ADR-0010, default-deny per ADR-0009).
+   * Hydrated from asafe_org_settings on init/refresh and flipped immediately
+   * via setLocalMcpEnabled when an admin toggles the org/team policy. While
+   * false, stdio servers' tools never reach tools() and toolCall() rejects
+   * them — configs are kept, so re-enabling is instant.
+   */
+  private localMcpEnabled = false;
+  /**
+   * Per-session consent (v1 of ADR-0010 per-action consent): a stdio server
+   * must be explicitly armed before its first invocation in a server session.
+   * serverId → armedUntil (epoch ms). Per-ACTION consent via the approvals /
+   * Inbox system is the v2 follow-up.
+   */
+  private armedLocalServers = new Map<string, number>();
+  static readonly LOCAL_MCP_ARM_DURATION_MS = 8 * 60 * 60 * 1000; // 8h
   private logger = globalLogger.withDefaults({
     message: colorize("dim", `[${generateUUID().slice(0, 4)}] MCP Manager: `),
   });
@@ -100,6 +119,11 @@ export class MCPClientsManager {
     }
     return safe(() => this.initializedLock.lock())
       .ifOk(async () => {
+        // Resolve the local-MCP gate once per init (like disabledTools
+        // hydration). Fails closed — default-deny.
+        this.localMcpEnabled = await isLocalMcpRuntimeEnabled().catch(
+          () => false,
+        );
         if (this.storage) {
           await this.storage.init(this);
           const configs = await this.storage.loadAll();
@@ -164,6 +188,86 @@ export class MCPClientsManager {
   }
 
   /**
+   * Flips the in-memory local-MCP gate. Called by the admin policy action
+   * right after persisting the org/team setting so enforcement is immediate
+   * (no restart, no config deletion).
+   */
+  setLocalMcpEnabled(enabled: boolean) {
+    this.localMcpEnabled = enabled;
+    if (!enabled) this.armedLocalServers.clear();
+  }
+
+  /** Current process-wide local-MCP gate (org base OR any team override). */
+  isLocalMcpEnabled(): boolean {
+    return this.localMcpEnabled;
+  }
+
+  /**
+   * Per-session consent: arm a local stdio server so its tools may run until
+   * `armedUntil`. Returns the armedUntil timestamp (epoch ms).
+   */
+  armLocalServer(
+    id: string,
+    durationMs: number = MCPClientsManager.LOCAL_MCP_ARM_DURATION_MS,
+  ): number {
+    const armedUntil = Date.now() + durationMs;
+    this.armedLocalServers.set(id, armedUntil);
+    return armedUntil;
+  }
+
+  /** Withdraw a session's local-tool consent for a server. */
+  disarmLocalServer(id: string) {
+    this.armedLocalServers.delete(id);
+  }
+
+  /** Whether the server is currently armed (expired entries are pruned). */
+  isLocalServerArmed(id: string): boolean {
+    const armedUntil = this.armedLocalServers.get(id);
+    if (armedUntil === undefined) return false;
+    if (Date.now() >= armedUntil) {
+      this.armedLocalServers.delete(id);
+      return false;
+    }
+    return true;
+  }
+
+  /** armedUntil (epoch ms) for a server, or null when not armed/expired. */
+  localServerArmedUntil(id: string): number | null {
+    return this.isLocalServerArmed(id)
+      ? (this.armedLocalServers.get(id) ?? null)
+      : null;
+  }
+
+  /**
+   * Audit every local stdio toolCall (allowed AND denied) into
+   * asafe_mcp_invocation_log. The manager has no caller context, so the row
+   * is attributed to the server owner (the accountable identity for a local
+   * process). Fire-and-forget — audit failure never blocks or rejects.
+   */
+  private auditLocalToolCall(
+    id: string,
+    toolName: string,
+    outcome: "success" | "error",
+    durationMs: number,
+  ) {
+    void (async () => {
+      try {
+        const server = await this.storage.get(id);
+        if (!server?.userId) return;
+        await auditMcpInvocation({
+          userId: server.userId,
+          mcpServerId: id,
+          toolName,
+          outcome,
+          durationMs,
+        });
+      } catch (err) {
+        this.logger.error("local MCP audit failed (non-fatal):", err);
+      }
+    })();
+  }
+
+  /**
    * Returns all tools from all clients as a flat object.
    * Tools an admin switched off (server.disabledTools) are never exposed.
    */
@@ -172,6 +276,14 @@ export class MCPClientsManager {
     return Array.from(this.clients.entries()).reduce(
       (acc, [id, client]) => {
         if (!client.client?.toolInfo?.length) return acc;
+        // Local-MCP gate: while the policy is off, stdio servers' tools never
+        // reach the model's tool list (configs stay registered).
+        if (
+          !this.localMcpEnabled &&
+          isMaybeStdioConfig(client.client.getInfo().config)
+        ) {
+          return acc;
+        }
         const clientName = client.name;
         const disabled = this.disabledToolsByServer.get(id);
         const enabledToolInfo = disabled
@@ -288,6 +400,7 @@ export class MCPClientsManager {
       }
     }
     this.disabledToolsByServer.delete(id);
+    this.armedLocalServers.delete(id);
     this.disconnectClient(id);
   }
 
@@ -310,6 +423,7 @@ export class MCPClientsManager {
     }
     this.logger.info(`Refreshing client ${server.name}`);
     this.setDisabledTools(id, server.disabledTools);
+    this.localMcpEnabled = await isLocalMcpRuntimeEnabled().catch(() => false);
     await this.addClient(id, server.name, server.config);
     return this.clients.get(id)!;
   }
@@ -356,6 +470,8 @@ export class MCPClientsManager {
     return this.toolCall(client.id, toolName, input);
   }
   async toolCall(id: string, toolName: string, input: unknown) {
+    const startedAt = Date.now();
+    let isLocalStdio = false;
     return safe(() => {
       if (this.isToolDisabled(id, toolName)) {
         throw new Error(
@@ -368,7 +484,37 @@ export class MCPClientsManager {
         if (!client) throw new Error(`Client ${id} not found`);
         return client.client;
       })
-      .map((client) => client.callTool(toolName, input))
+      .map((client) => {
+        // Local-MCP governance (ADR-0010): stdio tools require the org/team
+        // policy to be on AND per-session arming before they may execute.
+        if (isMaybeStdioConfig(client.getInfo().config)) {
+          isLocalStdio = true;
+          if (!this.localMcpEnabled) {
+            throw new Error(
+              `Local (stdio) MCP tools are disabled by your organization's policy. ` +
+                `An administrator can enable "Local MCP (desktop)" under Admin → Feature flags.`,
+            );
+          }
+          if (!this.isLocalServerArmed(id)) {
+            throw new Error(
+              `Local tools for this connector are not enabled for this session. ` +
+                `Open Settings → Connectors → this connector and click "Enable local tools for this session", then try again.`,
+            );
+          }
+        }
+        return client.callTool(toolName, input);
+      })
+      .map((res) => {
+        if (isLocalStdio) {
+          this.auditLocalToolCall(
+            id,
+            toolName,
+            "success",
+            Date.now() - startedAt,
+          );
+        }
+        return res;
+      })
       .map((res) => {
         if (res?.content && Array.isArray(res.content)) {
           const parsedResult = {
@@ -389,6 +535,16 @@ export class MCPClientsManager {
         return res;
       })
       .ifFail((err) => {
+        // Denied/failed local stdio calls are audited too (allowed AND denied
+        // — ADR-0010 audit gate).
+        if (isLocalStdio) {
+          this.auditLocalToolCall(
+            id,
+            toolName,
+            "error",
+            Date.now() - startedAt,
+          );
+        }
         return {
           isError: true,
           error: {

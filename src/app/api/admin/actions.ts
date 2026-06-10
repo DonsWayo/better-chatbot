@@ -21,6 +21,10 @@ import {
   listUserModelGrants,
   revokeUserModelGrant,
 } from "lib/admin/user-grants";
+import {
+  isLocalMcpRuntimeEnabled,
+  setOrgLocalMcpEnabled,
+} from "lib/ai/mcp/local-policy";
 import { getSession } from "lib/auth/server";
 import { eraseUserData } from "lib/compliance/gdpr";
 import logger from "lib/logger";
@@ -170,6 +174,40 @@ export async function updateOrgMemoryPolicyAction(input: {
   if (typeof input.implicitExtraction === "boolean") {
     await setOrgMemoryImplicitExtraction(input.implicitExtraction);
   }
+}
+
+/**
+ * Org-base switch for the local-MCP governance plane (ADR-0010; default-deny
+ * per ADR-0009). Persists `local_mcp_enabled` in asafe_org_settings, then
+ * flips the MCP manager's in-memory gate so enforcement (tool filtering +
+ * call rejection) is immediate. Team overrides live under the
+ * `team_local_mcp_enabled:<teamId>` keys (lib/ai/mcp/local-policy.ts — no
+ * admin UI yet).
+ */
+export async function updateOrgLocalMcpPolicyAction(input: {
+  enabled: boolean;
+}): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  if (session.user.role !== "admin") throw new Error("Admin required");
+  await setOrgLocalMcpEnabled(input.enabled);
+  // Re-resolve (org base OR any team override) rather than trusting the input
+  // — a team override may keep the runtime gate open after an org-base off.
+  // Lazy imports: the manager module graph (storage, clients) and the audit
+  // sink are heavy and only needed on this rarely-hit admin path.
+  const [{ mcpClientsManager }, { writeAuditLog }] = await Promise.all([
+    import("lib/ai/mcp/mcp-manager"),
+    import("lib/compliance/audit"),
+  ]);
+  mcpClientsManager.setLocalMcpEnabled(await isLocalMcpRuntimeEnabled());
+  void writeAuditLog({
+    userId: session.user.id,
+    eventType: "admin_action",
+    details: {
+      action: "local_mcp_org_policy_updated",
+      enabled: input.enabled,
+    },
+  });
 }
 
 // ── Company MCP servers ──────────────────────────────────────────────────────

@@ -14,6 +14,8 @@ const logger = globalLogger.withDefaults({ message: "mcp-audit: " });
 interface AuditMcpCallParams {
   userId: string;
   teamId?: string | null;
+  /** Set for local (stdio) invocations audited at the manager layer. */
+  mcpServerId?: string | null;
   toolName: string;
   outcome: "success" | "error";
   durationMs?: number;
@@ -26,6 +28,7 @@ export async function auditMcpInvocation(
     await db.insert(AsafeMcpInvocationLogTable).values({
       userId: params.userId,
       teamId: params.teamId ?? null,
+      mcpServerId: params.mcpServerId ?? null,
       toolName: params.toolName,
       outcome: params.outcome,
       durationMs: params.durationMs ?? null,

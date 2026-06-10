@@ -2,13 +2,16 @@
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { z } from "zod";
 
+import { getUserPrimaryTeamId } from "lib/admin/teams";
 import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
+import { resolveLocalMcpPolicy } from "lib/ai/mcp/local-policy";
 import {
   canCreateMCP,
   canManageMCPServer,
   canShareMCPServer,
   getCurrentUser,
 } from "lib/auth/permissions";
+import { writeAuditLog } from "lib/compliance/audit";
 import { IS_MCP_SERVER_REMOTE_ONLY } from "lib/const";
 import { McpServerTable } from "lib/db/pg/schema.pg";
 import { mcpOAuthRepository, mcpRepository } from "lib/db/repository";
@@ -87,6 +90,22 @@ export async function saveMcpClientAction(
       "Local (stdio) MCP servers are not supported on this deployment. " +
         "Connect to a remote MCP server URL instead — local servers are only available in the desktop app.",
     );
+  }
+
+  // Even where stdio is technically possible (desktop / local dev), the
+  // local-MCP governance plane (ADR-0010) is default-deny: the org — or the
+  // user's team via override — must be entitled before a stdio config can be
+  // saved.
+  if (!IS_MCP_SERVER_REMOTE_ONLY && isMaybeStdioConfig(server.config)) {
+    const teamId = await getUserPrimaryTeamId(currentUser.id);
+    const localMcpAllowed = await resolveLocalMcpPolicy(teamId);
+    if (!localMcpAllowed) {
+      throw new Error(
+        "Local (stdio) MCP servers are disabled by your organization's policy. " +
+          'Ask an administrator to enable "Local MCP (desktop)" under Admin → Feature flags, ' +
+          "or to set a team override — then try again.",
+      );
+    }
   }
 
   // Org-scope and team-scope MCP servers are admin-only
@@ -244,6 +263,92 @@ export async function setMcpToolEnabledAction(
   mcpClientsManager.setDisabledTools(parsed.serverId, disabledTools);
 
   return { disabledTools };
+}
+
+/**
+ * Local-MCP per-session consent (ADR-0010 v1): status of a local (stdio)
+ * connector for the current viewer — whether the org/team policy allows local
+ * tools at all and whether the server is currently armed for this server
+ * session. Per-ACTION consent via the approvals/Inbox system is the v2
+ * follow-up.
+ */
+export async function getLocalMcpStatusAction(serverId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    throw new Error("You must be logged in");
+  }
+  const mcpServer = await mcpRepository.selectById(serverId);
+  if (!mcpServer) {
+    throw new Error("MCP server not found");
+  }
+  if (!isMaybeStdioConfig(mcpServer.config)) {
+    return {
+      isStdio: false as const,
+      policyEnabled: false,
+      armed: false,
+      armedUntil: null as number | null,
+    };
+  }
+  const teamId = await getUserPrimaryTeamId(currentUser.id);
+  const policyEnabled = await resolveLocalMcpPolicy(teamId);
+  const armedUntil = mcpClientsManager.localServerArmedUntil(serverId);
+  return {
+    isStdio: true as const,
+    policyEnabled,
+    armed: armedUntil !== null,
+    armedUntil,
+  };
+}
+
+/**
+ * Arms a local (stdio) server for this server session: its tools may execute
+ * until the arming window (8h) expires. Session-gated — only users who can
+ * manage the server (owner / admin) and whose org/team policy allows local
+ * MCP may arm. Arming is written to the compliance audit log.
+ */
+export async function armLocalMcpServerAction(serverId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    throw new Error("You must be logged in to enable local tools");
+  }
+  const mcpServer = await mcpRepository.selectById(serverId);
+  if (!mcpServer) {
+    throw new Error("MCP server not found");
+  }
+  if (!isMaybeStdioConfig(mcpServer.config)) {
+    throw new Error("Only local (stdio) MCP servers require arming");
+  }
+  const canManage = await canManageMCPServer(
+    mcpServer.userId,
+    mcpServer.visibility,
+  );
+  if (!canManage) {
+    throw new Error(
+      "You don't have permission to enable local tools for this connector",
+    );
+  }
+  const teamId = await getUserPrimaryTeamId(currentUser.id);
+  const policyEnabled = await resolveLocalMcpPolicy(teamId);
+  if (!policyEnabled) {
+    throw new Error(
+      "Local (stdio) MCP tools are disabled by your organization's policy. " +
+        'Ask an administrator to enable "Local MCP (desktop)" under Admin → Feature flags.',
+    );
+  }
+
+  const armedUntil = mcpClientsManager.armLocalServer(serverId);
+  void writeAuditLog({
+    userId: currentUser.id,
+    teamId,
+    eventType: "admin_action",
+    details: {
+      action: "local_mcp_server_armed",
+      serverId,
+      serverName: mcpServer.name,
+      armedUntil,
+    },
+  });
+  return { armedUntil };
 }
 
 export async function shareMcpServerAction(

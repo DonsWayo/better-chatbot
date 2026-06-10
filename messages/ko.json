@@ -408,7 +408,11 @@
     "mcpServerCustomizationPlaceholder": "예) 이 MCP 서버의 툴중에 입력값이 email인 경우 항상 example@example.com 형식으로 입력해주세요.",
     "noInstructions": "없음",
     "localServersNotAvailableTitle": "로컬 MCP 서버를 사용할 수 없습니다",
-    "localServersNotAvailableOnThisDeployment": "이 배포에서는 로컬(stdio) MCP 서버가 지원되지 않습니다. 원격 MCP 서버 URL에 연결하세요 — 로컬 서버는 데스크톱 앱에서만 사용할 수 있습니다."
+    "localServersNotAvailableOnThisDeployment": "이 배포에서는 로컬(stdio) MCP 서버가 지원되지 않습니다. 원격 MCP 서버 URL에 연결하세요 — 로컬 서버는 데스크톱 앱에서만 사용할 수 있습니다.",
+    "localToolsSessionTitle": "로컬 도구",
+    "localToolsConsentHint": "로컬(stdio) 도구는 이 머신에서 실행됩니다. 세션마다 처음 사용하기 전에 활성화하세요.",
+    "enableLocalToolsForSession": "이 세션에서 로컬 도구 활성화",
+    "localToolsArmed": "이 세션에서 로컬 도구가 활성화되었습니다({time}까지)."
   },
   "Error": {},
   "Info": {
@@ -552,6 +556,13 @@
       "memoryEnabledDescription": "사용자별 메모리 저장 및 사용을 허용합니다. 끄면 읽기와 쓰기가 즉시 중단되며 저장된 데이터는 유지됩니다.",
       "implicitExtraction": "암묵적 추출",
       "implicitExtractionDescription": "명시적인 '기억해' 요청 없이도 백그라운드에서 메모리를 저장할 수 있게 합니다. 법무 승인 전까지 기본값은 꺼짐입니다.",
+      "updateFailed": "업데이트하지 못했습니다. 다시 시도해 주세요."
+    },
+    "LocalMcpPolicy": {
+      "title": "로컬 MCP(데스크톱)",
+      "description": "로컬(stdio) MCP 서버에 대한 조직 전체 정책입니다. 사용자 머신(데스크톱 앱/로컬 개발)에서 프로세스를 실행합니다. 기본값은 거부이며, 팀별 재정의는 team_local_mcp_enabled:* 설정으로 가능합니다.",
+      "enabled": "로컬 MCP 서버 허용",
+      "enabledDescription": "권한이 있는 사용자가 로컬 stdio 커넥터를 등록하고 실행할 수 있게 합니다. 끄면 로컬 도구가 즉시 숨겨지고 차단됩니다. 저장된 설정은 유지됩니다.",
       "updateFailed": "업데이트하지 못했습니다. 다시 시도해 주세요."
     },
     "RolePacks": {

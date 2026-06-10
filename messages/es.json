@@ -742,6 +742,13 @@
       "implicitExtractionDescription": "Permite guardar recuerdos en segundo plano sin una petición explícita de «recuerda». Desactivada por defecto a la espera del visto bueno legal.",
       "updateFailed": "No se pudo actualizar. Inténtalo de nuevo."
     },
+    "LocalMcpPolicy": {
+      "title": "MCP local (escritorio)",
+      "description": "Política de organización para los servidores MCP locales (stdio): procesos lanzados en la máquina del usuario (aplicación de escritorio / desarrollo local). Denegado por defecto; se pueden añadir excepciones por equipo con las claves team_local_mcp_enabled:*.",
+      "enabled": "Permitir servidores MCP locales",
+      "enabledDescription": "Permite a los usuarios autorizados registrar y ejecutar conectores stdio locales. Al desactivarlo, las herramientas locales se ocultan y bloquean de inmediato; las configuraciones guardadas se conservan.",
+      "updateFailed": "No se pudo actualizar. Inténtalo de nuevo."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Usuarios",
@@ -937,7 +944,11 @@
     "featured": "Destacado",
     "featuredDescription": "Destacado para que lo usen todos los usuarios",
     "localServersNotAvailableTitle": "Servidores MCP locales no disponibles",
-    "localServersNotAvailableOnThisDeployment": "Los servidores MCP locales (stdio) no son compatibles con esta implementación. Conéctate a una URL de servidor MCP remoto — los servidores locales solo están disponibles en la aplicación de escritorio."
+    "localServersNotAvailableOnThisDeployment": "Los servidores MCP locales (stdio) no son compatibles con esta implementación. Conéctate a una URL de servidor MCP remoto — los servidores locales solo están disponibles en la aplicación de escritorio.",
+    "localToolsSessionTitle": "Herramientas locales",
+    "localToolsConsentHint": "Las herramientas locales (stdio) se ejecutan en esta máquina. Actívalas una vez por sesión antes del primer uso.",
+    "enableLocalToolsForSession": "Activar herramientas locales en esta sesión",
+    "localToolsArmed": "Herramientas locales activadas para esta sesión (hasta {time})."
   },
   "Runs": {
     "title": "Ejecuciones",
