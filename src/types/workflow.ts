@@ -1,7 +1,24 @@
 import { Tool } from "ai";
 import { NodeKind } from "lib/ai/workflow/workflow.interface";
 import { tag } from "lib/tag";
-import { ObjectJsonSchema7, Visibility } from "./util";
+import z from "zod";
+import { ObjectJsonSchema7 } from "./util";
+
+/**
+ * Workflow visibility — the literal four-level value is stored since
+ * migration 0041 ("private" | "shared" | "team" | "company"); the legacy
+ * values ("public" | "readonly") stay accepted for back-compat with
+ * unmigrated rows and older clients. See docs/collaboration/visibility.mdx.
+ */
+export const WorkflowVisibilitySchema = z.enum([
+  "private",
+  "shared",
+  "team",
+  "company",
+  "public",
+  "readonly",
+]);
+export type WorkflowVisibility = z.infer<typeof WorkflowVisibilitySchema>;
 
 export type WorkflowIcon = {
   type: "emoji";
@@ -16,12 +33,12 @@ export type DBWorkflow = {
   name: string;
   description?: string;
   isPublished: boolean;
-  visibility: Visibility;
+  visibility: WorkflowVisibility;
   /**
    * Unified visibility model (docs/design/visibility-model.md): teams this
-   * workflow is shared with at the "team" level. null/[] = none. The legacy
-   * `visibility` enum keeps storing public/private/readonly until a future
-   * migration widens it; teamIds + entity_grant carry the real access signal.
+   * workflow is shared with at the "team" level. null/[] = none. Since
+   * migration 0041 the `visibility` column stores the literal four-level
+   * value; teamIds + entity_grant still carry the team/shared access signal.
    */
   teamIds?: string[] | null;
   userId: string;
@@ -64,7 +81,7 @@ export type WorkflowSummary = {
   name: string;
   description?: string;
   icon?: WorkflowIcon;
-  visibility: Visibility;
+  visibility: WorkflowVisibility;
   isPublished: boolean;
   userId: string;
   userName: string;

@@ -1,16 +1,17 @@
 "use client";
 
 import {
-  Lock,
-  Eye,
-  Globe,
   Bookmark,
   BookmarkCheck,
-  Trash2,
+  Eye,
+  Globe,
   Loader2,
+  Lock,
+  Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { Button } from "ui/button";
 import {
   DropdownMenu,
@@ -20,14 +21,24 @@ import {
 } from "ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { WriteIcon } from "ui/write-icon";
-import { useMemo } from "react";
 
-export type Visibility = "private" | "public" | "readonly";
+// Legacy values plus the modern four-level model (migration 0041 stores the
+// literal value; the badge must render whatever the row holds).
+export type Visibility =
+  | "private"
+  | "shared"
+  | "team"
+  | "company"
+  | "public"
+  | "readonly";
 
 const VISIBILITY_ICONS = {
   private: Lock,
   readonly: Eye,
   public: Globe,
+  shared: Lock,
+  team: Eye,
+  company: Globe,
 } as const;
 
 const VISIBILITY_CONFIG = {
@@ -188,7 +199,18 @@ export function ShareableActions({
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                {t(VISIBILITY_CONFIG[type][visibility!].label)}
+                {(() => {
+                  // Modern values (shared/team/company) have no entry in the
+                  // legacy dropdown config — show the raw level instead.
+                  const meta = visibility
+                    ? (
+                        VISIBILITY_CONFIG[type] as Partial<
+                          Record<Visibility, { label: string }>
+                        >
+                      )[visibility]
+                    : undefined;
+                  return meta ? t(meta.label) : visibility;
+                })()}
               </TooltipContent>
             </Tooltip>
           )}

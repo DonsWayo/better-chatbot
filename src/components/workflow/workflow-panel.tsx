@@ -74,10 +74,10 @@ export const WorkflowPanel = memo(
       setNodes(arrangedNodes);
       toast.success(t("Workflow.nodesArranged"));
     }, [getNodes, getEdges, setNodes, t]);
-    // Modern four-level visibility for the picker, seeded from the legacy
-    // column + teamIds (unified visibility model — see
-    // docs/design/visibility-model.md). "shared" is detected by the picker's
-    // grant list, not the row, so the base level is private/team/company.
+    // Modern four-level visibility for the picker, seeded from the stored
+    // column (literal since migration 0041; legacy "public"/"readonly" rows
+    // are mapped) + teamIds (unified visibility model — see
+    // docs/design/visibility-model.md).
     const visibilityValue = useMemo<VisibilityValue>(
       () => ({
         visibility: fromLegacyVisibilityColumn(
@@ -98,8 +98,9 @@ export const WorkflowPanel = memo(
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              // Map the four-level value onto the legacy enum the column still
-              // stores; teamIds carries the real "team"-level access signal.
+              // Persist the literal four-level value (identity mapping since
+              // migration 0041 widened the column); teamIds carries the
+              // "team"-level membership signal.
               visibility: toLegacyVisibilityColumn(next.visibility),
               teamIds: next.teamIds,
             }),

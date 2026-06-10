@@ -110,7 +110,7 @@ export default function WorkflowListPage({
 
   const updateVisibility = async (
     workflowId: string,
-    visibility: "private" | "public" | "readonly",
+    visibility: import("@/components/shareable-actions").Visibility,
   ) => {
     try {
       setIsVisibilityChangeLoading(true);

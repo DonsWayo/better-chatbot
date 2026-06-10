@@ -6,12 +6,11 @@
  * `VisibilityValue` ({ visibility, teamIds }) and manages "shared" grants
  * directly through the visibility server actions.
  *
- * `toLegacyVisibilityColumn` maps the modern four-level value onto the legacy
- * "public" | "private" | "readonly" enum that the workflow/agent rows still
- * store, until a future migration widens that column. See the note in
- * docs/collaboration/visibility.mdx — only "company" writes "public"; every
- * other level writes "private" and relies on `teamIds` + the `entity_grant`
- * table (which the resolver already prefers) for access.
+ * Since migration 0041 the workflow/agent rows store the LITERAL four-level
+ * value, so `toLegacyVisibilityColumn` is an identity (kept so call sites
+ * don't churn) and `fromLegacyVisibilityColumn` reads both modern and legacy
+ * ("public" | "readonly") stored values. See the note in
+ * docs/collaboration/visibility.mdx ("Stored value ↔ picker mapping").
  */
 export {
   VisibilityPicker,
@@ -23,6 +22,7 @@ export { VisibilityField } from "./visibility-field";
 export {
   type FourLevelVisibility,
   type LegacyVisibilityColumn,
+  type StoredVisibilityColumn,
   fromLegacyVisibilityColumn,
   toLegacyVisibilityColumn,
 } from "./legacy-mapping";

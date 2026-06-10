@@ -1,12 +1,16 @@
 import { Agent, AgentRepository, AgentSummary } from "app-types/agent";
-import { SQL, and, desc, eq, ne, or, sql } from "drizzle-orm";
+import { SQL, and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { generateUUID } from "lib/utils";
 import { pgDb as db } from "../db.pg";
 import { AgentTable, BookmarkTable, UserTable } from "../schema.pg";
 
-// Unified visibility model (docs/design/visibility-model.md): besides the
-// legacy public/readonly column values, an agent is visible to a user when a
-// `shared` grant names them, or when its teamIds overlap one of their teams.
+// Unified visibility model (docs/design/visibility-model.md). Org-wide values:
+// modern "company" plus the legacy "public"/"readonly" still readable on
+// unmigrated rows (migration 0041 rewrites public → company). "team"- and
+// "shared"-stored rows are NOT org-wide — they are covered by the
+// inSharedTeam / hasGrant EXISTS conditions below.
+const ORG_WIDE_VISIBILITY = ["company", "public", "readonly"] as const;
+
 const hasGrant = (userId: string): SQL =>
   sql`EXISTS (SELECT 1 FROM entity_grant eg
         WHERE eg.entity_type = 'agent'
@@ -20,8 +24,7 @@ const inSharedTeam = (userId: string): SQL =>
 
 const visibleToUser = (userId: string): SQL | undefined =>
   or(
-    eq(AgentTable.visibility, "public"),
-    eq(AgentTable.visibility, "readonly"),
+    inArray(AgentTable.visibility, [...ORG_WIDE_VISIBILITY]),
     hasGrant(userId),
     inSharedTeam(userId),
   );
@@ -139,11 +142,12 @@ export const pgAgentRepository: AgentRepository = {
       })
       .where(
         and(
-          // Only allow updates to agents owned by the user or public agents
+          // Only allow updates to agents owned by the user or org-wide
+          // ("company", legacy "public") agents.
           eq(AgentTable.id, id),
           or(
             eq(AgentTable.userId, userId),
-            eq(AgentTable.visibility, "public"),
+            inArray(AgentTable.visibility, ["company", "public"]),
           ),
         ),
       )
@@ -274,7 +278,12 @@ export const pgAgentRepository: AgentRepository = {
     }
     if (userId == agent.userId) return true;
     if (destructive) return agent.hasEditGrant;
-    if (agent.visibility === "public") return true;
+    // Org-wide use: modern "company" or legacy "public" (rewritten to
+    // "company" by migration 0041 but kept readable for back-compat).
+    if (agent.visibility === "company" || agent.visibility === "public")
+      return true;
+    // "team"/"shared"/"private" (and legacy "readonly") rely on team
+    // membership or an explicit grant.
     return agent.hasGrant || agent.inTeam;
   },
 };

@@ -1,6 +1,20 @@
 import z from "zod";
 import { ChatMentionSchema } from "./chat";
-import { VisibilitySchema } from "./util";
+
+/**
+ * Agent visibility — the literal four-level value is stored since migration
+ * 0041 ("private" | "shared" | "team" | "company"); the legacy values
+ * ("public" | "readonly") stay accepted for back-compat with unmigrated rows
+ * and older clients. See docs/collaboration/visibility.mdx.
+ */
+export const AgentVisibilitySchema = z.enum([
+  "private",
+  "shared",
+  "team",
+  "company",
+  "public",
+  "readonly",
+]);
 
 export type AgentIcon = {
   type: "emoji";
@@ -27,7 +41,7 @@ export const AgentCreateSchema = z
       .optional(),
     userId: z.string(),
     instructions: AgentInstructionsSchema,
-    visibility: VisibilitySchema.optional().default("private"),
+    visibility: AgentVisibilitySchema.optional().default("private"),
     teamIds: z.array(z.string()).nullable().optional(),
   })
   .strip();
@@ -43,7 +57,7 @@ export const AgentUpdateSchema = z
       })
       .optional(),
     instructions: AgentInstructionsSchema.optional(),
-    visibility: VisibilitySchema.optional(),
+    visibility: AgentVisibilitySchema.optional(),
     // Unified visibility model: teams this agent is shared with at the "team"
     // level. null = none. See docs/design/visibility-model.md.
     teamIds: z.array(z.string()).nullable().optional(),
@@ -56,7 +70,7 @@ export const AgentQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),
 });
 
-export type AgentVisibility = z.infer<typeof VisibilitySchema>;
+export type AgentVisibility = z.infer<typeof AgentVisibilitySchema>;
 
 export type AgentSummary = {
   id: string;

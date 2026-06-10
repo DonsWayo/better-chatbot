@@ -64,15 +64,16 @@ export const AgentTable = pgTable("agent", {
     .notNull()
     .references(() => UserTable.id, { onDelete: "cascade" }),
   instructions: json("instructions").$type<Agent["instructions"]>(),
+  // Unified visibility model (docs/design/visibility-model.md): stores the
+  // literal four-level value since migration 0041. Legacy "public"/"readonly"
+  // rows remain readable (resolver maps them); 0041 rewrote public → company
+  // and private-with-teamIds → team.
   visibility: varchar("visibility", {
-    enum: ["public", "private", "readonly"],
+    enum: ["private", "shared", "team", "company", "public", "readonly"],
   })
     .notNull()
     .default("private"),
-  // Unified visibility model (docs/design/visibility-model.md): teams this
-  // agent is visible to when shared at "team" level. null = none. The legacy
-  // `visibility` enum stays untouched; the resolver in lib/visibility maps
-  // legacy "public" → company at read time (no data migration).
+  // Teams this agent is visible to when shared at "team" level. null = none.
   teamIds: jsonb("team_ids").$type<string[] | null>(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -252,15 +253,16 @@ export const WorkflowTable = pgTable("workflow", {
   icon: json("icon").$type<DBWorkflow["icon"]>(),
   description: text("description"),
   isPublished: boolean("is_published").notNull().default(false),
+  // Unified visibility model (docs/design/visibility-model.md): stores the
+  // literal four-level value since migration 0041. Legacy "public"/"readonly"
+  // rows remain readable (resolver maps them); 0041 rewrote public → company
+  // and private-with-teamIds → team.
   visibility: varchar("visibility", {
-    enum: ["public", "private", "readonly"],
+    enum: ["private", "shared", "team", "company", "public", "readonly"],
   })
     .notNull()
     .default("private"),
-  // Unified visibility model (docs/design/visibility-model.md): teams this
-  // workflow is visible to when shared at "team" level. null = none. Legacy
-  // `visibility` values keep working — lib/visibility maps "public" → company
-  // at resolver level (no data migration).
+  // Teams this workflow is visible to when shared at "team" level. null = none.
   teamIds: jsonb("team_ids").$type<string[] | null>(),
   userId: uuid("user_id")
     .notNull()

@@ -211,8 +211,10 @@ export default function EditAgent({
     }
   }, [agent, userId, mutateAgents, router, initialAgent, t]);
 
-  // Modern four-level visibility for the picker, seeded from the legacy column
-  // + teamIds (unified visibility model — docs/design/visibility-model.md).
+  // Modern four-level visibility for the picker, seeded from the stored
+  // column (literal since migration 0041; legacy "public"/"readonly" rows are
+  // mapped) + teamIds (unified visibility model —
+  // docs/design/visibility-model.md).
   const visibilityValue = useMemo<VisibilityValue>(
     () => ({
       visibility: fromLegacyVisibilityColumn(agent.visibility, agent.teamIds),
@@ -223,14 +225,15 @@ export default function EditAgent({
 
   const updateAgentVisibility = useCallback(
     async (next: VisibilityValue) => {
-      // Map the four-level value onto the legacy enum the column still stores;
-      // teamIds carries the real "team"-level access signal.
-      const legacy = toLegacyVisibilityColumn(next.visibility);
+      // Persist the literal four-level value (identity mapping since
+      // migration 0041 widened the column); teamIds carries the "team"-level
+      // membership signal.
+      const stored = toLegacyVisibilityColumn(next.visibility);
       if (initialAgent?.id) {
         safe(() => setIsVisibilityChangeLoading(true))
           .map(() =>
             AgentUpdateSchema.parse({
-              visibility: legacy,
+              visibility: stored,
               teamIds: next.teamIds,
             }),
           )
@@ -239,14 +242,14 @@ export default function EditAgent({
             fetcher(`/api/agent/${initialAgent.id}`, { method: "PUT", body }),
           )
           .ifOk(() => {
-            setAgent({ visibility: legacy, teamIds: next.teamIds });
-            mutateAgents({ id: initialAgent.id, visibility: legacy });
+            setAgent({ visibility: stored, teamIds: next.teamIds });
+            mutateAgents({ id: initialAgent.id, visibility: stored });
             toast.success(t("Agent.visibilityUpdated"));
           })
           .ifFail(handleErrorWithToast)
           .watch(() => setIsVisibilityChangeLoading(false));
       } else {
-        setAgent({ visibility: legacy, teamIds: next.teamIds });
+        setAgent({ visibility: stored, teamIds: next.teamIds });
       }
     },
     [initialAgent?.id, mutateAgents, setAgent, setIsVisibilityChangeLoading, t],

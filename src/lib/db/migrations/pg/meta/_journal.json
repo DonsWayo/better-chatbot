@@ -288,6 +288,13 @@
       "when": 1771595116815,
       "tag": "0040_presence_typing",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1771595117815,
+      "tag": "0041_visibility_enum_widening",
+      "breakpoints": true
     }
   ]
 }

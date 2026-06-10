@@ -24,6 +24,12 @@ import {
 // Unified visibility model (docs/design/visibility-model.md): a workflow is
 // also visible to a user when a `shared` grant names them or when its
 // teamIds overlap one of their teams (same wiring as agent-repository).
+// Org-wide values: modern "company" plus legacy "public"/"readonly" still
+// readable on unmigrated rows (migration 0041 rewrites public → company).
+// "team"-/"shared"-stored rows are NOT org-wide — they are covered by the
+// inSharedTeam / hasGrant EXISTS conditions.
+const ORG_WIDE_VISIBILITY = ["company", "public", "readonly"] as const;
+
 const hasGrant = (userId: string): SQL =>
   sql`EXISTS (SELECT 1 FROM entity_grant eg
         WHERE eg.entity_type = 'workflow'
@@ -96,7 +102,9 @@ export const pgWorkflowRepository: WorkflowRepository = {
           eq(WorkflowTable.isPublished, true),
           or(
             eq(WorkflowTable.userId, userId),
-            not(eq(WorkflowTable.visibility, "private")),
+            // Org-wide only — "team"/"shared"-stored rows must NOT leak here;
+            // they are covered by the grant/team EXISTS conditions below.
+            inArray(WorkflowTable.visibility, [...ORG_WIDE_VISIBILITY]),
             hasGrant(userId),
             inSharedTeam(userId),
           ),
@@ -122,7 +130,7 @@ export const pgWorkflowRepository: WorkflowRepository = {
       .innerJoin(UserTable, eq(WorkflowTable.userId, UserTable.id))
       .where(
         or(
-          inArray(WorkflowTable.visibility, ["public", "readonly"]),
+          inArray(WorkflowTable.visibility, [...ORG_WIDE_VISIBILITY]),
           eq(WorkflowTable.userId, userId),
           hasGrant(userId),
           inSharedTeam(userId),
@@ -163,15 +171,21 @@ export const pgWorkflowRepository: WorkflowRepository = {
       return false;
     }
     if (userId == workflow.userId) return true;
-    if (workflow.visibility === "private") {
-      // shared grants / team membership open read access; writes need an
-      // edit-capable grant.
-      if (readOnly) return workflow.hasGrant || workflow.inTeam;
-      return workflow.hasEditGrant;
+    // Org-wide read/use: modern "company", legacy "public" (rewritten to
+    // "company" by migration 0041) and legacy "readonly" (view-only).
+    const orgWide =
+      workflow.visibility === "company" ||
+      workflow.visibility === "public" ||
+      workflow.visibility === "readonly";
+    if (readOnly) {
+      if (orgWide) return true;
+      // "private"/"team"/"shared": grants or team membership open read access.
+      return workflow.hasGrant || workflow.inTeam;
     }
-    if (workflow.visibility == "readonly" && !readOnly)
-      return workflow.hasEditGrant;
-    return true;
+    // Writes always need an edit-capable grant for non-owners — company/public
+    // grant use, not edit; readonly stays view-only; team/shared/private rely
+    // on the grant tables.
+    return workflow.hasEditGrant;
   },
   async delete(id) {
     const result = await pgDb
