@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { TASK_CLASSES, MODEL_TIERS, RoutingRequestSchema } from "./routing";
+import { describe, expect, it } from "vitest";
+import { MODEL_TIERS, RoutingRequestSchema, TASK_CLASSES } from "./routing";
 
 describe("TASK_CLASSES", () => {
   it("includes all 7 expected classes", () => {
@@ -50,13 +50,17 @@ describe("RoutingRequestSchema", () => {
   });
 
   it("accepts valid task class", () => {
-    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "code" });
+    const result = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "code",
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.declaredTaskClass).toBe("code");
   });
 
   it("rejects invalid task class", () => {
-    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "supercompute" });
+    const result = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "supercompute",
+    });
     expect(result.success).toBe(false);
   });
 
@@ -86,6 +90,27 @@ describe("RoutingRequestSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts allowedModels as bare model-ID strings (ADR-0009 resolver form)", () => {
+    const result = RoutingRequestSchema.safeParse({
+      allowedModels: ["gpt-5.1", "claude-opus-4.8"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a mixed allowedModels array of strings and objects", () => {
+    const result = RoutingRequestSchema.safeParse({
+      allowedModels: ["gpt-5.1", { provider: "openRouter", model: "o4-mini" }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects allowedModels entries that are neither string nor {provider, model}", () => {
+    const result = RoutingRequestSchema.safeParse({
+      allowedModels: [42],
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("defaults hasImage to false", () => {
     const result = RoutingRequestSchema.safeParse({});
     expect(result.success).toBe(true);
@@ -99,17 +124,24 @@ describe("RoutingRequestSchema", () => {
   });
 
   it("accepts vision task class", () => {
-    const r = RoutingRequestSchema.safeParse({ declaredTaskClass: "vision", hasImage: true });
+    const r = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "vision",
+      hasImage: true,
+    });
     expect(r.success).toBe(true);
   });
 
   it("accepts reasoning task class", () => {
-    const r = RoutingRequestSchema.safeParse({ declaredTaskClass: "reasoning" });
+    const r = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "reasoning",
+    });
     expect(r.success).toBe(true);
   });
 
   it("accepts quick_rewrite task class", () => {
-    const r = RoutingRequestSchema.safeParse({ declaredTaskClass: "quick_rewrite" });
+    const r = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "quick_rewrite",
+    });
     expect(r.success).toBe(true);
   });
 });
@@ -155,12 +187,16 @@ describe("RoutingRequestSchema — invariants", () => {
   });
 
   it("long_context is accepted as a valid task class", () => {
-    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "long_context" });
+    const result = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "long_context",
+    });
     expect(result.success).toBe(true);
   });
 
   it("tool_use is accepted as a valid task class", () => {
-    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "tool_use" });
+    const result = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "tool_use",
+    });
     expect(result.success).toBe(true);
   });
 });
@@ -182,7 +218,9 @@ describe("RoutingRequestSchema — shape invariants", () => {
   });
 
   it("accepts valid declaredTaskClass string", () => {
-    const result = RoutingRequestSchema.safeParse({ declaredTaskClass: "code" });
+    const result = RoutingRequestSchema.safeParse({
+      declaredTaskClass: "code",
+    });
     expect(result.success).toBe(true);
   });
 });

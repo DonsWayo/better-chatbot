@@ -27,9 +27,18 @@ export const RoutingRequestSchema = z.object({
   hasTools: z.boolean().default(false),
   /** Total characters across the conversation, used to detect long-context work. */
   totalChars: z.number().int().nonnegative().default(0),
-  /** Optional team allow-list (ADR-0002/Wave 4): restrict routable models. */
+  /**
+   * Optional entitlement allow-list (ADR-0002/ADR-0009): restrict routable models.
+   * Entries are either bare model IDs (provider-agnostic — the form stored by the
+   * layered org/team/user entitlement resolver) or `{provider, model}` pairs.
+   */
   allowedModels: z
-    .array(z.object({ provider: z.string(), model: z.string() }))
+    .array(
+      z.union([
+        z.string(),
+        z.object({ provider: z.string(), model: z.string() }),
+      ]),
+    )
     .optional(),
 });
 export type RoutingRequest = z.infer<typeof RoutingRequestSchema>;

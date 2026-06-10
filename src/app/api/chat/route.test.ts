@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
 
+vi.mock("server-only", () => ({}));
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: vi.fn(() => ({})) },
@@ -10,9 +11,42 @@ vi.mock("lib/ai/models", () => ({
 vi.mock("lib/ai/routing/route-model", () => ({
   routeModel: vi.fn().mockResolvedValue({}),
 }));
+// ADR-0009: the route runs the REAL resolveEffectiveModelAllowList; only its
+// two layer sources are mocked, so user grants genuinely layer on team lists.
+vi.mock("lib/admin/model-policy", () => ({
+  getOrgBaseModelAllowList: vi.fn().mockResolvedValue(null),
+  resolveTeamModelAllowList: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("lib/admin/user-grants", () => ({
+  getUserModelGrants: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("lib/ai/guardrails", () => ({
+  wrapWithGuardrails: vi.fn((m: unknown) => m),
+}));
+vi.mock("lib/ai/compression", () => ({
+  wrapWithCompression: vi.fn((m: unknown) => m),
+  compressionLevelFromPolicy: vi.fn(() => "off"),
+}));
+vi.mock("lib/ai/fallback", () => ({
+  wrapWithFallback: vi.fn((m: unknown) => m),
+  FALLBACK_MODEL_IDS: [],
+}));
+vi.mock("lib/compliance/audit", () => ({
+  auditChatRequest: vi.fn(),
+  hashContent: vi.fn(() => "hash"),
+}));
 vi.mock("lib/db/repository", () => ({
-  agentRepository: { findById: vi.fn().mockResolvedValue(null) },
-  chatRepository: { upsertThread: vi.fn(), saveMessages: vi.fn() },
+  agentRepository: {
+    findById: vi.fn().mockResolvedValue(null),
+    updateAgent: vi.fn(),
+  },
+  chatRepository: {
+    upsertThread: vi.fn(),
+    saveMessages: vi.fn(),
+    selectThreadDetails: vi.fn().mockResolvedValue(null),
+    insertThread: vi.fn().mockResolvedValue({ id: "t1" }),
+    upsertMessage: vi.fn(),
+  },
 }));
 vi.mock("lib/ai/prompts", () => ({
   buildUserSystemPrompt: vi.fn(() => ""),
@@ -274,5 +308,184 @@ describe("POST /api/chat — call count invariants", () => {
     const res = await POST(makeRequest({}));
     const body = await res.text();
     expect(body).toBe("Unauthorized");
+  });
+});
+
+// ─── ADR-0009: layered model entitlements at the model seam ─────────────────
+
+describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
+  const baseBody = {
+    id: "t1",
+    message: {
+      id: "m1",
+      role: "user",
+      parts: [{ type: "text", text: "hello there" }],
+    },
+    toolChoice: "none",
+  };
+
+  /** Wire every guard up to the entitlement check for an authenticated user. */
+  async function setupAuthed(role: "admin" | "user") {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role } });
+    const { checkRateLimit } = await import("lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValue({
+      allowed: true,
+      limit: 10,
+      remaining: 9,
+      resetAt: Date.now() + 60_000,
+    } as Awaited<ReturnType<typeof checkRateLimit>>);
+    const { getUserPrimaryTeamId } = await import("lib/admin/teams");
+    vi.mocked(getUserPrimaryTeamId).mockResolvedValue("team-1");
+    const { chatRepository } = await import("lib/db/repository");
+    vi.mocked(chatRepository.selectThreadDetails).mockResolvedValue({
+      id: "t1",
+      userId: "u1",
+      messages: [],
+    } as unknown as Awaited<
+      ReturnType<typeof chatRepository.selectThreadDetails>
+    >);
+    const { checkBudget } = await import("lib/ai/budget");
+    vi.mocked(checkBudget).mockResolvedValue({
+      allowed: true,
+    } as Awaited<ReturnType<typeof checkBudget>>);
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("403s an explicit pick outside the resolved allow-list, naming the model", async () => {
+    await setupAuthed("admin");
+    const { resolveTeamModelAllowList } = await import(
+      "lib/admin/model-policy"
+    );
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(["gpt-5.1"]);
+    const { getUserModelGrants } = await import("lib/admin/user-grants");
+    vi.mocked(getUserModelGrants).mockResolvedValue([]);
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({
+        ...baseBody,
+        chatModel: { provider: "openRouter", model: "claude-opus-4.8" },
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.message).toContain("claude-opus-4.8");
+    // explicit pick by an entitled-role user bypasses Auto routing entirely
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    expect(vi.mocked(routeModel)).not.toHaveBeenCalled();
+    const { customModelProvider } = await import("lib/ai/models");
+    expect(vi.mocked(customModelProvider.getModel)).not.toHaveBeenCalled();
+  });
+
+  it("a user grant unlocks a model the team list blocks (additive override)", async () => {
+    await setupAuthed("admin");
+    const { resolveTeamModelAllowList } = await import(
+      "lib/admin/model-policy"
+    );
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(["gpt-5.1"]);
+    const { getUserModelGrants } = await import("lib/admin/user-grants");
+    vi.mocked(getUserModelGrants).mockResolvedValue(["claude-opus-4.8"]);
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({
+        ...baseBody,
+        chatModel: { provider: "openRouter", model: "claude-opus-4.8" },
+      }),
+    );
+
+    expect(res.status).not.toBe(403);
+    const { customModelProvider } = await import("lib/ai/models");
+    expect(vi.mocked(customModelProvider.getModel)).toHaveBeenCalledWith({
+      provider: "openRouter",
+      model: "claude-opus-4.8",
+    });
+  });
+
+  it("Auto routing receives the resolved allow-list (team list + user grants)", async () => {
+    await setupAuthed("user"); // role "user" → forced Auto
+    const { resolveTeamModelAllowList } = await import(
+      "lib/admin/model-policy"
+    );
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue([
+      "gemini-2.5-flash",
+    ]);
+    const { getUserModelGrants } = await import("lib/admin/user-grants");
+    vi.mocked(getUserModelGrants).mockResolvedValue(["o4-mini"]);
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    vi.mocked(routeModel).mockReturnValue({
+      model: { provider: "openRouter", model: "gemini-2.5-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "task=general → fast",
+      candidates: [{ provider: "openRouter", model: "gemini-2.5-flash" }],
+    });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(baseBody));
+
+    expect(vi.mocked(routeModel)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedModels: ["gemini-2.5-flash", "o4-mini"],
+      }),
+    );
+    expect(res.status).not.toBe(403);
+  });
+
+  it("403s as a backstop when routing falls back to a non-entitled model", async () => {
+    await setupAuthed("user");
+    const { resolveTeamModelAllowList } = await import(
+      "lib/admin/model-policy"
+    );
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue([
+      "some-unrouted-model",
+    ]);
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    // simulate the routing lib's "allow-list excludes every tier" fallback
+    vi.mocked(routeModel).mockReturnValue({
+      model: { provider: "openRouter", model: "gemini-2.5-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "task=general → fast",
+      candidates: [{ provider: "openRouter", model: "gemini-2.5-flash" }],
+    });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(baseBody));
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.message).toContain("gemini-2.5-flash");
+  });
+
+  it("unrestricted resolution (all layers null) passes no allow-list to routing", async () => {
+    await setupAuthed("user");
+    const { resolveTeamModelAllowList } = await import(
+      "lib/admin/model-policy"
+    );
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(null);
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    vi.mocked(routeModel).mockReturnValue({
+      model: { provider: "openRouter", model: "gemini-2.5-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "task=general → fast",
+      candidates: [{ provider: "openRouter", model: "gemini-2.5-flash" }],
+    });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(baseBody));
+
+    expect(vi.mocked(routeModel)).toHaveBeenCalledWith(
+      expect.objectContaining({ allowedModels: undefined }),
+    );
+    expect(res.status).not.toBe(403);
+    // grants are additive only — never consulted when nothing restricts
+    const { getUserModelGrants } = await import("lib/admin/user-grants");
+    expect(vi.mocked(getUserModelGrants)).not.toHaveBeenCalled();
   });
 });

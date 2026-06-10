@@ -29,17 +29,20 @@ function inferTaskClass(req: RoutingRequest): TaskClass {
   return "general";
 }
 
-function inAllow(model: ChatModel, allow?: ChatModel[]): boolean {
+function inAllow(model: ChatModel, allow?: (ChatModel | string)[]): boolean {
   if (!allow || allow.length === 0) return true;
-  return allow.some(
-    (m) => m.provider === model.provider && m.model === model.model,
+  return allow.some((m) =>
+    typeof m === "string"
+      ? m === model.model // bare model ID from the entitlement resolver (ADR-0009)
+      : m.provider === model.provider && m.model === model.model,
   );
 }
 
 /**
  * Pick a model for a request (ADR-0004): infer the task class, then choose the preferred tier's
- * model — respecting an optional team allow-list — and return ordered fallback candidates plus a
- * human-readable reason for message metadata + logs.
+ * model — respecting an optional entitlement allow-list (the layered org → team → user resolution
+ * from ADR-0009) — and return ordered fallback candidates plus a human-readable reason for
+ * message metadata + logs.
  */
 export function routeModel(input: RoutingRequestInput): RoutingDecision {
   const req = RoutingRequestSchema.parse(input);

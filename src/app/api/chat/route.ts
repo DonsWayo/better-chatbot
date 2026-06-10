@@ -30,6 +30,7 @@ import { errorIf, safe } from "ts-safe";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
+import { resolveEffectiveModelAllowList } from "lib/admin/effective-models";
 import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { retrieveForChat } from "lib/ai/embeddings/retrieval";
@@ -73,6 +74,11 @@ import {
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
 });
+
+/** Text content of a message's parts (typed; no `any` casts). */
+function textOfParts(parts: UIMessage["parts"] | undefined): string[] {
+  return (parts ?? []).flatMap((p) => (p.type === "text" ? [p.text] : []));
+}
 
 export async function POST(request: Request) {
   try {
@@ -253,18 +259,21 @@ export async function POST(request: Request) {
     const canSelectModel = session.user.role !== "user";
     const canUseTools = session.user.role !== "user";
 
+    // asafe-ai entitlements (ADR-0009, layered): resolve the effective model allow-list ONCE —
+    // org base → team policy (inherit/replace) → additive per-user grants. `null` = unrestricted
+    // (empty lists are normalized to null inside the resolver). The same list constrains Auto
+    // routing below AND backstops explicit picks server-side.
+    const effectiveModelAllowList = await resolveEffectiveModelAllowList(
+      session.user.id,
+      userTeamId,
+    );
+
     // asafe-ai routing (ADR-0004): task-aware Auto unless an entitled user explicitly picked a
-    // model. A non-entitled user's model choice is ignored.
-    const lastUserText = (message.parts ?? [])
-      .filter((p: any) => p?.type === "text")
-      .map((p: any) => p.text as string)
-      .join(" ");
+    // model. A non-entitled user's model choice is ignored. Auto only routes among entitled
+    // models (allowedModels), so it never selects a model the user can't use.
+    const lastUserText = textOfParts(message.parts).join(" ");
     const totalChars = messages.reduce(
-      (n, m) =>
-        n +
-        (m.parts ?? [])
-          .filter((p: any) => p?.type === "text")
-          .reduce((s: number, p: any) => s + (p.text?.length ?? 0), 0),
+      (n, m) => n + textOfParts(m.parts).reduce((s, t) => s + t.length, 0),
       0,
     );
     const routing =
@@ -279,27 +288,25 @@ export async function POST(request: Request) {
             hasTools:
               canUseTools && (mentions.length > 0 || toolChoice !== "none"),
             totalChars,
+            allowedModels: effectiveModelAllowList ?? undefined,
           });
     const effectiveModel = routing ? routing.model : chatModel;
 
-    // W4/W5: per-team model allow-list + per-user model grant enforcement
-    const teamAllowList = teamPolicy?.modelAllowList ?? [];
+    // ADR-0009 enforcement at the model seam: the resolved layered list gates BOTH explicit picks
+    // and routed decisions (routing pre-filters candidates above; this 403 is the backstop, e.g.
+    // when the allow-list excludes every routable tier).
     if (
-      teamAllowList.length > 0 &&
+      effectiveModelAllowList &&
+      effectiveModelAllowList.length > 0 &&
       effectiveModel?.model &&
-      !teamAllowList.includes(effectiveModel.model)
+      !effectiveModelAllowList.includes(effectiveModel.model)
     ) {
-      // W5: check if the user has a personal grant that overrides the team restriction
-      const { getUserModelGrants } = await import("lib/admin/user-grants");
-      const userGrants = await getUserModelGrants(session.user.id);
-      if (!userGrants.includes(effectiveModel.model)) {
-        return Response.json(
-          {
-            message: `Model "${effectiveModel.model}" is not permitted for your team.`,
-          },
-          { status: 403 },
-        );
-      }
+      return Response.json(
+        {
+          message: `Model "${effectiveModel.model}" is not permitted for your team.`,
+        },
+        { status: 403 },
+      );
     }
 
     const rawModel = customModelProvider.getModel(effectiveModel);

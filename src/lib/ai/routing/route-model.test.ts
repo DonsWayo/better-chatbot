@@ -53,6 +53,39 @@ describe("routeModel", () => {
     expect(d.model.model).toBe("gpt-5.1");
   });
 
+  it("respects an entitlement allow-list of bare model IDs (ADR-0009)", () => {
+    const d = routeModel({
+      text: "explain why this matters, step by step",
+      allowedModels: ["gpt-5.1"],
+    });
+    // reasoning prefers opus, but the resolved entitlement list only permits gpt-5.1
+    expect(d.model.model).toBe("gpt-5.1");
+    expect(d.candidates.every((c) => c.model === "gpt-5.1")).toBe(true);
+  });
+
+  it("mixed string + {provider, model} allow-list entries both match", () => {
+    const d = routeModel({
+      text: "explain why this matters, step by step",
+      allowedModels: [
+        { provider: "openRouter", model: "claude-opus-4.8" },
+        "gpt-5.1",
+      ],
+    });
+    expect(d.model.model).toBe("claude-opus-4.8");
+    expect(d.candidates.map((c) => c.model)).toEqual([
+      "claude-opus-4.8",
+      "gpt-5.1",
+    ]);
+  });
+
+  it("string allow-list that blocks all candidates falls back to top tier", () => {
+    const d = routeModel({
+      text: "hello",
+      allowedModels: ["some-unrouted-model"],
+    });
+    expect(d.model.model).toBe("gemini-2.5-flash");
+  });
+
   it("lets a declared task class win over inference", () => {
     const d = routeModel({ text: "anything", declaredTaskClass: "code" });
     expect(d.taskClass).toBe("code");
