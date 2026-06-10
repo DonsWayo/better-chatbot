@@ -31,30 +31,63 @@ And entitlements always apply **on top**: visibility never bypasses
 [budgets](/docs/governance/budgets-and-usage), or
 [guardrails](/docs/governance/guardrails).
 
-## Current state per entity
+## The resolver (implemented)
 
-| Entity | Today | Target gap |
+The shared resolver lives in `src/lib/visibility/` and backs every migrated
+entity — no per-feature bespoke checks. Two layers:
+
+- **`resolveAccess(entity, viewer, capability)`** — pure rules, fully unit-tested:
+  1. The **owner** and **org admins** always hold `manage` (and therefore everything).
+  2. `company` → everyone may `view`/`use`; `edit`/`manage` stay owner + admins.
+  3. `team` → members of **any** of the entity's `teamIds[]` may `view`/`use`.
+  4. `shared` → the viewer's best grant decides; a grant of a higher capability
+     implies every lower one (`manage` ⊃ `edit` ⊃ `use` ⊃ `view`).
+  5. `private` → nobody else, ever. Grants are **only** consulted at the
+     `shared` level.
+- **`canAccess(entityType, entityId, userId, capability)`** — DB-backed gate that
+  loads the entity, the caller's admin flag, team memberships and `entity_grant`
+  rows, then delegates to `resolveAccess`. Unknown entities and not-yet-wired
+  entity types fail **closed**.
+
+**Legacy mapping happens at the resolver, not in the data**: old
+`public` values resolve as `company`; old `readonly` resolves as `company`
+capped at `view` for non-owners; old `private` (or anything unknown) resolves
+as `private`. No rows are rewritten.
+
+**Grants** are stored in the generic `entity_grant` table
+(`entityType`, `entityId`, `granteeUserId`, `capability`, `grantedBy`), unique per
+(entity, grantee, capability) — granting twice is an idempotent no-op. Sharing is
+managed through the `grantAccessAction` / `revokeAccessAction` / `listGrantsAction`
+server actions, each of which requires the caller to hold `manage` on the entity
+(owner or org admin).
+
+## Rollout status per entity
+
+| Entity | Resolver wired? | Status |
 |---|---|---|
-| MCP servers | `org` / `team` + `teamIds[]` ([catalog](/docs/mcp/catalog)) | Rename mental model org → company; `shared` grant list later. |
-| Agent/workflow revisions | `teamIds[]` + `orgWide` | Already the target model minus `shared`. |
-| Workflows / agents (live definitions) | `private`/`public` + isPublished | Migrate `public` → `company`; add `team`/`teamIds[]` + `shared`. |
-| Threads | `private`/`team` via folders ([teamspaces phase 1](/docs/collaboration/teamspaces)) | Add `shared` (named users); `company` rare and admin-gated. |
-| Folders (teamspaces) | `private`/`team` | Add `shared` + company curation. |
-| Knowledge collections | org/team scoped | Add `private` + `shared`; align field names. |
-| Schedules/routines | Owner-scoped | Inherit the workflow's visibility for viewing. |
-| Runs/sessions | Owner + admins (+ folder members read-only) | Follows the folder/thread container. |
+| Workflows (live definitions) | **Yes** — `canAccess("workflow", …)` | `teamIds[]` column added; legacy `public` → company at read time; grants live once visibility can be set to `shared`. |
+| Agents | **Yes** — `canAccess("agent", …)` | Same as workflows. |
+| Threads | Not yet | Keep `private`/`team` via folders ([teamspaces phase 1](/docs/collaboration/teamspaces)); `canAccess` fails closed. |
+| Folders (teamspaces) | Not yet | Keep bespoke owner/team checks; `canAccess` fails closed. |
+| Knowledge collections | Not yet | org/team scoped today; alignment in a later round. |
+| MCP servers | Not yet | Keep `personal`/`org`/`team` + `teamIds[]` ([catalog](/docs/mcp/catalog)); rename org → company later. |
+| Agent/workflow revisions | n/a | Already the target model (`teamIds[]` + `orgWide`) minus `shared`. |
+| Schedules/routines | Not yet | Will inherit the workflow's visibility for viewing. |
+| Runs/sessions | Not yet | Owner + admins (+ folder members read-only); follows the container. |
 
 ## Implementation rules
 
 1. **One shape everywhere**: `visibility: "private"|"shared"|"team"|"company"`,
-   `teamIds: uuid[] | null`, plus a generic `entity_grant` table
-   (entityType, entityId, userId, capability) for `shared`.
-2. **One resolver**: `canAccess(entity, userId, capability)` in a shared lib
-   (`src/lib/visibility/` — planned), mirroring how
+   `teamIds: uuid[] | null`, plus the generic `entity_grant` table
+   (entityType, entityId, granteeUserId, capability) for `shared` — **implemented**
+   (migration `0036_entity_grants`).
+2. **One resolver**: `canAccess(entity, userId, capability)` in `src/lib/visibility/`
+   — **implemented**, mirroring how
    [model policy](/docs/governance/model-entitlements) and
    [autonomy](/docs/agent-platform/approvals-and-autonomy) resolve org → team → user. No
-   per-feature bespoke checks once migrated.
+   per-feature bespoke checks once an entity migrates onto it.
 3. **`company` always passes the admin curation gate** — the same gate as featured MCP
    servers and org-wide revisions today.
 4. **One `VisibilityPicker` component** (lock / link-user / users / building icons),
-   reused everywhere, with the multi-team combobox from the MCP catalog.
+   reused everywhere, with the multi-team combobox from the MCP catalog — planned
+   (next step in the rollout).

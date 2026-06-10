@@ -69,6 +69,11 @@ export const AgentTable = pgTable("agent", {
   })
     .notNull()
     .default("private"),
+  // Unified visibility model (docs/design/visibility-model.md): teams this
+  // agent is visible to when shared at "team" level. null = none. The legacy
+  // `visibility` enum stays untouched; the resolver in lib/visibility maps
+  // legacy "public" → company at read time (no data migration).
+  teamIds: jsonb("team_ids").$type<string[] | null>(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -249,6 +254,11 @@ export const WorkflowTable = pgTable("workflow", {
   })
     .notNull()
     .default("private"),
+  // Unified visibility model (docs/design/visibility-model.md): teams this
+  // workflow is visible to when shared at "team" level. null = none. Legacy
+  // `visibility` values keep working — lib/visibility maps "public" → company
+  // at resolver level (no data migration).
+  teamIds: jsonb("team_ids").$type<string[] | null>(),
   userId: uuid("user_id")
     .notNull()
     .references(() => UserTable.id, { onDelete: "cascade" }),
@@ -1172,3 +1182,51 @@ export const AgentRevisionTable = pgTable(
 );
 
 export type AgentRevisionEntity = typeof AgentRevisionTable.$inferSelect;
+
+// ── Unified visibility model: per-user grants for "shared" entities ──────────
+// docs/design/visibility-model.md. One generic grant table for EVERY shareable
+// entity type. `entityId` is a polymorphic, FK-less pointer (same convention
+// as agent_revision.sourceId). A grant gives `granteeUserId` the named
+// capability on the entity; capabilities form a hierarchy
+// (manage > edit > use > view) resolved in src/lib/visibility.
+
+export const EntityGrantTable = pgTable(
+  "entity_grant",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    entityType: varchar("entity_type", {
+      enum: [
+        "workflow",
+        "agent",
+        "thread",
+        "folder",
+        "knowledge_collection",
+        "mcp_server",
+      ],
+    }).notNull(),
+    // Polymorphic pointer into the entity's table — no FK on purpose.
+    entityId: uuid("entity_id").notNull(),
+    granteeUserId: uuid("grantee_user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    capability: varchar("capability", {
+      enum: ["view", "use", "edit", "manage"],
+    })
+      .notNull()
+      .default("use"),
+    grantedBy: uuid("granted_by").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("entity_grant_entity_grantee_capability_unique").on(
+      t.entityType,
+      t.entityId,
+      t.granteeUserId,
+      t.capability,
+    ),
+    index("entity_grant_entity_idx").on(t.entityType, t.entityId),
+    index("entity_grant_grantee_idx").on(t.granteeUserId),
+  ],
+);
+
+export type EntityGrantEntity = typeof EntityGrantTable.$inferSelect;

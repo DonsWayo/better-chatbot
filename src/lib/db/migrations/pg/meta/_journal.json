@@ -253,6 +253,13 @@
       "when": 1771595111815,
       "tag": "0035_teamspaces_phase1",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1771595112815,
+      "tag": "0036_entity_grants",
+      "breakpoints": true
     }
   ]
 }
