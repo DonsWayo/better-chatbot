@@ -1,23 +1,21 @@
 import "server-only";
 import {
   LoadAPIKeyError,
-  UIMessage,
   Tool,
-  jsonSchema,
-  tool as createTool,
-  isToolUIPart,
-  UIMessagePart,
   ToolUIPart,
-  getToolName,
+  UIMessage,
+  UIMessagePart,
   UIMessageStreamWriter,
+  tool as createTool,
+  getToolName,
+  isToolUIPart,
+  jsonSchema,
 } from "ai";
 import {
   ChatMention,
   ChatMetadata,
   ManualToolConfirmTag,
 } from "app-types/chat";
-import { errorToString, exclude, objectFlow } from "lib/utils";
-import logger from "logger";
 import {
   AllowedMCPServer,
   McpServerCustomizationsPrompt,
@@ -25,10 +23,12 @@ import {
   VercelAIMcpToolTag,
 } from "app-types/mcp";
 import { MANUAL_REJECT_RESPONSE_PROMPT } from "lib/ai/prompts";
+import { errorToString, exclude, objectFlow } from "lib/utils";
+import logger from "logger";
 
 import { ObjectJsonSchema7 } from "app-types/util";
-import { safe } from "ts-safe";
 import { workflowRepository } from "lib/db/repository";
+import { safe } from "ts-safe";
 
 import {
   VercelAIWorkflowTool,
@@ -36,11 +36,12 @@ import {
   VercelAIWorkflowToolStreamingResultTag,
   VercelAIWorkflowToolTag,
 } from "app-types/workflow";
+import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
+import { AppDefaultToolkit, GenerateWorkflowToolName } from "lib/ai/tools";
+import { APP_DEFAULT_TOOL_KIT } from "lib/ai/tools/tool-kit";
+import { createGenerateWorkflowTool } from "lib/ai/tools/workflow-gen/generate-workflow";
 import { createWorkflowExecutor } from "lib/ai/workflow/executor/workflow-executor";
 import { NodeKind } from "lib/ai/workflow/workflow.interface";
-import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
-import { APP_DEFAULT_TOOL_KIT } from "lib/ai/tools/tool-kit";
-import { AppDefaultToolkit } from "lib/ai/tools";
 
 export function filterMCPToolsByMentions(
   tools: Record<string, VercelAIMcpTool>,
@@ -428,31 +429,59 @@ export const loadWorkFlowTools = (opt: {
 export const loadAppDefaultTools = (opt?: {
   mentions?: ChatMention[];
   allowedAppDefaultToolkit?: string[];
+  /**
+   * Agent Platform #19: session user owning drafts created by the
+   * generateWorkflow tool. When omitted (e.g. unauthenticated callers),
+   * the tool is simply not registered.
+   */
+  userId?: string;
 }) =>
   safe(APP_DEFAULT_TOOL_KIT)
     .map((tools) => {
+      let selected: Record<string, Tool>;
       if (opt?.mentions?.length) {
         const defaultToolMentions = opt.mentions.filter(
           (m) => m.type == "defaultTool",
         );
-        return Array.from(Object.values(tools)).reduce((acc, t) => {
+        selected = Array.from(Object.values(tools)).reduce((acc, t) => {
           const allowed = objectFlow(t).filter((_, k) => {
             return defaultToolMentions.some((m) => m.name == k);
           });
           return { ...acc, ...allowed };
         }, {});
-      }
-      const allowedAppDefaultToolkit =
-        opt?.allowedAppDefaultToolkit ?? Object.values(AppDefaultToolkit);
+      } else {
+        const allowedAppDefaultToolkit =
+          opt?.allowedAppDefaultToolkit ?? Object.values(AppDefaultToolkit);
 
-      return (
-        allowedAppDefaultToolkit.reduce(
-          (acc, key) => {
-            return { ...acc, ...tools[key] };
-          },
-          {} as Record<string, Tool>,
-        ) || {}
-      );
+        selected =
+          allowedAppDefaultToolkit.reduce(
+            (acc, key) => {
+              return { ...acc, ...tools[key] };
+            },
+            {} as Record<string, Tool>,
+          ) || {};
+      }
+
+      // generateWorkflow is registered per-request (it must bind the session
+      // userId as the draft owner), following the same mention gating as the
+      // static toolkits.
+      if (opt?.userId) {
+        const included =
+          !opt?.mentions?.length ||
+          opt.mentions.some(
+            (m) =>
+              m.type == "defaultTool" && m.name == GenerateWorkflowToolName,
+          );
+        if (included) {
+          selected = {
+            ...selected,
+            [GenerateWorkflowToolName]: createGenerateWorkflowTool({
+              userId: opt.userId,
+            }),
+          };
+        }
+      }
+      return selected;
     })
     .ifFail((e) => {
       console.error(e);

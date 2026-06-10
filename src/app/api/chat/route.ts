@@ -28,25 +28,29 @@ import globalLogger from "logger";
 import { errorIf, safe } from "ts-safe";
 
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
-import { retrieveChunks } from "lib/ai/embeddings/ingest";
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
+import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
+import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { retrieveChunks } from "lib/ai/embeddings/ingest";
+import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
-import { chatErrorsTotal, chatLatencyMs, routingDecisionsTotal } from "lib/observability/metrics";
+import { checkKillSwitch } from "lib/observability/kill-switch";
+import {
+  chatErrorsTotal,
+  chatLatencyMs,
+  routingDecisionsTotal,
+} from "lib/observability/metrics";
 import {
   activeRequests,
   providerErrorsTotal,
   rateLimitActivations,
   ttftMs,
 } from "lib/observability/slo";
-import { checkKillSwitch } from "lib/observability/kill-switch";
 import { checkRateLimit } from "lib/rate-limit";
-import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
-import { getUserPrimaryTeamId, getTeamPolicy } from "lib/admin/teams";
 import { getUserPreferences } from "lib/user/server";
-import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { generateUUID } from "lib/utils";
 // W11: compression wired via wrapWithCompression middleware at model creation (line ~253)
 import {
@@ -98,12 +102,17 @@ export async function POST(request: Request) {
       chatErrorsTotal.inc({ type: "rate_limited" });
       rateLimitActivations.inc({ team_id: userTeamId ?? "none" });
       return Response.json(
-        { message: "Rate limit exceeded. Please wait before sending another message." },
+        {
+          message:
+            "Rate limit exceeded. Please wait before sending another message.",
+        },
         {
           status: 429,
           headers: {
             ...rateLimitHeaders,
-            "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)),
+            "Retry-After": String(
+              Math.ceil((rateCheck.resetAt - Date.now()) / 1000),
+            ),
           },
         },
       );
@@ -263,13 +272,19 @@ export async function POST(request: Request) {
 
     // W4/W5: per-team model allow-list + per-user model grant enforcement
     const teamAllowList = teamPolicy?.modelAllowList ?? [];
-    if (teamAllowList.length > 0 && effectiveModel?.model && !teamAllowList.includes(effectiveModel.model)) {
+    if (
+      teamAllowList.length > 0 &&
+      effectiveModel?.model &&
+      !teamAllowList.includes(effectiveModel.model)
+    ) {
       // W5: check if the user has a personal grant that overrides the team restriction
       const { getUserModelGrants } = await import("lib/admin/user-grants");
       const userGrants = await getUserModelGrants(session.user.id);
       if (!userGrants.includes(effectiveModel.model)) {
         return Response.json(
-          { message: `Model "${effectiveModel.model}" is not permitted for your team.` },
+          {
+            message: `Model "${effectiveModel.model}" is not permitted for your team.`,
+          },
           { status: 403 },
         );
       }
@@ -284,20 +299,33 @@ export async function POST(request: Request) {
       "lib/ai/fallback"
     );
     // W12.1: approved fallbacks, cheapest first, excluding the selected primary
-    const fallbackModels = FALLBACK_MODEL_IDS
-      .filter((id) => id !== effectiveModel?.model)
-      .map((id) => customModelProvider.getModel({ provider: "openRouter", model: id }));
+    const fallbackModels = FALLBACK_MODEL_IDS.filter(
+      (id) => id !== effectiveModel?.model,
+    ).map((id) =>
+      customModelProvider.getModel({ provider: "openRouter", model: id }),
+    );
     const modelWithFallback = wrapWithFallback(rawModel, fallbackModels);
-    const guardedModel = wrapWithGuardrails(modelWithFallback, session.user.id, teamPolicy?.guardrailPolicy);
+    const guardedModel = wrapWithGuardrails(
+      modelWithFallback,
+      session.user.id,
+      teamPolicy?.guardrailPolicy,
+    );
     const model = wrapWithCompression(guardedModel, {
       level: compressionLevelFromPolicy(teamPolicy?.guardrailPolicy),
       teamId: userTeamId,
     });
 
     // W8: fire-and-forget audit log for this request lifecycle
-    const { auditChatRequest, hashContent } = await import("lib/compliance/audit");
-    const lastUserMsg = messages.findLast((m: { role: string }) => m.role === "user") as { role: string; content?: unknown } | undefined;
-    const promptText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : JSON.stringify(lastUserMsg?.content ?? "");
+    const { auditChatRequest, hashContent } = await import(
+      "lib/compliance/audit"
+    );
+    const lastUserMsg = messages.findLast(
+      (m: { role: string }) => m.role === "user",
+    ) as { role: string; content?: unknown } | undefined;
+    const promptText =
+      typeof lastUserMsg?.content === "string"
+        ? lastUserMsg.content
+        : JSON.stringify(lastUserMsg?.content ?? "");
     auditChatRequest({
       userId: session.user.id,
       teamId: userTeamId,
@@ -385,6 +413,7 @@ export async function POST(request: Request) {
             loadAppDefaultTools({
               mentions,
               allowedAppDefaultToolkit,
+              userId: session.user.id,
             }),
           )
           .orElse({});
@@ -427,16 +456,22 @@ export async function POST(request: Request) {
         // ragCollectionId is passed directly in the request body; no thread.metadata column exists yet
         let ragContext: string | null = null;
         if (ragCollectionId) {
-          const lastUserMessage = messages.findLast(m => m.role === "user");
-          const queryText = lastUserMessage?.parts
-            ?.filter((p: any) => p.type === "text")
-            ?.map((p: any) => p.text)
-            ?.join(" ") ?? "";
+          const lastUserMessage = messages.findLast((m) => m.role === "user");
+          const queryText =
+            lastUserMessage?.parts
+              ?.filter((p: any) => p.type === "text")
+              ?.map((p: any) => p.text)
+              ?.join(" ") ?? "";
           if (queryText) {
-            const chunks = await retrieveChunks(queryText, ragCollectionId).catch(() => null);
+            const chunks = await retrieveChunks(
+              queryText,
+              ragCollectionId,
+            ).catch(() => null);
             if (chunks && chunks.length > 0) {
               ragContext = chunks
-                .map((c, i) => `[Source ${i + 1}: ${c.sourceRef}]\n${c.chunkText}`)
+                .map(
+                  (c, i) => `[Source ${i + 1}: ${c.sourceRef}]\n${c.chunkText}`,
+                )
                 .join("\n\n");
             }
           }
@@ -446,7 +481,9 @@ export async function POST(request: Request) {
           buildUserSystemPrompt(session.user, userPreferences, agent),
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
-          ragContext ? `<knowledge_base>\nThe following context was retrieved from the company knowledge base. Use it to ground your response and cite sources as [Source N].\n\n${ragContext}\n</knowledge_base>` : undefined,
+          ragContext
+            ? `<knowledge_base>\nThe following context was retrieved from the company knowledge base. Use it to ground your response and cite sources as [Source N].\n\n${ragContext}\n</knowledge_base>`
+            : undefined,
         );
 
         // asafe-ai Wave 5 (ADR-0005): wrap each MCP tool's execute to emit an audit record
@@ -455,7 +492,8 @@ export async function POST(request: Request) {
             ? Object.fromEntries(
                 Object.entries(MCP_TOOLS).map(([name, tool]) => {
                   const originalExecute = (tool as any).execute;
-                  if (typeof originalExecute !== "function") return [name, tool];
+                  if (typeof originalExecute !== "function")
+                    return [name, tool];
                   return [
                     name,
                     {
@@ -463,7 +501,9 @@ export async function POST(request: Request) {
                       execute: async (...args: unknown[]) => {
                         const start = Date.now();
                         try {
-                          const result = await (originalExecute as any)(...args);
+                          const result = await (originalExecute as any)(
+                            ...args,
+                          );
                           auditMcpInvocation({
                             userId: session.user.id,
                             teamId: null, // TODO: wire teamId in Wave 4 follow-up
@@ -645,10 +685,13 @@ export async function POST(request: Request) {
         // W12: track provider-level errors so Grafana can alert on elevated rates
         const status = (err as any)?.statusCode ?? (err as any)?.status ?? 0;
         const errorType =
-          status === 429 ? "rate_limited" :
-          status >= 500 ? "provider_error" :
-          status >= 400 ? "client_error" :
-          "unknown";
+          status === 429
+            ? "rate_limited"
+            : status >= 500
+              ? "provider_error"
+              : status >= 400
+                ? "client_error"
+                : "unknown";
         providerErrorsTotal.inc({
           provider: effectiveModel?.provider ?? "unknown",
           model: effectiveModel?.model ?? "unknown",
@@ -660,7 +703,9 @@ export async function POST(request: Request) {
     });
 
     const streamResponse = createUIMessageStreamResponse({ stream });
-    Object.entries(rateLimitHeaders).forEach(([k, v]) => streamResponse.headers.set(k, v));
+    Object.entries(rateLimitHeaders).forEach(([k, v]) =>
+      streamResponse.headers.set(k, v),
+    );
     return streamResponse;
   } catch (error: any) {
     logger.error(error);

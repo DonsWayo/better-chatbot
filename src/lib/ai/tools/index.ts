@@ -19,4 +19,9 @@ export enum DefaultToolName {
 
 export const SequentialThinkingToolName = "sequential-thinking";
 
+// Agent Platform #19 — NL workflow generation ("Cowork-lite").
+// Registered per-request in loadAppDefaultTools (it needs the session userId
+// to own the draft), not in the static APP_DEFAULT_TOOL_KIT.
+export const GenerateWorkflowToolName = "generateWorkflow";
+
 export const ImageToolName = "image-manager";
