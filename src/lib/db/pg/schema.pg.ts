@@ -127,6 +127,9 @@ export const McpServerTable = pgTable("mcp_server", {
   }),
   // A team-scoped MCP server may be shared with one OR multiple teams.
   teamIds: uuid("team_ids").array(),
+  // Per-tool entitlement gate: tool names admins switched off for this server.
+  // null/[] = every tool the server exposes is available.
+  disabledTools: jsonb("disabled_tools").$type<string[] | null>(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
