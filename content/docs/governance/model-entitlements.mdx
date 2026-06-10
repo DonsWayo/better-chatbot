@@ -50,7 +50,11 @@ permission systems**.
 - The **model picker** only offers entitled models; "Auto"
   ([routing](/docs/architecture#request-path-chat)) only selects among them.
 - The **chat route** re-validates server-side — picking a model is a UI affordance, not
-  the access check.
+  the access check. At request time the three layers are resolved into one effective
+  allow-list (`resolveEffectiveModelAllowList`: org base → team policy → user grants as
+  additive overrides). That list is passed into the router, so **Auto can never route to
+  a non-entitled model**; an explicit pick outside the list returns a 403 naming the
+  model. An empty/unset resolution means unrestricted.
 - The **desktop opencode gateway** resolves models through the same layers and rejects
   non-entitled models — see [Governed coding](/docs/desktop/governed-coding).
 - Visibility never bypasses entitlements: a `company`-visible workflow still runs under

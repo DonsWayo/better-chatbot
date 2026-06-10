@@ -71,6 +71,18 @@ any chunk is fetched; collections the user cannot access are silently skipped. T
 collection list and detail APIs apply the same resolver, so the picker only ever shows
 what the viewer may read.
 
+## Using it from the app
+
+- **Studio → Knowledge** is the management surface: builders see the collections they
+  can access as cards (visibility pill included), create or edit a collection with the
+  standard visibility picker, and open one to see its documents. Ingestion happens
+  there too — paste text or drop a `.txt`/`.md` file and it is chunked, embedded and
+  listed with its chunk count.
+- **In chat**, type `@` and pick from the *Knowledge* group to ground the conversation
+  in one **or several** collections — each mention adds a collection to the retrieval
+  set for that message, and answers come back with the numbered source pills described
+  above.
+
 ## API surface
 
 - `GET /api/knowledge/collections` — collections visible to the caller.

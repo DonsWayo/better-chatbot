@@ -98,28 +98,22 @@ server actions, each of which requires the caller to hold `manage` on the entity
    remove) backed by the `grant`/`revoke`/`listGrants` actions; **company** is
    disabled for non-admins behind a tooltip (the curation gate).
 
-## UI ↔ legacy-column mapping (current caveat)
+## Stored values (migration 0041)
 
-The workflow and agent rows still store the **legacy** `visibility` enum
-(`public | private | readonly`) — widening that column to the literal
-four-level value is a future migration this round intentionally does **not**
-make. So the editor maps the picker's four-level value onto the legacy column
-on save (`toLegacyVisibilityColumn` in `src/components/visibility/`):
+Workflow and agent rows store the **literal four-level value**
+(`private | shared | team | company`) since migration `0041_visibility_enum_widening`:
 
-- **`company` → writes `public`** (the only value the resolver's legacy path
-  reads as org-wide).
-- **`private` / `team` / `shared` → write `private`.** The *real* access signal
-  for `team` and `shared` lives in the `teamIds[]` column and the
-  `entity_grant` table, which the resolver already prefers over the legacy
-  enum. So a `team`-shared workflow is stored as legacy `private` **plus**
-  `teamIds`, and `canAccess` still grants team members `use`.
-
-Seeding the picker is the inverse (`fromLegacyVisibilityColumn`): `public` →
-`company`; legacy `private` with a non-empty `teamIds` → `team`; otherwise
-`private`. (`shared` is recognized by the presence of grants, not the row, so
-the picker simply opens at the inferred base level and the grant list does the
-rest.) A future migration that widens the enum to store the literal value will
-make this mapping a no-op.
+- The data rewrite mapped legacy `public` → `company` and legacy `private` with a
+  non-empty `teamIds[]` → `team`.
+- Legacy `readonly` rows are kept as-is — the resolver reads them as
+  *company, capped at view* for non-owners.
+- The mapping helpers in `src/components/visibility/legacy-mapping.ts` now pass
+  modern values through unchanged (they only still translate when they meet an
+  unmigrated legacy value), and the pickers persist exactly what you selected.
+- Repository list filters treat `company` as org-wide alongside the legacy
+  values; `team` and `shared` rows are *not* org-wide — they surface through the
+  team-overlap and grant checks described below. `teamIds[]` and `entity_grant`
+  remain the source of truth for who exactly is covered.
 
 ## Where shared things appear
 

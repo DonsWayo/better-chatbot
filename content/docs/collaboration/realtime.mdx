@@ -94,11 +94,21 @@ inside a team folder (owner's chat view and the read-only `/shared` view) or an 
 team folder in the sidebar. Private threads and personal folders never heartbeat and
 never show avatars.
 
+### Typing indicators
+
+Typing rides the same presence row — no extra table, no extra shape. While someone is
+composing in a shared thread, their heartbeat carries `typing = true` (sent at most
+once every 4 seconds); 5 seconds of silence — or sending the message, or leaving —
+clears it. Readers show a muted *"Name is typing…"* line next to the avatar stack for
+rows whose typing flag is fresh (last seen within ~10 seconds). Only the boolean flag
+travels — never the draft text.
+
 ### Privacy
 
 Presence is intentionally coarse: it records *"this user had this shared thread/folder
 open within the last 90 seconds"* — nothing else. No cursor positions, no typing
-content, no read receipts per message. The shape never exposes emails or any user
+content (the typing indicator is a boolean, not keystrokes), no read receipts per
+message. The shape never exposes emails or any user
 fields beyond the id; heartbeats stop the moment the tab is hidden or the context is
 closed; and the data only flows to people who could already see the same context (the
 shape proxy applies the identical access checks as the content itself).
@@ -107,11 +117,11 @@ shape proxy applies the identical access checks as the content itself).
 
 - **Phase 2 (shipped)** — read-path-only sync: live shared threads and the
   caller-scoped `agent_session` shape for run badges.
-- **Phase 3 (this page, shipped)** — presence heartbeats + avatar stacks over the
+- **Phase 3 (shipped)** — presence heartbeats + avatar stacks over the
   `asafe_presence` shape (table-backed, so it rides the existing Electric pipeline).
-- **Next** — typing indicators and shared model streams, shape subscriptions for
-  folder trees and unread badges, and write attribution for multiple humans in one
-  thread.
+- **Phase 4 (shipped, first slice)** — typing indicators on the presence row.
+- **Next** — shared model streams, shape subscriptions for folder trees and unread
+  badges, and write attribution for multiple humans in one thread.
 
 ## Configuration
 
