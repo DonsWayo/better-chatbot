@@ -555,6 +555,53 @@ export const AsafePresenceTable = pgTable(
 
 export type AsafePresenceEntity = typeof AsafePresenceTable.$inferSelect;
 
+// Same pgvector customType as the Wave 6 RAG helper below (that one is
+// declared later in the file, so a local copy avoids a TDZ error here).
+const memoryVector = (name: string, dimensions: number) =>
+  customType<{ data: number[]; driverData: string }>({
+    dataType() {
+      return `vector(${dimensions})`;
+    },
+    toDriver(value) {
+      return JSON.stringify(value);
+    },
+    fromDriver(value) {
+      if (typeof value === "string") return JSON.parse(value);
+      return value as number[];
+    },
+  })(name);
+
+// User memory (docs/design/user-memory.md): typed per-user facts retained
+// across conversations. sourceThreadId is provenance only — NO FK, because
+// deleting a chat must not delete derived memories (erasure targets this
+// table directly; GDPR right-to-erasure design).
+export const UserMemoryTable = pgTable(
+  "user_memory",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    scopeId: text("scope_id"),
+    kind: varchar("kind", {
+      enum: ["preference", "decision", "profile", "project_context"],
+    }).notNull(),
+    content: text("content").notNull(),
+    embedding: memoryVector("embedding", 1536),
+    sourceThreadId: uuid("source_thread_id"),
+    confidence: real("confidence").notNull().default(0.5),
+    supersededBy: uuid("superseded_by").references(
+      (): AnyPgColumn => UserMemoryTable.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at").notNull().defaultNow(),
+  },
+  (table) => [index("user_memory_user_idx").on(table.userId, table.scopeId)],
+);
+
+export type UserMemoryEntity = typeof UserMemoryTable.$inferSelect;
+
 export const AsafeUsageEventTable = pgTable(
   "asafe_usage_event",
   {
