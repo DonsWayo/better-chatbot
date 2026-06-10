@@ -14,8 +14,8 @@ route through the asafe OpenRouter gateway** — so coding sessions inherit the 
 provider API keys.
 
 > **Status:** lifecycle management is implemented (`desktop/src/opencode-manager.ts`) and
-> **disabled by default** (ADR-0010). There is no chat/coding UI yet, and the web-side
-> gateway endpoint is documented contract, not code.
+> **disabled by default** (ADR-0010). There is no chat/coding UI yet. The web-side
+> gateway **is implemented** (`src/app/api/gateway/openrouter/`) — endpoints below.
 
 ## How it works
 
@@ -37,15 +37,47 @@ Lifecycle states: `stopped` → `starting` → `running`, plus `unavailable` (ga
 binary missing — a helpful message, never a throw) and `error` (spawn failure or restart
 cap exhausted).
 
-## Gateway contract (web side — to be implemented)
+## The gateway (web side — implemented)
 
-| Aspect | Contract |
+The gateway lives at `src/app/api/gateway/openrouter/` and exposes two endpoints under
+`${ASAFE_APP_URL}/api/gateway/openrouter`:
+
+| Endpoint | Purpose |
 |---|---|
-| Endpoint | `${ASAFE_APP_URL}/api/gateway/openrouter` |
-| Protocol | OpenAI-compatible chat completions (`POST <baseURL>/chat/completions`, streaming SSE) — opencode's provider plugin is `@ai-sdk/openai-compatible`. |
-| Auth | `Authorization: Bearer <ASAFE_SESSION_TOKEN>` — the user's **web session token**, not a provider key. The gateway validates the session. |
-| Models | Resolved server-side through the [layered entitlements](/docs/governance/model-entitlements); non-entitled models are rejected. The desktop ships an empty model map until the gateway exposes a listing. |
-| Budgets/audit | Usage metered against the same org/team budgets as chat (ADR-0003); audit events carry `originSurface: "opencode"` — and opencode runs are `agent_session` rows of kind `opencode`, so they appear in the [Runs rail](/docs/agent-platform/runs-and-triage) too. |
+| `POST /api/gateway/openrouter/chat/completions` | OpenAI-compatible chat completions, streaming (`stream: true`, SSE pass-through) and non-streaming. Matches opencode's `@ai-sdk/openai-compatible` provider plugin. |
+| `GET /api/gateway/openrouter/models` | The caller's **entitled** model list — `{ object: "list", data: [{ id, object: "model", name }] }` — so the desktop can populate opencode's model map. |
+
+**Auth (both endpoints):** `Authorization: Bearer <ASAFE_SESSION_TOKEN>`, where the token
+is the **raw value of the better-auth session cookie** (`better-auth.session_token`, or
+`__Secure-better-auth.session_token` on https deployments) — the signed
+`<token>.<signature>` string exactly as stored in the browser. The gateway validates it
+against better-auth server-side; provider API keys, OAuth access tokens, or bare session
+ids are rejected. The desktop never holds provider credentials — the gateway injects the
+server-held `OPENROUTER_API_KEY` upstream and never echoes it in errors.
+
+**Models:** the request's `model` may be the friendly id (`gpt-5.1`) or its OpenRouter
+slug alias (`openai/gpt-5.1`). It must be on the approved short list **and** in the
+caller's effective allow-list per the [layered entitlements](/docs/governance/model-entitlements)
+(org base + team override + per-user grants).
+
+**Budgets/audit:** `checkBudget` runs before forwarding; usage (prompt/completion tokens
+from `response.usage`, or the final SSE usage chunk when streaming — the gateway forces
+`stream_options.include_usage` upstream) is recorded against the same org/team budgets as
+chat (ADR-0003). Each completion writes a `gateway_completion` audit event with
+`{ model, originSurface: "opencode", stream }` — never any prompt content.
+
+**Error codes** (JSON body `{ "error": { "message", "code" } }`):
+
+| Status | `code` | Meaning |
+|---|---|---|
+| 400 | `invalid_request` | Body is not a JSON object. |
+| 401 | `unauthorized` | Missing/invalid bearer session token. |
+| 402 | `budget_exhausted` | The team's budget cap is reached. |
+| 403 | `model_not_allowed` | Model not on the approved list, or not entitled for this user/team. |
+| 429 / 4xx / 5xx | `upstream_error` | Relayed from OpenRouter (status passthrough, message sanitized). |
+| 502 | `upstream_unreachable` | OpenRouter could not be reached. |
+| 503 | `gateway_not_configured` | `OPENROUTER_API_KEY` is not set on the server. |
+| 504 | `upstream_timeout` | OpenRouter did not return response headers within 60s (established streams may run longer). |
 
 ## Security posture
 

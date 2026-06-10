@@ -18,7 +18,8 @@ export type AuditEventType =
   | "guardrail_firing"
   | "admin_action"
   | "user_erasure"
-  | "aup_accepted";
+  | "aup_accepted"
+  | "gateway_completion";
 
 export type AuditActorType = "human" | "agent";
 
