@@ -7,6 +7,7 @@ COPY . .
 RUN bun install --ignore-scripts
 
 ENV NEXT_STANDALONE_OUTPUT="true"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN bun run build
 
 RUN bun build scripts/agent-worker.ts \
