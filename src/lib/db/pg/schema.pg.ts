@@ -798,6 +798,11 @@ export const AsafeAuditLogTable = pgTable("asafe_audit_log", {
   // Who
   userId: text("user_id").notNull(),
   teamId: uuid("team_id"),
+  // Whether a human or an agent session performed the action (B90 #23)
+  actorType: varchar("actor_type", { enum: ["human", "agent"] })
+    .notNull()
+    .default("human"),
+  agentSessionId: uuid("agent_session_id"),
   // What type of event
   eventType: text("event_type").notNull(), // "chat_request"|"admin_action"|"rag_retrieval"|"tool_call"|"guardrail"|"user_erasure"
   // Serialised details — kept minimal (no raw prompt content; content hash only)
@@ -1011,3 +1016,66 @@ export const AgentStepTable = pgTable(
 
 export type AgentSessionEntity = typeof AgentSessionTable.$inferSelect;
 export type AgentStepEntity = typeof AgentStepTable.$inferSelect;
+
+export const ApprovalRequestTable = pgTable(
+  "approval_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => AgentSessionTable.id, { onDelete: "cascade" }),
+    stepIndex: integer("step_index").notNull(),
+    // What the approver sees: numbered plan, diff, payload summary
+    payload: jsonb("payload"),
+    // Role required to decide: "owner" | "team-admin" | "admin"
+    requestedRole: varchar("requested_role", {
+      enum: ["owner", "team-admin", "admin"],
+    })
+      .notNull()
+      .default("team-admin"),
+    status: varchar("status", { enum: ["pending", "approved", "rejected"] })
+      .notNull()
+      .default("pending"),
+    decidedBy: uuid("decided_by"),
+    reason: text("reason"),
+    requestedAt: timestamp("requested_at").notNull().defaultNow(),
+    decidedAt: timestamp("decided_at"),
+  },
+  (table) => [
+    index("approval_request_session_id_idx").on(table.sessionId),
+    index("approval_request_status_idx").on(table.status),
+  ],
+);
+
+export type ApprovalRequestEntity = typeof ApprovalRequestTable.$inferSelect;
+
+export const WorkflowScheduleTable = pgTable(
+  "workflow_schedule",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id").notNull(),
+    // "latest" tracks the latest published revision; "pinned" stays on pinnedRevisionId
+    revisionPin: varchar("revision_pin", { enum: ["latest", "pinned"] })
+      .notNull()
+      .default("latest"),
+    pinnedRevisionId: uuid("pinned_revision_id"),
+    cronExpr: text("cron_expr").notNull(),
+    timezone: text("timezone").notNull().default("UTC"),
+    enabled: boolean("enabled").notNull().default(true),
+    inputTemplate: jsonb("input_template"),
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    createdBy: uuid("created_by").notNull(),
+    lastRunAt: timestamp("last_run_at"),
+    nextRunAt: timestamp("next_run_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("workflow_schedule_due_idx").on(table.enabled, table.nextRunAt),
+    index("workflow_schedule_team_id_idx").on(table.teamId),
+  ],
+);
+
+export type WorkflowScheduleEntity = typeof WorkflowScheduleTable.$inferSelect;
