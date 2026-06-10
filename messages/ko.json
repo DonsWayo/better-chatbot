@@ -545,6 +545,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "사용자 메모리",
+      "description": "어시스턴트의 장기 사용자 메모리에 대한 조직 전체 정책입니다. 팀별 재정의는 team_memory_* 설정으로 가능합니다.",
+      "memoryEnabled": "메모리 사용",
+      "memoryEnabledDescription": "사용자별 메모리 저장 및 사용을 허용합니다. 끄면 읽기와 쓰기가 즉시 중단되며 저장된 데이터는 유지됩니다.",
+      "implicitExtraction": "암묵적 추출",
+      "implicitExtractionDescription": "명시적인 '기억해' 요청 없이도 백그라운드에서 메모리를 저장할 수 있게 합니다. 법무 승인 전까지 기본값은 꺼짐입니다.",
+      "updateFailed": "업데이트하지 못했습니다. 다시 시도해 주세요."
+    },
     "RolePacks": {
       "title": "역할 팩",
       "subtitle": "부서를 위한 설치형 스타터 콘텐츠: 에이전트, 워크플로우, 예약된 루틴.",
@@ -673,6 +682,33 @@
     "noFolders": "아직 폴더가 없습니다",
     "team": "팀",
     "sharedWithTeamReadOnly": "{team}과(와) 공유됨 · 읽기 전용"
+  },
+  "Memory": {
+    "title": "메모리",
+    "description": "어시스턴트가 대화를 넘어 기억하는 내용입니다. 메모리는 채팅과 별개이며, 채팅을 삭제해도 메모리는 삭제되지 않습니다. 여기에서 언제든지 삭제할 수 있습니다.",
+    "modeLabel": "메모리",
+    "modeOn": "켜짐",
+    "modePaused": "일시중지",
+    "modeOff": "꺼짐",
+    "modeOnDescription": "새 메모리를 저장하고 응답 개인화에 사용합니다.",
+    "modePausedDescription": "기존 메모리는 유지되지만 사용되거나 업데이트되지 않습니다.",
+    "modeOffDescription": "메모리가 꺼져 있습니다. 저장된 메모리는 삭제되었습니다.",
+    "confirmReset": "메모리를 끄시겠습니까? 저장된 모든 메모리가 영구적으로 삭제됩니다.",
+    "confirmClearAll": "저장된 모든 메모리를 영구적으로 삭제하시겠습니까?",
+    "policyDisabled": "조직 정책에 따라 메모리가 비활성화되어 있습니다.",
+    "emptyState": "아직 기억된 내용이 없습니다.",
+    "explicitHint": "채팅에서 어시스턴트에게 기억해 달라고 요청하면 여기에 표시됩니다.",
+    "clearAll": "모두 삭제",
+    "deleteMemory": "메모리 삭제",
+    "memoryDeleted": "메모리가 삭제되었습니다",
+    "memoriesCleared": "모든 메모리가 삭제되었습니다",
+    "modeSaved": "메모리 설정이 저장되었습니다",
+    "saveFailed": "저장하지 못했습니다. 다시 시도해 주세요.",
+    "deleteFailed": "삭제하지 못했습니다. 다시 시도해 주세요.",
+    "kindPreference": "선호",
+    "kindDecision": "결정",
+    "kindProfile": "프로필",
+    "kindProjectContext": "프로젝트"
   },
   "Settings": {
     "title": "설정",

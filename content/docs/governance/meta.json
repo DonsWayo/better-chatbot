@@ -4,6 +4,7 @@
     "model-entitlements",
     "budgets-and-usage",
     "guardrails",
+    "user-memory",
     "audit-and-compliance"
   ]
 }

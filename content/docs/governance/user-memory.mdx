@@ -1,0 +1,102 @@
+---
+title: User Memory
+description: What the assistant remembers across conversations — typed memory rows, dual-path capture, user controls, admin policy, GDPR semantics.
+---
+
+User memory (design: `docs/design/user-memory.md`) lets the assistant retain durable
+facts about a user — preferences, decisions, profile, project context — across
+conversations. It follows the pattern both market leaders converged on: discrete,
+user-visible memory items, a persistent prompt injection, and strict separation from
+chat history.
+
+## What is stored
+
+Memories are **typed rows** in the `user_memory` table (migration 0042), strictly
+per-user:
+
+| kind | example |
+|---|---|
+| `preference` | "Prefers answers in Spanish with code comments in English." |
+| `decision` | "Decided the Q3 rollout targets the warehouse team first." |
+| `profile` | "Works as a safety engineer on the barriers product line." |
+| `project_context` | "Migrating the reporting stack to the new data warehouse." |
+
+Each row carries a confidence score (1.0 for explicit "remember this" requests), an
+optional embedding for relevance ranking, the source thread id as provenance (no
+foreign key — see [erasure semantics](#erasure--gdpr)), and a `superseded_by` chain:
+when a new fact contradicts an old one, the old row is superseded, never silently
+overwritten.
+
+## How memories are captured
+
+Capture is **dual-path** and always runs *after* the response has streamed (it never
+slows a chat):
+
+- **Explicit** — asking the assistant to "remember …" stores the fact with
+  confidence 1.0. This path works whenever memory is enabled.
+- **Implicit** — a small background model (`gemini-2.5-flash-lite`) extracts durable
+  facts from the turn. This path is **off by default at the org level** and must be
+  enabled by an admin (lawful-basis sign-off for background extraction in an EU
+  employment context is pending).
+
+The extractor is steered away from special-category data (health, beliefs, union
+membership, etc.) unless the user explicitly and unambiguously asked for it to be
+remembered, deduplicates against existing memories, and emits supersede hints for
+contradictions.
+
+**Temporary chats neither read nor write memory** — they are served by a separate
+endpoint that has no memory integration at all.
+
+## How memories are used
+
+At chat start, active (non-superseded) memories are ranked by relevance to the current
+message (vector similarity when embeddings exist), last-used recency, and creation
+recency, then injected into the system prompt as a `<user_memory>` block capped at
+roughly 800 tokens. Injection is persistent — the model does not need to call a tool.
+
+## User controls
+
+Settings → Personalization → **Memory**:
+
+- **Tri-state mode** — `on` (read + write), `paused` (memories kept but neither used
+  nor updated), `off` (turning off prompts a destructive confirm and **permanently
+  deletes** all stored memories).
+- **Memory list** — every stored memory with its kind and age; per-item delete and
+  clear-all.
+- The page notes when memory is disabled by organization policy.
+
+## Admin policy
+
+Memory policy is layered **org → team** in `asafe_org_settings`, like autonomy caps and
+model entitlements. Keys (jsonb booleans; unset → default):
+
+| key | default | meaning |
+|---|---|---|
+| `memory_enabled` | `true` | org-wide kill switch — disabling stops read + write immediately; stored data is kept (purge is a separate, explicit user/admin action) |
+| `memory_implicit_extraction` | `false` | background extraction without an explicit "remember" request |
+| `team_memory_enabled:<teamId>` | unset | team override (wins over org when set) |
+| `team_memory_implicit_extraction:<teamId>` | unset | team override |
+
+The org-level switches are editable under **Admin → Feature flags** (User memory card);
+team overrides are set via `src/lib/memory/policy.ts` setters (no UI yet). Policy
+cascades over the user's own setting: when policy disables memory, nothing is read or
+written regardless of the user's mode.
+
+## Erasure & GDPR
+
+- Memories are **decoupled from chats**: deleting a conversation does **not** delete
+  memories derived from it (the source thread id is provenance only). Erasure targets
+  the memory store directly — per-item delete, clear-all, or turning memory off.
+- Deletes are **hard deletes** (no soft-delete retention).
+- Memories ride the GDPR data export (Settings → Data controls → "Download my data",
+  `memories` section; embeddings are stripped as derived data).
+- Deleting a user account cascades to all of their memories via the database foreign
+  key.
+
+## Follow-ups (documented, not yet implemented)
+
+- In-chat "Memory updated" indicator after a turn stores a memory — requires touching
+  the message-rendering surface; the manager page is the v1 transparency surface.
+- Admin UI for per-team policy overrides (the keys work today via the policy lib).
+- Audit-logging of admin memory-policy toggles (sibling feature-flag toggles do not
+  audit-log yet either; do both together).

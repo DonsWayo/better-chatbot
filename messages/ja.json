@@ -530,6 +530,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "ユーザーメモリ",
+      "description": "アシスタントの長期ユーザーメモリに関する組織全体のポリシーです。チームごとの上書きは team_memory_* 設定で行えます。",
+      "memoryEnabled": "メモリを有効化",
+      "memoryEnabledDescription": "ユーザーごとのメモリの保存と使用を許可します。オフにすると読み書きが直ちに停止します。保存済みデータは保持されます。",
+      "implicitExtraction": "暗黙的な抽出",
+      "implicitExtractionDescription": "明示的な「覚えて」の依頼がなくても、バックグラウンドでメモリを保存できるようにします。法務承認まではデフォルトでオフです。",
+      "updateFailed": "更新に失敗しました。もう一度お試しください。"
+    },
     "RolePacks": {
       "title": "ロールパック",
       "subtitle": "部門向けのインストール可能なスターターコンテンツ:エージェント、ワークフロー、スケジュール済みルーチン。",
@@ -658,6 +667,33 @@
     "noFolders": "まだフォルダがありません",
     "team": "チーム",
     "sharedWithTeamReadOnly": "{team}と共有 · 読み取り専用"
+  },
+  "Memory": {
+    "title": "メモリ",
+    "description": "アシスタントが会話をまたいで記憶している内容です。メモリはチャットとは独立しており、チャットを削除してもメモリは消えません。ここでいつでも削除できます。",
+    "modeLabel": "メモリ",
+    "modeOn": "オン",
+    "modePaused": "一時停止",
+    "modeOff": "オフ",
+    "modeOnDescription": "新しいメモリを保存し、応答のパーソナライズに使用します。",
+    "modePausedDescription": "既存のメモリは保持されますが、使用も更新もされません。",
+    "modeOffDescription": "メモリはオフです。保存されていたメモリは削除されました。",
+    "confirmReset": "メモリをオフにしますか？保存されたすべてのメモリが完全に削除されます。",
+    "confirmClearAll": "保存されたすべてのメモリを完全に削除しますか？",
+    "policyDisabled": "組織のポリシーによりメモリは無効になっています。",
+    "emptyState": "まだ何も記憶されていません。",
+    "explicitHint": "チャットで「覚えて」と頼むと、ここに表示されます。",
+    "clearAll": "すべて削除",
+    "deleteMemory": "メモリを削除",
+    "memoryDeleted": "メモリを削除しました",
+    "memoriesCleared": "すべてのメモリを削除しました",
+    "modeSaved": "メモリ設定を保存しました",
+    "saveFailed": "保存に失敗しました。もう一度お試しください。",
+    "deleteFailed": "削除に失敗しました。もう一度お試しください。",
+    "kindPreference": "好み",
+    "kindDecision": "決定",
+    "kindProfile": "プロフィール",
+    "kindProjectContext": "プロジェクト"
   },
   "Settings": {
     "title": "設定",

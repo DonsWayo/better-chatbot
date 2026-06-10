@@ -92,6 +92,17 @@ vi.mock("lib/user/server", () => ({
   getUserPreferences: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("lib/ai/mcp/audit", () => ({ auditMcpInvocation: vi.fn() }));
+vi.mock("lib/memory/policy", () => ({
+  resolveMemoryPolicy: vi
+    .fn()
+    .mockResolvedValue({ enabled: true, implicitExtraction: false }),
+}));
+vi.mock("lib/memory/inject", () => ({
+  buildMemoryPromptBlock: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("lib/memory/extract", () => ({
+  runPostTurnMemoryExtraction: vi.fn().mockResolvedValue(0),
+}));
 vi.mock("lib/utils", () => ({
   generateUUID: vi.fn(() => "uuid-1"),
   errorToString: vi.fn((e: any) => String(e)),

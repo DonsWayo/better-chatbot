@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, pgDbSelectMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -8,7 +8,9 @@ const { getSessionMock, pgDbSelectMock } = vi.hoisted(() => ({
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
 
 // All select chains resolve to [] by default
-const makeChain = () => ({ from: () => ({ where: () => Promise.resolve([]) }) });
+const makeChain = () => ({
+  from: () => ({ where: () => Promise.resolve([]) }),
+});
 pgDbSelectMock.mockReturnValue(makeChain());
 
 vi.mock("@/lib/db/pg/db.pg", () => ({
@@ -20,6 +22,7 @@ vi.mock("@/lib/db/pg/schema.pg", () => ({
   AsafeUsageEventTable: {},
   AsafeMessageFeedbackTable: {},
   AsafePromptTemplateTable: {},
+  UserMemoryTable: {},
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(() => ({})),
@@ -41,7 +44,12 @@ describe("GET /api/user/export", () => {
 
   it("returns JSON blob with user data for authenticated user", async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: "u-abc123", name: "Alice", email: "alice@example.com", role: "user" },
+      user: {
+        id: "u-abc123",
+        name: "Alice",
+        email: "alice@example.com",
+        role: "user",
+      },
     });
     const { GET } = await import("./route");
     const res = await GET();
@@ -57,7 +65,12 @@ describe("GET /api/user/export", () => {
 
   it("includes userId in the filename of content-disposition", async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: "u-deadbeef-1234567890", name: "Bob", email: "bob@example.com", role: "user" },
+      user: {
+        id: "u-deadbeef-1234567890",
+        name: "Bob",
+        email: "bob@example.com",
+        role: "user",
+      },
     });
     const { GET } = await import("./route");
     const res = await GET();
@@ -67,7 +80,12 @@ describe("GET /api/user/export", () => {
 
   it("profile includes name and role from session", async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: "u-profile-test", name: "Carol", email: "carol@example.com", role: "editor" },
+      user: {
+        id: "u-profile-test",
+        name: "Carol",
+        email: "carol@example.com",
+        role: "editor",
+      },
     });
     const { GET } = await import("./route");
     const res = await GET();
@@ -103,6 +121,32 @@ describe("GET /api/user/export", () => {
     const res = await GET();
     const json = await res.json();
     expect(Array.isArray(json.promptTemplates)).toBe(true);
+  });
+
+  it("export contains memories array with embeddings stripped", async () => {
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-mem", name: "Mia", email: "m@example.com", role: "user" },
+    });
+    pgDbSelectMock.mockReturnValue({
+      from: () => ({
+        where: () =>
+          Promise.resolve([
+            {
+              id: "mem-1",
+              userId: "u-mem",
+              kind: "preference",
+              content: "Prefers Spanish",
+              embedding: [0.1, 0.2],
+            },
+          ]),
+      }),
+    });
+    const { GET } = await import("./route");
+    const res = await GET();
+    const json = await res.json();
+    expect(Array.isArray(json.memories)).toBe(true);
+    expect(json.memories[0].content).toBe("Prefers Spanish");
+    expect(json.memories[0]).not.toHaveProperty("embedding");
   });
 
   it("exportedAt is an ISO string", async () => {
@@ -158,7 +202,12 @@ describe("GET /api/user/export — additional", () => {
 
   it("profile.id matches the session user id", async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: "uid-match-test", name: "Iris", email: "i@example.com", role: "user" },
+      user: {
+        id: "uid-match-test",
+        name: "Iris",
+        email: "i@example.com",
+        role: "user",
+      },
     });
     const { GET } = await import("./route");
     const res = await GET();
@@ -182,7 +231,12 @@ describe("GET /api/user/export — response shape", () => {
 
   it("returns a Response instance for 200", async () => {
     getSessionMock.mockResolvedValue({
-      user: { id: "u-shape", name: "Jake", email: "j@example.com", role: "user" },
+      user: {
+        id: "u-shape",
+        name: "Jake",
+        email: "j@example.com",
+        role: "user",
+      },
     });
     const { GET } = await import("./route");
     const res = await GET();
@@ -210,7 +264,10 @@ describe("GET /api/user/export — response shape", () => {
 });
 
 describe("GET /api/user/export — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -235,8 +292,12 @@ describe("GET /api/user/export — call count invariants", () => {
   });
 
   it("GET returns 200 Response for authenticated user", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "u-1", name: "A", email: "a@b.com", role: "user" } });
-    pgDbSelectMock.mockReturnValue({ from: () => ({ where: () => Promise.resolve([]) }) });
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-1", name: "A", email: "a@b.com", role: "user" },
+    });
+    pgDbSelectMock.mockReturnValue({
+      from: () => ({ where: () => Promise.resolve([]) }),
+    });
     const { GET } = await import("./route");
     const res = await GET();
     expect(res.status).toBe(200);

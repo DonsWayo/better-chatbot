@@ -530,6 +530,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "Mémoire utilisateur",
+      "description": "Politique d'organisation pour la mémoire à long terme de l'assistant. Des exceptions par équipe sont possibles via les clés team_memory_*.",
+      "memoryEnabled": "Mémoire activée",
+      "memoryEnabledDescription": "Autorise l'assistant à enregistrer et utiliser des souvenirs par utilisateur. La désactivation stoppe immédiatement lecture et écriture ; les données stockées sont conservées.",
+      "implicitExtraction": "Extraction implicite",
+      "implicitExtractionDescription": "Permet d'enregistrer des souvenirs en arrière-plan sans demande explicite. Désactivée par défaut dans l'attente de la validation juridique.",
+      "updateFailed": "Échec de la mise à jour. Veuillez réessayer."
+    },
     "RolePacks": {
       "title": "Packs de rôle",
       "subtitle": "Contenu de démarrage installable pour un département : agents prêts à l'emploi, un workflow et une routine planifiée.",
@@ -658,6 +667,33 @@
     "noFolders": "Aucun dossier pour l'instant",
     "team": "équipe",
     "sharedWithTeamReadOnly": "Partagé avec {team} · lecture seule"
+  },
+  "Memory": {
+    "title": "Mémoire",
+    "description": "Ce que l'assistant retient de vous d'une conversation à l'autre. Les souvenirs sont indépendants de vos discussions : supprimer une discussion ne les supprime pas, et vous pouvez les effacer ici à tout moment.",
+    "modeLabel": "Mémoire",
+    "modeOn": "Activée",
+    "modePaused": "En pause",
+    "modeOff": "Désactivée",
+    "modeOnDescription": "Les nouveaux souvenirs sont enregistrés et utilisés pour personnaliser les réponses.",
+    "modePausedDescription": "Les souvenirs existants sont conservés mais ne sont ni utilisés ni mis à jour.",
+    "modeOffDescription": "La mémoire est désactivée. Les souvenirs enregistrés ont été supprimés.",
+    "confirmReset": "Désactiver la mémoire ? Tous les souvenirs enregistrés seront définitivement supprimés.",
+    "confirmClearAll": "Supprimer définitivement tous les souvenirs enregistrés ?",
+    "policyDisabled": "La mémoire est désactivée par la politique de votre organisation.",
+    "emptyState": "Rien de mémorisé pour l'instant.",
+    "explicitHint": "Demandez à l'assistant de retenir quelque chose dans le chat et cela apparaîtra ici.",
+    "clearAll": "Tout effacer",
+    "deleteMemory": "Supprimer le souvenir",
+    "memoryDeleted": "Souvenir supprimé",
+    "memoriesCleared": "Tous les souvenirs ont été supprimés",
+    "modeSaved": "Réglage de la mémoire enregistré",
+    "saveFailed": "Échec de l'enregistrement. Veuillez réessayer.",
+    "deleteFailed": "Échec de la suppression. Veuillez réessayer.",
+    "kindPreference": "Préférence",
+    "kindDecision": "Décision",
+    "kindProfile": "Profil",
+    "kindProjectContext": "Projet"
   },
   "Settings": {
     "title": "Paramètres",

@@ -38,6 +38,9 @@ import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { serverFileStorage } from "lib/file-storage";
+import { runPostTurnMemoryExtraction } from "lib/memory/extract";
+import { buildMemoryPromptBlock } from "lib/memory/inject";
+import { resolveMemoryPolicy } from "lib/memory/policy";
 import { checkKillSwitch } from "lib/observability/kill-switch";
 import {
   chatErrorsTotal,
@@ -496,8 +499,29 @@ export async function POST(request: Request) {
           }
         }
 
+        // asafe-ai user memory (docs/design/user-memory.md): persistent
+        // <user_memory> block injected into the system prompt. Gated by the
+        // layered org→team policy and the user's tri-state mode; temporary
+        // chats are excluded automatically (they use /api/chat/temporary and
+        // never reach this route). Failures must never block the chat.
+        let memoryBlock: string | null = null;
+        try {
+          if ((userPreferences?.memoryMode ?? "on") === "on") {
+            const memoryPolicy = await resolveMemoryPolicy(userTeamId);
+            if (memoryPolicy.enabled) {
+              memoryBlock = await buildMemoryPromptBlock(
+                session.user.id,
+                lastUserText,
+              );
+            }
+          }
+        } catch (e) {
+          logger.error("memory injection failed:", e);
+        }
+
         const systemPrompt = mergeSystemPrompt(
           buildUserSystemPrompt(session.user, userPreferences, agent),
+          memoryBlock || undefined,
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
           ragContext
@@ -687,6 +711,18 @@ export async function POST(request: Request) {
             costUsd,
           }).catch((e) => logger.error("recordUsage failed:", e));
         }
+
+        // asafe-ai user memory: post-turn extraction, fire-and-forget — all
+        // gates (org/team policy, user tri-state, explicit-remember intent
+        // when implicit extraction is policy-disabled) live inside the lib.
+        runPostTurnMemoryExtraction({
+          userId: session.user.id,
+          teamId: userTeamId,
+          threadId: thread!.id,
+          userText: lastUserText,
+          assistantText: textOfParts(responseMessage.parts).join("\n"),
+          preferences: thread?.userPreferences ?? null,
+        }).catch((e) => logger.error("memory extraction failed:", e));
 
         // asafe-ai Wave 12: record end-to-end latency and release active-request slot
         activeRequests.dec();

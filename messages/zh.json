@@ -532,6 +532,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "用户记忆",
+      "description": "助手长期用户记忆的组织级策略。可通过 team_memory_* 设置按团队覆盖。",
+      "memoryEnabled": "启用记忆",
+      "memoryEnabledDescription": "允许助手按用户保存并使用记忆。关闭后将立即停止读写；已存数据会保留。",
+      "implicitExtraction": "隐式提取",
+      "implicitExtractionDescription": "允许助手在没有明确“记住”请求时在后台保存记忆。在法务批准前默认关闭。",
+      "updateFailed": "更新失败，请重试。"
+    },
     "RolePacks": {
       "title": "角色包",
       "subtitle": "面向部门的可安装入门内容:现成的智能体、工作流和定时例程。",
@@ -660,6 +669,33 @@
     "noFolders": "还没有文件夹",
     "team": "团队",
     "sharedWithTeamReadOnly": "与{team}共享 · 只读"
+  },
+  "Memory": {
+    "title": "记忆",
+    "description": "助手在多次对话间记住的关于你的内容。记忆与聊天相互独立——删除聊天不会删除记忆，你随时可以在这里删除记忆。",
+    "modeLabel": "记忆",
+    "modeOn": "开启",
+    "modePaused": "暂停",
+    "modeOff": "关闭",
+    "modeOnDescription": "保存新记忆并用于个性化回复。",
+    "modePausedDescription": "保留现有记忆，但不会使用或更新。",
+    "modeOffDescription": "记忆已关闭。已保存的记忆已被删除。",
+    "confirmReset": "关闭记忆？这将永久删除所有已保存的记忆。",
+    "confirmClearAll": "永久删除所有已保存的记忆？",
+    "policyDisabled": "你所在组织的策略已禁用记忆功能。",
+    "emptyState": "还没有记住任何内容。",
+    "explicitHint": "在聊天中让助手记住某件事，它就会出现在这里。",
+    "clearAll": "全部清除",
+    "deleteMemory": "删除记忆",
+    "memoryDeleted": "记忆已删除",
+    "memoriesCleared": "所有记忆已删除",
+    "modeSaved": "记忆设置已保存",
+    "saveFailed": "保存失败，请重试。",
+    "deleteFailed": "删除失败，请重试。",
+    "kindPreference": "偏好",
+    "kindDecision": "决定",
+    "kindProfile": "个人资料",
+    "kindProjectContext": "项目"
   },
   "Settings": {
     "title": "设置",

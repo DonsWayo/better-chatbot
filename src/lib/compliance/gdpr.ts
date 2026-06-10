@@ -1,16 +1,17 @@
 import "server-only";
 
-import { pgDb as db } from "lib/db/pg/db.pg";
 import {
-  UserTable,
-  ChatThreadTable,
-  AsafeUsageEventTable,
   AsafeAuditLogTable,
   AsafeAupAcceptanceTable,
   AsafeTeamMemberTable,
+  AsafeUsageEventTable,
   AsafeUserModelGrantTable,
+  ChatThreadTable,
+  UserMemoryTable,
+  UserTable,
 } from "@/lib/db/pg/schema.pg";
 import { eq, sql } from "drizzle-orm";
+import { pgDb as db } from "lib/db/pg/db.pg";
 
 export interface GdprExportData {
   exportedAt: string;
@@ -22,23 +23,50 @@ export interface GdprExportData {
   aupAcceptances: unknown[];
   teamMemberships: unknown[];
   modelGrants: unknown[];
+  memories: unknown[];
 }
 
 /** Build a full GDPR data export for a given user. */
 export async function exportUserData(userId: string): Promise<GdprExportData> {
-  const [profile, chatThreads, usageEvents, auditEntries, aupAcceptances, teamMemberships, modelGrants] =
-    await Promise.all([
-      db.select().from(UserTable).where(eq(UserTable.id, userId)).limit(1),
-      db.select().from(ChatThreadTable).where(eq(ChatThreadTable.userId, userId)),
-      db.select().from(AsafeUsageEventTable).where(eq(AsafeUsageEventTable.userId, userId)),
-      db.select().from(AsafeAuditLogTable).where(eq(AsafeAuditLogTable.userId, userId)),
-      db.select().from(AsafeAupAcceptanceTable).where(eq(AsafeAupAcceptanceTable.userId, userId)),
-      db.select().from(AsafeTeamMemberTable).where(eq(AsafeTeamMemberTable.userId, userId)),
-      db.select().from(AsafeUserModelGrantTable).where(eq(AsafeUserModelGrantTable.userId, userId)),
-    ]);
+  const [
+    profile,
+    chatThreads,
+    usageEvents,
+    auditEntries,
+    aupAcceptances,
+    teamMemberships,
+    modelGrants,
+    memoryRows,
+  ] = await Promise.all([
+    db.select().from(UserTable).where(eq(UserTable.id, userId)).limit(1),
+    db.select().from(ChatThreadTable).where(eq(ChatThreadTable.userId, userId)),
+    db
+      .select()
+      .from(AsafeUsageEventTable)
+      .where(eq(AsafeUsageEventTable.userId, userId)),
+    db
+      .select()
+      .from(AsafeAuditLogTable)
+      .where(eq(AsafeAuditLogTable.userId, userId)),
+    db
+      .select()
+      .from(AsafeAupAcceptanceTable)
+      .where(eq(AsafeAupAcceptanceTable.userId, userId)),
+    db
+      .select()
+      .from(AsafeTeamMemberTable)
+      .where(eq(AsafeTeamMemberTable.userId, userId)),
+    db
+      .select()
+      .from(AsafeUserModelGrantTable)
+      .where(eq(AsafeUserModelGrantTable.userId, userId)),
+    db.select().from(UserMemoryTable).where(eq(UserMemoryTable.userId, userId)),
+  ]);
 
   // Scrub the password hash from the export — it serves no subject-access purpose
-  const safeProfile = profile[0] ? { ...profile[0], password: undefined } : null;
+  const safeProfile = profile[0]
+    ? { ...profile[0], password: undefined }
+    : null;
 
   return {
     exportedAt: new Date().toISOString(),
@@ -50,6 +78,8 @@ export async function exportUserData(userId: string): Promise<GdprExportData> {
     aupAcceptances,
     teamMemberships,
     modelGrants,
+    // user_memory rows (embeddings stripped — derived data, not readable PII)
+    memories: memoryRows.map(({ embedding: _embedding, ...rest }) => rest),
   };
 }
 
@@ -59,7 +89,9 @@ export async function exportUserData(userId: string): Promise<GdprExportData> {
  * and usage/audit records retain their shape for audit purposes — the personal
  * identifier is removed.
  */
-export async function eraseUserData(userId: string): Promise<{ tablesCleared: string[] }> {
+export async function eraseUserData(
+  userId: string,
+): Promise<{ tablesCleared: string[] }> {
   const cleared: string[] = [];
 
   // 1. Anonymise the user profile (replace name + email with a tombstone)
@@ -79,20 +111,34 @@ export async function eraseUserData(userId: string): Promise<{ tablesCleared: st
   cleared.push("chat_thread");
 
   // 3. Delete usage events
-  await db.delete(AsafeUsageEventTable).where(eq(AsafeUsageEventTable.userId, userId));
+  await db
+    .delete(AsafeUsageEventTable)
+    .where(eq(AsafeUsageEventTable.userId, userId));
   cleared.push("asafe_usage_event");
 
   // 4. Delete model grants
-  await db.delete(AsafeUserModelGrantTable).where(eq(AsafeUserModelGrantTable.userId, userId));
+  await db
+    .delete(AsafeUserModelGrantTable)
+    .where(eq(AsafeUserModelGrantTable.userId, userId));
   cleared.push("asafe_user_model_grant");
 
   // 5. Delete AUP acceptances
-  await db.delete(AsafeAupAcceptanceTable).where(eq(AsafeAupAcceptanceTable.userId, userId));
+  await db
+    .delete(AsafeAupAcceptanceTable)
+    .where(eq(AsafeAupAcceptanceTable.userId, userId));
   cleared.push("asafe_aup_acceptance");
 
   // 6. Remove team memberships
-  await db.delete(AsafeTeamMemberTable).where(eq(AsafeTeamMemberTable.userId, userId));
+  await db
+    .delete(AsafeTeamMemberTable)
+    .where(eq(AsafeTeamMemberTable.userId, userId));
   cleared.push("asafe_team_member");
+
+  // 6b. Delete user memories (docs/design/user-memory.md) — the user row is
+  // anonymised, not deleted, so the FK cascade never fires here; memories
+  // hold personal facts and must be erased explicitly.
+  await db.delete(UserMemoryTable).where(eq(UserMemoryTable.userId, userId));
+  cleared.push("user_memory");
 
   // 7. Append erasure audit record (anonymised — no personal data)
   await db.execute(

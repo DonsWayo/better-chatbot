@@ -53,6 +53,7 @@ vi.mock("@/lib/db/pg/schema.pg", () => ({
   AsafeAupAcceptanceTable: { userId: "userId" },
   AsafeTeamMemberTable: { userId: "userId" },
   AsafeUserModelGrantTable: { userId: "userId" },
+  UserMemoryTable: { userId: "userId" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn(() => ({})),
@@ -69,11 +70,11 @@ describe("eraseUserData", () => {
     dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
   });
 
-  it("returns tablesCleared with all 7 entries", async () => {
+  it("returns tablesCleared with all 8 entries", async () => {
     dbExecuteMock.mockResolvedValueOnce([]);
     const { eraseUserData } = await import("./gdpr");
     const result = await eraseUserData("user-123");
-    expect(result.tablesCleared).toHaveLength(7);
+    expect(result.tablesCleared).toHaveLength(8);
     expect(result.tablesCleared).toContain("user");
     expect(result.tablesCleared).toContain("chat_thread");
     expect(result.tablesCleared).toContain("asafe_audit_log (erasure record)");
@@ -123,17 +124,18 @@ describe("eraseUserData", () => {
       "asafe_user_model_grant",
       "asafe_aup_acceptance",
       "asafe_team_member",
+      "user_memory",
     ];
     for (const table of cascadeTables) {
       expect(result.tablesCleared, `missing: ${table}`).toContain(table);
     }
   });
 
-  it("calls db.delete 5 times (5 cascade tables)", async () => {
+  it("calls db.delete 6 times (6 cascade tables)", async () => {
     dbExecuteMock.mockResolvedValueOnce([]);
     const { eraseUserData } = await import("./gdpr");
     await eraseUserData("u1");
-    expect(dbDeleteMock).toHaveBeenCalledTimes(5);
+    expect(dbDeleteMock).toHaveBeenCalledTimes(6);
   });
 });
 
@@ -175,6 +177,7 @@ describe("exportUserData", () => {
     expect(Array.isArray(result.auditEntries)).toBe(true);
     expect(Array.isArray(result.teamMemberships)).toBe(true);
     expect(Array.isArray(result.modelGrants)).toBe(true);
+    expect(Array.isArray(result.memories)).toBe(true);
   });
 });
 

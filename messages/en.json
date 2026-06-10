@@ -733,6 +733,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "User memory",
+      "description": "Org-wide policy for the assistant's long-term user memory. Per-team overrides can be layered via the team_memory_* settings keys.",
+      "memoryEnabled": "Memory enabled",
+      "memoryEnabledDescription": "Allow the assistant to store and use per-user memories. Turning this off stops reading and writing immediately; stored data is kept.",
+      "implicitExtraction": "Implicit extraction",
+      "implicitExtractionDescription": "Let the assistant save memories in the background without an explicit \"remember\" request. Off by default pending legal sign-off.",
+      "updateFailed": "Failed to update. Please try again."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Users",
@@ -1014,6 +1023,33 @@
     "noFolders": "No folders yet",
     "team": "team",
     "sharedWithTeamReadOnly": "Shared with {team} · read-only"
+  },
+  "Memory": {
+    "title": "Memory",
+    "description": "What the assistant remembers about you across conversations. Memories are separate from your chats — deleting a chat does not delete memories, and you can delete memories here at any time.",
+    "modeLabel": "Memory",
+    "modeOn": "On",
+    "modePaused": "Paused",
+    "modeOff": "Off",
+    "modeOnDescription": "New memories are saved and used to personalize responses.",
+    "modePausedDescription": "Existing memories are kept but not used or updated.",
+    "modeOffDescription": "Memory is off. Saved memories were deleted.",
+    "confirmReset": "Turn off memory? This permanently deletes all saved memories.",
+    "confirmClearAll": "Permanently delete all saved memories?",
+    "policyDisabled": "Memory is disabled by your organization's policy.",
+    "emptyState": "Nothing remembered yet.",
+    "explicitHint": "Ask the assistant to remember something in chat and it will appear here.",
+    "clearAll": "Clear all",
+    "deleteMemory": "Delete memory",
+    "memoryDeleted": "Memory deleted",
+    "memoriesCleared": "All memories deleted",
+    "modeSaved": "Memory setting saved",
+    "saveFailed": "Failed to save. Please try again.",
+    "deleteFailed": "Failed to delete. Please try again.",
+    "kindPreference": "Preference",
+    "kindDecision": "Decision",
+    "kindProfile": "Profile",
+    "kindProjectContext": "Project"
   },
   "Settings": {
     "title": "Settings",

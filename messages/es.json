@@ -733,6 +733,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "Memoria de usuario",
+      "description": "Política de organización para la memoria a largo plazo del asistente. Se pueden añadir excepciones por equipo con las claves team_memory_*.",
+      "memoryEnabled": "Memoria activada",
+      "memoryEnabledDescription": "Permite al asistente guardar y usar recuerdos por usuario. Al desactivarla se detienen lectura y escritura de inmediato; los datos guardados se conservan.",
+      "implicitExtraction": "Extracción implícita",
+      "implicitExtractionDescription": "Permite guardar recuerdos en segundo plano sin una petición explícita de «recuerda». Desactivada por defecto a la espera del visto bueno legal.",
+      "updateFailed": "No se pudo actualizar. Inténtalo de nuevo."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Usuarios",
@@ -1014,6 +1023,33 @@
     "noFolders": "Aún no hay carpetas",
     "team": "equipo",
     "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura"
+  },
+  "Memory": {
+    "title": "Memoria",
+    "description": "Lo que el asistente recuerda de ti entre conversaciones. Los recuerdos son independientes de tus chats: borrar un chat no borra los recuerdos, y puedes eliminarlos aquí en cualquier momento.",
+    "modeLabel": "Memoria",
+    "modeOn": "Activada",
+    "modePaused": "En pausa",
+    "modeOff": "Desactivada",
+    "modeOnDescription": "Los nuevos recuerdos se guardan y se usan para personalizar las respuestas.",
+    "modePausedDescription": "Los recuerdos existentes se conservan, pero no se usan ni se actualizan.",
+    "modeOffDescription": "La memoria está desactivada. Los recuerdos guardados se eliminaron.",
+    "confirmReset": "¿Desactivar la memoria? Esto elimina permanentemente todos los recuerdos guardados.",
+    "confirmClearAll": "¿Eliminar permanentemente todos los recuerdos guardados?",
+    "policyDisabled": "La memoria está desactivada por la política de tu organización.",
+    "emptyState": "Aún no hay nada recordado.",
+    "explicitHint": "Pide al asistente en el chat que recuerde algo y aparecerá aquí.",
+    "clearAll": "Borrar todo",
+    "deleteMemory": "Eliminar recuerdo",
+    "memoryDeleted": "Recuerdo eliminado",
+    "memoriesCleared": "Todos los recuerdos eliminados",
+    "modeSaved": "Ajuste de memoria guardado",
+    "saveFailed": "No se pudo guardar. Inténtalo de nuevo.",
+    "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo.",
+    "kindPreference": "Preferencia",
+    "kindDecision": "Decisión",
+    "kindProfile": "Perfil",
+    "kindProjectContext": "Proyecto"
   },
   "Settings": {
     "title": "Configuración",

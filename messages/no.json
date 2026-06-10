@@ -733,6 +733,15 @@
     }
   },
   "Admin": {
+    "MemoryPolicy": {
+      "title": "Brukerminne",
+      "description": "Organisasjonspolicy for assistentens langtidsminne per bruker. Team-overstyringer kan settes via team_memory_*-nøklene.",
+      "memoryEnabled": "Minne aktivert",
+      "memoryEnabledDescription": "Lar assistenten lagre og bruke minner per bruker. Slås dette av, stopper lesing og skriving umiddelbart; lagrede data beholdes.",
+      "implicitExtraction": "Implisitt uttrekk",
+      "implicitExtractionDescription": "Lar assistenten lagre minner i bakgrunnen uten en eksplisitt «husk»-forespørsel. Av som standard i påvente av juridisk godkjenning.",
+      "updateFailed": "Kunne ikke oppdatere. Prøv igjen."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Brukere",
@@ -959,6 +968,33 @@
     "noFolders": "Ingen mapper ennå",
     "team": "team",
     "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet"
+  },
+  "Memory": {
+    "title": "Minne",
+    "description": "Det assistenten husker om deg på tvers av samtaler. Minner er uavhengige av chattene dine – å slette en chat sletter ikke minner, og du kan slette minner her når som helst.",
+    "modeLabel": "Minne",
+    "modeOn": "På",
+    "modePaused": "Pauset",
+    "modeOff": "Av",
+    "modeOnDescription": "Nye minner lagres og brukes til å tilpasse svar.",
+    "modePausedDescription": "Eksisterende minner beholdes, men brukes eller oppdateres ikke.",
+    "modeOffDescription": "Minne er av. Lagrede minner ble slettet.",
+    "confirmReset": "Slå av minne? Dette sletter alle lagrede minner permanent.",
+    "confirmClearAll": "Slette alle lagrede minner permanent?",
+    "policyDisabled": "Minne er deaktivert av organisasjonens policy.",
+    "emptyState": "Ingenting husket ennå.",
+    "explicitHint": "Be assistenten huske noe i chatten, så vises det her.",
+    "clearAll": "Slett alt",
+    "deleteMemory": "Slett minne",
+    "memoryDeleted": "Minne slettet",
+    "memoriesCleared": "Alle minner slettet",
+    "modeSaved": "Minneinnstilling lagret",
+    "saveFailed": "Kunne ikke lagre. Prøv igjen.",
+    "deleteFailed": "Kunne ikke slette. Prøv igjen.",
+    "kindPreference": "Preferanse",
+    "kindDecision": "Beslutning",
+    "kindProfile": "Profil",
+    "kindProjectContext": "Prosjekt"
   },
   "Settings": {
     "title": "Innstillinger",

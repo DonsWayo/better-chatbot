@@ -1,14 +1,18 @@
-import { z } from "zod";
 import { passwordSchema } from "lib/validations/password";
+import { z } from "zod";
 
-import { UserEntity } from "lib/db/pg/schema.pg";
 import { getSession } from "auth/server";
+import { UserEntity } from "lib/db/pg/schema.pg";
 
 export type UserPreferences = {
   displayName?: string;
   profession?: string; // User's job or profession
   responseStyleExample?: string; // Example of preferred response style
   botName?: string; // Name of the bot
+  // User memory tri-state (docs/design/user-memory.md): "on" reads+writes,
+  // "paused" keeps stored memories but neither reads nor writes, "off" is
+  // set after a destructive reset (clear-all). Absent → "on".
+  memoryMode?: "on" | "paused" | "off";
 };
 
 // user without password
@@ -87,4 +91,5 @@ export const UserPreferencesZodSchema = z.object({
   profession: z.string().optional(),
   responseStyleExample: z.string().optional(),
   botName: z.string().optional(),
+  memoryMode: z.enum(["on", "paused", "off"]).optional(),
 });

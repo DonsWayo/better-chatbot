@@ -24,6 +24,10 @@ import {
 import { getSession } from "lib/auth/server";
 import { eraseUserData } from "lib/compliance/gdpr";
 import logger from "lib/logger";
+import {
+  setOrgMemoryEnabled,
+  setOrgMemoryImplicitExtraction,
+} from "lib/memory/policy";
 import { getUser } from "lib/user/server";
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
@@ -146,6 +150,26 @@ export async function toggleFeatureFlagAction(
   if (!session) throw new Error("Unauthorized");
   if (session.user.role !== "admin") throw new Error("Admin required");
   await upsertFeatureFlag(name, enabled);
+}
+
+// ── User-memory org policy (docs/design/user-memory.md) ─────────────────────
+// Layered org→team keys in asafe_org_settings; these toggles set the ORG
+// layer. Defaults when unset: memory ON, implicit extraction OFF (legal
+// sign-off pending for background extraction in an EU employment context).
+
+export async function updateOrgMemoryPolicyAction(input: {
+  enabled?: boolean;
+  implicitExtraction?: boolean;
+}): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  if (session.user.role !== "admin") throw new Error("Admin required");
+  if (typeof input.enabled === "boolean") {
+    await setOrgMemoryEnabled(input.enabled);
+  }
+  if (typeof input.implicitExtraction === "boolean") {
+    await setOrgMemoryImplicitExtraction(input.implicitExtraction);
+  }
 }
 
 // ── Company MCP servers ──────────────────────────────────────────────────────
