@@ -516,6 +516,37 @@ export const FolderTable = pgTable(
 
 export type FolderEntity = typeof FolderTable.$inferSelect;
 
+// Electric realtime phase 3 — presence heartbeats. Writes go through a Server
+// Action (Postgres only); reads stream via the authenticated shape proxy.
+export const AsafePresenceTable = pgTable(
+  "asafe_presence",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    contextType: varchar("context_type", {
+      enum: ["thread", "folder"],
+    }).notNull(),
+    contextId: text("context_id").notNull(),
+    lastSeenAt: timestamp("last_seen_at").notNull().default(sql`now()`),
+  },
+  (table) => [
+    unique("asafe_presence_user_context_unique").on(
+      table.userId,
+      table.contextType,
+      table.contextId,
+    ),
+    index("asafe_presence_context_idx").on(
+      table.contextType,
+      table.contextId,
+      table.lastSeenAt,
+    ),
+  ],
+);
+
+export type AsafePresenceEntity = typeof AsafePresenceTable.$inferSelect;
+
 export const AsafeUsageEventTable = pgTable(
   "asafe_usage_event",
   {
@@ -663,10 +694,16 @@ export const AsafeKnowledgeCollectionTable = pgTable(
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
+    // Legacy single-team pointer; kept in sync with teamIds[0] for back-compat.
     teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
       onDelete: "cascade",
     }),
-    visibility: varchar("visibility", { enum: ["team", "org"] })
+    teamIds: jsonb("team_ids").$type<string[] | null>(),
+    // Unified visibility model (docs/design/visibility-model.md). Legacy rows
+    // hold "org" (= company) and "team"; the resolver maps both.
+    visibility: varchar("visibility", {
+      enum: ["private", "shared", "team", "company", "org"],
+    })
       .notNull()
       .default("org"),
     createdBy: uuid("created_by").references(() => UserTable.id, {
