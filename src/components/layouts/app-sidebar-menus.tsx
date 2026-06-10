@@ -81,20 +81,7 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        {isAdmin && (
-          <SidebarMenu>
-            <Tooltip>
-              <SidebarMenuItem>
-                <Link href="/mcp">
-                  <SidebarMenuButton className="font-semibold">
-                    <MCPIcon className="size-4 fill-accent-foreground" />
-                    {t("Layout.mcpConfiguration")}
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            </Tooltip>
-          </SidebarMenu>
-        )}
+        {/* MCP management lives under Admin → MCP Catalog; /mcp stays routable */}
         <SidebarMenu>
           <Tooltip>
             <SidebarMenuItem>
