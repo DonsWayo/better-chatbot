@@ -1,8 +1,30 @@
 import { Agent, AgentRepository, AgentSummary } from "app-types/agent";
-import { and, desc, eq, ne, or, sql } from "drizzle-orm";
+import { SQL, and, desc, eq, ne, or, sql } from "drizzle-orm";
 import { generateUUID } from "lib/utils";
 import { pgDb as db } from "../db.pg";
 import { AgentTable, BookmarkTable, UserTable } from "../schema.pg";
+
+// Unified visibility model (docs/design/visibility-model.md): besides the
+// legacy public/readonly column values, an agent is visible to a user when a
+// `shared` grant names them, or when its teamIds overlap one of their teams.
+const hasGrant = (userId: string): SQL =>
+  sql`EXISTS (SELECT 1 FROM entity_grant eg
+        WHERE eg.entity_type = 'agent'
+          AND eg.entity_id = ${AgentTable.id}
+          AND eg.grantee_user_id = ${userId})`;
+
+const inSharedTeam = (userId: string): SQL =>
+  sql`EXISTS (SELECT 1 FROM asafe_team_member tm
+        WHERE tm.user_id = ${userId}
+          AND ${AgentTable.teamIds} @> to_jsonb(ARRAY[tm.team_id::text]))`;
+
+const visibleToUser = (userId: string): SQL | undefined =>
+  or(
+    eq(AgentTable.visibility, "public"),
+    eq(AgentTable.visibility, "readonly"),
+    hasGrant(userId),
+    inSharedTeam(userId),
+  );
 
 export const pgAgentRepository: AgentRepository = {
   async insertAgent(agent) {
@@ -59,8 +81,7 @@ export const pgAgentRepository: AgentRepository = {
           eq(AgentTable.id, id),
           or(
             eq(AgentTable.userId, userId), // Own agent
-            eq(AgentTable.visibility, "public"), // Public agent
-            eq(AgentTable.visibility, "readonly"), // Readonly agent
+            visibleToUser(userId), // public/readonly/shared-grant/team
           ),
         ),
       );
@@ -147,7 +168,7 @@ export const pgAgentRepository: AgentRepository = {
     filters = ["all"],
     limit = 50,
   ): Promise<AgentSummary[]> {
-    let orConditions: any[] = [];
+    let orConditions: (SQL | undefined)[] = [];
 
     // Build OR conditions based on filters array
     for (const filter of filters) {
@@ -157,20 +178,14 @@ export const pgAgentRepository: AgentRepository = {
         orConditions.push(
           and(
             ne(AgentTable.userId, currentUserId),
-            or(
-              eq(AgentTable.visibility, "public"),
-              eq(AgentTable.visibility, "readonly"),
-            ),
+            visibleToUser(currentUserId),
           ),
         );
       } else if (filter === "bookmarked") {
         orConditions.push(
           and(
             ne(AgentTable.userId, currentUserId),
-            or(
-              eq(AgentTable.visibility, "public"),
-              eq(AgentTable.visibility, "readonly"),
-            ),
+            visibleToUser(currentUserId),
             sql`${BookmarkTable.id} IS NOT NULL`,
           ),
         );
@@ -183,10 +198,7 @@ export const pgAgentRepository: AgentRepository = {
             // Shared agents
             and(
               ne(AgentTable.userId, currentUserId),
-              or(
-                eq(AgentTable.visibility, "public"),
-                eq(AgentTable.visibility, "readonly"),
-              ),
+              visibleToUser(currentUserId),
             ),
           ),
         ];
@@ -242,6 +254,18 @@ export const pgAgentRepository: AgentRepository = {
       .select({
         visibility: AgentTable.visibility,
         userId: AgentTable.userId,
+        hasGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = 'agent'
+            AND eg.entity_id = ${AgentTable.id}
+            AND eg.grantee_user_id = ${userId})`,
+        hasEditGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = 'agent'
+            AND eg.entity_id = ${AgentTable.id}
+            AND eg.grantee_user_id = ${userId}
+            AND eg.capability IN ('edit', 'manage'))`,
+        inTeam: sql<boolean>`EXISTS (SELECT 1 FROM asafe_team_member tm
+          WHERE tm.user_id = ${userId}
+            AND ${AgentTable.teamIds} @> to_jsonb(ARRAY[tm.team_id::text]))`,
       })
       .from(AgentTable)
       .where(eq(AgentTable.id, agentId));
@@ -249,7 +273,8 @@ export const pgAgentRepository: AgentRepository = {
       return false;
     }
     if (userId == agent.userId) return true;
-    if (agent.visibility === "public" && !destructive) return true;
-    return false;
+    if (destructive) return agent.hasEditGrant;
+    if (agent.visibility === "public") return true;
+    return agent.hasGrant || agent.inTeam;
   },
 };
