@@ -178,7 +178,7 @@ export default function MCPEditor({
       .ifOk(() => {
         toast.success(t("MCP.configurationSavedSuccessfully"));
         mutate("/api/mcp/list");
-        router.push("/mcp");
+        router.push("/settings/connectors");
       })
       .ifFail(handleErrorWithToast)
       .watch(() => setIsLoading(false));

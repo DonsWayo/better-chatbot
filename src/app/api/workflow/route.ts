@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     id,
     isPublished,
     visibility,
+    teamIds,
     noGenerateInputNode,
   } = await request.json();
 

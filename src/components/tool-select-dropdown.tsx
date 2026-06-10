@@ -638,7 +638,7 @@ function McpServerSelector() {
       {!selectedMcpServerList.length ? (
         <div className="text-sm text-muted-foreground w-full h-full flex flex-col items-center justify-center py-6">
           <div>{t("noMcpServersDetected")}</div>
-          <Link href="/mcp">
+          <Link href="/settings/connectors">
             <Button
               variant={"ghost"}
               className="mt-2 text-primary flex items-center gap-1"

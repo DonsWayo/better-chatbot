@@ -59,7 +59,9 @@ export const IS_MCP_SERVER_REMOTE_ONLY =
 
 ## Tool customizations
 
-Users can attach per-server and per-tool **instruction customizations**
+Users manage their personal MCP servers under **Settings → Connectors**
+(`/settings/connectors`; the old `/mcp*` routes redirect here). Each connector row has an
+inline editor for per-server and per-tool **instruction customizations**
 (`/api/mcp/tool-customizations/[server]` and `…/[server]/[tool]`): extra prompt guidance
 injected when that tool is loaded, e.g. "always answer with our Jira project key
 conventions". Customizations are per-user and do not change the server's actual tool

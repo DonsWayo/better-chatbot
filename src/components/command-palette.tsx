@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   BarChart3,
+  Blocks,
   BookOpen,
   DatabaseIcon,
   FolderIcon,
@@ -17,9 +18,9 @@ import {
   Sparkles,
   Star,
   ToggleLeft,
+  UserRound,
   Users,
   UsersRound,
-  Waypoints,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -30,6 +31,11 @@ import { appStore } from "@/app/store";
 import { useAgents } from "@/hooks/queries/use-agents";
 import { ChatMention, ChatThread } from "app-types/chat";
 import { BasicUser } from "app-types/user";
+import {
+  canCreateAgent,
+  canCreateWorkflow,
+  canEditWorkflow,
+} from "lib/auth/client-permissions";
 import { Shortcuts, isShortcutEvent } from "lib/keyboard-shortcuts";
 import { getIsUserAdmin } from "lib/user/utils";
 import { fetcher } from "lib/utils";
@@ -80,6 +86,10 @@ export function CommandPalette({ user }: { user?: BasicUser }) {
   const [activeFolder, setActiveFolder] = useState<FolderLite | null>(null);
 
   const isAdmin = getIsUserAdmin(user);
+  const canSeeStudio =
+    canCreateAgent(user?.role) ||
+    canCreateWorkflow(user?.role) ||
+    canEditWorkflow(user?.role);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -195,17 +205,40 @@ export function CommandPalette({ user }: { user?: BasicUser }) {
       icon: Inbox,
       url: "/inbox",
     },
-    {
-      id: "workflow",
-      label: tLayout("workflow"),
-      icon: Waypoints,
-      url: "/workflow",
-    },
+    // Studio is builder-gated, matching the sidebar.
+    ...(canSeeStudio
+      ? [
+          {
+            id: "studio",
+            label: tLayout("studio"),
+            icon: Blocks,
+            url: "/studio",
+          },
+        ]
+      : []),
     {
       id: "settings-general",
       label: `${tSettings("title")} · ${tSettings("general")}`,
       icon: SlidersHorizontal,
       url: "/settings/general",
+    },
+    {
+      id: "settings-personalization",
+      label: `${tSettings("title")} · ${tSettings("personalization")}`,
+      icon: Sparkles,
+      url: "/settings/personalization",
+    },
+    {
+      id: "settings-connectors",
+      label: `${tSettings("title")} · ${tSettings("connectors")}`,
+      icon: Plug2,
+      url: "/settings/connectors",
+    },
+    {
+      id: "settings-account",
+      label: `${tSettings("title")} · ${tSettings("account")}`,
+      icon: UserRound,
+      url: "/settings/account",
     },
     {
       id: "settings-usage",

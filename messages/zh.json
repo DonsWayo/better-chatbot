@@ -261,7 +261,8 @@
     "search": "搜索",
     "inbox": "收件箱",
     "settings": "设置",
-    "adminConsole": "管理控制台"
+    "adminConsole": "管理控制台",
+    "studio": "工作室"
   },
   "Archive": {
     "title": "归档",
@@ -653,7 +654,10 @@
     "gdprTitle": "数据与隐私",
     "gdprDescription": "下载存储在 A-SAFE AI 中的所有数据副本（GDPR 第 20 条 — 数据可携权）。",
     "downloadMyData": "下载我的数据",
-    "archivesDescription": "用于保存聊天历史的空间。"
+    "archivesDescription": "用于保存聊天历史的空间。",
+    "personalization": "个性化",
+    "connectors": "连接器",
+    "account": "账户"
   },
   "CommandPalette": {
     "title": "命令面板",
@@ -666,5 +670,11 @@
     "admin": "管理",
     "back": "返回",
     "askAi": "向 A-SAFE AI 提问：\"{query}\""
+  },
+  "Studio": {
+    "title": "工作室",
+    "agents": "智能体",
+    "workflows": "工作流",
+    "backToStudio": "返回工作室"
   }
 }

@@ -21,16 +21,6 @@ const KeyboardShortcutsPopup = dynamic(
   },
 );
 
-const ChatPreferencesPopup = dynamic(
-  () =>
-    import("@/components/chat-preferences-popup").then(
-      (mod) => mod.ChatPreferencesPopup,
-    ),
-  {
-    ssr: false,
-  },
-);
-
 const ChatBotVoice = dynamic(
   () => import("@/components/chat-bot-voice").then((mod) => mod.ChatBotVoice),
   {
@@ -48,42 +38,20 @@ const ChatBotTemporary = dynamic(
   },
 );
 
-const McpCustomizationPopup = dynamic(
-  () =>
-    import("@/components/mcp-customization-popup").then(
-      (mod) => mod.McpCustomizationPopup,
-    ),
-  {
-    ssr: false,
-  },
-);
-
-const UserSettingsPopup = dynamic(
-  () =>
-    import("@/components/user/user-detail/user-settings-popup").then(
-      (mod) => mod.UserSettingsPopup,
-    ),
-  {
-    ssr: false,
-  },
-);
-
+// Retired (moved to /settings/*): ChatPreferencesPopup → Personalization,
+// UserSettingsPopup → Account, McpCustomizationPopup → Connectors rows.
+// docs/design/information-architecture.md §2.
 export function AppPopupProvider({
-  userSettingsComponent,
   user,
 }: {
-  userSettingsComponent: React.ReactNode;
   user?: BasicUser;
 }) {
   return (
     <>
       <CommandPalette user={user} />
       <KeyboardShortcutsPopup />
-      <ChatPreferencesPopup />
-      <UserSettingsPopup userSettingsComponent={userSettingsComponent} />
       <ChatBotVoice />
       <ChatBotTemporary />
-      <McpCustomizationPopup />
     </>
   );
 }

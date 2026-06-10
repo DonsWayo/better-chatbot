@@ -4,7 +4,10 @@ import {
   ArrowLeft,
   DatabaseIcon,
   Gauge,
+  Plug2,
   SlidersHorizontal,
+  Sparkles,
+  UserRound,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -13,7 +16,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "lib/utils";
 
 // Settings hub left nav — every tab is deep-linkable (/settings/<tab>).
-// P0 tabs only; Personalization/Connectors/Account arrive later (P1).
 // docs/design/information-architecture.md §2.
 export function SettingsNav() {
   const pathname = usePathname();
@@ -25,6 +27,24 @@ export function SettingsNav() {
       title: t("general"),
       url: "/settings/general",
       icon: SlidersHorizontal,
+    },
+    {
+      id: "personalization",
+      title: t("personalization"),
+      url: "/settings/personalization",
+      icon: Sparkles,
+    },
+    {
+      id: "connectors",
+      title: t("connectors"),
+      url: "/settings/connectors",
+      icon: Plug2,
+    },
+    {
+      id: "account",
+      title: t("account"),
+      url: "/settings/account",
+      icon: UserRound,
     },
     {
       id: "usage",

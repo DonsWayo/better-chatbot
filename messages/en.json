@@ -403,7 +403,8 @@
     "search": "Search",
     "inbox": "Inbox",
     "settings": "Settings",
-    "adminConsole": "Admin console"
+    "adminConsole": "Admin console",
+    "studio": "Studio"
   },
   "Archive": {
     "title": "Archive",
@@ -1007,7 +1008,10 @@
     "gdprTitle": "Data & privacy",
     "gdprDescription": "Download a copy of all your data stored in A-SAFE AI (GDPR Art. 20 — right to data portability).",
     "downloadMyData": "Download my data",
-    "archivesDescription": "Spaces to store chat history."
+    "archivesDescription": "Spaces to store chat history.",
+    "personalization": "Personalization",
+    "connectors": "Connectors",
+    "account": "Account"
   },
   "CommandPalette": {
     "title": "Command palette",
@@ -1020,5 +1024,11 @@
     "admin": "Admin",
     "back": "Back",
     "askAi": "Ask A-SAFE AI: \"{query}\""
+  },
+  "Studio": {
+    "title": "Studio",
+    "agents": "Agents",
+    "workflows": "Workflows",
+    "backToStudio": "Back to Studio"
   }
 }

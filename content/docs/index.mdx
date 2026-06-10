@@ -51,16 +51,22 @@ The information architecture follows one rule: **sidebar slots are for objects u
 return to — never configuration** (see `docs/design/information-architecture.md` in the
 repo). In practice:
 
-- **Sidebar (everyone):** New Chat, Search (opens the Cmd-K palette), Workflow,
+- **Sidebar (everyone):** New Chat, Search (opens the Cmd-K palette),
   **Inbox** (`/inbox` — approvals badge, run history, routines; formerly `/triage`,
-  redirect kept), Agents, an **ephemeral Runs rail** that only appears while a run is
-  live, Folders, and Recents.
+  redirect kept), **Studio** (`/studio` — builders/admins only), Agents, an
+  **ephemeral Runs rail** that only appears while a run is live, Folders, and Recents.
+- **Studio** (`/studio`) — the single role-gated builder home, with **Agents** and
+  **Workflows** tabs. The old `/agents` gallery and `/workflow` list now redirect into
+  the matching tab; the `/agent/[id]` and `/workflow/[id]` editors keep working with a
+  "Back to Studio" link.
 - **Cmd-K command palette** — searches threads, folders, and agents; jumps to Inbox,
-  Settings tabs, and (for admins) admin pages; and falls back to
+  Studio, Settings tabs, and (for admins) admin pages; and falls back to
   *"Ask A-SAFE AI: …"*, which starts a chat with the query prefilled.
 - **Settings hub** (`/settings`) — a full page with its own left nav and deep-linkable
-  tabs: **General** (theme, language), **Usage** (personal usage and budget), and
-  **Data controls** (GDPR export, Archives).
+  tabs: **General** (theme, language), **Personalization** (display name, bot name,
+  profession, response styles), **Connectors** (personal MCP servers — moved from
+  `/mcp*`, which still redirects here), **Account** (profile, avatar, sessions),
+  **Usage** (personal usage and budget), and **Data controls** (GDPR export, Archives).
 - **Admin console** (`/admin`) — a hard mode-swap with its own left nav (Dashboard,
   Users, Teams, Usage, MCP Catalog, Knowledge, Quality, Guardrails, Feature Flags,
   Audit) and a "Back to app" link; reached from the footer avatar menu (admins only).

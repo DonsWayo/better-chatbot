@@ -17,6 +17,13 @@ export type DBWorkflow = {
   description?: string;
   isPublished: boolean;
   visibility: Visibility;
+  /**
+   * Unified visibility model (docs/design/visibility-model.md): teams this
+   * workflow is shared with at the "team" level. null/[] = none. The legacy
+   * `visibility` enum keeps storing public/private/readonly until a future
+   * migration widens it; teamIds + entity_grant carry the real access signal.
+   */
+  teamIds?: string[] | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;

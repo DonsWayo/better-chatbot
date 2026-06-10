@@ -403,7 +403,8 @@
     "search": "Søk",
     "inbox": "Innboks",
     "settings": "Innstillinger",
-    "adminConsole": "Administrasjonskonsoll"
+    "adminConsole": "Administrasjonskonsoll",
+    "studio": "Studio"
   },
   "Archive": {
     "title": "Arkiv",
@@ -952,7 +953,10 @@
     "gdprTitle": "Data og personvern",
     "gdprDescription": "Last ned en kopi av alle dataene dine lagret i A-SAFE AI (GDPR art. 20 — rett til dataportabilitet).",
     "downloadMyData": "Last ned mine data",
-    "archivesDescription": "Områder for å lagre chathistorikk."
+    "archivesDescription": "Områder for å lagre chathistorikk.",
+    "personalization": "Personalisering",
+    "connectors": "Koblinger",
+    "account": "Konto"
   },
   "CommandPalette": {
     "title": "Kommandopalett",
@@ -965,5 +969,11 @@
     "admin": "Administrasjon",
     "back": "Tilbake",
     "askAi": "Spør A-SAFE AI: \"{query}\""
+  },
+  "Studio": {
+    "title": "Studio",
+    "agents": "Agenter",
+    "workflows": "Arbeidsflyter",
+    "backToStudio": "Tilbake til Studio"
   }
 }

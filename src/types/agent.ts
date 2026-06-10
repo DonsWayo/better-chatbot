@@ -28,6 +28,7 @@ export const AgentCreateSchema = z
     userId: z.string(),
     instructions: AgentInstructionsSchema,
     visibility: VisibilitySchema.optional().default("private"),
+    teamIds: z.array(z.string()).nullable().optional(),
   })
   .strip();
 export const AgentUpdateSchema = z
@@ -43,6 +44,9 @@ export const AgentUpdateSchema = z
       .optional(),
     instructions: AgentInstructionsSchema.optional(),
     visibility: VisibilitySchema.optional(),
+    // Unified visibility model: teams this agent is shared with at the "team"
+    // level. null = none. See docs/design/visibility-model.md.
+    teamIds: z.array(z.string()).nullable().optional(),
   })
   .strip();
 
@@ -61,6 +65,8 @@ export type AgentSummary = {
   icon?: AgentIcon;
   userId: string;
   visibility: AgentVisibility;
+  /** Teams this agent is shared with at the "team" level. null/[] = none. */
+  teamIds?: string[] | null;
   createdAt: Date;
   updatedAt: Date;
   userName?: string;

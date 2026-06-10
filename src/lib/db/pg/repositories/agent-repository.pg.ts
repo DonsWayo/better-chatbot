@@ -16,6 +16,7 @@ export const pgAgentRepository: AgentRepository = {
         userId: agent.userId,
         instructions: agent.instructions,
         visibility: agent.visibility || "private",
+        teamIds: agent.teamIds ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -39,6 +40,7 @@ export const pgAgentRepository: AgentRepository = {
         userId: AgentTable.userId,
         instructions: AgentTable.instructions,
         visibility: AgentTable.visibility,
+        teamIds: AgentTable.teamIds,
         createdAt: AgentTable.createdAt,
         updatedAt: AgentTable.updatedAt,
         isBookmarked: sql<boolean>`${BookmarkTable.id} IS NOT NULL`,

@@ -275,7 +275,8 @@
     "search": "검색",
     "inbox": "받은 편지함",
     "settings": "설정",
-    "adminConsole": "관리 콘솔"
+    "adminConsole": "관리 콘솔",
+    "studio": "스튜디오"
   },
   "Archive": {
     "title": "아카이브",
@@ -666,7 +667,10 @@
     "gdprTitle": "데이터 및 개인정보",
     "gdprDescription": "A-SAFE AI에 저장된 모든 데이터의 사본을 다운로드합니다 (GDPR 제20조 — 데이터 이동권).",
     "downloadMyData": "내 데이터 다운로드",
-    "archivesDescription": "채팅 기록을 보관하는 공간입니다."
+    "archivesDescription": "채팅 기록을 보관하는 공간입니다.",
+    "personalization": "개인화",
+    "connectors": "커넥터",
+    "account": "계정"
   },
   "CommandPalette": {
     "title": "명령 팔레트",
@@ -679,5 +683,11 @@
     "admin": "관리",
     "back": "뒤로",
     "askAi": "A-SAFE AI에 질문: \"{query}\""
+  },
+  "Studio": {
+    "title": "스튜디오",
+    "agents": "에이전트",
+    "workflows": "워크플로우",
+    "backToStudio": "스튜디오로 돌아가기"
   }
 }

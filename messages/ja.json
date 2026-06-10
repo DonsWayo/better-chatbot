@@ -260,7 +260,8 @@
     "search": "検索",
     "inbox": "受信トレイ",
     "settings": "設定",
-    "adminConsole": "管理コンソール"
+    "adminConsole": "管理コンソール",
+    "studio": "スタジオ"
   },
   "Archive": {
     "title": "アーカイブ",
@@ -651,7 +652,10 @@
     "gdprTitle": "データとプライバシー",
     "gdprDescription": "A-SAFE AI に保存されているすべてのデータのコピーをダウンロードします（GDPR 第20条 — データポータビリティの権利）。",
     "downloadMyData": "自分のデータをダウンロード",
-    "archivesDescription": "チャット履歴を保存するスペースです。"
+    "archivesDescription": "チャット履歴を保存するスペースです。",
+    "personalization": "パーソナライズ",
+    "connectors": "コネクタ",
+    "account": "アカウント"
   },
   "CommandPalette": {
     "title": "コマンドパレット",
@@ -664,5 +668,11 @@
     "admin": "管理",
     "back": "戻る",
     "askAi": "A-SAFE AI に質問: \"{query}\""
+  },
+  "Studio": {
+    "title": "スタジオ",
+    "agents": "エージェント",
+    "workflows": "ワークフロー",
+    "backToStudio": "スタジオに戻る"
   }
 }

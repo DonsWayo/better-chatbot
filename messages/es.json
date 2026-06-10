@@ -403,7 +403,8 @@
     "search": "Buscar",
     "inbox": "Bandeja de entrada",
     "settings": "Configuración",
-    "adminConsole": "Consola de administración"
+    "adminConsole": "Consola de administración",
+    "studio": "Estudio"
   },
   "Archive": {
     "title": "Archivo",
@@ -1007,7 +1008,10 @@
     "gdprTitle": "Datos y privacidad",
     "gdprDescription": "Descarga una copia de todos tus datos almacenados en A-SAFE AI (art. 20 del RGPD — derecho a la portabilidad de los datos).",
     "downloadMyData": "Descargar mis datos",
-    "archivesDescription": "Espacios para guardar el historial de chats."
+    "archivesDescription": "Espacios para guardar el historial de chats.",
+    "personalization": "Personalización",
+    "connectors": "Conectores",
+    "account": "Cuenta"
   },
   "CommandPalette": {
     "title": "Paleta de comandos",
@@ -1020,5 +1024,11 @@
     "admin": "Administración",
     "back": "Atrás",
     "askAi": "Preguntar a A-SAFE AI: \"{query}\""
+  },
+  "Studio": {
+    "title": "Estudio",
+    "agents": "Agentes",
+    "workflows": "Flujos de trabajo",
+    "backToStudio": "Volver al Estudio"
   }
 }

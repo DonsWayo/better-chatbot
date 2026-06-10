@@ -1,4 +1,5 @@
 import { PreviewMessage } from "@/components/message";
+import { LiveThreadMessages } from "@/components/realtime/live-thread-messages";
 import { UIMessage } from "ai";
 import { getSession } from "auth/server";
 import { chatRepository } from "lib/db/repository";
@@ -43,6 +44,10 @@ export default async function SharedThreadPage({
       className="flex flex-col min-w-0 h-full relative"
       data-testid="shared-thread-view"
     >
+      {/* Live island: subscribes to this thread's chat_message shape via the
+          authenticated Electric proxy and router.refresh()es this server
+          component when teammates add messages. Renders nothing itself. */}
+      <LiveThreadMessages threadId={threadId} />
       <div className="flex flex-col gap-2 overflow-y-auto pb-20">
         <div className="w-full mx-auto max-w-3xl px-6 py-8">
           <div className="mb-4 flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-xs text-muted-foreground w-fit">
@@ -53,7 +58,10 @@ export default async function SharedThreadPage({
               })}
             </span>
           </div>
-          <h1 className="text-3xl font-bold" data-testid="shared-thread-title">
+          <h1
+            className="font-display text-3xl font-semibold tracking-tight"
+            data-testid="shared-thread-title"
+          >
             {thread.title}
           </h1>
         </div>
