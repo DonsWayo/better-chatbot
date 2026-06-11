@@ -18,7 +18,7 @@ import { suppressOnboardingOverlays } from "../helpers/session-prep";
 test.use({ storageState: TEST_USERS.admin.authFile });
 
 const BUDGET_MODELS = [
-  { id: "minimax-m3", label: "MiniMax M3" },
+  { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
   { id: "kimi-k2.5", label: "Kimi K2.5" },
   { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
 ] as const;
@@ -49,10 +49,10 @@ test.describe("Admin team model entitlements — budget models", () => {
     }
 
     // Grant one budget model and save.
-    const minimax = card
-      .getByTestId("model-checkbox-minimax-m3")
+    const grantedModel = card
+      .getByTestId("model-checkbox-deepseek-v4-pro")
       .locator('input[type="checkbox"]');
-    await minimax.check();
+    await grantedModel.check();
     await card.getByTestId("save-model-allow-list-btn").click();
     await expect(card.getByText("Model list saved.")).toBeVisible({
       timeout: 10000,
@@ -65,7 +65,7 @@ test.describe("Admin team model entitlements — budget models", () => {
     });
     await expect(
       page
-        .getByTestId("model-checkbox-minimax-m3")
+        .getByTestId("model-checkbox-deepseek-v4-pro")
         .locator('input[type="checkbox"]'),
     ).toBeChecked();
     // A model that was not granted stays unchecked.

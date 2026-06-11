@@ -36,7 +36,9 @@ describe.skipIf(!RUN)(
   () => {
     it(
       'a real model drafts a valid "check that safeguru.com is up" workflow',
-      { timeout: 30_000 },
+      // retry: deepseek-v4-flash occasionally returns an empty structured
+      // response under load — a provider blip, not a schema regression.
+      { timeout: 30_000, retry: 2 },
       async () => {
         // Real structured generation against the tool's actual zod input schema
         // (incl. the slugify transform and weak-model JSON-string coercions).

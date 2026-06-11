@@ -8,7 +8,7 @@ const RUN = Boolean(
 );
 
 /** The approved static registry in models.ts — update when the short list changes. */
-const EXPECTED_MODEL_COUNT = 7;
+const EXPECTED_MODEL_COUNT = 8;
 
 /** name (UI id) -> OpenRouter slug, derived from the live registry objects. */
 function openRouterModels(): { name: string; slug: string }[] {

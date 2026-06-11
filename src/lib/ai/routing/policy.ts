@@ -7,11 +7,19 @@ import type { ModelTier, TaskClass } from "app-types/routing";
 
 const PROVIDER = "openRouter";
 
+// Cost directive (2026-06): every tier resolves to the cheap stack; premium models
+// (gpt-5.5 / claude-opus-4.8 / gemini-*) are entitlement-only and never auto-routed.
 export const TIER_MODEL: Record<ModelTier, ChatModel> = {
-  frontier: { provider: PROVIDER, model: "claude-opus-4.8" }, // top quality (hard reasoning)
-  balanced: { provider: PROVIDER, model: "gpt-5.5" }, // strong general/code, mid cost
-  fast: { provider: PROVIDER, model: "gemini-3.5-flash" }, // cheap, fast, multilingual, 1M ctx
-  cheap: { provider: PROVIDER, model: "gemini-3.1-flash-lite" }, // cheapest, trivial tasks
+  // Servable stand-in for the frontier tier: MiniMax M3 is the intended frontier
+  // model, but this account's OpenRouter data policy blocks its endpoints (404).
+  // Swap back once the account's OpenRouter privacy settings are loosened.
+  frontier: { provider: PROVIDER, model: "kimi-k2.5" }, // $0.35/$1.89 per M, 262k ctx
+  balanced: { provider: PROVIDER, model: "deepseek-v4-pro" }, // $0.43/$0.87 per M, 1M ctx
+  fast: { provider: PROVIDER, model: "deepseek-v4-flash" }, // $0.10/$0.20 per M, 1M ctx
+  // hy3-preview is $0.04/M cheaper but is a reasoning model with 12–19s
+  // latency even on trivial completions — wrong profile for the snappy tier.
+  // It stays in the registry for entitled picks.
+  cheap: { provider: PROVIDER, model: "deepseek-v4-flash" }, // $0.10/$0.20 per M, 1M ctx
 };
 
 // Ordered tier candidates per task class: first = preferred, the rest = fallback order

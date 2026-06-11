@@ -484,9 +484,10 @@ describe("GET /api/gateway/openrouter/models", () => {
         "gemini-3.5-flash",
         "gemini-3.1-flash-lite",
         "gpt-5.5",
-        "minimax-m3",
         "kimi-k2.5",
         "deepseek-v4-flash",
+        "deepseek-v4-pro",
+        "hy3-preview",
       ].sort(),
     );
     for (const m of body.data) {

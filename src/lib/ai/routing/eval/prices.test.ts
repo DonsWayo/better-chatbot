@@ -1,11 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { MODEL_PRICES } from "./prices";
+import { describe, expect, it } from "vitest";
 import { TIER_MODEL } from "../policy";
+import { MODEL_PRICES } from "./prices";
 
 describe("MODEL_PRICES", () => {
   it("has price entries for all tier models", () => {
     for (const { model } of Object.values(TIER_MODEL)) {
-      expect(MODEL_PRICES[model], `missing price for model: ${model}`).toBeDefined();
+      expect(
+        MODEL_PRICES[model],
+        `missing price for model: ${model}`,
+      ).toBeDefined();
     }
   });
 
@@ -18,92 +21,134 @@ describe("MODEL_PRICES", () => {
 
   it("output price is always >= input price (output tokens cost more)", () => {
     for (const [model, prices] of Object.entries(MODEL_PRICES)) {
-      expect(prices.outPerMTok, `${model}: out >= in`).toBeGreaterThanOrEqual(prices.inPerMTok);
+      expect(prices.outPerMTok, `${model}: out >= in`).toBeGreaterThanOrEqual(
+        prices.inPerMTok,
+      );
     }
   });
 
-  it("frontier model (claude-opus) is the most expensive", () => {
-    const opusModel = TIER_MODEL.frontier.model;
-    const opusOut = MODEL_PRICES[opusModel].outPerMTok;
-    for (const [model, prices] of Object.entries(MODEL_PRICES)) {
-      if (model === opusModel) continue;
-      expect(prices.outPerMTok).toBeLessThanOrEqual(opusOut);
+  it("cheap tier is the lowest-priced ROUTED tier (registry may hold cheaper, slower, entitlement-only models like hy3-preview)", () => {
+    const tierModels = Object.values(TIER_MODEL).map((m) => m.model);
+    const cheap = MODEL_PRICES[TIER_MODEL.cheap.model];
+    for (const model of tierModels) {
+      expect(
+        MODEL_PRICES[model].inPerMTok,
+        `${model} >= cheap tier`,
+      ).toBeGreaterThanOrEqual(cheap.inPerMTok);
     }
   });
 
-  it("cheap model has lowest prices", () => {
-    const cheapModel = TIER_MODEL.cheap.model;
-    const cheapIn = MODEL_PRICES[cheapModel].inPerMTok;
-    for (const [model, prices] of Object.entries(MODEL_PRICES)) {
-      if (model === cheapModel) continue;
-      expect(prices.inPerMTok).toBeGreaterThanOrEqual(cheapIn);
-    }
-  });
-
-  it("has exactly four model price entries", () => {
-    expect(Object.keys(MODEL_PRICES)).toHaveLength(4);
-  });
-
-  it("claude-opus-4.8 has correct per-million-token rates", () => {
-    const opus = MODEL_PRICES["claude-opus-4.8"];
-    expect(opus.inPerMTok).toBe(5);
-    expect(opus.outPerMTok).toBe(25);
-  });
-
-  it("gpt-5.5 has correct per-million-token rates", () => {
-    const gpt = MODEL_PRICES["gpt-5.5"];
-    expect(gpt.inPerMTok).toBe(1.25);
-    expect(gpt.outPerMTok).toBe(10);
-  });
-
-  it("gemini-3.1-flash-lite is the cheapest model overall", () => {
-    const lite = MODEL_PRICES["gemini-3.1-flash-lite"];
-    for (const [model, prices] of Object.entries(MODEL_PRICES)) {
-      if (model === "gemini-3.1-flash-lite") continue;
-      expect(prices.inPerMTok).toBeGreaterThanOrEqual(lite.inPerMTok);
-      expect(prices.outPerMTok).toBeGreaterThanOrEqual(lite.outPerMTok);
-    }
-  });
-
-  it("gemini-3.5-flash has higher output price than gemini-3.1-flash-lite", () => {
-    expect(MODEL_PRICES["gemini-3.5-flash"].outPerMTok).toBeGreaterThan(
-      MODEL_PRICES["gemini-3.1-flash-lite"].outPerMTok,
+  it("covers the full 8-model approved registry", () => {
+    expect(Object.keys(MODEL_PRICES).sort()).toEqual(
+      [
+        "gpt-5.5",
+        "claude-opus-4.8",
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+        "kimi-k2.5",
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
+        "hy3-preview",
+      ].sort(),
     );
   });
 
+  it("gpt-5.5 has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["gpt-5.5"]).toEqual({ inPerMTok: 5, outPerMTok: 30 });
+  });
+
+  it("claude-opus-4.8 has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["claude-opus-4.8"]).toEqual({
+      inPerMTok: 5,
+      outPerMTok: 25,
+    });
+  });
+
   it("gemini-3.5-flash has correct per-million-token rates", () => {
-    const flash = MODEL_PRICES["gemini-3.5-flash"];
-    expect(flash.inPerMTok).toBe(0.3);
-    expect(flash.outPerMTok).toBe(2.5);
+    expect(MODEL_PRICES["gemini-3.5-flash"]).toEqual({
+      inPerMTok: 1.5,
+      outPerMTok: 9,
+    });
   });
 
   it("gemini-3.1-flash-lite has correct per-million-token rates", () => {
-    const lite = MODEL_PRICES["gemini-3.1-flash-lite"];
-    expect(lite.inPerMTok).toBe(0.1);
-    expect(lite.outPerMTok).toBe(0.4);
+    expect(MODEL_PRICES["gemini-3.1-flash-lite"]).toEqual({
+      inPerMTok: 0.25,
+      outPerMTok: 1.5,
+    });
+  });
+
+  it("kimi-k2.5 (frontier tier) has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["kimi-k2.5"]).toEqual({
+      inPerMTok: 0.35,
+      outPerMTok: 1.89,
+    });
+  });
+
+  it("deepseek-v4-pro (balanced tier) has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["deepseek-v4-pro"]).toEqual({
+      inPerMTok: 0.43,
+      outPerMTok: 0.87,
+    });
+  });
+
+  it("deepseek-v4-flash (fast tier) has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["deepseek-v4-flash"]).toEqual({
+      inPerMTok: 0.1,
+      outPerMTok: 0.2,
+    });
+  });
+
+  it("hy3-preview (cheap tier) has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["hy3-preview"]).toEqual({
+      inPerMTok: 0.06,
+      outPerMTok: 0.21,
+    });
+  });
+
+  it("every routed tier model is cheaper than every premium model (cost directive)", () => {
+    const premium = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash"];
+    for (const { model } of Object.values(TIER_MODEL)) {
+      for (const p of premium) {
+        expect(
+          MODEL_PRICES[model].outPerMTok,
+          `${model} out < ${p} out`,
+        ).toBeLessThan(MODEL_PRICES[p].outPerMTok);
+        expect(
+          MODEL_PRICES[model].inPerMTok,
+          `${model} in < ${p} in`,
+        ).toBeLessThan(MODEL_PRICES[p].inPerMTok);
+      }
+    }
+  });
+
+  it("fast tier is cheaper than balanced tier on both axes", () => {
+    const fast = MODEL_PRICES[TIER_MODEL.fast.model];
+    const balanced = MODEL_PRICES[TIER_MODEL.balanced.model];
+    expect(fast.inPerMTok).toBeLessThan(balanced.inPerMTok);
+    expect(fast.outPerMTok).toBeLessThan(balanced.outPerMTok);
   });
 
   it("all price values are finite positive numbers (no NaN, no Infinity)", () => {
     for (const [model, prices] of Object.entries(MODEL_PRICES)) {
-      expect(Number.isFinite(prices.inPerMTok), `${model}: inPerMTok finite`).toBe(true);
-      expect(Number.isFinite(prices.outPerMTok), `${model}: outPerMTok finite`).toBe(true);
+      expect(
+        Number.isFinite(prices.inPerMTok),
+        `${model}: inPerMTok finite`,
+      ).toBe(true);
+      expect(
+        Number.isFinite(prices.outPerMTok),
+        `${model}: outPerMTok finite`,
+      ).toBe(true);
     }
   });
 
   it("output-to-input ratio is at least 2:1 for all models", () => {
     for (const [model, prices] of Object.entries(MODEL_PRICES)) {
-      expect(prices.outPerMTok / prices.inPerMTok, `${model}: ratio`).toBeGreaterThanOrEqual(2);
+      expect(
+        prices.outPerMTok / prices.inPerMTok,
+        `${model}: ratio`,
+      ).toBeGreaterThanOrEqual(2);
     }
-  });
-
-  it("balanced tier (gpt-5.5) is cheaper than frontier (claude-opus-4.8)", () => {
-    expect(MODEL_PRICES["gpt-5.5"].outPerMTok).toBeLessThan(MODEL_PRICES["claude-opus-4.8"].outPerMTok);
-    expect(MODEL_PRICES["gpt-5.5"].inPerMTok).toBeLessThan(MODEL_PRICES["claude-opus-4.8"].inPerMTok);
-  });
-
-  it("fast tier (gemini-3.5-flash) is cheaper than balanced tier (gpt-5.5)", () => {
-    expect(MODEL_PRICES["gemini-3.5-flash"].inPerMTok).toBeLessThan(MODEL_PRICES["gpt-5.5"].inPerMTok);
-    expect(MODEL_PRICES["gemini-3.5-flash"].outPerMTok).toBeLessThan(MODEL_PRICES["gpt-5.5"].outPerMTok);
   });
 
   it("all model names in MODEL_PRICES are non-empty strings", () => {
@@ -115,7 +160,9 @@ describe("MODEL_PRICES", () => {
 
   it("price object has exactly inPerMTok and outPerMTok fields", () => {
     for (const prices of Object.values(MODEL_PRICES)) {
-      expect(Object.keys(prices).sort()).toEqual(["inPerMTok", "outPerMTok"].sort());
+      expect(Object.keys(prices).sort()).toEqual(
+        ["inPerMTok", "outPerMTok"].sort(),
+      );
     }
   });
 });

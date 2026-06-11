@@ -64,13 +64,18 @@ export const GATEWAY_MODELS: readonly GatewayModel[] = [
     name: "Gemini 3.1 Flash Lite",
     slug: "google/gemini-3.1-flash-lite",
   },
-  { id: "minimax-m3", name: "MiniMax M3", slug: "minimax/minimax-m3" },
   { id: "kimi-k2.5", name: "Kimi K2.5", slug: "moonshotai/kimi-k2.5" },
   {
     id: "deepseek-v4-flash",
     name: "DeepSeek V4 Flash",
     slug: "deepseek/deepseek-v4-flash",
   },
+  {
+    id: "deepseek-v4-pro",
+    name: "DeepSeek V4 Pro",
+    slug: "deepseek/deepseek-v4-pro",
+  },
+  { id: "hy3-preview", name: "Tencent Hy3", slug: "tencent/hy3-preview" },
 ];
 
 /**

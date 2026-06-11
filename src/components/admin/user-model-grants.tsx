@@ -24,9 +24,10 @@ const APPROVED_MODELS = [
   { id: "claude-opus-4.8", label: "Claude Opus 4.8" },
   { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
   { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" },
-  { id: "minimax-m3", label: "MiniMax M3" },
   { id: "kimi-k2.5", label: "Kimi K2.5" },
   { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+  { id: "hy3-preview", label: "Tencent Hy3" },
 ];
 
 interface Grant {

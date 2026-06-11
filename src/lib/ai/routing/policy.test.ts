@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { TIER_MODEL, TASK_TIERS, LONG_CONTEXT_CHARS } from "./policy";
+import { describe, expect, it } from "vitest";
+import { LONG_CONTEXT_CHARS, TASK_TIERS, TIER_MODEL } from "./policy";
 
 describe("TIER_MODEL", () => {
   it("all four tiers have a model entry", () => {
@@ -40,7 +40,9 @@ describe("TASK_TIERS", () => {
     const validTiers = new Set(Object.keys(TIER_MODEL));
     for (const [cls, tiers] of Object.entries(TASK_TIERS)) {
       for (const tier of tiers) {
-        expect(validTiers.has(tier), `${cls}: unknown tier "${tier}"`).toBe(true);
+        expect(validTiers.has(tier), `${cls}: unknown tier "${tier}"`).toBe(
+          true,
+        );
       }
     }
   });
@@ -76,27 +78,27 @@ describe("LONG_CONTEXT_CHARS", () => {
   });
 });
 
-describe("TIER_MODEL — specific model assignments", () => {
-  it("frontier tier uses claude-opus-4.8", () => {
-    expect(TIER_MODEL.frontier.model).toBe("claude-opus-4.8");
+describe("TIER_MODEL — specific model assignments (cost stack, 2026-06)", () => {
+  it("frontier tier uses kimi-k2.5 (servable stand-in for MiniMax M3)", () => {
+    expect(TIER_MODEL.frontier.model).toBe("kimi-k2.5");
   });
 
-  it("balanced tier uses gpt-5.5", () => {
-    expect(TIER_MODEL.balanced.model).toBe("gpt-5.5");
+  it("balanced tier uses deepseek-v4-pro", () => {
+    expect(TIER_MODEL.balanced.model).toBe("deepseek-v4-pro");
   });
 
-  it("fast tier uses gemini-3.5-flash", () => {
-    expect(TIER_MODEL.fast.model).toBe("gemini-3.5-flash");
+  it("fast tier uses deepseek-v4-flash", () => {
+    expect(TIER_MODEL.fast.model).toBe("deepseek-v4-flash");
   });
 
-  it("cheap tier uses gemini-3.1-flash-lite", () => {
-    expect(TIER_MODEL.cheap.model).toBe("gemini-3.1-flash-lite");
+  it("cheap tier uses deepseek-v4-flash (hy3 too slow for the snappy tier)", () => {
+    expect(TIER_MODEL.cheap.model).toBe("deepseek-v4-flash");
   });
 
-  it("all tier models are distinct", () => {
-    const models = Object.values(TIER_MODEL).map((t) => t.model);
-    const unique = new Set(models);
-    expect(unique.size).toBe(models.length);
+  it("fast and cheap intentionally share deepseek-v4-flash (hy3 latency)", () => {
+    const models = Object.values(TIER_MODEL).map((m) => m.model);
+    expect(new Set(models).size).toBe(3);
+    expect(TIER_MODEL.fast.model).toBe(TIER_MODEL.cheap.model);
   });
 });
 

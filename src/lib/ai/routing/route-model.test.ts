@@ -3,28 +3,31 @@ import { routeModel } from "./route-model";
 
 // ADR-0004: routing is deterministic, so these assertions are exact.
 describe("routeModel", () => {
-  it("routes code prompts to the balanced tier (gpt-5.5)", () => {
+  it("routes code prompts to the balanced tier (deepseek-v4-pro)", () => {
     const d = routeModel({ text: "fix this ```js\nconst x = 1\n```" });
     expect(d.taskClass).toBe("code");
-    expect(d.model).toEqual({ provider: "openRouter", model: "gpt-5.5" });
+    expect(d.model).toEqual({
+      provider: "openRouter",
+      model: "deepseek-v4-pro",
+    });
   });
 
-  it("routes images to the vision tier (gemini-3.5-flash)", () => {
+  it("routes images to the vision tier (deepseek-v4-flash)", () => {
     const d = routeModel({ text: "what is in this picture?", hasImage: true });
     expect(d.taskClass).toBe("vision");
-    expect(d.model.model).toBe("gemini-3.5-flash");
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
-  it("routes tool requests to tool_use (gpt-5.5)", () => {
+  it("routes tool requests to tool_use (deepseek-v4-pro)", () => {
     const d = routeModel({ text: "look this up", hasTools: true });
     expect(d.taskClass).toBe("tool_use");
-    expect(d.model.model).toBe("gpt-5.5");
+    expect(d.model.model).toBe("deepseek-v4-pro");
   });
 
   it("routes a short rewrite to the cheapest model", () => {
     const d = routeModel({ text: "translate 'hello' to Spanish" });
     expect(d.taskClass).toBe("quick_rewrite");
-    expect(d.model.model).toBe("gemini-3.1-flash-lite");
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
   it("routes long conversations to long_context", () => {
@@ -32,49 +35,49 @@ describe("routeModel", () => {
     expect(d.taskClass).toBe("long_context");
   });
 
-  it("routes reasoning to the frontier tier (claude-opus-4.8)", () => {
+  it("routes reasoning to the frontier tier (kimi-k2.5)", () => {
     const d = routeModel({ text: "explain why the sky is blue, step by step" });
     expect(d.taskClass).toBe("reasoning");
-    expect(d.model.model).toBe("claude-opus-4.8");
+    expect(d.model.model).toBe("kimi-k2.5");
   });
 
-  it("defaults plain chat to general (gemini-3.5-flash)", () => {
+  it("defaults plain chat to general (deepseek-v4-flash)", () => {
     const d = routeModel({ text: "hi there" });
     expect(d.taskClass).toBe("general");
-    expect(d.model.model).toBe("gemini-3.5-flash");
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
   it("respects a team allow-list (ADR-0002)", () => {
     const d = routeModel({
       text: "explain why this matters, step by step",
-      allowedModels: [{ provider: "openRouter", model: "gpt-5.5" }],
+      allowedModels: [{ provider: "openRouter", model: "deepseek-v4-pro" }],
     });
-    // reasoning prefers opus, but the allow-list only permits gpt-5.5
-    expect(d.model.model).toBe("gpt-5.5");
+    // reasoning prefers kimi-k2.5, but the allow-list only permits deepseek-v4-pro
+    expect(d.model.model).toBe("deepseek-v4-pro");
   });
 
   it("respects an entitlement allow-list of bare model IDs (ADR-0009)", () => {
     const d = routeModel({
       text: "explain why this matters, step by step",
-      allowedModels: ["gpt-5.5"],
+      allowedModels: ["deepseek-v4-pro"],
     });
-    // reasoning prefers opus, but the resolved entitlement list only permits gpt-5.5
-    expect(d.model.model).toBe("gpt-5.5");
-    expect(d.candidates.every((c) => c.model === "gpt-5.5")).toBe(true);
+    // reasoning prefers kimi-k2.5, but the resolved entitlement list only permits deepseek-v4-pro
+    expect(d.model.model).toBe("deepseek-v4-pro");
+    expect(d.candidates.every((c) => c.model === "deepseek-v4-pro")).toBe(true);
   });
 
   it("mixed string + {provider, model} allow-list entries both match", () => {
     const d = routeModel({
       text: "explain why this matters, step by step",
       allowedModels: [
-        { provider: "openRouter", model: "claude-opus-4.8" },
-        "gpt-5.5",
+        { provider: "openRouter", model: "kimi-k2.5" },
+        "deepseek-v4-pro",
       ],
     });
-    expect(d.model.model).toBe("claude-opus-4.8");
+    expect(d.model.model).toBe("kimi-k2.5");
     expect(d.candidates.map((c) => c.model)).toEqual([
-      "claude-opus-4.8",
-      "gpt-5.5",
+      "kimi-k2.5",
+      "deepseek-v4-pro",
     ]);
   });
 
@@ -83,7 +86,7 @@ describe("routeModel", () => {
       text: "hello",
       allowedModels: ["some-unrouted-model"],
     });
-    expect(d.model.model).toBe("gemini-3.5-flash");
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
   it("lets a declared task class win over inference", () => {
@@ -102,8 +105,8 @@ describe("routeModel", () => {
       text: "hello",
       allowedModels: [{ provider: "openRouter", model: "nonexistent-model" }],
     });
-    // When allow-list blocks everything, top tier for general = fast (gemini-3.5-flash)
-    expect(d.model.model).toBe("gemini-3.5-flash");
+    // When allow-list blocks everything, top tier for general = fast (deepseek-v4-flash)
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
   it("reason string contains the inferred taskClass", () => {
@@ -124,7 +127,7 @@ describe("routeModel", () => {
   it("declaredTaskClass can force vision even without hasImage", () => {
     const d = routeModel({ text: "anything", declaredTaskClass: "vision" });
     expect(d.taskClass).toBe("vision");
-    expect(d.model.model).toBe("gemini-3.5-flash");
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
   it("totalChars exactly above LONG_CONTEXT_CHARS triggers long_context", () => {
@@ -182,13 +185,13 @@ describe("routeModel", () => {
     const d = routeModel({
       text: "translate 'hello' to Spanish",
       allowedModels: [
-        { provider: "openRouter", model: "gemini-3.1-flash-lite" },
-        { provider: "openRouter", model: "gpt-5.5" },
+        { provider: "openRouter", model: "deepseek-v4-flash" },
+        { provider: "openRouter", model: "deepseek-v4-pro" },
       ],
     });
-    // quick_rewrite prefers gemini-3.1-flash-lite — which is in the allow-list
+    // quick_rewrite prefers the cheap tier — which is in the allow-list
     expect(d.taskClass).toBe("quick_rewrite");
-    expect(d.model.model).toBe("gemini-3.1-flash-lite");
+    expect(d.model.model).toBe("deepseek-v4-flash");
   });
 
   it("model provider is 'openRouter' for all routed results", () => {

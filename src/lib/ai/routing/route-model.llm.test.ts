@@ -17,31 +17,39 @@ describe.skipIf(!RUN)("routeModel → real model integration", () => {
       text: "fix this function ```ts\nconst x = 1;\n```",
     });
     expect(code.taskClass).toBe("code");
-    expect(code.model).toEqual({ provider: "openRouter", model: "gpt-5.5" });
+    expect(code.model).toEqual({
+      provider: "openRouter",
+      model: "deepseek-v4-pro",
+    });
 
     const rewrite = routeModel({ text: "summarize this paragraph please" });
     expect(rewrite.taskClass).toBe("quick_rewrite");
     expect(rewrite.tier).toBe("cheap");
     expect(rewrite.model).toEqual({
       provider: "openRouter",
-      model: "gemini-3.1-flash-lite",
+      model: "deepseek-v4-flash",
     });
 
     const general = routeModel({ text: "hello there" });
     expect(general.taskClass).toBe("general");
     expect(general.model).toEqual({
       provider: "openRouter",
-      model: "gemini-3.5-flash",
+      model: "deepseek-v4-flash",
     });
   });
 
   it("honours an entitlement allow-list", () => {
     const decision = routeModel({
       text: "hello there",
-      allowedModels: ["gemini-3.1-flash-lite"],
+      allowedModels: ["deepseek-v4-flash"],
     });
-    expect(decision.model.model).toBe("gemini-3.1-flash-lite");
-    expect(decision.candidates).toHaveLength(1);
+    expect(decision.model.model).toBe("deepseek-v4-flash");
+    // fast and cheap tiers intentionally share deepseek-v4-flash, so the
+    // allow-list can match more than one tier candidate.
+    expect(decision.candidates.length).toBeGreaterThanOrEqual(1);
+    for (const c of decision.candidates) {
+      expect(c.model).toBe("deepseek-v4-flash");
+    }
   });
 
   it(
@@ -52,10 +60,12 @@ describe.skipIf(!RUN)("routeModel → real model integration", () => {
       const decision = routeModel({ text: "summarize: hello world" });
       expect(decision.tier).toBe("cheap");
 
+      // hy3-preview is a reasoning model: give it room to think before the
+      // visible answer, or the output budget is spent entirely on reasoning.
       const { text } = await generateText({
         model: customModelProvider.getModel(decision.model),
         prompt: "Reply with the single word OK",
-        maxOutputTokens: 16,
+        maxOutputTokens: 2048,
       });
       expect(text.trim().length).toBeGreaterThan(0);
     },

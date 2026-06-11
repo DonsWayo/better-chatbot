@@ -6,7 +6,7 @@ import { MODEL_PRICES } from "./prices";
 // Wave 2 routing eval — sanity guard (ADR-0004).
 // Asserts that the blended cost when routing is <= always choosing frontier.
 
-const FRONTIER_MODEL = "claude-opus-4.8";
+const FRONTIER_MODEL = "kimi-k2.5"; // TIER_MODEL.frontier (cost stack, 2026-06)
 
 // Synthetic token counts used consistently across the eval script and test.
 const INPUT_TOKENS = 1_000;
@@ -76,35 +76,45 @@ describe("routing eval — per-category tier assignments", () => {
   });
 
   it("quick_rewrite fixtures route to cheap tier", () => {
-    for (const f of EVAL_FIXTURES.filter((x) => x.name.startsWith("quick_rewrite/"))) {
+    for (const f of EVAL_FIXTURES.filter((x) =>
+      x.name.startsWith("quick_rewrite/"),
+    )) {
       const d = routeModel(f.request);
       expect(d.tier, `${f.name} should be cheap`).toBe("cheap");
     }
   });
 
   it("general fixtures route to fast tier", () => {
-    for (const f of EVAL_FIXTURES.filter((x) => x.name.startsWith("general/"))) {
+    for (const f of EVAL_FIXTURES.filter((x) =>
+      x.name.startsWith("general/"),
+    )) {
       const d = routeModel(f.request);
       expect(d.tier, `${f.name} should be fast`).toBe("fast");
     }
   });
 
   it("reasoning fixtures route to frontier tier", () => {
-    for (const f of EVAL_FIXTURES.filter((x) => x.name.startsWith("reasoning/"))) {
+    for (const f of EVAL_FIXTURES.filter((x) =>
+      x.name.startsWith("reasoning/"),
+    )) {
       const d = routeModel(f.request);
       expect(d.tier, `${f.name} should be frontier`).toBe("frontier");
     }
   });
 
   it("long_context fixtures route to balanced tier", () => {
-    for (const f of EVAL_FIXTURES.filter((x) => x.name.startsWith("long_context/"))) {
+    for (const f of EVAL_FIXTURES.filter((x) =>
+      x.name.startsWith("long_context/"),
+    )) {
       const d = routeModel(f.request);
       expect(d.tier, `${f.name} should be balanced`).toBe("balanced");
     }
   });
 
   it("tool_use fixtures route to balanced tier", () => {
-    for (const f of EVAL_FIXTURES.filter((x) => x.name.startsWith("tool_use/"))) {
+    for (const f of EVAL_FIXTURES.filter((x) =>
+      x.name.startsWith("tool_use/"),
+    )) {
       const d = routeModel(f.request);
       expect(d.tier, `${f.name} should be balanced`).toBe("balanced");
     }

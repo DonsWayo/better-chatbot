@@ -31,19 +31,19 @@ import {
  */
 const staticModels = {
   openRouter: {
-    // balanced — default selection
+    // Premium family — entitlement-only (not in routing tiers; granted per team/user).
     "gpt-5.5": openrouter("openai/gpt-5.5"),
-    // frontier — quality (code, reasoning), 1M context
     "claude-opus-4.8": openrouter("anthropic/claude-opus-4.8"),
-    // fast & cheap, strong multilingual (ES/EN), 1M context
     "gemini-3.5-flash": openrouter("google/gemini-3.5-flash"),
-    // cheapest — trivial / high-volume tasks
     "gemini-3.1-flash-lite": openrouter("google/gemini-3.1-flash-lite"),
-    // budget tier (~$0.15–0.80/user/mo at typical usage; live OpenRouter
-    // pricing 2026-06): exposed via entitlements, not in routing tiers yet.
-    "minimax-m3": openrouter("minimax/minimax-m3"),
-    "kimi-k2.5": openrouter("moonshotai/kimi-k2.5"),
-    "deepseek-v4-flash": openrouter("deepseek/deepseek-v4-flash"),
+    // Cost stack — the Auto routing tiers (live OpenRouter pricing 2026-06,
+    // every slug verified servable on this account). NOTE: minimax/minimax-m3
+    // was removed — this account's OpenRouter data policy returns 404
+    // ("no endpoints matching guardrail restrictions") for it.
+    "kimi-k2.5": openrouter("moonshotai/kimi-k2.5"), // frontier tier
+    "deepseek-v4-flash": openrouter("deepseek/deepseek-v4-flash"), // fast tier
+    "deepseek-v4-pro": openrouter("deepseek/deepseek-v4-pro"), // balanced tier
+    "hy3-preview": openrouter("tencent/hy3-preview"), // cheap tier
   },
 };
 
@@ -81,10 +81,11 @@ registerFileSupport(
   staticModels.openRouter["gemini-3.1-flash-lite"],
   GEMINI_FILE_MIME_TYPES,
 );
-// Budget tier: default (conservative) file mime set.
-registerFileSupport(staticModels.openRouter["minimax-m3"]);
+// Cost stack: default (conservative) file mime set.
 registerFileSupport(staticModels.openRouter["kimi-k2.5"]);
 registerFileSupport(staticModels.openRouter["deepseek-v4-flash"]);
+registerFileSupport(staticModels.openRouter["deepseek-v4-pro"]);
+registerFileSupport(staticModels.openRouter["hy3-preview"]);
 
 const openaiCompatibleProviders = openaiCompatibleModelsSafeParse(
   process.env.OPENAI_COMPATIBLE_DATA,
@@ -116,7 +117,9 @@ export const getFilePartSupportedMimeTypes = (model: LanguageModel) => {
   return staticFilePartSupportByModel.get(model) ?? [];
 };
 
-const fallbackModel = staticModels.openRouter["gpt-5.5"];
+// Cheap-by-default: unresolved/unspecified models land on the fast-tier workhorse,
+// not a premium model (cost directive, 2026-06).
+const fallbackModel = staticModels.openRouter["deepseek-v4-flash"];
 
 export const customModelProvider = {
   modelsInfo: Object.entries(allModels).map(([provider, models]) => ({

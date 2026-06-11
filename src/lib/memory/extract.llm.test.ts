@@ -7,7 +7,7 @@ const RUN = Boolean(
 
 // Real extractor model call; ONLY the persistence layer (store) + db-touching
 // modules are mocked, so this exercises buildExtractionPrompt + the real
-// gemini-3.1-flash-lite generateObject roundtrip end-to-end.
+// deepseek-v4-flash generateObject roundtrip end-to-end.
 const h = vi.hoisted(() => ({
   insertMock: vi.fn(),
   listActiveMock: vi.fn(),
@@ -29,7 +29,7 @@ import { extractMemoriesFromTurn } from "./extract";
 import type { InsertMemoryInput } from "./store";
 
 describe.skipIf(!RUN)(
-  "memory extraction roundtrip (real gemini-3.1-flash-lite)",
+  "memory extraction roundtrip (real deepseek-v4-flash)",
   () => {
     it(
       'extracts an explicit profile fact from "Remember that I am the Head of Software Development."',

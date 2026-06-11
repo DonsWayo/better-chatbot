@@ -85,18 +85,19 @@ describe("inference posture", () => {
       "claude-opus-4.8",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite",
-      "minimax-m3",
       "kimi-k2.5",
       "deepseek-v4-flash",
+      "deepseek-v4-pro",
+      "hy3-preview",
     ]);
   });
 
-  it("has exactly 7 approved models in the registry", () => {
+  it("has exactly 8 approved models in the registry", () => {
     const { customModelProvider } = modelsModule;
     const openRouter = customModelProvider.modelsInfo.find(
       (m) => m.provider === "openRouter",
     );
-    expect(openRouter?.models).toHaveLength(7);
+    expect(openRouter?.models).toHaveLength(8);
   });
 
   it("each model has a non-empty name", () => {
@@ -112,9 +113,17 @@ describe("inference posture", () => {
 
   it("getModel returns a defined object for each approved model", () => {
     const { customModelProvider } = modelsModule;
-    const MODELS = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+    const MODELS = [
+      "gpt-5.5",
+      "claude-opus-4.8",
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
+    ];
     for (const model of MODELS) {
-      const result = customModelProvider.getModel({ provider: "openRouter", model });
+      const result = customModelProvider.getModel({
+        provider: "openRouter",
+        model,
+      });
       expect(result).toBeDefined();
     }
   });
@@ -136,14 +145,18 @@ describe("customModelProvider file support — gemini-3.1-flash-lite", () => {
 describe("customModelProvider registry invariants", () => {
   it("no model names are duplicated in the registry", () => {
     const { customModelProvider } = modelsModule;
-    const openRouter = customModelProvider.modelsInfo.find((m) => m.provider === "openRouter")!;
+    const openRouter = customModelProvider.modelsInfo.find(
+      (m) => m.provider === "openRouter",
+    )!;
     const names = openRouter.models.map((m) => m.name);
     expect(new Set(names).size).toBe(names.length);
   });
 
   it("all models have a non-empty supportedFileMimeTypes array", () => {
     const { customModelProvider } = modelsModule;
-    const openRouter = customModelProvider.modelsInfo.find((m) => m.provider === "openRouter")!;
+    const openRouter = customModelProvider.modelsInfo.find(
+      (m) => m.provider === "openRouter",
+    )!;
     for (const model of openRouter.models) {
       expect(Array.isArray(model.supportedFileMimeTypes)).toBe(true);
       expect(model.supportedFileMimeTypes!.length).toBeGreaterThan(0);
@@ -152,7 +165,9 @@ describe("customModelProvider registry invariants", () => {
 
   it("file support mime types are all non-empty strings", () => {
     const { customModelProvider } = modelsModule;
-    const openRouter = customModelProvider.modelsInfo.find((m) => m.provider === "openRouter")!;
+    const openRouter = customModelProvider.modelsInfo.find(
+      (m) => m.provider === "openRouter",
+    )!;
     for (const model of openRouter.models) {
       for (const mime of model.supportedFileMimeTypes ?? []) {
         expect(typeof mime).toBe("string");
@@ -300,13 +315,19 @@ describe("customModelProvider — provider name invariants", () => {
 
   it("getFilePartSupportedMimeTypes returns an array", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
-    const model = customModelProvider.getModel({ provider: "openai", model: "gpt-4.1" });
+    const model = customModelProvider.getModel({
+      provider: "openai",
+      model: "gpt-4.1",
+    });
     expect(Array.isArray(getFilePartSupportedMimeTypes(model))).toBe(true);
   });
 
   it("getFilePartSupportedMimeTypes entries are strings", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
-    const model = customModelProvider.getModel({ provider: "openai", model: "gpt-4.1" });
+    const model = customModelProvider.getModel({
+      provider: "openai",
+      model: "gpt-4.1",
+    });
     for (const mime of getFilePartSupportedMimeTypes(model)) {
       expect(typeof mime).toBe("string");
     }

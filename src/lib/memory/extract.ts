@@ -26,10 +26,10 @@ const logger = globalLogger.withDefaults({ message: "UserMemory extract: " });
 // gated, default OFF pending legal sign-off).
 // ---------------------------------------------------------------------------
 
-/** Cheapest approved model — extraction is high-volume, low-stakes. */
+/** Cheap fast-tier model — extraction is high-volume, low-stakes. */
 export const MEMORY_EXTRACTION_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "gemini-3.1-flash-lite",
+  model: "deepseek-v4-flash",
 };
 
 /** Max memories stored from a single turn. */

@@ -82,25 +82,30 @@ interface Budget {
 }
 
 const APPROVED_MODELS = [
-  { id: "gpt-5.5", label: "GPT-5.5", note: "balanced" },
-  { id: "claude-opus-4.8", label: "Claude Opus 4.8", note: "frontier" },
+  { id: "gpt-5.5", label: "GPT-5.5", note: "premium" },
+  { id: "claude-opus-4.8", label: "Claude Opus 4.8", note: "premium" },
   {
     id: "gemini-3.5-flash",
     label: "Gemini 3.5 Flash",
-    note: "fast & multilingual",
+    note: "premium — fast & multilingual",
   },
   {
     id: "gemini-3.1-flash-lite",
     label: "Gemini 3.1 Flash Lite",
-    note: "cheapest",
+    note: "premium — light",
   },
-  { id: "minimax-m3", label: "MiniMax M3", note: "budget" },
-  { id: "kimi-k2.5", label: "Kimi K2.5", note: "budget" },
+  { id: "kimi-k2.5", label: "Kimi K2.5", note: "frontier default" },
   {
     id: "deepseek-v4-flash",
     label: "DeepSeek V4 Flash",
-    note: "budget — lowest cost",
+    note: "fast default",
   },
+  {
+    id: "deepseek-v4-pro",
+    label: "DeepSeek V4 Pro",
+    note: "balanced default",
+  },
+  { id: "hy3-preview", label: "Tencent Hy3", note: "cheapest" },
 ] as const;
 
 interface UsageRow {

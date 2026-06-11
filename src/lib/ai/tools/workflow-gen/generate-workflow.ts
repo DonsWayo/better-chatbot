@@ -35,9 +35,11 @@ import { generateUUID } from "lib/utils";
 export const MAX_GENERATED_NODES = 20;
 export const MAX_GENERATED_EDGES = 40;
 
+// Frontier-tier default from the cost stack (cost directive 2026-06) — generated
+// LLM nodes should not pin a premium, entitlement-only model.
 export const DEFAULT_WORKFLOW_LLM_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "gpt-5.5",
+  model: "kimi-k2.5",
 };
 
 const textToTiptap = (text: string): TipTapMentionJsonContent => ({

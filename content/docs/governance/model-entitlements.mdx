@@ -19,13 +19,28 @@ A single org-wide allow-list stored under the app-settings key
 `org_base_model_allow_list` (`getOrgBaseModelAllowList` / `setOrgBaseModelAllowList`).
 `null` means **unrestricted** — every registered model is allowed.
 
-The registered short list (live OpenRouter pricing, June 2026): `gpt-5.5`
-(balanced), `claude-opus-4.8` (frontier), `gemini-3.5-flash` (fast),
-`gemini-3.1-flash-lite` (cheapest in routing), plus a **budget tier** exposed
-only through entitlements — `minimax-m3`, `kimi-k2.5`, `deepseek-v4-flash`
-(roughly $0.15–0.80 per active user/month at typical usage). A cost-minded org
-base list is the budget tier + flash-lite, with frontier models granted per
-team or per user.
+The registered short list is eight models (live OpenRouter pricing on this
+account, June 2026). The four **routing-tier** models are what "Auto" selects
+between — the entire cost stack lands at $0.10–$1.89 per million tokens (`hy3-preview`, $0.06/$0.21, stays registered for entitled picks but is too slow — 12–19s reasoning latency — for the snappy tier):
+
+| Tier | Model | $/M in | $/M out | Context |
+|---|---|---|---|---|
+| frontier | `kimi-k2.5` | $0.35 | $1.89 | 262k |
+| balanced | `deepseek-v4-pro` | $0.43 | $0.87 | 1M |
+| fast | `deepseek-v4-flash` | $0.10 | $0.20 | 1M |
+| cheap | `deepseek-v4-flash` | $0.10 | $0.20 | 1M |
+
+The **premium** models — `gpt-5.5` ($5/$30), `claude-opus-4.8` ($5/$25),
+`gemini-3.5-flash` ($1.50/$9), and `gemini-3.1-flash-lite` ($0.25/$1.50) —
+remain registered but are **entitlement-only**: Auto never routes to them, so
+they only run when a team policy or user grant explicitly allows them.
+
+> **Note — MiniMax M3 removed.** `minimax-m3` was the intended frontier-tier
+> model, but this account's OpenRouter data policy blocks every endpoint that
+> serves it (404 "no endpoints matching your guardrail restrictions and data
+> policy"), which surfaced as user-facing errors. `kimi-k2.5` stands in at the
+> frontier tier. Re-enabling MiniMax M3 requires loosening the account's
+> OpenRouter privacy settings — a compliance decision, not a code change.
 
 ## Layer 2 — team override
 
