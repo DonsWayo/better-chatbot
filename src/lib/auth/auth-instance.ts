@@ -234,6 +234,13 @@ const options = {
 export const auth = betterAuth({
   ...options,
   plugins: [...(options.plugins ?? [])],
+  // Better Auth enables its built-in rate limiter automatically in production
+  // builds (strict per-path limits on sign-in). E2e runs sign in 4 seeded
+  // users back-to-back from localhost and trip it, so test harnesses may
+  // switch it off explicitly. Never set in real deployments.
+  ...(process.env.DISABLE_AUTH_RATE_LIMIT === "1"
+    ? { rateLimit: { enabled: false } }
+    : {}),
 });
 
 export const getSession = async () => {

@@ -21,6 +21,7 @@ live in the `asafe-ai-secrets` Secret on EKS (synced from AWS Secrets Manager).
 | `POSTGRES_URL` | Postgres connection string (`pnpm docker:pg` for local). |
 | `BETTER_AUTH_SECRET` | Generate with `npx @better-auth/cli@latest secret`. |
 | `BETTER_AUTH_URL` | The URL the app is reached at. |
+| `DISABLE_AUTH_RATE_LIMIT` | Test harnesses only — `1` switches off Better Auth's built-in production rate limiter (e2e signs in seeded users back-to-back). Never set in real deployments. |
 
 ## SSO & identity (ADR-0005, Wave 4)
 
