@@ -22,7 +22,10 @@ import { safe } from "ts-safe";
 import { auditMcpInvocation } from "./audit";
 import { type MCPClient, createMCPClient } from "./create-mcp-client";
 import { isMaybeStdioConfig } from "./is-mcp-config";
-import { isLocalMcpRuntimeEnabled } from "./local-policy";
+import {
+  isLocalMcpRuntimeEnabled,
+  requestLocalMcpArmApproval,
+} from "./local-policy";
 import { createMCPToolId } from "./mcp-tool-id";
 import { createMemoryMCPConfigStorage } from "./memory-mcp-config-storage";
 
@@ -74,12 +77,24 @@ export class MCPClientsManager {
    */
   private localMcpEnabled = false;
   /**
-   * Per-session consent (v1 of ADR-0010 per-action consent): a stdio server
-   * must be explicitly armed before its first invocation in a server session.
-   * serverId → armedUntil (epoch ms). Per-ACTION consent via the approvals /
-   * Inbox system is the v2 follow-up.
+   * Per-session consent (ADR-0010): a stdio server must be explicitly armed
+   * before its first invocation in a server session. serverId → grant
+   * (armedUntil epoch ms + who granted it). Grants come from two paths:
+   * v1's direct "Enable local tools for this session" button, and v2's
+   * approval flow (an unarmed invocation files an owner-targeted
+   * approval_request; approving it in the Inbox arms here).
    */
-  private armedLocalServers = new Map<string, number>();
+  private armedLocalServers = new Map<
+    string,
+    { armedUntil: number; grantedBy?: string }
+  >();
+  /**
+   * serverIds with a v2 consent request currently being filed — a pure
+   * in-process concurrency guard (parallel tool calls in one turn must not
+   * race duplicate inserts); cross-call/restart dedupe lives in the
+   * approvals lib (one open request per server+user).
+   */
+  private consentRequestsInFlight = new Set<string>();
   static readonly LOCAL_MCP_ARM_DURATION_MS = 8 * 60 * 60 * 1000; // 8h
   private logger = globalLogger.withDefaults({
     message: colorize("dim", `[${generateUUID().slice(0, 4)}] MCP Manager: `),
@@ -204,14 +219,17 @@ export class MCPClientsManager {
 
   /**
    * Per-session consent: arm a local stdio server so its tools may run until
-   * `armedUntil`. Returns the armedUntil timestamp (epoch ms).
+   * `armedUntil`. `grantedBy` records the granting user (direct button or
+   * Inbox approver) for status display/audit. Returns armedUntil (epoch ms).
    */
   armLocalServer(
     id: string,
-    durationMs: number = MCPClientsManager.LOCAL_MCP_ARM_DURATION_MS,
+    opts?: { durationMs?: number; grantedBy?: string },
   ): number {
+    const durationMs =
+      opts?.durationMs ?? MCPClientsManager.LOCAL_MCP_ARM_DURATION_MS;
     const armedUntil = Date.now() + durationMs;
-    this.armedLocalServers.set(id, armedUntil);
+    this.armedLocalServers.set(id, { armedUntil, grantedBy: opts?.grantedBy });
     return armedUntil;
   }
 
@@ -222,20 +240,56 @@ export class MCPClientsManager {
 
   /** Whether the server is currently armed (expired entries are pruned). */
   isLocalServerArmed(id: string): boolean {
-    const armedUntil = this.armedLocalServers.get(id);
-    if (armedUntil === undefined) return false;
-    if (Date.now() >= armedUntil) {
+    const grant = this.armedLocalServers.get(id);
+    if (grant === undefined) return false;
+    if (Date.now() >= grant.armedUntil) {
       this.armedLocalServers.delete(id);
       return false;
     }
     return true;
   }
 
-  /** armedUntil (epoch ms) for a server, or null when not armed/expired. */
-  localServerArmedUntil(id: string): number | null {
+  /** The active grant for a server, or null when not armed/expired. */
+  localServerArmedGrant(
+    id: string,
+  ): { armedUntil: number; grantedBy?: string } | null {
     return this.isLocalServerArmed(id)
       ? (this.armedLocalServers.get(id) ?? null)
       : null;
+  }
+
+  /** armedUntil (epoch ms) for a server, or null when not armed/expired. */
+  localServerArmedUntil(id: string): number | null {
+    return this.localServerArmedGrant(id)?.armedUntil ?? null;
+  }
+
+  /**
+   * Local-MCP consent v2: an unarmed local stdio invocation files an
+   * owner-targeted approval_request ("local_mcp_arm") so the grant can happen
+   * from the Inbox. Attributed to the server owner (the manager has no caller
+   * context — same convention as auditLocalToolCall). Fire-and-forget: filing
+   * failures never change the rejection path; v1's direct arming button
+   * remains the fallback when approvals are unavailable.
+   */
+  private requestLocalConsent(id: string, toolName: string) {
+    if (this.consentRequestsInFlight.has(id)) return;
+    this.consentRequestsInFlight.add(id);
+    void (async () => {
+      try {
+        const server = await this.storage.get(id);
+        if (!server?.userId) return;
+        await requestLocalMcpArmApproval({
+          serverId: id,
+          serverName: server.name,
+          toolName,
+          userId: server.userId,
+        });
+      } catch (err) {
+        this.logger.error("local MCP consent request failed (non-fatal):", err);
+      } finally {
+        this.consentRequestsInFlight.delete(id);
+      }
+    })();
   }
 
   /**
@@ -499,9 +553,13 @@ export class MCPClientsManager {
             );
           }
           if (!this.isLocalServerArmed(id)) {
+            // v2 consent: file an owner-targeted approval request (Inbox)
+            // before rejecting — approving it arms this server for 8h.
+            this.requestLocalConsent(id, toolName);
             throw new Error(
               `Local tools for this connector are not enabled for this session. ` +
-                `Open Settings → Connectors → this connector and click "Enable local tools for this session", then try again.`,
+                `An approval request was sent to the connector owner's Inbox — approve it there, ` +
+                `or open Settings → Connectors → this connector and click "Enable local tools for this session", then try again.`,
             );
           }
         }

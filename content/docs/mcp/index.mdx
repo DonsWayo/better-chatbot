@@ -32,7 +32,7 @@ export const IS_MCP_SERVER_REMOTE_ONLY =
 ## Local (stdio) servers: governance plane
 
 Where stdio is technically possible (desktop app, local dev, `MCP_ALLOW_LOCAL_SERVERS`),
-a second, **policy** gate applies on top (ADR-0010 v1; default-deny per ADR-0009).
+a second, **policy** gate applies on top (ADR-0010; default-deny per ADR-0009).
 Local stdio servers stay off for everyone until an admin opts the org — or a team — in.
 
 1. **Policy** (`src/lib/ai/mcp/local-policy.ts`) — layered org → team in
@@ -53,16 +53,33 @@ Local stdio servers stay off for everyone until an admin opts the org — or a t
      "org base OR any team override on"; per-team precision is enforced at save and
      arming time, where the user is known.
 3. **Per-session consent (arming)** — a stdio server's first invocation in a server
-   session requires arming: the connector detail page (Settings → Connectors →
-   *connector*) shows an **"Enable local tools for this session"** button (stdio
-   servers only, policy permitting, owner/admin only). Arming lasts 8 hours; unarmed
-   calls return a clear error telling the user where to enable. Arming events are
-   audit-logged. Per-**action** consent through the approvals/Inbox system is the v2
-   follow-up (ADR-0010 gate 2).
-4. **Audit** — every local stdio `toolCall` (allowed *and* denied) is written to
-   `asafe_mcp_invocation_log` from the manager, attributed to the server owner with
-   `mcp_server_id`, outcome, and duration. Chat-loop invocations are additionally
-   audited by the chat route with the calling user (a known duplicate for stdio).
+   session requires arming: an in-memory grant with a TTL (default **8 hours**) that
+   records *who* granted it (`grantedBy`). Two grant paths:
+   - **Direct (v1)** — the connector detail page (Settings → Connectors → *connector*)
+     shows an **"Enable local tools for this session"** button (stdio servers only,
+     policy permitting, owner/admin only). This remains the owner's immediate path —
+     and the fallback when approvals are unavailable. Clicking it also resolves any
+     open arm approval request for that server+owner, so the Inbox never shows a
+     stale ask.
+   - **Per-approval grants (v2 — the approvals/Inbox flow, ADR-0010 gate 2)** — when
+     an *unarmed* local tool is invoked, the manager still rejects the call with the
+     consent error **and** files an owner-targeted `approval_request` (payload kind
+     `local_mcp_arm`; deduped to one open request per server+user; the row rides on an
+     inert carrier `agent_session`, which the worker never executes). The request
+     appears in the **Inbox** as *"Allow local tools: \<server\>"* with the triggering
+     tool name. In words: *unarmed call → rejected + request filed → Inbox triage →
+     **Approve** = armed for 8h (approver recorded as `grantedBy`) / **Deny** = still
+     blocked; either way the request closes.* The connector page shows the pending
+     request while it waits.
+4. **Audit** — every consent transition lands in the compliance audit log
+   (`admin_action`): `local_mcp_arm_requested`, `local_mcp_arm_approved`,
+   `local_mcp_arm_denied`, and `local_mcp_server_armed` (direct button, including
+   which open requests it resolved).
+5. **Invocation audit** — every local stdio `toolCall` (allowed *and* denied) is
+   written to `asafe_mcp_invocation_log` from the manager, attributed to the server
+   owner with `mcp_server_id`, outcome, and duration. Chat-loop invocations are
+   additionally audited by the chat route with the calling user (a known duplicate
+   for stdio).
 
 ## Server config shape
 

@@ -86,9 +86,10 @@ export function McpServerCustomizationContent({
     setDisabledToolSet(new Set(disabledTools ?? []));
   }, [disabledTools]);
 
-  // Local-MCP per-session consent (ADR-0010 v1): stdio servers must be armed
-  // before their first invocation in a server session. Per-action consent via
-  // the approvals/Inbox system is the v2 follow-up.
+  // Local-MCP consent (ADR-0010): stdio servers must be armed before their
+  // first invocation in a server session. Two grant paths: this button (v1,
+  // direct) and the Inbox approval flow (v2 — an unarmed invocation files an
+  // owner-targeted approval request; its pending state is surfaced here).
   const isStdio = isMaybeStdioConfig(config);
   const [isArming, setIsArming] = useState(false);
   const { data: localMcpStatus, mutate: refreshLocalMcpStatus } = useSWR(
@@ -276,7 +277,9 @@ export function McpServerCustomizationContent({
                           localMcpStatus.armedUntil,
                         ).toLocaleTimeString(),
                       })
-                    : t("MCP.localToolsConsentHint")}
+                    : localMcpStatus.pendingApprovalId
+                      ? t("MCP.localToolsApprovalPending")
+                      : t("MCP.localToolsConsentHint")}
                 </p>
               </AlertDescription>
             </div>

@@ -3,6 +3,10 @@ import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { z } from "zod";
 
 import { getUserPrimaryTeamId } from "lib/admin/teams";
+import {
+  findOpenLocalMcpArmRequest,
+  resolveOpenLocalMcpArmRequests,
+} from "lib/agent-platform/approvals";
 import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
 import { resolveLocalMcpPolicy } from "lib/ai/mcp/local-policy";
 import {
@@ -270,11 +274,10 @@ export async function setMcpToolEnabledAction(
 }
 
 /**
- * Local-MCP per-session consent (ADR-0010 v1): status of a local (stdio)
- * connector for the current viewer — whether the org/team policy allows local
- * tools at all and whether the server is currently armed for this server
- * session. Per-ACTION consent via the approvals/Inbox system is the v2
- * follow-up.
+ * Local-MCP consent status (ADR-0010) of a local (stdio) connector for the
+ * current viewer — whether the org/team policy allows local tools at all,
+ * whether the server is currently armed for this server session, and whether
+ * a v2 approval request ("local_mcp_arm") is waiting in the Inbox.
  */
 export async function getLocalMcpStatusAction(serverId: string) {
   const currentUser = await getCurrentUser();
@@ -291,16 +294,24 @@ export async function getLocalMcpStatusAction(serverId: string) {
       policyEnabled: false,
       armed: false,
       armedUntil: null as number | null,
+      pendingApprovalId: null as string | null,
     };
   }
   const teamId = await getUserPrimaryTeamId(currentUser.id);
   const policyEnabled = await resolveLocalMcpPolicy(teamId);
   const armedUntil = mcpClientsManager.localServerArmedUntil(serverId);
+  // v2 consent: requests are owner-targeted, so look up by the server owner
+  // (which is the viewer when the owner is looking — the common case).
+  const openRequest = await findOpenLocalMcpArmRequest(
+    serverId,
+    mcpServer.userId,
+  ).catch(() => null);
   return {
     isStdio: true as const,
     policyEnabled,
     armed: armedUntil !== null,
     armedUntil,
+    pendingApprovalId: openRequest?.id ?? null,
   };
 }
 
@@ -340,7 +351,17 @@ export async function armLocalMcpServerAction(serverId: string) {
     );
   }
 
-  const armedUntil = mcpClientsManager.armLocalServer(serverId);
+  const armedUntil = mcpClientsManager.armLocalServer(serverId, {
+    grantedBy: currentUser.id,
+  });
+  // v2 consent: direct arming is an implicit approval — resolve any open
+  // "local_mcp_arm" request for this server+owner so the Inbox doesn't keep
+  // showing a stale request. Fail-soft: arming must not depend on it.
+  const resolvedRequestIds = await resolveOpenLocalMcpArmRequests(
+    serverId,
+    mcpServer.userId,
+    { decidedBy: currentUser.id },
+  ).catch(() => [] as string[]);
   void writeAuditLog({
     userId: currentUser.id,
     teamId,
@@ -350,6 +371,7 @@ export async function armLocalMcpServerAction(serverId: string) {
       serverId,
       serverName: mcpServer.name,
       armedUntil,
+      resolvedApprovalRequestIds: resolvedRequestIds,
     },
   });
   return { armedUntil };

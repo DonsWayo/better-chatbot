@@ -96,12 +96,15 @@ exactly this surface.
    hash, outcome).
 5. **Formal Security review** of the local execution model.
 
-**Status — governance plane v1 shipped (in the web app, so the desktop inherits it):**
-gate 1 is live as the layered `local_mcp_enabled` org→team policy (default-deny;
-Admin → Feature flags → "Local MCP (desktop)"), gate 2 ships as **per-session arming**
-("Enable local tools for this session" on the connector page, 8h window) with
-per-*action* consent via the approvals/Inbox system as the v2 follow-up, and gate 4 is
-live for stdio: every local invocation — allowed and denied — lands in
+**Status — governance plane v1 + v2 shipped (in the web app, so the desktop inherits
+them):** gate 1 is live as the layered `local_mcp_enabled` org→team policy
+(default-deny; Admin → Feature flags → "Local MCP (desktop)"); gate 2 is live as
+**per-session arming** with two grant paths — the direct "Enable local tools for this
+session" button on the connector page (v1, 8h window) and **per-approval grants
+through the approvals/Inbox system** (v2: an unarmed local invocation files an
+owner-targeted `local_mcp_arm` approval request; approving it in the Inbox arms the
+server for 8h, denying keeps it blocked; every transition is audit-logged); and gate 4
+is live for stdio: every local invocation — allowed and denied — lands in
 `asafe_mcp_invocation_log`. See
 [Local (stdio) servers: governance plane](/docs/mcp#local-stdio-servers-governance-plane).
 Gates 3 and 5 remain open before the bridge itself ships.

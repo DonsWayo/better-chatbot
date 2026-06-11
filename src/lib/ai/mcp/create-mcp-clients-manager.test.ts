@@ -18,9 +18,14 @@ vi.mock("./create-mcp-client", () => ({
 const localMcp = vi.hoisted(() => ({
   runtimeEnabled: true,
   auditMock: vi.fn(async () => {}),
+  consentRequestMock: vi.fn(async () => ({
+    requestId: "req-1",
+    deduped: false,
+  })),
 }));
 vi.mock("./local-policy", () => ({
   isLocalMcpRuntimeEnabled: vi.fn(async () => localMcp.runtimeEnabled),
+  requestLocalMcpArmApproval: localMcp.consentRequestMock,
 }));
 vi.mock("./audit", () => ({
   auditMcpInvocation: localMcp.auditMock,
@@ -751,6 +756,102 @@ describe("MCPClientsManager", () => {
       );
     });
 
+    it("unarmed stdio invocation files an owner-targeted arm approval request (v2 consent)", async () => {
+      await manager.init();
+
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as { isError?: boolean };
+      expect(result.isError).toBe(true);
+
+      await flushAudit();
+      expect(localMcp.consentRequestMock).toHaveBeenCalledTimes(1);
+      expect(localMcp.consentRequestMock).toHaveBeenCalledWith({
+        serverId: "test-server",
+        serverName: "test-server",
+        toolName: "local-tool",
+        userId: "test-user-id",
+      });
+    });
+
+    it("parallel unarmed invocations file at most one request (in-flight guard)", async () => {
+      await manager.init();
+
+      await Promise.all([
+        manager.toolCall("test-server", "local-tool", {}),
+        manager.toolCall("test-server", "local-tool", {}),
+      ]);
+
+      await flushAudit();
+      expect(localMcp.consentRequestMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("policy off files no consent request (org gate first)", async () => {
+      localMcp.runtimeEnabled = false;
+      await manager.init();
+
+      await manager.toolCall("test-server", "local-tool", {});
+
+      await flushAudit();
+      expect(localMcp.consentRequestMock).not.toHaveBeenCalled();
+    });
+
+    it("consent filing failure never changes the rejection path", async () => {
+      localMcp.consentRequestMock.mockRejectedValueOnce(
+        new Error("approvals unavailable"),
+      );
+      await manager.init();
+
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as { isError?: boolean; error?: { message: string } };
+
+      expect(result.isError).toBe(true);
+      expect(result.error?.message).toMatch(/not enabled for this session/i);
+
+      // The guard is released on failure: a later attempt files again.
+      await flushAudit();
+      await manager.toolCall("test-server", "local-tool", {});
+      await flushAudit();
+      expect(localMcp.consentRequestMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("an approval-sourced grant records grantedBy and unblocks the call until its TTL", async () => {
+      await manager.init();
+
+      // What decideApproval(approve) does in-process:
+      const armedUntil = manager.armLocalServer("test-server", {
+        grantedBy: "approver-1",
+      });
+
+      expect(manager.localServerArmedGrant("test-server")).toEqual({
+        armedUntil,
+        grantedBy: "approver-1",
+      });
+      expect(manager.localServerArmedUntil("test-server")).toBe(armedUntil);
+
+      await manager.toolCall("test-server", "local-tool", {});
+      expect(callToolOf("test-server")).toHaveBeenCalledWith("local-tool", {});
+      await flushAudit();
+      expect(localMcp.consentRequestMock).not.toHaveBeenCalled();
+    });
+
+    it("a denied (still unarmed) server stays blocked", async () => {
+      await manager.init();
+      // Denial never arms — the manager state is simply still unarmed.
+      const result = (await manager.toolCall(
+        "test-server",
+        "local-tool",
+        {},
+      )) as { isError?: boolean };
+      expect(result.isError).toBe(true);
+      expect(callToolOf("test-server")).not.toHaveBeenCalled();
+    });
+
     it("arming allows the call and audits a success attributed to the server owner", async () => {
       await manager.init();
 
@@ -777,7 +878,7 @@ describe("MCPClientsManager", () => {
     it("arming expires", async () => {
       await manager.init();
 
-      manager.armLocalServer("test-server", -1);
+      manager.armLocalServer("test-server", { durationMs: -1 });
       expect(manager.isLocalServerArmed("test-server")).toBe(false);
       expect(manager.localServerArmedUntil("test-server")).toBeNull();
 

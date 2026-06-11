@@ -17,6 +17,8 @@ const {
   getUserPrimaryTeamIdMock,
   resolveLocalMcpPolicyMock,
   writeAuditLogMock,
+  findOpenLocalMcpArmRequestMock,
+  resolveOpenLocalMcpArmRequestsMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
   canCreateMCPMock: vi.fn(),
@@ -34,6 +36,8 @@ const {
   getUserPrimaryTeamIdMock: vi.fn().mockResolvedValue(null),
   resolveLocalMcpPolicyMock: vi.fn().mockResolvedValue(false),
   writeAuditLogMock: vi.fn().mockResolvedValue(undefined),
+  findOpenLocalMcpArmRequestMock: vi.fn().mockResolvedValue(null),
+  resolveOpenLocalMcpArmRequestsMock: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("lib/auth/permissions", () => ({
@@ -70,6 +74,10 @@ vi.mock("lib/ai/mcp/local-policy", () => ({
 }));
 vi.mock("lib/compliance/audit", () => ({
   writeAuditLog: writeAuditLogMock,
+}));
+vi.mock("lib/agent-platform/approvals", () => ({
+  findOpenLocalMcpArmRequest: findOpenLocalMcpArmRequestMock,
+  resolveOpenLocalMcpArmRequests: resolveOpenLocalMcpArmRequestsMock,
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({ McpServerTable: {} }));
 vi.mock("better-auth", () => ({ logger: { error: vi.fn() } }));
@@ -580,7 +588,9 @@ describe("armLocalMcpServerAction — per-session consent", () => {
     const { armLocalMcpServerAction } = await import("./actions");
     const result = await armLocalMcpServerAction("srv-local");
     expect(result).toEqual({ armedUntil: 1234567890 });
-    expect(armLocalServerMock).toHaveBeenCalledWith("srv-local");
+    expect(armLocalServerMock).toHaveBeenCalledWith("srv-local", {
+      grantedBy: "owner-1",
+    });
     expect(writeAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "owner-1",
@@ -592,6 +602,36 @@ describe("armLocalMcpServerAction — per-session consent", () => {
         }),
       }),
     );
+  });
+
+  it("direct arming resolves open local_mcp_arm requests for the server owner (v2)", async () => {
+    resolveOpenLocalMcpArmRequestsMock.mockResolvedValue(["req-1"]);
+    const { armLocalMcpServerAction } = await import("./actions");
+
+    await armLocalMcpServerAction("srv-local");
+
+    expect(resolveOpenLocalMcpArmRequestsMock).toHaveBeenCalledWith(
+      "srv-local",
+      "owner-1",
+      { decidedBy: "owner-1" },
+    );
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          resolvedApprovalRequestIds: ["req-1"],
+        }),
+      }),
+    );
+  });
+
+  it("arming still succeeds when resolving open requests fails (fail-soft)", async () => {
+    resolveOpenLocalMcpArmRequestsMock.mockRejectedValue(
+      new Error("approvals down"),
+    );
+    const { armLocalMcpServerAction } = await import("./actions");
+    await expect(armLocalMcpServerAction("srv-local")).resolves.toEqual({
+      armedUntil: 1234567890,
+    });
   });
 
   it("rejects when unauthenticated", async () => {
@@ -663,6 +703,7 @@ describe("getLocalMcpStatusAction", () => {
       policyEnabled: false,
       armed: false,
       armedUntil: null,
+      pendingApprovalId: null,
     });
   });
 
@@ -682,6 +723,7 @@ describe("getLocalMcpStatusAction", () => {
       policyEnabled: true,
       armed: true,
       armedUntil: future,
+      pendingApprovalId: null,
     });
   });
 
@@ -700,6 +742,29 @@ describe("getLocalMcpStatusAction", () => {
       policyEnabled: true,
       armed: false,
       armedUntil: null,
+      pendingApprovalId: null,
     });
+  });
+
+  it("surfaces an open local_mcp_arm approval request (v2 consent)", async () => {
+    selectByIdMock.mockResolvedValue({
+      id: "srv-local",
+      config: STDIO_CONFIG,
+      userId: "owner-1",
+      visibility: "private",
+    });
+    resolveLocalMcpPolicyMock.mockResolvedValue(true);
+    localServerArmedUntilMock.mockReturnValue(null);
+    findOpenLocalMcpArmRequestMock.mockResolvedValue({ id: "req-9" });
+    const { getLocalMcpStatusAction } = await import("./actions");
+
+    const status = await getLocalMcpStatusAction("srv-local");
+
+    // owner-targeted lookup: keyed by the server owner, not the viewer
+    expect(findOpenLocalMcpArmRequestMock).toHaveBeenCalledWith(
+      "srv-local",
+      "owner-1",
+    );
+    expect(status.pendingApprovalId).toBe("req-9");
   });
 });

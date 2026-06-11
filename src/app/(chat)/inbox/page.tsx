@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { ArrowLeft, Inbox } from "lucide-react";
+import { ArrowLeft, Inbox, TerminalSquare } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -11,7 +11,10 @@ import {
 } from "@/components/runs/routines-list";
 import { getSession } from "auth/server";
 import type { ApprovalRequestedRole } from "lib/agent-platform/approvals";
-import { listPendingApprovalsForUser } from "lib/agent-platform/approvals";
+import {
+  isLocalMcpArmPayload,
+  listPendingApprovalsForUser,
+} from "lib/agent-platform/approvals";
 import { listSchedulesForUser } from "lib/agent-platform/scheduler";
 import type { AgentSessionStatus } from "lib/agent-platform/sessions";
 import { listSessionsForUser } from "lib/agent-platform/sessions";
@@ -159,6 +162,57 @@ export default async function InboxPage() {
             ) : (
               <ul className="flex flex-col gap-3">
                 {approvals.map(({ request, session }) => {
+                  // Local-MCP consent v2 (ADR-0010): "allow local tools"
+                  // requests ride on an inert carrier session — render a
+                  // dedicated card (no run to view), reusing the standard
+                  // decision buttons. Approving arms the connector for 8h.
+                  if (isLocalMcpArmPayload(request.payload)) {
+                    const payload = request.payload;
+                    return (
+                      <li
+                        key={request.id}
+                        className="rounded-2xl border bg-card p-4 shadow-xs"
+                        data-testid="triage-local-mcp-card"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="flex items-center gap-1.5 text-sm font-medium">
+                            <TerminalSquare className="size-3.5 text-muted-foreground" />
+                            {t("localMcpTitle", {
+                              server: payload.serverName,
+                            })}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="rounded-full text-xs"
+                          >
+                            {t(
+                              ROLE_LABEL_KEY[
+                                request.requestedRole as ApprovalRequestedRole
+                              ] ?? "roleOwner",
+                            )}
+                          </Badge>
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {t("requested")}{" "}
+                            {formatDistanceToNow(request.requestedAt, {
+                              addSuffix: true,
+                            })}
+                          </span>
+                        </div>
+                        <p className="mt-2 rounded-xl bg-muted/50 p-3 text-sm">
+                          {t("localMcpBody", {
+                            tool: payload.toolName,
+                            server: payload.serverName,
+                          })}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {t("localMcpTtlNote")}
+                        </p>
+                        <div className="mt-3">
+                          <ApprovalDecisionButtons requestId={request.id} />
+                        </div>
+                      </li>
+                    );
+                  }
                   const message = payloadMessage(request.payload);
                   return (
                     <li

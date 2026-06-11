@@ -62,6 +62,11 @@ const h = vi.hoisted(() => {
   }));
 
   const failSessionMock = vi.fn().mockResolvedValue(null);
+  const createSessionMock = vi.fn();
+  const completeSessionMock = vi.fn().mockResolvedValue(null);
+  const cancelSessionMock = vi.fn().mockResolvedValue(null);
+  const writeAuditLogMock = vi.fn().mockResolvedValue(undefined);
+  const armLocalServerMock = vi.fn(() => 1234567890);
 
   const eqMock = vi.fn((a: unknown, b: unknown) => ({ eq: [a, b] }));
   const andMock = vi.fn((...args: unknown[]) => ({ and: args }));
@@ -79,6 +84,11 @@ const h = vi.hoisted(() => {
     insertValuesMock,
     updateMock,
     failSessionMock,
+    createSessionMock,
+    completeSessionMock,
+    cancelSessionMock,
+    writeAuditLogMock,
+    armLocalServerMock,
     eqMock,
     andMock,
     orMock,
@@ -92,6 +102,10 @@ const {
   selectMock,
   insertValuesMock,
   failSessionMock,
+  completeSessionMock,
+  cancelSessionMock,
+  writeAuditLogMock,
+  armLocalServerMock,
   orMock,
   inArrayMock,
 } = h;
@@ -116,6 +130,7 @@ vi.mock("lib/db/pg/schema.pg", () => ({
     id: "session.id",
     userId: "session.userId",
     teamId: "session.teamId",
+    definitionId: "session.definitionId",
   },
   AsafeTeamMemberTable: {
     _tbl: "teamMember",
@@ -134,14 +149,33 @@ vi.mock("drizzle-orm", () => ({
   desc: h.descMock,
 }));
 
-vi.mock("./sessions", () => ({ failSession: h.failSessionMock }));
+vi.mock("./sessions", () => ({
+  failSession: h.failSessionMock,
+  createSession: h.createSessionMock,
+  completeSession: h.completeSessionMock,
+  cancelSession: h.cancelSessionMock,
+}));
+
+vi.mock("lib/compliance/audit", () => ({
+  writeAuditLog: h.writeAuditLogMock,
+}));
+
+// Lazily imported by the local-MCP approve path; vi.mock intercepts the
+// dynamic import too.
+vi.mock("lib/ai/mcp/mcp-manager", () => ({
+  mcpClientsManager: { armLocalServer: h.armLocalServerMock },
+}));
 
 import {
+  LOCAL_MCP_ARM_KIND,
   canDecide,
   createApprovalRequest,
+  createLocalMcpArmRequest,
   decideApproval,
   getApprovalForSession,
+  isLocalMcpArmPayload,
   listPendingApprovalsForUser,
+  resolveOpenLocalMcpArmRequests,
 } from "./approvals";
 
 function updateCallsFor(tbl: string) {
@@ -407,5 +441,232 @@ describe("getApprovalForSession", () => {
   it("returns null when the session has no requests", async () => {
     state.approvalRows = [];
     await expect(getApprovalForSession("s1")).resolves.toBeNull();
+  });
+});
+
+// ── Local-MCP consent v2 (local_mcp_arm) ─────────────────────────────────────
+
+const armPayload = {
+  kind: LOCAL_MCP_ARM_KIND,
+  serverId: "srv-1",
+  serverName: "filesystem",
+  toolName: "read_file",
+  requestedBy: "owner-1",
+  message: "Allow local tools",
+};
+
+describe("isLocalMcpArmPayload", () => {
+  it("accepts a well-formed payload and rejects everything else", () => {
+    expect(isLocalMcpArmPayload(armPayload)).toBe(true);
+    expect(isLocalMcpArmPayload(null)).toBe(false);
+    expect(isLocalMcpArmPayload({ kind: "other" })).toBe(false);
+    expect(isLocalMcpArmPayload({ kind: LOCAL_MCP_ARM_KIND })).toBe(false);
+    expect(isLocalMcpArmPayload({ message: "plan" })).toBe(false);
+  });
+});
+
+describe("createLocalMcpArmRequest", () => {
+  const input = {
+    serverId: "srv-1",
+    serverName: "filesystem",
+    toolName: "read_file",
+    userId: "owner-1",
+  };
+
+  it("creates a carrier session + owner-targeted request and audits it", async () => {
+    state.joinedRows = []; // no open request → no dedupe
+    h.createSessionMock.mockResolvedValue({ id: "carrier-1" });
+    state.insertedRows = [
+      { id: "req-1", sessionId: "carrier-1", status: "pending" },
+    ];
+
+    const { request, deduped } = await createLocalMcpArmRequest(input);
+
+    expect(deduped).toBe(false);
+    expect(request.id).toBe("req-1");
+    expect(h.createSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "conversational",
+        definitionId: "srv-1",
+        userId: "owner-1",
+        originSurface: "desktop",
+      }),
+    );
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "carrier-1",
+        requestedRole: "owner",
+        payload: expect.objectContaining({
+          kind: LOCAL_MCP_ARM_KIND,
+          serverId: "srv-1",
+          serverName: "filesystem",
+          toolName: "read_file",
+          requestedBy: "owner-1",
+        }),
+      }),
+    );
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "owner-1",
+        eventType: "admin_action",
+        details: expect.objectContaining({
+          action: "local_mcp_arm_requested",
+          serverId: "srv-1",
+          requestId: "req-1",
+        }),
+      }),
+    );
+  });
+
+  it("dedupes: a still-open request for (server, user) is returned as-is", async () => {
+    state.joinedRows = [
+      {
+        request: {
+          id: "req-open",
+          sessionId: "carrier-old",
+          status: "pending",
+          payload: armPayload,
+        },
+      },
+    ];
+
+    const { request, deduped } = await createLocalMcpArmRequest(input);
+
+    expect(deduped).toBe(true);
+    expect(request.id).toBe("req-open");
+    expect(h.createSessionMock).not.toHaveBeenCalled();
+    expect(insertValuesMock).not.toHaveBeenCalled();
+    expect(writeAuditLogMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores pending requests of other kinds when deduping", async () => {
+    state.joinedRows = [
+      {
+        request: {
+          id: "req-other",
+          sessionId: "s-x",
+          status: "pending",
+          payload: { message: "generic plan approval" },
+        },
+      },
+    ];
+    h.createSessionMock.mockResolvedValue({ id: "carrier-2" });
+    state.insertedRows = [{ id: "req-2", sessionId: "carrier-2" }];
+
+    const { deduped } = await createLocalMcpArmRequest(input);
+    expect(deduped).toBe(false);
+    expect(h.createSessionMock).toHaveBeenCalled();
+  });
+});
+
+describe("decideApproval — local_mcp_arm settlement", () => {
+  it("approve arms the server (grantedBy = decider), completes the carrier and audits", async () => {
+    state.approvalRows = [
+      {
+        id: "req-1",
+        status: "pending",
+        sessionId: "carrier-1",
+        payload: armPayload,
+      },
+    ];
+    state.updateReturningRows = [{ id: "req-1", status: "approved" }];
+
+    const result = await decideApproval("req-1", {
+      decidedBy: "admin-1",
+      approve: true,
+    });
+
+    expect(result).toEqual({ id: "req-1", status: "approved" });
+    expect(armLocalServerMock).toHaveBeenCalledWith("srv-1", {
+      grantedBy: "admin-1",
+    });
+    expect(completeSessionMock).toHaveBeenCalledWith("carrier-1");
+    // Never re-queued (the generic approve path) and never failed.
+    expect(updateCallsFor("session")).toHaveLength(0);
+    expect(failSessionMock).not.toHaveBeenCalled();
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "admin-1",
+        details: expect.objectContaining({
+          action: "local_mcp_arm_approved",
+          serverId: "srv-1",
+          armedUntil: 1234567890,
+        }),
+      }),
+    );
+  });
+
+  it("deny leaves the server unarmed, cancels the carrier and audits the denial", async () => {
+    state.approvalRows = [
+      {
+        id: "req-1",
+        status: "pending",
+        sessionId: "carrier-1",
+        payload: armPayload,
+      },
+    ];
+    state.updateReturningRows = [{ id: "req-1", status: "rejected" }];
+
+    await decideApproval("req-1", {
+      decidedBy: "owner-1",
+      approve: false,
+      reason: "not on this machine",
+    });
+
+    expect(armLocalServerMock).not.toHaveBeenCalled();
+    expect(cancelSessionMock).toHaveBeenCalledWith("carrier-1");
+    expect(failSessionMock).not.toHaveBeenCalled();
+    expect(updateCallsFor("approval")[0].set).toEqual(
+      expect.objectContaining({ status: "rejected", decidedBy: "owner-1" }),
+    );
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          action: "local_mcp_arm_denied",
+          reason: "not on this machine",
+        }),
+      }),
+    );
+  });
+});
+
+describe("resolveOpenLocalMcpArmRequests", () => {
+  it("direct arm resolves open requests as approved and completes carriers", async () => {
+    state.joinedRows = [
+      {
+        request: {
+          id: "req-1",
+          sessionId: "carrier-1",
+          status: "pending",
+          payload: armPayload,
+        },
+      },
+    ];
+
+    const resolved = await resolveOpenLocalMcpArmRequests("srv-1", "owner-1", {
+      decidedBy: "owner-1",
+    });
+
+    expect(resolved).toEqual(["req-1"]);
+    const approvalUpdates = updateCallsFor("approval");
+    expect(approvalUpdates).toHaveLength(1);
+    expect(approvalUpdates[0].set).toEqual(
+      expect.objectContaining({
+        status: "approved",
+        decidedBy: "owner-1",
+        decidedAt: expect.any(Date),
+      }),
+    );
+    expect(completeSessionMock).toHaveBeenCalledWith("carrier-1");
+  });
+
+  it("no open requests → no updates", async () => {
+    state.joinedRows = [];
+    const resolved = await resolveOpenLocalMcpArmRequests("srv-1", "owner-1", {
+      decidedBy: "owner-1",
+    });
+    expect(resolved).toEqual([]);
+    expect(state.updateCalls).toHaveLength(0);
+    expect(completeSessionMock).not.toHaveBeenCalled();
   });
 });

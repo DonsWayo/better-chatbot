@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { writeAuditLog } from "lib/compliance/audit";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import {
   type AgentSessionEntity,
@@ -9,7 +10,12 @@ import {
   ApprovalRequestTable,
   AsafeTeamMemberTable,
 } from "lib/db/pg/schema.pg";
-import { failSession } from "./sessions";
+import {
+  cancelSession,
+  completeSession,
+  createSession,
+  failSession,
+} from "./sessions";
 
 export { ApprovalPendingError, isApprovalPending } from "./approval-error";
 
@@ -83,11 +89,230 @@ export async function markSessionAwaitingApproval(
     .where(eq(AgentSessionTable.id, sessionId));
 }
 
+// ── Local-MCP consent v2 (ADR-0010) — per-approval grants ────────────────────
+// approval_request has no `kind` column and a NOT NULL session FK, so this
+// kind is encoded in the jsonb payload and rides on a "carrier" agent_session
+// (kind "conversational", definitionId = the MCP server id — that column is
+// deliberately polymorphic / FK-less). Carrier sessions are never executed:
+// the worker claim query only takes kind = 'workflow', and decisions below
+// complete/cancel the carrier instead of re-queueing it.
+
+export const LOCAL_MCP_ARM_KIND = "local_mcp_arm";
+
+export interface LocalMcpArmPayload {
+  kind: typeof LOCAL_MCP_ARM_KIND;
+  serverId: string;
+  serverName: string;
+  /** The tool whose invocation triggered the request. */
+  toolName: string;
+  /** The server owner — the accountable identity for a local process. */
+  requestedBy: string;
+  /** Human-readable fallback for generic approval renderers. */
+  message: string;
+}
+
+export function isLocalMcpArmPayload(
+  payload: unknown,
+): payload is LocalMcpArmPayload {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    (payload as { kind?: unknown }).kind === LOCAL_MCP_ARM_KIND &&
+    typeof (payload as { serverId?: unknown }).serverId === "string"
+  );
+}
+
+export interface CreateLocalMcpArmRequestInput {
+  serverId: string;
+  serverName: string;
+  toolName: string;
+  /** Owner the request is targeted at (requestedRole "owner"). */
+  userId: string;
+  teamId?: string | null;
+}
+
+/** Open (pending) local-MCP arm requests for a (server, user), newest first. */
+export async function listOpenLocalMcpArmRequests(
+  serverId: string,
+  userId: string,
+): Promise<ApprovalRequestEntity[]> {
+  const rows = await db
+    .select({ request: ApprovalRequestTable })
+    .from(ApprovalRequestTable)
+    .innerJoin(
+      AgentSessionTable,
+      eq(ApprovalRequestTable.sessionId, AgentSessionTable.id),
+    )
+    .where(
+      and(
+        eq(ApprovalRequestTable.status, "pending"),
+        eq(AgentSessionTable.definitionId, serverId),
+        eq(AgentSessionTable.userId, userId),
+      ),
+    )
+    .orderBy(desc(ApprovalRequestTable.requestedAt));
+  return rows
+    .map((row) => row.request)
+    .filter((request) => isLocalMcpArmPayload(request.payload));
+}
+
+/** The single open local-MCP arm request for a (server, user), or null. */
+export async function findOpenLocalMcpArmRequest(
+  serverId: string,
+  userId: string,
+): Promise<ApprovalRequestEntity | null> {
+  const open = await listOpenLocalMcpArmRequests(serverId, userId);
+  return open[0] ?? null;
+}
+
+/**
+ * File an owner-targeted "allow local tools" approval request for an unarmed
+ * local (stdio) server. Deduped: at most one open request per (server, user)
+ * — a still-pending request is returned as-is (`deduped: true`).
+ * Request creation is audit-logged.
+ */
+export async function createLocalMcpArmRequest(
+  input: CreateLocalMcpArmRequestInput,
+): Promise<{ request: ApprovalRequestEntity; deduped: boolean }> {
+  const existing = await findOpenLocalMcpArmRequest(
+    input.serverId,
+    input.userId,
+  );
+  if (existing) return { request: existing, deduped: true };
+
+  const carrier = await createSession({
+    kind: "conversational",
+    definitionId: input.serverId,
+    userId: input.userId,
+    teamId: input.teamId ?? null,
+    originSurface: "desktop",
+    inputPayload: { kind: LOCAL_MCP_ARM_KIND, serverId: input.serverId },
+  });
+
+  const payload: LocalMcpArmPayload = {
+    kind: LOCAL_MCP_ARM_KIND,
+    serverId: input.serverId,
+    serverName: input.serverName,
+    toolName: input.toolName,
+    requestedBy: input.userId,
+    message: `Allow local (stdio) tools for connector "${input.serverName}" — the model attempted to call "${input.toolName}".`,
+  };
+
+  const request = await createApprovalRequest({
+    sessionId: carrier.id,
+    stepIndex: 0,
+    payload,
+    requestedRole: "owner",
+  });
+
+  void writeAuditLog({
+    userId: input.userId,
+    teamId: input.teamId ?? null,
+    eventType: "admin_action",
+    details: {
+      action: "local_mcp_arm_requested",
+      serverId: input.serverId,
+      serverName: input.serverName,
+      toolName: input.toolName,
+      requestId: request.id,
+    },
+  });
+
+  return { request, deduped: false };
+}
+
+/**
+ * Direct-arm path (v1 button on the connector page): the owner already
+ * granted consent, so any open arm request for this (server, user) is
+ * resolved as approved — the Inbox must not keep showing stale requests.
+ * Returns the resolved request ids.
+ */
+export async function resolveOpenLocalMcpArmRequests(
+  serverId: string,
+  userId: string,
+  opts: { decidedBy: string; reason?: string },
+): Promise<string[]> {
+  const open = await listOpenLocalMcpArmRequests(serverId, userId);
+  const now = new Date();
+  const resolvedIds: string[] = [];
+  for (const request of open) {
+    await db
+      .update(ApprovalRequestTable)
+      .set({
+        status: "approved",
+        decidedBy: opts.decidedBy,
+        decidedAt: now,
+        reason: opts.reason ?? "Granted directly from the connector page",
+      })
+      .where(
+        and(
+          eq(ApprovalRequestTable.id, request.id),
+          eq(ApprovalRequestTable.status, "pending"),
+        ),
+      );
+    await completeSession(request.sessionId);
+    resolvedIds.push(request.id);
+  }
+  return resolvedIds;
+}
+
+/**
+ * Settle a decided local-MCP arm request: approve arms the server in the MCP
+ * manager (default 8h TTL, grantedBy recorded) and completes the carrier
+ * session; deny cancels the carrier. Both outcomes are audit-logged.
+ */
+async function settleLocalMcpArmDecision(
+  request: ApprovalRequestEntity,
+  payload: LocalMcpArmPayload,
+  input: DecideApprovalInput,
+): Promise<void> {
+  if (input.approve) {
+    // Lazy import: keeps the MCP client stack out of this module's static
+    // graph. Arming is in-process — the same Node process serves Server
+    // Actions and the MCP clients manager (EKS/desktop, no serverless).
+    const { mcpClientsManager } = await import("lib/ai/mcp/mcp-manager");
+    const armedUntil = mcpClientsManager.armLocalServer(payload.serverId, {
+      grantedBy: input.decidedBy,
+    });
+    await completeSession(request.sessionId);
+    void writeAuditLog({
+      userId: input.decidedBy,
+      eventType: "admin_action",
+      details: {
+        action: "local_mcp_arm_approved",
+        serverId: payload.serverId,
+        serverName: payload.serverName,
+        toolName: payload.toolName,
+        requestId: request.id,
+        requestedBy: payload.requestedBy,
+        armedUntil,
+      },
+    });
+  } else {
+    await cancelSession(request.sessionId);
+    void writeAuditLog({
+      userId: input.decidedBy,
+      eventType: "admin_action",
+      details: {
+        action: "local_mcp_arm_denied",
+        serverId: payload.serverId,
+        serverName: payload.serverName,
+        toolName: payload.toolName,
+        requestId: request.id,
+        requestedBy: payload.requestedBy,
+        reason: input.reason ?? null,
+      },
+    });
+  }
+}
+
 /**
  * Decide a pending request. Approve → session re-queued (status `queued`) so
  * any worker can pick it up and resume from checkpoint. Reject → session
  * failed with "Rejected: <reason>". Throws "Already decided" on a second
- * decision.
+ * decision. Local-MCP arm requests (payload kind "local_mcp_arm") settle
+ * differently: approve arms the server in the MCP manager and completes the
+ * carrier session; reject cancels it — never re-queued, never failed.
  */
 export async function decideApproval(
   id: string,
@@ -112,6 +337,11 @@ export async function decideApproval(
     })
     .where(eq(ApprovalRequestTable.id, id))
     .returning();
+
+  if (isLocalMcpArmPayload(request.payload)) {
+    await settleLocalMcpArmDecision(request, request.payload, input);
+    return updated;
+  }
 
   if (input.approve) {
     // Re-queue for a worker: clears the parked state so the SKIP LOCKED

@@ -62,6 +62,7 @@ import {
   ORG_LOCAL_MCP_ENABLED_KEY,
   TEAM_LOCAL_MCP_ENABLED_KEY_PREFIX,
   isLocalMcpRuntimeEnabled,
+  listTeamLocalMcpOverrides,
   resolveLocalMcpLayers,
   resolveLocalMcpPolicy,
   setOrgLocalMcpEnabled,
@@ -164,6 +165,30 @@ describe("isLocalMcpRuntimeEnabled (process-wide manager gate)", () => {
       { key: teamLocalMcpEnabledKey("t2"), value: null },
     ];
     await expect(isLocalMcpRuntimeEnabled()).resolves.toBe(false);
+  });
+});
+
+describe("listTeamLocalMcpOverrides", () => {
+  it("returns [] when no overrides are stored", async () => {
+    await expect(listTeamLocalMcpOverrides()).resolves.toEqual([]);
+  });
+
+  it("lists boolean overrides sorted by teamId, dropping cleared/malformed", async () => {
+    h.state.likeRows = [
+      { key: teamLocalMcpEnabledKey("t2"), value: true },
+      { key: teamLocalMcpEnabledKey("t1"), value: false },
+      { key: teamLocalMcpEnabledKey("t3"), value: null },
+      { key: teamLocalMcpEnabledKey("t4"), value: "yes" },
+    ];
+    await expect(listTeamLocalMcpOverrides()).resolves.toEqual([
+      { teamId: "t1", enabled: false },
+      { teamId: "t2", enabled: true },
+    ]);
+  });
+
+  it("fails soft to [] when the store is unreadable", async () => {
+    h.state.selectThrows = true;
+    await expect(listTeamLocalMcpOverrides()).resolves.toEqual([]);
   });
 });
 

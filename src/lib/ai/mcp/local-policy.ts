@@ -103,6 +103,71 @@ export async function resolveLocalMcpPolicy(
   return resolveLocalMcpLayers(org, team);
 }
 
+export interface LocalMcpArmApprovalRequestInput {
+  serverId: string;
+  serverName: string;
+  toolName: string;
+  /** The server owner — the request is owner-targeted. */
+  userId: string;
+}
+
+/**
+ * Local-MCP consent v2 (ADR-0010): file an owner-targeted approval_request
+ * (kind "local_mcp_arm") when an unarmed local stdio tool is invoked, so the
+ * grant can happen from the Inbox. Deduped to one open request per
+ * (server, user) by the approvals lib. Lazily imported so the agent-platform
+ * stack stays out of this module's (and the manager's) static import graph.
+ */
+export async function requestLocalMcpArmApproval(
+  input: LocalMcpArmApprovalRequestInput,
+): Promise<{ requestId: string; deduped: boolean }> {
+  const { createLocalMcpArmRequest } = await import(
+    "lib/agent-platform/approvals"
+  );
+  const { request, deduped } = await createLocalMcpArmRequest(input);
+  return { requestId: request.id, deduped };
+}
+
+/** One team's stored local-MCP override (only set values are listed). */
+export interface TeamLocalMcpOverride {
+  teamId: string;
+  enabled: boolean;
+}
+
+/**
+ * All stored team local-MCP overrides, for the admin overrides UI. Same LIKE
+ * scan as `isLocalMcpRuntimeEnabled`; non-boolean values (cleared with `null`)
+ * mean inherit and are dropped. Fails soft to `[]` — listing is a UI
+ * affordance, not an enforcement path.
+ */
+export async function listTeamLocalMcpOverrides(): Promise<
+  TeamLocalMcpOverride[]
+> {
+  try {
+    const rows = await db
+      .select({
+        key: AsafeOrgSettingsTable.key,
+        value: AsafeOrgSettingsTable.value,
+      })
+      .from(AsafeOrgSettingsTable)
+      .where(
+        like(
+          AsafeOrgSettingsTable.key,
+          `${TEAM_LOCAL_MCP_ENABLED_KEY_PREFIX}%`,
+        ),
+      );
+    return rows
+      .flatMap((row) => {
+        const teamId = row.key.slice(TEAM_LOCAL_MCP_ENABLED_KEY_PREFIX.length);
+        if (!teamId || typeof row.value !== "boolean") return [];
+        return [{ teamId, enabled: row.value }];
+      })
+      .sort((a, b) => a.teamId.localeCompare(b.teamId));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Process-wide runtime gate for the MCP clients manager, which has no user or
  * team context inside `tools()` / `toolCall()`: local stdio tools stay
