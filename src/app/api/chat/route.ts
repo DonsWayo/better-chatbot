@@ -256,11 +256,15 @@ export async function POST(request: Request) {
 
     messages.push(message);
 
-    // asafe-ai entitlements (ADR-0009, role-based v1): normal users (role "user") cannot pick the
-    // model or use tools — both default OFF and are enforced here SERVER-SIDE, not just hidden in
-    // the UI. Fine-grained per-team/per-user grants come in Wave 4; admin/editor keep control.
-    const canSelectModel = session.user.role !== "user";
-    const canUseTools = session.user.role !== "user";
+    // asafe-ai entitlements (ADR-0009, role-based v1): normal users cannot pick
+    // the model or use tools — both default OFF and are enforced here
+    // SERVER-SIDE, not just hidden in the UI. Fail CLOSED: only the known
+    // elevated roles get builder powers; a missing/unknown role (SSO edge
+    // cases) gets the zen defaults.
+    const isElevated =
+      session.user.role === "admin" || session.user.role === "editor";
+    const canSelectModel = isElevated;
+    const canUseTools = isElevated;
 
     // asafe-ai entitlements (ADR-0009, layered): resolve the effective model allow-list ONCE —
     // org base → team policy (inherit/replace) → additive per-user grants. `null` = unrestricted

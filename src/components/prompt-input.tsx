@@ -120,7 +120,11 @@ export default function PromptInput({
 }: PromptInputProps) {
   const t = useTranslations("Chat");
   const { data: session } = authClient.useSession();
-  const isBasicUser = session?.user?.role === "user";
+  // Fail CLOSED: anyone who is not a known elevated role gets the zen
+  // composer — including missing/unknown roles (SSO edge cases) and the
+  // brief moment before the session loads.
+  const isBasicUser =
+    session?.user?.role !== "admin" && session?.user?.role !== "editor";
   const [isUploadDropdownOpen, setIsUploadDropdownOpen] = useState(false);
   const [promptSheetOpen, setPromptSheetOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
