@@ -10,6 +10,7 @@ import {
   ThemeProvider,
   ThemeStyleProvider,
 } from "@/components/layouts/theme-provider";
+import { CapacitorBridge } from "@/components/native/capacitor-bridge";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "ui/sonner";
@@ -58,6 +59,8 @@ export default async function RootLayout({
               <div id="root">
                 {children}
                 <Toaster richColors />
+                {/* Mobile (Capacitor) shell niceties — no-op on plain web */}
+                <CapacitorBridge />
               </div>
             </NextIntlClientProvider>
           </ThemeStyleProvider>

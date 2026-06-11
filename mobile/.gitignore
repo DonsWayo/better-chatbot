@@ -1,0 +1,8 @@
+node_modules/
+*.tsbuildinfo
+
+# Native build output (the checked-in ios/ and android/ projects are
+# Capacitor-generated scaffolds; their own .gitignore files cover
+# DerivedData, .gradle, build/, local.properties, etc.)
+ios/App/output
+android/app/release

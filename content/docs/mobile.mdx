@@ -1,0 +1,83 @@
+---
+title: Mobile app
+description: The Capacitor remote thin client for iOS and Android — same web UI, native shell, in-webview Entra SSO, and the build/signing status.
+---
+
+The mobile app (`mobile/`) follows the same philosophy as the
+[desktop app](/docs/desktop): it is a **remote thin client**. A Capacitor 8
+native shell loads the exact same Next.js web UI served at
+`https://ai.conek.dev` via `server.url` — there is no bundled UI fork, so
+feature parity with the web is automatic and UI changes ship with the web
+deploy, not an app-store release.
+
+```
+┌─────────────────────────────────────────────┐
+│  Capacitor shell (iOS / Android)            │
+│  ┌───────────────────────────────────────┐  │
+│  │  Next.js web UI (server.url =         │  │
+│  │  https://ai.conek.dev)                │  │
+│  └───────────────────────────────────────┘  │
+│  Native plugins: StatusBar · SplashScreen   │
+│  · App (back button) · Keyboard · Browser   │
+└─────────────────────────────────────────────┘
+```
+
+## Native niceties
+
+The plugins are compiled into the native shell, but the **web app** drives
+them: `src/lib/native/capacitor.ts` feature-detects the injected
+`window.Capacitor.Plugins` global at runtime (the `@capacitor/*` packages are
+deliberately *not* installed in the web project — zero bundle cost, and the
+same deployment serves browsers, Electron, and mobile). It is mounted once in
+the root layout via `<CapacitorBridge />` and is a guaranteed no-op on plain
+web. When native it applies:
+
+- **Status bar** — Conek teal (`#3ABFC6`) with light content.
+- **Splash screen** — hidden as soon as the web app paints (with a 5s
+  config-side safety net so a slow network never strands the splash).
+- **Android back button** — walks web history when possible, minimizes the
+  app instead of killing it at the history root.
+- **Keyboard** — native webview resize on iOS so the chat composer stays
+  visible; Android uses `windowSoftInputMode`.
+
+## Auth and SSO
+
+The webview is a real browser context with a persistent native cookie jar:
+the existing session cookie flow works unchanged and survives app restarts.
+Microsoft Entra ID domains (`login.microsoftonline.com` etc.) are listed in
+`server.allowNavigation`, so the SSO redirect dance stays **in-webview** and
+the callback sets cookies where the app reads them.
+
+Known consideration: Entra conditional-access policies can block "embedded
+browser" sign-ins. The hardening upgrade — mirroring the desktop's
+system-browser SSO — is to run IdP auth through `@capacitor/browser` (system
+browser / Custom Tab) and return via a universal link or app-scheme callback.
+The plugin is already compiled into the shell; the flow needs a redirect-URI
+registration with IT before it can be wired.
+
+## Dev loop
+
+```bash
+cd mobile && pnpm install
+MOBILE_APP_URL=http://localhost:3000 pnpm sync   # point shell at next dev
+pnpm open:android                                # or open:ios
+```
+
+`cleartext` is enabled automatically — and only — for `http://` URLs, so a
+production sync (`pnpm sync` with no override) never allows cleartext
+traffic. Because the UI is remote, hot reload is just `next dev` HMR; the
+shell only re-syncs when `capacitor.config.ts` or plugins change. Icons and
+splash regenerate from the brand SVGs with `pnpm run resources`.
+
+## Build & signing status
+
+Same status as desktop: builds are an IT follow-up.
+
+- **iOS** requires a Mac with full Xcode and an Apple Developer team; the
+  generated project uses Swift Package Manager (no CocoaPods). The
+  `dev.conek.ai` app ID is provisional until registered.
+- **Android** builds with Android Studio (or SDK + JDK 21); release signing
+  uses an IT-held keystore.
+- Distribution (MDM / managed stores vs public) is an IT decision.
+
+See `mobile/README.md` for the full reference.
