@@ -9,32 +9,32 @@ export const deleteMcpServer = async (
   },
   serverId: string,
 ) => {
+  if (!access.browser && !access.page && !access.context) {
+    throw new Error("Browser, context, or page is required");
+  }
+
+  // Only close resources WE create here. The caller owns whatever it passed in
+  // (especially the shared `browser` fixture — closing it would tear down the
+  // whole test and break every later step with "browser has been closed").
+  let createdContext: BrowserContext | undefined;
+  let page: Page;
+  if (access.page) {
+    page = access.page;
+  } else if (access.context) {
+    page = await access.context.newPage();
+  } else {
+    createdContext = await access.browser!.newContext({
+      storageState: TEST_USERS.admin.authFile,
+    });
+    page = await createdContext.newPage();
+  }
+
   try {
-    let page: Page;
-    if (!access.browser && !access.page && !access.context) {
-      throw new Error("Browser, context, or page is required");
-    }
-    if (access.page) {
-      page = access.page;
-    }
-    if (access.context) {
-      page = await access.context.newPage();
-    }
-    if (access.browser) {
-      const browserContext = await access.browser.newContext({
-        storageState: TEST_USERS.admin.authFile,
-      });
-      page = await browserContext.newPage();
-    }
-    const response = await page!.request.delete(`/api/mcp/${serverId}`);
-    await access.browser?.close();
-    await access.page?.close();
-    await access.context?.close();
-    if (!response.ok) {
+    const response = await page.request.delete(`/api/mcp/${serverId}`);
+    if (!response.ok()) {
       const responseText = await response.text();
-      // If server is already deleted (404), that's OK during cleanup
+      // If the server is already gone (404), that's fine during cleanup.
       if (response.status() === 404 || responseText.includes("not found")) {
-        console.log(`MCP server ${serverId} already deleted or not found`);
         return;
       }
       console.error(
@@ -42,13 +42,9 @@ export const deleteMcpServer = async (
         response.status(),
         responseText,
       );
-      await access.browser?.close();
-      await access.page?.close();
-      await access.context?.close();
       throw new Error("Failed to delete MCP server");
     }
-  } catch (error) {
-    console.error("Failed to delete MCP server", error);
-    throw error;
+  } finally {
+    await createdContext?.close();
   }
 };
