@@ -14,7 +14,7 @@ import { type Page, expect } from "@playwright/test";
 // before navigating; the tours spec instead resets completedTours on a
 // dedicated test user.
 
-const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
+export const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
 
 /** All tour names from src/components/tour/tour-logic.ts. */
 export const ALL_TOUR_NAMES = ["welcome", "studio", "admin"] as const;

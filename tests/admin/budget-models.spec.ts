@@ -53,7 +53,19 @@ test.describe("Admin team model entitlements — budget models", () => {
       .getByTestId("model-checkbox-deepseek-v4-pro")
       .locator('input[type="checkbox"]');
     await grantedModel.check();
-    await card.getByTestId("save-model-allow-list-btn").click();
+    const [saveRes] = await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().includes("/api/admin/teams/") &&
+          ["PUT", "PATCH", "POST"].includes(res.request().method()),
+        { timeout: 10000 },
+      ),
+      card.getByTestId("save-model-allow-list-btn").click(),
+    ]);
+    expect(
+      saveRes.ok(),
+      `save failed: ${saveRes.status()} ${await saveRes.text()}`,
+    ).toBeTruthy();
     await expect(card.getByText("Model list saved.")).toBeVisible({
       timeout: 10000,
     });

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 import {
+  BASE,
   acceptAupViaApi,
   getPreferences,
   putPreferences,
@@ -136,7 +137,11 @@ test.describe("Onboarding tours", () => {
       const createRes = await adminApi.request.post(
         "/api/auth/admin/create-user",
         {
-          headers: { "Content-Type": "application/json" },
+          // better-auth rejects cross-origin-less API calls (MISSING_OR_NULL_ORIGIN)
+          headers: {
+            "Content-Type": "application/json",
+            Origin: BASE,
+          },
           data: {
             email,
             password,
@@ -152,7 +157,7 @@ test.describe("Onboarding tours", () => {
       createdUserId = created.user.id;
 
       const roleRes = await adminApi.request.post("/api/auth/admin/set-role", {
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Origin: BASE },
         data: { userId: createdUserId, role: "admin" },
       });
       expect(roleRes.ok(), await roleRes.text()).toBeTruthy();
