@@ -34,22 +34,33 @@ export const createMcpServer = async (
       });
       page = await browserContext.newPage();
     }
-    const response = await page!.request.post("/api/mcp", {
-      headers: { "Content-Type": "application/json" },
-      data: {
-        name: server.name,
-        config: server.config ?? {
-          url: "http://localhost:3007/mcp",
+    const postOnce = () =>
+      page!.request.post("/api/mcp", {
+        headers: { "Content-Type": "application/json" },
+        data: {
+          name: server.name,
+          config: server.config ?? {
+            url: "http://localhost:3007/mcp",
+          },
+          visibility: server.visibility ?? "private",
         },
-        visibility: server.visibility ?? "private",
-      },
-      timeout: 15000,
-    });
+        timeout: 15000,
+      });
+    let response = await postOnce();
     if (!response.ok()) {
       const errorBody = await response.text();
-      throw new Error(
-        `Failed to create MCP server: Status ${response.status()} - ${errorBody}`,
-      );
+      // The fixture MCP server can transiently drop a connection under
+      // parallel-worker load ("MCP error -32000: Connection closed") — retry
+      // once before failing the test.
+      if (errorBody.includes("Connection closed")) {
+        response = await postOnce();
+      }
+      if (!response.ok()) {
+        const retryBody = await response.text().catch(() => errorBody);
+        throw new Error(
+          `Failed to create MCP server: Status ${response.status()} - ${retryBody}`,
+        );
+      }
     }
     const serverInfo = (await response.json()) as { id: string };
     if (!serverInfo.id) {
