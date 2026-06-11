@@ -370,7 +370,7 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
     const { resolveTeamModelAllowList } = await import(
       "lib/admin/model-policy"
     );
-    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(["gpt-5.1"]);
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(["gpt-5.5"]);
     const { getUserModelGrants } = await import("lib/admin/user-grants");
     vi.mocked(getUserModelGrants).mockResolvedValue([]);
 
@@ -397,7 +397,7 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
     const { resolveTeamModelAllowList } = await import(
       "lib/admin/model-policy"
     );
-    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(["gpt-5.1"]);
+    vi.mocked(resolveTeamModelAllowList).mockResolvedValue(["gpt-5.5"]);
     const { getUserModelGrants } = await import("lib/admin/user-grants");
     vi.mocked(getUserModelGrants).mockResolvedValue(["claude-opus-4.8"]);
 
@@ -423,17 +423,17 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
       "lib/admin/model-policy"
     );
     vi.mocked(resolveTeamModelAllowList).mockResolvedValue([
-      "gemini-2.5-flash",
+      "gemini-3.5-flash",
     ]);
     const { getUserModelGrants } = await import("lib/admin/user-grants");
     vi.mocked(getUserModelGrants).mockResolvedValue(["o4-mini"]);
     const { routeModel } = await import("lib/ai/routing/route-model");
     vi.mocked(routeModel).mockReturnValue({
-      model: { provider: "openRouter", model: "gemini-2.5-flash" },
+      model: { provider: "openRouter", model: "gemini-3.5-flash" },
       taskClass: "general",
       tier: "fast",
       reason: "task=general → fast",
-      candidates: [{ provider: "openRouter", model: "gemini-2.5-flash" }],
+      candidates: [{ provider: "openRouter", model: "gemini-3.5-flash" }],
     });
 
     const { POST } = await import("./route");
@@ -441,7 +441,7 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
 
     expect(vi.mocked(routeModel)).toHaveBeenCalledWith(
       expect.objectContaining({
-        allowedModels: ["gemini-2.5-flash", "o4-mini"],
+        allowedModels: ["gemini-3.5-flash", "o4-mini"],
       }),
     );
     expect(res.status).not.toBe(403);
@@ -458,11 +458,11 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
     const { routeModel } = await import("lib/ai/routing/route-model");
     // simulate the routing lib's "allow-list excludes every tier" fallback
     vi.mocked(routeModel).mockReturnValue({
-      model: { provider: "openRouter", model: "gemini-2.5-flash" },
+      model: { provider: "openRouter", model: "gemini-3.5-flash" },
       taskClass: "general",
       tier: "fast",
       reason: "task=general → fast",
-      candidates: [{ provider: "openRouter", model: "gemini-2.5-flash" }],
+      candidates: [{ provider: "openRouter", model: "gemini-3.5-flash" }],
     });
 
     const { POST } = await import("./route");
@@ -470,7 +470,7 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
 
     expect(res.status).toBe(403);
     const body = await res.json();
-    expect(body.message).toContain("gemini-2.5-flash");
+    expect(body.message).toContain("gemini-3.5-flash");
   });
 
   it("unrestricted resolution (all layers null) passes no allow-list to routing", async () => {
@@ -481,11 +481,11 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
     vi.mocked(resolveTeamModelAllowList).mockResolvedValue(null);
     const { routeModel } = await import("lib/ai/routing/route-model");
     vi.mocked(routeModel).mockReturnValue({
-      model: { provider: "openRouter", model: "gemini-2.5-flash" },
+      model: { provider: "openRouter", model: "gemini-3.5-flash" },
       taskClass: "general",
       tier: "fast",
       reason: "task=general → fast",
-      candidates: [{ provider: "openRouter", model: "gemini-2.5-flash" }],
+      candidates: [{ provider: "openRouter", model: "gemini-3.5-flash" }],
     });
 
     const { POST } = await import("./route");

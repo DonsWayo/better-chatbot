@@ -13,7 +13,7 @@ vi.mock("lib/admin/user-grants", () => ({
   grantUserModel: mockGrantModel,
 }));
 
-const fakeGrant = { id: "g1", modelId: "gpt-5.1", grantedBy: "admin", expiresAt: null, createdAt: new Date() };
+const fakeGrant = { id: "g1", modelId: "gpt-5.5", grantedBy: "admin", expiresAt: null, createdAt: new Date() };
 
 function makeGetRequest() {
   return {} as unknown as NextRequest;
@@ -79,9 +79,9 @@ describe("POST /api/admin/users/[id]/model-grants", () => {
   it("grants approved model and returns ok", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     const { POST } = await import("./route");
-    const res = await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u2") as any);
+    const res = await POST(makePostRequest({ modelId: "gpt-5.5" }), makeParams("u2") as any);
     expect(res.status).toBe(200);
-    expect(mockGrantModel).toHaveBeenCalledWith("u2", "gpt-5.1", "a1", null);
+    expect(mockGrantModel).toHaveBeenCalledWith("u2", "gpt-5.5", "a1", null);
   });
 
   it("passes expiresAt when provided", async () => {
@@ -132,7 +132,7 @@ describe("POST /api/admin/users/[id]/model-grants — guard chains", () => {
   it("never calls grantModel when unauthenticated", async () => {
     mockGetSession.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    await POST(makePostRequest({ modelId: "gpt-5.5" }), makeParams("u1") as any);
     expect(mockGrantModel).not.toHaveBeenCalled();
   });
 
@@ -191,14 +191,14 @@ describe("POST /api/admin/users/[id]/model-grants — additional", () => {
   it("getSession called exactly once per POST", async () => {
     mockGetSession.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    await POST(makePostRequest({ modelId: "gpt-5.5" }), makeParams("u1") as any);
     expect(mockGetSession).toHaveBeenCalledTimes(1);
   });
 
   it("401 body has error field", async () => {
     mockGetSession.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    const res = await POST(makePostRequest({ modelId: "gpt-5.5" }), makeParams("u1") as any);
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -215,7 +215,7 @@ describe("POST /api/admin/users/[id]/model-grants — additional", () => {
     mockGetSession.mockResolvedValue({ user: { id: "a1", role: "admin" } });
     mockGrantModel.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
-    await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u2") as any);
+    await POST(makePostRequest({ modelId: "gpt-5.5" }), makeParams("u2") as any);
     expect(mockGrantModel).toHaveBeenCalledTimes(1);
   });
 });
@@ -244,7 +244,7 @@ describe("GET /api/admin/users/[id]/model-grants — response shape", () => {
   it("POST response is always a Response instance for 401", async () => {
     mockGetSession.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makePostRequest({ modelId: "gpt-5.1" }), makeParams("u1") as any);
+    const res = await POST(makePostRequest({ modelId: "gpt-5.5" }), makeParams("u1") as any);
     expect(res).toBeInstanceOf(Response);
   });
 

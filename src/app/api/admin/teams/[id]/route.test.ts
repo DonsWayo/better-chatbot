@@ -75,11 +75,11 @@ describe("PATCH /api/admin/teams/[id]", () => {
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
     const { PATCH } = await import("./route");
     const res = await PATCH(
-      makeRequest({ modelAllowList: ["gpt-5.1", "gemini-2.5-flash"] }),
+      makeRequest({ modelAllowList: ["gpt-5.5", "gemini-3.5-flash"] }),
       makeParams("team-2") as any,
     );
     expect(res.status).toBe(200);
-    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-2", { modelAllowList: ["gpt-5.1", "gemini-2.5-flash"] });
+    expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-2", { modelAllowList: ["gpt-5.5", "gemini-3.5-flash"] });
   });
 
   it("accepts empty modelAllowList to clear restrictions", async () => {
@@ -93,7 +93,7 @@ describe("PATCH /api/admin/teams/[id]", () => {
   it("accepts all four approved models", async () => {
     mockGetSession.mockResolvedValue({ user: { id: "u1", role: "admin" } });
     const { PATCH } = await import("./route");
-    const ALL = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+    const ALL = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
     const res = await PATCH(makeRequest({ modelAllowList: ALL }), makeParams("team-all") as any);
     expect(res.status).toBe(200);
     expect(mockUpdateTeamPolicy).toHaveBeenCalledWith("team-all", { modelAllowList: ALL });

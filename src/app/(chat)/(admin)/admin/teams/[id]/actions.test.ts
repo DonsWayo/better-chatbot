@@ -69,11 +69,11 @@ describe("setModelAllowListAction", () => {
 
   it("requires admin, then calls updateTeamPolicy with modelAllowList", async () => {
     const { setModelAllowListAction } = await import("./actions");
-    await setModelAllowListAction("team-1", ["gpt-5.1", "claude-opus-4.8"]);
+    await setModelAllowListAction("team-1", ["gpt-5.5", "claude-opus-4.8"]);
 
     expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
     expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-1", {
-      modelAllowList: ["gpt-5.1", "claude-opus-4.8"],
+      modelAllowList: ["gpt-5.5", "claude-opus-4.8"],
     });
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-1");
   });

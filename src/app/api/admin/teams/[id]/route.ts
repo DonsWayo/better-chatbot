@@ -3,7 +3,7 @@ import { getSession } from "lib/auth/server";
 import { updateTeamPolicy } from "lib/admin/teams";
 import { z } from "zod";
 
-const APPROVED_MODEL_IDS = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
+const APPROVED_MODEL_IDS = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "gemini-3.1-flash-lite"] as const;
 
 const PatchTeamSchema = z.object({
   guardrailPolicy: z.enum(["strict", "standard", "permissive"]).optional(),

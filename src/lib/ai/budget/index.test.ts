@@ -7,19 +7,19 @@ describe("estimateCostUsd", () => {
     expect(estimateCostUsd("claude-opus-4.8", 1_000_000, 1_000_000)).toBeCloseTo(90, 4);
   });
 
-  it("calculates cost for gpt-5.1", () => {
+  it("calculates cost for gpt-5.5", () => {
     // 1M prompt @ $2.5 + 1M completion @ $10 = $12.50
-    expect(estimateCostUsd("gpt-5.1", 1_000_000, 1_000_000)).toBeCloseTo(12.5, 4);
+    expect(estimateCostUsd("gpt-5.5", 1_000_000, 1_000_000)).toBeCloseTo(12.5, 4);
   });
 
-  it("calculates cost for gemini-2.5-flash", () => {
+  it("calculates cost for gemini-3.5-flash", () => {
     // 1M prompt @ $0.15 + 1M completion @ $0.60 = $0.75
-    expect(estimateCostUsd("gemini-2.5-flash", 1_000_000, 1_000_000)).toBeCloseTo(0.75, 4);
+    expect(estimateCostUsd("gemini-3.5-flash", 1_000_000, 1_000_000)).toBeCloseTo(0.75, 4);
   });
 
-  it("calculates cost for gemini-2.5-flash-lite", () => {
+  it("calculates cost for gemini-3.1-flash-lite", () => {
     // 1M prompt @ $0.10 + 1M completion @ $0.40 = $0.50
-    expect(estimateCostUsd("gemini-2.5-flash-lite", 1_000_000, 1_000_000)).toBeCloseTo(0.5, 4);
+    expect(estimateCostUsd("gemini-3.1-flash-lite", 1_000_000, 1_000_000)).toBeCloseTo(0.5, 4);
   });
 
   it("uses default pricing for unknown models", () => {
@@ -28,7 +28,7 @@ describe("estimateCostUsd", () => {
   });
 
   it("returns near-zero cost for zero tokens", () => {
-    expect(estimateCostUsd("gpt-5.1", 0, 0)).toBe(0);
+    expect(estimateCostUsd("gpt-5.5", 0, 0)).toBe(0);
   });
 
   it("scales proportionally for fractional millions", () => {
@@ -45,18 +45,18 @@ describe("estimateCostUsd", () => {
     expect(promptOnly + completionOnly).toBeCloseTo(estimateCostUsd("claude-opus-4.8", 1_000_000, 1_000_000), 4);
   });
 
-  it("completion-only cost for gpt-5.1 is $10 per million", () => {
-    expect(estimateCostUsd("gpt-5.1", 0, 1_000_000)).toBeCloseTo(10, 4);
+  it("completion-only cost for gpt-5.5 is $10 per million", () => {
+    expect(estimateCostUsd("gpt-5.5", 0, 1_000_000)).toBeCloseTo(10, 4);
   });
 
   it("scales linearly — double tokens equals double cost", () => {
-    const base = estimateCostUsd("gemini-2.5-flash", 100_000, 100_000);
-    const doubled = estimateCostUsd("gemini-2.5-flash", 200_000, 200_000);
+    const base = estimateCostUsd("gemini-3.5-flash", 100_000, 100_000);
+    const doubled = estimateCostUsd("gemini-3.5-flash", 200_000, 200_000);
     expect(doubled).toBeCloseTo(base * 2, 8);
   });
 
   it("small token counts (1000 tokens) produce near-zero but non-zero cost for known models", () => {
-    const cost = estimateCostUsd("gpt-5.1", 1_000, 1_000);
+    const cost = estimateCostUsd("gpt-5.5", 1_000, 1_000);
     expect(cost).toBeGreaterThan(0);
     expect(cost).toBeLessThan(0.1);
   });
@@ -67,38 +67,38 @@ describe("estimateCostUsd", () => {
     expect(defaultCost).toBeLessThan(opusCost);
   });
 
-  it("gemini-2.5-flash-lite is cheapest among known models", () => {
-    const liteCost = estimateCostUsd("gemini-2.5-flash-lite", 1_000_000, 1_000_000);
-    const flashCost = estimateCostUsd("gemini-2.5-flash", 1_000_000, 1_000_000);
-    const gptCost = estimateCostUsd("gpt-5.1", 1_000_000, 1_000_000);
+  it("gemini-3.1-flash-lite is cheapest among known models", () => {
+    const liteCost = estimateCostUsd("gemini-3.1-flash-lite", 1_000_000, 1_000_000);
+    const flashCost = estimateCostUsd("gemini-3.5-flash", 1_000_000, 1_000_000);
+    const gptCost = estimateCostUsd("gpt-5.5", 1_000_000, 1_000_000);
     const opusCost = estimateCostUsd("claude-opus-4.8", 1_000_000, 1_000_000);
     expect(liteCost).toBeLessThan(flashCost);
     expect(liteCost).toBeLessThan(gptCost);
     expect(liteCost).toBeLessThan(opusCost);
   });
 
-  it("cost ordering: claude-opus > gpt-5.1 > gemini-flash > gemini-flash-lite", () => {
+  it("cost ordering: claude-opus > gpt-5.5 > gemini-flash > gemini-flash-lite", () => {
     const T = 1_000_000;
     const opus = estimateCostUsd("claude-opus-4.8", T, T);
-    const gpt = estimateCostUsd("gpt-5.1", T, T);
-    const flash = estimateCostUsd("gemini-2.5-flash", T, T);
-    const lite = estimateCostUsd("gemini-2.5-flash-lite", T, T);
+    const gpt = estimateCostUsd("gpt-5.5", T, T);
+    const flash = estimateCostUsd("gemini-3.5-flash", T, T);
+    const lite = estimateCostUsd("gemini-3.1-flash-lite", T, T);
     expect(opus).toBeGreaterThan(gpt);
     expect(gpt).toBeGreaterThan(flash);
     expect(flash).toBeGreaterThan(lite);
   });
 
   it("always returns a non-negative number", () => {
-    const models = ["claude-opus-4.8", "gpt-5.1", "gemini-2.5-flash", "unknown-model"];
+    const models = ["claude-opus-4.8", "gpt-5.5", "gemini-3.5-flash", "unknown-model"];
     for (const model of models) {
       expect(estimateCostUsd(model, 1000, 1000)).toBeGreaterThanOrEqual(0);
     }
   });
 
   it("cost is additive: separate calls sum to combined call", () => {
-    const a = estimateCostUsd("gpt-5.1", 100_000, 0);
-    const b = estimateCostUsd("gpt-5.1", 0, 100_000);
-    const combined = estimateCostUsd("gpt-5.1", 100_000, 100_000);
+    const a = estimateCostUsd("gpt-5.5", 100_000, 0);
+    const b = estimateCostUsd("gpt-5.5", 0, 100_000);
+    const combined = estimateCostUsd("gpt-5.5", 100_000, 100_000);
     expect(a + b).toBeCloseTo(combined, 10);
   });
 
@@ -108,12 +108,12 @@ describe("estimateCostUsd", () => {
   });
 
   it("result is always a finite number (not NaN or Infinity)", () => {
-    const result = estimateCostUsd("gpt-5.1", 1_000_000, 1_000_000);
+    const result = estimateCostUsd("gpt-5.5", 1_000_000, 1_000_000);
     expect(Number.isFinite(result)).toBe(true);
   });
 
   it("very large token counts produce a finite result", () => {
-    const result = estimateCostUsd("gemini-2.5-flash-lite", 1_000_000_000, 1_000_000_000);
+    const result = estimateCostUsd("gemini-3.1-flash-lite", 1_000_000_000, 1_000_000_000);
     expect(Number.isFinite(result)).toBe(true);
     expect(result).toBeGreaterThan(0);
   });

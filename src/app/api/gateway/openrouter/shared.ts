@@ -48,27 +48,27 @@ export interface GatewayModel {
 }
 
 export const GATEWAY_MODELS: readonly GatewayModel[] = [
-  { id: "gpt-5.1", name: "GPT-5.1", slug: "openai/gpt-5.1" },
+  { id: "gpt-5.5", name: "GPT-5.5", slug: "openai/gpt-5.5" },
   {
     id: "claude-opus-4.8",
     name: "Claude Opus 4.8",
     slug: "anthropic/claude-opus-4.8",
   },
   {
-    id: "gemini-2.5-flash",
-    name: "Gemini 2.5 Flash",
-    slug: "google/gemini-2.5-flash",
+    id: "gemini-3.5-flash",
+    name: "Gemini 3.5 Flash",
+    slug: "google/gemini-3.5-flash",
   },
   {
-    id: "gemini-2.5-flash-lite",
-    name: "Gemini 2.5 Flash Lite",
-    slug: "google/gemini-2.5-flash-lite",
+    id: "gemini-3.1-flash-lite",
+    name: "Gemini 3.1 Flash Lite",
+    slug: "google/gemini-3.1-flash-lite",
   },
 ];
 
 /**
  * Resolve a requested model string to a registry entry. Accepts either the
- * friendly id (`gpt-5.1`) or the OpenRouter slug alias (`openai/gpt-5.1`).
+ * friendly id (`gpt-5.5`) or the OpenRouter slug alias (`openai/gpt-5.5`).
  * Returns null when the model is not on the approved short list.
  */
 export function resolveGatewayModel(

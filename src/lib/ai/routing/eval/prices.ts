@@ -7,7 +7,7 @@ export const MODEL_PRICES: Record<
   { inPerMTok: number; outPerMTok: number }
 > = {
   "claude-opus-4.8": { inPerMTok: 5, outPerMTok: 25 },
-  "gpt-5.1": { inPerMTok: 1.25, outPerMTok: 10 },
-  "gemini-2.5-flash": { inPerMTok: 0.3, outPerMTok: 2.5 },
-  "gemini-2.5-flash-lite": { inPerMTok: 0.1, outPerMTok: 0.4 },
+  "gpt-5.5": { inPerMTok: 1.25, outPerMTok: 10 },
+  "gemini-3.5-flash": { inPerMTok: 0.3, outPerMTok: 2.5 },
+  "gemini-3.1-flash-lite": { inPerMTok: 0.1, outPerMTok: 0.4 },
 };

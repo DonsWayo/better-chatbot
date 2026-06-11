@@ -68,16 +68,16 @@ describe("getUserModelGrants", () => {
 
   it("returns model IDs when grants exist", async () => {
     selectWhereMock.mockResolvedValue([
-      { modelId: "gpt-5.1" },
+      { modelId: "gpt-5.5" },
       { modelId: "claude-opus-4.8" },
     ]);
     const { getUserModelGrants } = await import("./user-grants");
     const result = await getUserModelGrants("user-2");
-    expect(result).toEqual(["gpt-5.1", "claude-opus-4.8"]);
+    expect(result).toEqual(["gpt-5.5", "claude-opus-4.8"]);
   });
 
   it("caches result for 30s (DB called once for two calls)", async () => {
-    selectWhereMock.mockResolvedValue([{ modelId: "gemini-2.5-flash" }]);
+    selectWhereMock.mockResolvedValue([{ modelId: "gemini-3.5-flash" }]);
     const { getUserModelGrants } = await import("./user-grants");
     await getUserModelGrants("user-cache");
     await getUserModelGrants("user-cache");
@@ -101,24 +101,24 @@ describe("grantUserModel", () => {
 
   it("inserts a grant via upsert", async () => {
     const { grantUserModel } = await import("./user-grants");
-    await grantUserModel("u1", "gpt-5.1", "admin-1", null);
+    await grantUserModel("u1", "gpt-5.5", "admin-1", null);
     expect(insertMock).toHaveBeenCalledTimes(1);
     expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "u1", modelId: "gpt-5.1", grantedBy: "admin-1", expiresAt: null }),
+      expect.objectContaining({ userId: "u1", modelId: "gpt-5.5", grantedBy: "admin-1", expiresAt: null }),
     );
   });
 
   it("passes expiresAt when provided", async () => {
     const exp = new Date("2027-01-01T00:00:00.000Z");
     const { grantUserModel } = await import("./user-grants");
-    await grantUserModel("u2", "gemini-2.5-flash", "admin-1", exp);
+    await grantUserModel("u2", "gemini-3.5-flash", "admin-1", exp);
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({ expiresAt: exp }),
     );
   });
 
   it("invalidates cache so next getUserModelGrants re-queries", async () => {
-    selectWhereMock.mockResolvedValue([{ modelId: "gpt-5.1" }]);
+    selectWhereMock.mockResolvedValue([{ modelId: "gpt-5.5" }]);
     const { getUserModelGrants, grantUserModel } = await import("./user-grants");
 
     // Prime cache
@@ -168,7 +168,7 @@ describe("getUserModelGrants — additional", () => {
   });
 
   it("returns only string model IDs (not row objects)", async () => {
-    selectWhereMock.mockResolvedValue([{ modelId: "gpt-5.1" }, { modelId: "claude-opus-4.8" }]);
+    selectWhereMock.mockResolvedValue([{ modelId: "gpt-5.5" }, { modelId: "claude-opus-4.8" }]);
     const { getUserModelGrants } = await import("./user-grants");
     const result = await getUserModelGrants("u-str");
     expect(result.every((m) => typeof m === "string")).toBe(true);
@@ -193,12 +193,12 @@ describe("grantUserModel — additional", () => {
 
   it("resolves without throwing", async () => {
     const { grantUserModel } = await import("./user-grants");
-    await expect(grantUserModel("u1", "gpt-5.1", "admin-1", null)).resolves.not.toThrow();
+    await expect(grantUserModel("u1", "gpt-5.5", "admin-1", null)).resolves.not.toThrow();
   });
 
   it("calls insertMock exactly once per grant", async () => {
     const { grantUserModel } = await import("./user-grants");
-    await grantUserModel("u2", "gemini-2.5-flash", "admin-1", null);
+    await grantUserModel("u2", "gemini-3.5-flash", "admin-1", null);
     expect(insertMock).toHaveBeenCalledTimes(1);
   });
 });
@@ -254,7 +254,7 @@ describe("getUserModelGrants — response invariants", () => {
   });
 
   it("returns array of strings not array of objects", async () => {
-    selectWhereMock.mockResolvedValue([{ modelId: "openai/gpt-5.1" }]);
+    selectWhereMock.mockResolvedValue([{ modelId: "openai/gpt-5.5" }]);
     const { getUserModelGrants } = await import("./user-grants");
     const result = await getUserModelGrants("u-typed");
     expect(typeof result[0]).toBe("string");

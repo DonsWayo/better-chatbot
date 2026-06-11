@@ -38,18 +38,18 @@ beforeEach(() => {
 
 describe("resolveEffectiveModelAllowList", () => {
   it("uses the team-resolved list when a teamId is given", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.1"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.5"]);
     await expect(
       resolveEffectiveModelAllowList("u1", "team-1"),
-    ).resolves.toEqual(["gpt-5.1"]);
+    ).resolves.toEqual(["gpt-5.5"]);
     expect(resolveTeamModelAllowListMock).toHaveBeenCalledWith("team-1");
     expect(getOrgBaseModelAllowListMock).not.toHaveBeenCalled();
   });
 
   it("falls back to the org base when the user has no team", async () => {
-    getOrgBaseModelAllowListMock.mockResolvedValue(["gpt-5.1"]);
+    getOrgBaseModelAllowListMock.mockResolvedValue(["gpt-5.5"]);
     await expect(resolveEffectiveModelAllowList("u1", null)).resolves.toEqual([
-      "gpt-5.1",
+      "gpt-5.5",
     ]);
     expect(getOrgBaseModelAllowListMock).toHaveBeenCalled();
     expect(resolveTeamModelAllowListMock).not.toHaveBeenCalled();
@@ -73,36 +73,36 @@ describe("resolveEffectiveModelAllowList", () => {
   });
 
   it("user grants ADD models on top of the team list (ERP price-list style)", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.1"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.5"]);
     getUserModelGrantsMock.mockResolvedValue(["claude-opus-4.8"]);
     await expect(
       resolveEffectiveModelAllowList("u1", "team-1"),
-    ).resolves.toEqual(["gpt-5.1", "claude-opus-4.8"]);
+    ).resolves.toEqual(["gpt-5.5", "claude-opus-4.8"]);
     expect(getUserModelGrantsMock).toHaveBeenCalledWith("u1");
   });
 
   it("dedupes a grant that the team list already contains", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.1", "o4-mini"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.5", "o4-mini"]);
     getUserModelGrantsMock.mockResolvedValue(["o4-mini", "claude-opus-4.8"]);
     await expect(
       resolveEffectiveModelAllowList("u1", "team-1"),
-    ).resolves.toEqual(["gpt-5.1", "o4-mini", "claude-opus-4.8"]);
+    ).resolves.toEqual(["gpt-5.5", "o4-mini", "claude-opus-4.8"]);
   });
 
   it("grants also layer on top of the org base when there is no team", async () => {
-    getOrgBaseModelAllowListMock.mockResolvedValue(["gemini-2.5-flash"]);
+    getOrgBaseModelAllowListMock.mockResolvedValue(["gemini-3.5-flash"]);
     getUserModelGrantsMock.mockResolvedValue(["claude-opus-4.8"]);
     await expect(resolveEffectiveModelAllowList("u1")).resolves.toEqual([
-      "gemini-2.5-flash",
+      "gemini-3.5-flash",
       "claude-opus-4.8",
     ]);
   });
 
   it("fails open on a grants-table error: the team list still applies", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.1"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.5"]);
     getUserModelGrantsMock.mockRejectedValue(new Error("db down"));
     await expect(
       resolveEffectiveModelAllowList("u1", "team-1"),
-    ).resolves.toEqual(["gpt-5.1"]);
+    ).resolves.toEqual(["gpt-5.5"]);
   });
 });

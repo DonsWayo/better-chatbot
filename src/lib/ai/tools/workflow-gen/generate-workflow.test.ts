@@ -106,9 +106,35 @@ describe("generateWorkflowInputSchema", () => {
     expect(generateWorkflowInputSchema.safeParse(input).success).toBe(false);
   });
 
-  it("rejects workflow names that are not alphanumeric+hyphens", () => {
-    const input = { ...validInput(), name: "weather brief!" };
-    expect(generateWorkflowInputSchema.safeParse(input).success).toBe(false);
+  it("slugifies human workflow names instead of rejecting them", () => {
+    const input = { ...validInput(), name: "Weather brief! (daily)" };
+    const result = generateWorkflowInputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe("Weather-brief-daily");
+    }
+  });
+
+  it("slugify falls back when nothing survives", () => {
+    const input = { ...validInput(), name: "!!!" };
+    const result = generateWorkflowInputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe("generated-workflow");
+    }
+  });
+
+  it("parses nodes that arrive as JSON strings (weak-model tolerance)", () => {
+    const input = validInput();
+    const stringified = {
+      ...input,
+      nodes: input.nodes.map((n) => JSON.stringify(n)),
+    } as unknown as GenerateWorkflowInput;
+    const result = generateWorkflowInputSchema.safeParse(stringified);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.nodes[0]).toMatchObject({ kind: "input" });
+    }
   });
 
   it("rejects more than the node cap", () => {

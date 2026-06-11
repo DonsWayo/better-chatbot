@@ -7,7 +7,7 @@
  * `Authorization: Bearer <better-auth session cookie value>`.
  *
  * Shape (OpenAI-models-list compatible, plus a human-readable name):
- *   { "object": "list", "data": [{ "id": "gpt-5.1", "object": "model", "name": "GPT-5.1" }, …] }
+ *   { "object": "list", "data": [{ "id": "gpt-5.5", "object": "model", "name": "GPT-5.5" }, …] }
  */
 
 import {

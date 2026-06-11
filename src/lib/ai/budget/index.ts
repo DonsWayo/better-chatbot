@@ -28,9 +28,9 @@ interface ModelPricing {
 
 const MODEL_PRICING: Record<string, ModelPricing> = {
   "claude-opus-4.8": { promptPerM: 15, completionPerM: 75 },
-  "gpt-5.1": { promptPerM: 2.5, completionPerM: 10 },
-  "gemini-2.5-flash": { promptPerM: 0.15, completionPerM: 0.6 },
-  "gemini-2.5-flash-lite": { promptPerM: 0.1, completionPerM: 0.4 },
+  "gpt-5.5": { promptPerM: 2.5, completionPerM: 10 },
+  "gemini-3.5-flash": { promptPerM: 0.15, completionPerM: 0.6 },
+  "gemini-3.1-flash-lite": { promptPerM: 0.1, completionPerM: 0.4 },
 };
 
 const DEFAULT_PRICING: ModelPricing = { promptPerM: 1, completionPerM: 4 };

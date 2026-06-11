@@ -20,10 +20,10 @@ import {
 } from "ui/select";
 
 const APPROVED_MODELS = [
-  { id: "gpt-5.1", label: "GPT-5.1" },
+  { id: "gpt-5.5", label: "GPT-5.5" },
   { id: "claude-opus-4.8", label: "Claude Opus 4.8" },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
+  { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+  { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" },
 ];
 
 interface Grant {

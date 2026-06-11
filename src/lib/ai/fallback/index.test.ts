@@ -147,8 +147,8 @@ describe("isRetryableProviderError", () => {
 
 describe("wrapWithFallback — doGenerate", () => {
   it("returns primary result when primary succeeds", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     primary.doGenerate.mockResolvedValue({ text: "primary answer" });
 
     const wrapped = wrapWithFallback(primary as never, [fallback as never]);
@@ -160,8 +160,8 @@ describe("wrapWithFallback — doGenerate", () => {
   });
 
   it("falls back to first fallback on 500", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     primary.doGenerate.mockRejectedValue(make5xxError(500));
     fallback.doGenerate.mockResolvedValue({ text: "fallback answer" });
 
@@ -173,14 +173,14 @@ describe("wrapWithFallback — doGenerate", () => {
     expect(mockInc).toHaveBeenCalledWith({
       primary_provider: "openrouter",
       fallback_provider: "openrouter",
-      fallback_model: "gemini-2.5-flash",
+      fallback_model: "gemini-3.5-flash",
     });
   });
 
   it("tries second fallback when first also fails", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback1 = makeModel("gemini-2.5-flash");
-    const fallback2 = makeModel("gemini-2.5-flash-lite");
+    const primary = makeModel("gpt-5.5");
+    const fallback1 = makeModel("gemini-3.5-flash");
+    const fallback2 = makeModel("gemini-3.1-flash-lite");
     primary.doGenerate.mockRejectedValue(make5xxError(503));
     fallback1.doGenerate.mockRejectedValue(make5xxError(503));
     fallback2.doGenerate.mockResolvedValue({ text: "second fallback" });
@@ -196,8 +196,8 @@ describe("wrapWithFallback — doGenerate", () => {
   });
 
   it("re-throws original error when all fallbacks fail", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     const primaryErr = make5xxError(503);
     primary.doGenerate.mockRejectedValue(primaryErr);
     fallback.doGenerate.mockRejectedValue(make5xxError(503));
@@ -209,8 +209,8 @@ describe("wrapWithFallback — doGenerate", () => {
   });
 
   it("does NOT fall back on 4xx client errors", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     primary.doGenerate.mockRejectedValue(make4xxError(400));
 
     const wrapped = wrapWithFallback(primary as never, [fallback as never]);
@@ -221,7 +221,7 @@ describe("wrapWithFallback — doGenerate", () => {
   });
 
   it("returns model unchanged when no fallbacks provided", () => {
-    const primary = makeModel("gpt-5.1");
+    const primary = makeModel("gpt-5.5");
     const result = wrapWithFallback(primary as never, []);
     expect(result).toBe(primary);
   });
@@ -229,8 +229,8 @@ describe("wrapWithFallback — doGenerate", () => {
 
 describe("wrapWithFallback — doStream", () => {
   it("returns primary stream when primary succeeds", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     const stream = { stream: "primary-stream" };
     primary.doStream.mockResolvedValue(stream);
 
@@ -242,8 +242,8 @@ describe("wrapWithFallback — doStream", () => {
   });
 
   it("falls back to first fallback on 502", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     const fallbackStream = { stream: "fallback-stream" };
     primary.doStream.mockRejectedValue(make5xxError(502));
     fallback.doStream.mockResolvedValue(fallbackStream);
@@ -256,8 +256,8 @@ describe("wrapWithFallback — doStream", () => {
   });
 
   it("does NOT fall back on 401 auth error", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     primary.doStream.mockRejectedValue(make4xxError(401));
 
     const wrapped = wrapWithFallback(primary as never, [fallback as never]);
@@ -268,8 +268,8 @@ describe("wrapWithFallback — doStream", () => {
   });
 
   it("re-throws when all fallbacks exhausted in stream", async () => {
-    const primary = makeModel("gpt-5.1");
-    const fallback = makeModel("gemini-2.5-flash");
+    const primary = makeModel("gpt-5.5");
+    const fallback = makeModel("gemini-3.5-flash");
     const originalErr = make5xxError(503);
     primary.doStream.mockRejectedValue(originalErr);
     fallback.doStream.mockRejectedValue(make5xxError(503));
@@ -282,13 +282,13 @@ describe("wrapWithFallback — doStream", () => {
 });
 
 describe("FALLBACK_MODEL_IDS", () => {
-  it("starts with gemini-2.5-flash (cheapest reliable)", () => {
-    expect(FALLBACK_MODEL_IDS[0]).toBe("gemini-2.5-flash");
+  it("starts with gemini-3.5-flash (cheapest reliable)", () => {
+    expect(FALLBACK_MODEL_IDS[0]).toBe("gemini-3.5-flash");
   });
 
   it("contains all approved models", () => {
-    expect(FALLBACK_MODEL_IDS).toContain("gemini-2.5-flash-lite");
-    expect(FALLBACK_MODEL_IDS).toContain("gpt-5.1");
+    expect(FALLBACK_MODEL_IDS).toContain("gemini-3.1-flash-lite");
+    expect(FALLBACK_MODEL_IDS).toContain("gpt-5.5");
     expect(FALLBACK_MODEL_IDS).toContain("claude-opus-4.8");
   });
 });

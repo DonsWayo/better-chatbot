@@ -165,13 +165,13 @@ describe("getTeamPolicy", () => {
   });
 
   it("returns modelAllowList from DB when populated", async () => {
-    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: ["gpt-5.1", "gemini-2.5-flash"] }];
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: ["gpt-5.5", "gemini-3.5-flash"] }];
     limitMock.mockResolvedValue(_selectRows);
 
     const { getTeamPolicy } = await import("./teams");
     const policy = await getTeamPolicy("team-allow");
 
-    expect(policy.modelAllowList).toEqual(["gpt-5.1", "gemini-2.5-flash"]);
+    expect(policy.modelAllowList).toEqual(["gpt-5.5", "gemini-3.5-flash"]);
   });
 
   it("returns safe defaults when team does not exist", async () => {
@@ -275,10 +275,10 @@ describe("updateTeamPolicy", () => {
 
   it("accepts modelAllowList in the patch", async () => {
     const { updateTeamPolicy } = await import("./teams");
-    await updateTeamPolicy("team-models", { modelAllowList: ["gpt-5.1", "claude-opus-4.8"] });
+    await updateTeamPolicy("team-models", { modelAllowList: ["gpt-5.5", "claude-opus-4.8"] });
 
     expect(updateSetMock).toHaveBeenCalledWith(
-      expect.objectContaining({ modelAllowList: ["gpt-5.1", "claude-opus-4.8"] }),
+      expect.objectContaining({ modelAllowList: ["gpt-5.5", "claude-opus-4.8"] }),
     );
   });
 

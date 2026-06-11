@@ -124,8 +124,8 @@ export function wrapWithFallback(
 
 /** Ordered list of fallback models (cheapest/most-available first). */
 export const FALLBACK_MODEL_IDS: ReadonlyArray<string> = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gpt-5.1",
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+  "gpt-5.5",
   "claude-opus-4.8",
 ];

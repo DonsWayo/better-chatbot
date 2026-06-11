@@ -32,13 +32,13 @@ import {
 const staticModels = {
   openRouter: {
     // balanced — default selection
-    "gpt-5.1": openrouter("openai/gpt-5.1"),
+    "gpt-5.5": openrouter("openai/gpt-5.5"),
     // frontier — quality (code, reasoning), 1M context
     "claude-opus-4.8": openrouter("anthropic/claude-opus-4.8"),
     // fast & cheap, strong multilingual (ES/EN), 1M context
-    "gemini-2.5-flash": openrouter("google/gemini-2.5-flash"),
+    "gemini-3.5-flash": openrouter("google/gemini-3.5-flash"),
     // cheapest — trivial / high-volume tasks
-    "gemini-2.5-flash-lite": openrouter("google/gemini-2.5-flash-lite"),
+    "gemini-3.1-flash-lite": openrouter("google/gemini-3.1-flash-lite"),
   },
 };
 
@@ -63,17 +63,17 @@ const registerFileSupport = (
   staticFilePartSupportByModel.set(model, Array.from(mimeTypes));
 };
 
-registerFileSupport(staticModels.openRouter["gpt-5.1"], OPENAI_FILE_MIME_TYPES);
+registerFileSupport(staticModels.openRouter["gpt-5.5"], OPENAI_FILE_MIME_TYPES);
 registerFileSupport(
   staticModels.openRouter["claude-opus-4.8"],
   ANTHROPIC_FILE_MIME_TYPES,
 );
 registerFileSupport(
-  staticModels.openRouter["gemini-2.5-flash"],
+  staticModels.openRouter["gemini-3.5-flash"],
   GEMINI_FILE_MIME_TYPES,
 );
 registerFileSupport(
-  staticModels.openRouter["gemini-2.5-flash-lite"],
+  staticModels.openRouter["gemini-3.1-flash-lite"],
   GEMINI_FILE_MIME_TYPES,
 );
 
@@ -107,7 +107,7 @@ export const getFilePartSupportedMimeTypes = (model: LanguageModel) => {
   return staticFilePartSupportByModel.get(model) ?? [];
 };
 
-const fallbackModel = staticModels.openRouter["gpt-5.1"];
+const fallbackModel = staticModels.openRouter["gpt-5.5"];
 
 export const customModelProvider = {
   modelsInfo: Object.entries(allModels).map(([provider, models]) => ({

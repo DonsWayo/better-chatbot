@@ -106,7 +106,7 @@ describe("writeAuditLog — details field", () => {
   it("serializes details as JSON string before inserting", async () => {
     dbInsertValuesMock.mockResolvedValueOnce([]);
     const { writeAuditLog } = await import("./audit");
-    const details = { model: "gpt-5.1", tokens: 1234 };
+    const details = { model: "gpt-5.5", tokens: 1234 };
     await writeAuditLog({ userId: "u1", eventType: "chat_request", details });
     expect(dbInsertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({ details: JSON.stringify(details) }),
@@ -151,7 +151,7 @@ describe("auditChatRequest — additional", () => {
     expect(() =>
       auditChatRequest({
         userId: "u1",
-        model: "gpt-5.1",
+        model: "gpt-5.5",
         promptHash: "abc",
         guardrailFired: true,
         ragUsed: false,

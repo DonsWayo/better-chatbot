@@ -36,7 +36,7 @@ import { RolePackWorkflowDef, getRolePack } from "./packs";
 /** Default model for pack workflow LLM nodes (same as NL workflow gen). */
 export const ROLE_PACK_WORKFLOW_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "gpt-5.1",
+  model: "gpt-5.5",
 };
 
 const NODE_X_GAP = 360;

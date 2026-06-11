@@ -16,11 +16,11 @@ beforeAll(async () => {
 // asafe-ai (ADR-0001): the registry is OpenRouter-only. Every approved model carries the file
 // support of its underlying model family.
 describe("customModelProvider file support metadata (OpenRouter-only)", () => {
-  it("maps gpt-5.1 to OpenAI file support", () => {
+  it("maps gpt-5.5 to OpenAI file support", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
     const model = customModelProvider.getModel({
       provider: "openRouter",
-      model: "gpt-5.1",
+      model: "gpt-5.5",
     });
     expect(getFilePartSupportedMimeTypes(model)).toEqual(
       Array.from(OPENAI_FILE_MIME_TYPES),
@@ -30,7 +30,7 @@ describe("customModelProvider file support metadata (OpenRouter-only)", () => {
       (item) => item.provider === "openRouter",
     );
     const metadata = openRouterProvider?.models.find(
-      (item) => item.name === "gpt-5.1",
+      (item) => item.name === "gpt-5.5",
     );
     expect(metadata?.supportedFileMimeTypes).toEqual(
       Array.from(OPENAI_FILE_MIME_TYPES),
@@ -48,11 +48,11 @@ describe("customModelProvider file support metadata (OpenRouter-only)", () => {
     );
   });
 
-  it("maps gemini-2.5-flash to Gemini file support", () => {
+  it("maps gemini-3.5-flash to Gemini file support", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
     const model = customModelProvider.getModel({
       provider: "openRouter",
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
     });
     expect(getFilePartSupportedMimeTypes(model)).toEqual(
       Array.from(GEMINI_FILE_MIME_TYPES),
@@ -81,10 +81,10 @@ describe("inference posture", () => {
     );
     const names = openRouter?.models.map((m) => m.name) ?? [];
     expect(names).toEqual([
-      "gpt-5.1",
+      "gpt-5.5",
       "claude-opus-4.8",
-      "gemini-2.5-flash",
-      "gemini-2.5-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
     ]);
   });
 
@@ -109,7 +109,7 @@ describe("inference posture", () => {
 
   it("getModel returns a defined object for each approved model", () => {
     const { customModelProvider } = modelsModule;
-    const MODELS = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+    const MODELS = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
     for (const model of MODELS) {
       const result = customModelProvider.getModel({ provider: "openRouter", model });
       expect(result).toBeDefined();
@@ -117,12 +117,12 @@ describe("inference posture", () => {
   });
 });
 
-describe("customModelProvider file support — gemini-2.5-flash-lite", () => {
-  it("maps gemini-2.5-flash-lite to Gemini file support", () => {
+describe("customModelProvider file support — gemini-3.1-flash-lite", () => {
+  it("maps gemini-3.1-flash-lite to Gemini file support", () => {
     const { customModelProvider, getFilePartSupportedMimeTypes } = modelsModule;
     const model = customModelProvider.getModel({
       provider: "openRouter",
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3.1-flash-lite",
     });
     expect(getFilePartSupportedMimeTypes(model)).toEqual(
       Array.from(GEMINI_FILE_MIME_TYPES),

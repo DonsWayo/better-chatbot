@@ -106,7 +106,7 @@ describe("GET /api/admin/usage/export", () => {
       createdAt: new Date("2026-06-01T10:00:00Z"),
       userEmail: "alice@asafe.example",
       teamName: "Engineering",
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       provider: "openrouter",
       taskClass: "balanced",
       promptTokens: 100,
@@ -118,7 +118,7 @@ describe("GET /api/admin/usage/export", () => {
     const text = await res.text();
     expect(text).toContain("alice@asafe.example");
     expect(text).toContain("Engineering");
-    expect(text).toContain("gemini-2.5-flash");
+    expect(text).toContain("gemini-3.5-flash");
     expect(text).toContain("0.000030");
   });
 
@@ -128,7 +128,7 @@ describe("GET /api/admin/usage/export", () => {
       createdAt: new Date("2026-06-01T10:00:00Z"),
       userEmail: "bob@asafe.example",
       teamName: "Sales, UK",
-      model: "gpt-5.1",
+      model: "gpt-5.5",
       provider: "openrouter",
       taskClass: null,
       promptTokens: 200,
@@ -147,7 +147,7 @@ describe("GET /api/admin/usage/export", () => {
       createdAt: new Date("2026-06-01T10:00:00Z"),
       userEmail: 'alice"s@asafe.example',
       teamName: "Dev",
-      model: "gpt-5.1",
+      model: "gpt-5.5",
       provider: "openrouter",
       taskClass: null,
       promptTokens: 10,

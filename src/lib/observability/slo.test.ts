@@ -94,7 +94,7 @@ describe("SLO metrics — behaviour", () => {
       providerFallbackTotal.inc({
         primary_provider: "anthropic",
         fallback_provider: "openai",
-        fallback_model: "gpt-5.1",
+        fallback_model: "gpt-5.5",
       }),
     ).not.toThrow();
   });
@@ -102,7 +102,7 @@ describe("SLO metrics — behaviour", () => {
   it("ttftMs.observe() accepts multiple different latencies", () => {
     const labels = {
       provider: "openrouter",
-      model: "gpt-5.1",
+      model: "gpt-5.5",
       task_class: "code",
     };
     expect(() => ttftMs.observe(labels, 100)).not.toThrow();

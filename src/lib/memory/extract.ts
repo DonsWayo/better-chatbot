@@ -29,7 +29,7 @@ const logger = globalLogger.withDefaults({ message: "UserMemory extract: " });
 /** Cheapest approved model — extraction is high-volume, low-stakes. */
 export const MEMORY_EXTRACTION_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "gemini-2.5-flash-lite",
+  model: "gemini-3.1-flash-lite",
 };
 
 /** Max memories stored from a single turn. */
@@ -45,7 +45,7 @@ export const EXTRACTION_TEXT_LIMIT = 4_000;
  * anything) was actually asked to be remembered.
  */
 const REMEMBER_INTENT_REGEX =
-  /\b(remember|memori[sz]e|recuerd\w*|recuérd\w*|memoriza\w*|rappelle\w*|souviens|souvenir|retiens|husk\w*|merk deg)\b|覚えて|記憶して|기억해|기억하|记住|記住/i;
+  /\b(remember|memor\w*|recuerd\w*|recuérd\w*|rappelle\w*|souviens|souvenir|retiens|husk\w*|merk deg)\b|覚えて|記憶して|기억해|기억하|记住|記住/i;
 
 export function hasExplicitRememberIntent(text: string): boolean {
   return REMEMBER_INTENT_REGEX.test(text);

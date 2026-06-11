@@ -176,7 +176,7 @@ describe("POST /api/chat/temporary — additional", () => {
     const res = await POST(
       makeRequest({
         messages: [],
-        chatModel: { provider: "openrouter", model: "gpt-5.1" },
+        chatModel: { provider: "openrouter", model: "gpt-5.5" },
       }),
     );
     expect(res.status).toBe(200);
@@ -222,7 +222,7 @@ describe("POST /api/chat/temporary — response shape", () => {
     await POST(
       makeRequest({
         messages: [],
-        chatModel: { provider: "openrouter", model: "gpt-5.1" },
+        chatModel: { provider: "openrouter", model: "gpt-5.5" },
       }),
     );
     expect(getModelMock).toHaveBeenCalledTimes(1);

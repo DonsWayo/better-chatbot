@@ -561,32 +561,45 @@ export default function PromptInput({
                       {t("addFiles")}
                     </DropdownMenuItem>
 
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="cursor-pointer">
-                        <ImagesIcon className="mr-4 size-4 text-muted-foreground" />
-                        <span className="mr-4">{t("generateImage")}</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent>
-                          <DropdownMenuItem
-                            disabled={modelInfo?.isToolCallUnsupported}
-                            onClick={() => handleGenerateImage("google")}
-                            className="cursor-pointer"
-                          >
-                            <GeminiIcon className="mr-2 size-4" />
-                            Gemini (Nano Banana)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            disabled={modelInfo?.isToolCallUnsupported}
-                            onClick={() => handleGenerateImage("openai")}
-                            className="cursor-pointer"
-                          >
-                            <OpenAIIcon className="mr-2 size-4" />
-                            OpenAI
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
+                    {isBasicUser ? (
+                      // Zen register: basic users never choose providers — the
+                      // server picks. One click, it just works.
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        disabled={modelInfo?.isToolCallUnsupported}
+                        onClick={() => handleGenerateImage()}
+                      >
+                        <ImagesIcon className="mr-2 size-4" />
+                        {t("generateImage")}
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="cursor-pointer">
+                          <ImagesIcon className="mr-4 size-4 text-muted-foreground" />
+                          <span className="mr-4">{t("generateImage")}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                              disabled={modelInfo?.isToolCallUnsupported}
+                              onClick={() => handleGenerateImage("google")}
+                              className="cursor-pointer"
+                            >
+                              <GeminiIcon className="mr-2 size-4" />
+                              Gemini (Nano Banana)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={modelInfo?.isToolCallUnsupported}
+                              onClick={() => handleGenerateImage("openai")}
+                              className="cursor-pointer"
+                            >
+                              <OpenAIIcon className="mr-2 size-4" />
+                              OpenAI
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 

@@ -80,8 +80,8 @@ describe("GET /api/user/usage", () => {
       { totalCostUsd: "1.234567", promptTokens: 10000, completionTokens: 2000, requestCount: 15 },
     ]);
     const byModelChain = makeMockChain([
-      { model: "gemini-2.5-flash", provider: "openrouter", costUsd: "0.8", promptTokens: 8000, completionTokens: 1600, requestCount: 10 },
-      { model: "gpt-5.1", provider: "openrouter", costUsd: "0.434567", promptTokens: 2000, completionTokens: 400, requestCount: 5 },
+      { model: "gemini-3.5-flash", provider: "openrouter", costUsd: "0.8", promptTokens: 8000, completionTokens: 1600, requestCount: 10 },
+      { model: "gpt-5.5", provider: "openrouter", costUsd: "0.434567", promptTokens: 2000, completionTokens: 400, requestCount: 5 },
     ]);
     const memberChain = makeMockChain([]);
 
@@ -94,7 +94,7 @@ describe("GET /api/user/usage", () => {
     const body = await res.json();
     expect(body.summary.requestCount).toBe(15);
     expect(body.byModel).toHaveLength(2);
-    expect(body.byModel[0].model).toBe("gemini-2.5-flash");
+    expect(body.byModel[0].model).toBe("gemini-3.5-flash");
     expect(body.budget).toBeNull();
   });
 

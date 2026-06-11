@@ -81,16 +81,16 @@ describe("TIER_MODEL — specific model assignments", () => {
     expect(TIER_MODEL.frontier.model).toBe("claude-opus-4.8");
   });
 
-  it("balanced tier uses gpt-5.1", () => {
-    expect(TIER_MODEL.balanced.model).toBe("gpt-5.1");
+  it("balanced tier uses gpt-5.5", () => {
+    expect(TIER_MODEL.balanced.model).toBe("gpt-5.5");
   });
 
-  it("fast tier uses gemini-2.5-flash", () => {
-    expect(TIER_MODEL.fast.model).toBe("gemini-2.5-flash");
+  it("fast tier uses gemini-3.5-flash", () => {
+    expect(TIER_MODEL.fast.model).toBe("gemini-3.5-flash");
   });
 
-  it("cheap tier uses gemini-2.5-flash-lite", () => {
-    expect(TIER_MODEL.cheap.model).toBe("gemini-2.5-flash-lite");
+  it("cheap tier uses gemini-3.1-flash-lite", () => {
+    expect(TIER_MODEL.cheap.model).toBe("gemini-3.1-flash-lite");
   });
 
   it("all tier models are distinct", () => {

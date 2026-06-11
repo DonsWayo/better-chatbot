@@ -92,14 +92,14 @@ describe("RoutingRequestSchema", () => {
 
   it("accepts allowedModels as bare model-ID strings (ADR-0009 resolver form)", () => {
     const result = RoutingRequestSchema.safeParse({
-      allowedModels: ["gpt-5.1", "claude-opus-4.8"],
+      allowedModels: ["gpt-5.5", "claude-opus-4.8"],
     });
     expect(result.success).toBe(true);
   });
 
   it("accepts a mixed allowedModels array of strings and objects", () => {
     const result = RoutingRequestSchema.safeParse({
-      allowedModels: ["gpt-5.1", { provider: "openRouter", model: "o4-mini" }],
+      allowedModels: ["gpt-5.5", { provider: "openRouter", model: "o4-mini" }],
     });
     expect(result.success).toBe(true);
   });

@@ -136,7 +136,7 @@ afterEach(() => {
 describe("POST /api/gateway/openrouter/chat/completions — auth", () => {
   it("401 when no Authorization header is sent", async () => {
     const POST = await importPost();
-    const res = await POST(makeRequest({ body: { model: "gpt-5.1" } }));
+    const res = await POST(makeRequest({ body: { model: "gpt-5.5" } }));
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error.code).toBe("unauthorized");
@@ -156,7 +156,7 @@ describe("POST /api/gateway/openrouter/chat/completions — auth", () => {
     getSessionMock.mockResolvedValue(null);
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }),
     );
     expect(res.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -176,7 +176,7 @@ describe("POST /api/gateway/openrouter/chat/completions — auth", () => {
       Response.json({ choices: [], usage: null }, { status: 200 }),
     );
     const POST = await importPost();
-    await POST(makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }));
+    await POST(makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }));
     expect(getSessionMock).toHaveBeenCalledTimes(1);
     const arg = getSessionMock.mock.calls[0][0] as { headers: Headers };
     const cookie = arg.headers.get("cookie") ?? "";
@@ -198,7 +198,7 @@ describe("POST /api/gateway/openrouter/chat/completions — entitlements", () =>
   });
 
   it("403 when the model is outside the team allow-list and no grant exists", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gemini-2.5-flash"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gemini-3.5-flash"]);
     const POST = await importPost();
     const res = await POST(
       makeRequest({ token: TOKEN, body: { model: "claude-opus-4.8" } }),
@@ -211,7 +211,7 @@ describe("POST /api/gateway/openrouter/chat/completions — entitlements", () =>
   });
 
   it("allows a restricted model when the user holds a personal grant", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gemini-2.5-flash"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gemini-3.5-flash"]);
     getUserModelGrantsMock.mockResolvedValue(["claude-opus-4.8"]);
     fetchMock.mockResolvedValue(
       Response.json({ choices: [], usage: null }, { status: 200 }),
@@ -225,25 +225,25 @@ describe("POST /api/gateway/openrouter/chat/completions — entitlements", () =>
   });
 
   it("accepts the OpenRouter slug alias and forwards the slug upstream", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.1"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.5"]);
     fetchMock.mockResolvedValue(
       Response.json({ choices: [], usage: null }, { status: 200 }),
     );
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "openai/gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "openai/gpt-5.5" } }),
     );
     expect(res.status).toBe(200);
     const upstreamBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(upstreamBody.model).toBe("openai/gpt-5.1");
+    expect(upstreamBody.model).toBe("openai/gpt-5.5");
   });
 
   it("uses the org base allow-list when the user has no team", async () => {
     getUserPrimaryTeamIdMock.mockResolvedValue(null);
-    getOrgBaseModelAllowListMock.mockResolvedValue(["gemini-2.5-flash-lite"]);
+    getOrgBaseModelAllowListMock.mockResolvedValue(["gemini-3.1-flash-lite"]);
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }),
     );
     expect(res.status).toBe(403);
     expect(resolveTeamModelAllowListMock).not.toHaveBeenCalled();
@@ -259,7 +259,7 @@ describe("POST /api/gateway/openrouter/chat/completions — budget", () => {
     });
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }),
     );
     expect(res.status).toBe(402);
     const body = await res.json();
@@ -282,7 +282,7 @@ describe("POST /api/gateway/openrouter/chat/completions — proxy (non-stream)",
     const res = await POST(
       makeRequest({
         token: TOKEN,
-        body: { model: "gpt-5.1", messages: [{ role: "user", content: "x" }] },
+        body: { model: "gpt-5.5", messages: [{ role: "user", content: "x" }] },
       }),
     );
 
@@ -296,19 +296,19 @@ describe("POST /api/gateway/openrouter/chat/completions — proxy (non-stream)",
     // the client's session token is never forwarded upstream
     expect(JSON.stringify(init.headers)).not.toContain(TOKEN);
     const sentBody = JSON.parse(init.body as string);
-    expect(sentBody.model).toBe("openai/gpt-5.1");
+    expect(sentBody.model).toBe("openai/gpt-5.5");
 
     expect(recordUsageMock).toHaveBeenCalledTimes(1);
     const usage = recordUsageMock.mock.calls[0][0];
     expect(usage).toMatchObject({
       userId: "user-1",
       teamId: "team-1",
-      model: "gpt-5.1",
+      model: "gpt-5.5",
       provider: "openRouter",
       promptTokens: 100,
       completionTokens: 40,
     });
-    // estimateCostUsd (real impl): gpt-5.1 → 100/1M*2.5 + 40/1M*10
+    // estimateCostUsd (real impl): gpt-5.5 → 100/1M*2.5 + 40/1M*10
     expect(usage.costUsd).toBeCloseTo(
       (100 / 1_000_000) * 2.5 + (40 / 1_000_000) * 10,
       12,
@@ -324,7 +324,7 @@ describe("POST /api/gateway/openrouter/chat/completions — proxy (non-stream)",
       makeRequest({
         token: TOKEN,
         body: {
-          model: "gpt-5.1",
+          model: "gpt-5.5",
           messages: [{ role: "user", content: "TOP SECRET PROMPT" }],
         },
       }),
@@ -336,7 +336,7 @@ describe("POST /api/gateway/openrouter/chat/completions — proxy (non-stream)",
       teamId: "team-1",
       eventType: "gateway_completion",
       actorType: "human",
-      details: { model: "gpt-5.1", originSurface: "opencode", stream: false },
+      details: { model: "gpt-5.5", originSurface: "opencode", stream: false },
     });
     expect(JSON.stringify(event)).not.toContain("TOP SECRET PROMPT");
   });
@@ -361,7 +361,7 @@ describe("POST /api/gateway/openrouter/chat/completions — upstream errors", ()
     );
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }),
     );
     expect(res.status).toBe(429);
     const text = await res.text();
@@ -379,7 +379,7 @@ describe("POST /api/gateway/openrouter/chat/completions — upstream errors", ()
     );
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }),
     );
     expect(res.status).toBe(502);
     const text = await res.text();
@@ -391,7 +391,7 @@ describe("POST /api/gateway/openrouter/chat/completions — upstream errors", ()
     delete process.env.OPENROUTER_API_KEY;
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1" } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5" } }),
     );
     expect(res.status).toBe(503);
     const body = await res.json();
@@ -417,7 +417,7 @@ describe("POST /api/gateway/openrouter/chat/completions — streaming", () => {
     const res = await POST(
       makeRequest({
         token: TOKEN,
-        body: { model: "gpt-5.1", stream: true, messages: [] },
+        body: { model: "gpt-5.5", stream: true, messages: [] },
       }),
     );
 
@@ -427,7 +427,7 @@ describe("POST /api/gateway/openrouter/chat/completions — streaming", () => {
 
     expect(recordUsageMock).toHaveBeenCalledTimes(1);
     expect(recordUsageMock.mock.calls[0][0]).toMatchObject({
-      model: "gpt-5.1",
+      model: "gpt-5.5",
       promptTokens: 12,
       completionTokens: 7,
     });
@@ -441,7 +441,7 @@ describe("POST /api/gateway/openrouter/chat/completions — streaming", () => {
     await POST(
       makeRequest({
         token: TOKEN,
-        body: { model: "gpt-5.1", stream: true },
+        body: { model: "gpt-5.5", stream: true },
       }),
     );
     const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
@@ -458,7 +458,7 @@ describe("POST /api/gateway/openrouter/chat/completions — streaming", () => {
     );
     const POST = await importPost();
     const res = await POST(
-      makeRequest({ token: TOKEN, body: { model: "gpt-5.1", stream: true } }),
+      makeRequest({ token: TOKEN, body: { model: "gpt-5.5", stream: true } }),
     );
     await res.text();
     expect(recordUsageMock).not.toHaveBeenCalled();
@@ -481,9 +481,9 @@ describe("GET /api/gateway/openrouter/models", () => {
     expect(body.data.map((m: { id: string }) => m.id).sort()).toEqual(
       [
         "claude-opus-4.8",
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gpt-5.1",
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+        "gpt-5.5",
       ].sort(),
     );
     for (const m of body.data) {
@@ -493,14 +493,14 @@ describe("GET /api/gateway/openrouter/models", () => {
   });
 
   it("filters by team allow-list and unions per-user grants", async () => {
-    resolveTeamModelAllowListMock.mockResolvedValue(["gemini-2.5-flash"]);
+    resolveTeamModelAllowListMock.mockResolvedValue(["gemini-3.5-flash"]);
     getUserModelGrantsMock.mockResolvedValue(["claude-opus-4.8"]);
     const GET = await importGet();
     const res = await GET(makeModelsRequest(TOKEN));
     const body = await res.json();
     expect(body.data.map((m: { id: string }) => m.id).sort()).toEqual([
       "claude-opus-4.8",
-      "gemini-2.5-flash",
+      "gemini-3.5-flash",
     ]);
   });
 });

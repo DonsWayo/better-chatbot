@@ -37,7 +37,7 @@ export const MAX_GENERATED_EDGES = 40;
 
 export const DEFAULT_WORKFLOW_LLM_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "gpt-5.1",
+  model: "gpt-5.5",
 };
 
 const textToTiptap = (text: string): TipTapMentionJsonContent => ({
@@ -190,23 +190,58 @@ const generatedNodeSchema = z.discriminatedUnion("kind", [
 
 export type GeneratedNodeSpec = z.infer<typeof generatedNodeSchema>;
 
+/**
+ * Workflow names are exposed verbatim as chat tool names, so they must be
+ * alphanumeric-with-hyphens. Models routinely propose human titles ("Check
+ * safeguru.com is up") — slugify instead of failing the whole generation.
+ */
+export function slugifyWorkflowName(raw: string): string {
+  const slug = raw
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
+  return slug.length > 0 ? slug : "generated-workflow";
+}
+
+/**
+ * Weaker models sometimes emit each node as a JSON-*string* instead of an
+ * object (discriminated unions translate poorly to their tool-call JSON
+ * schema). Parse those instead of failing with "expected object, received
+ * string" loops.
+ */
+const coercedNodeSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}, generatedNodeSchema);
+
 export const generateWorkflowInputSchema = z.object({
-  name: z
-    .string()
-    .min(1)
-    .max(80)
-    .regex(
-      /^[a-zA-Z0-9-]+$/,
-      "Workflow name must be alphanumeric with hyphens only",
-    ),
+  name: z.string().min(1).max(120).transform(slugifyWorkflowName),
   description: z.string(),
-  nodes: z
-    .array(generatedNodeSchema)
+  nodes: z.preprocess((value) => {
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }, z
+    .array(coercedNodeSchema)
     .min(2)
     .max(MAX_GENERATED_NODES)
     .describe(
       "Workflow graph nodes. Exactly one input node and at least one output node are required.",
-    ),
+    )),
   edges: z
     .array(
       z.object({

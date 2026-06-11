@@ -106,12 +106,12 @@ beforeEach(() => {
 // ── resolveModelAllowList (pure composition) ─────────────────────────────────
 
 describe("resolveModelAllowList", () => {
-  const BASE = ["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash"];
+  const BASE = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash"];
 
   it("inherit mode adds extra models on top of the base", () => {
     expect(
       resolveModelAllowList(BASE, { mode: "inherit", add: ["o4-mini"] }),
-    ).toEqual(["gpt-5.1", "claude-opus-4.8", "gemini-2.5-flash", "o4-mini"]);
+    ).toEqual(["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "o4-mini"]);
   });
 
   it("inherit mode removes specific base models", () => {
@@ -120,17 +120,17 @@ describe("resolveModelAllowList", () => {
         mode: "inherit",
         remove: ["claude-opus-4.8"],
       }),
-    ).toEqual(["gpt-5.1", "gemini-2.5-flash"]);
+    ).toEqual(["gpt-5.5", "gemini-3.5-flash"]);
   });
 
   it("inherit mode applies add and remove together and dedupes", () => {
     expect(
       resolveModelAllowList(BASE, {
         mode: "inherit",
-        add: ["o4-mini", "gpt-5.1"], // gpt-5.1 already in base → deduped
-        remove: ["gemini-2.5-flash"],
+        add: ["o4-mini", "gpt-5.5"], // gpt-5.5 already in base → deduped
+        remove: ["gemini-3.5-flash"],
       }),
-    ).toEqual(["gpt-5.1", "claude-opus-4.8", "o4-mini"]);
+    ).toEqual(["gpt-5.5", "claude-opus-4.8", "o4-mini"]);
   });
 
   it("replace mode ignores the base entirely", () => {
@@ -171,15 +171,15 @@ describe("resolveModelAllowList", () => {
     expect(
       resolveModelAllowList(null, {
         mode: "inherit",
-        add: ["o4-mini", "gpt-5.1"],
-        remove: ["gpt-5.1"],
+        add: ["o4-mini", "gpt-5.5"],
+        remove: ["gpt-5.5"],
       }),
     ).toEqual(["o4-mini"]);
   });
 
   it("null base + inherit without adds stays unrestricted (null)", () => {
     expect(
-      resolveModelAllowList(null, { mode: "inherit", remove: ["gpt-5.1"] }),
+      resolveModelAllowList(null, { mode: "inherit", remove: ["gpt-5.5"] }),
     ).toBeNull();
   });
 
@@ -193,9 +193,9 @@ describe("resolveModelAllowList", () => {
 
 describe("getOrgBaseModelAllowList", () => {
   it("returns the stored array, deduped and string-filtered", async () => {
-    state.orgRows = [{ value: ["gpt-5.1", "gpt-5.1", 42, "o4-mini"] }];
+    state.orgRows = [{ value: ["gpt-5.5", "gpt-5.5", 42, "o4-mini"] }];
     await expect(getOrgBaseModelAllowList()).resolves.toEqual([
-      "gpt-5.1",
+      "gpt-5.5",
       "o4-mini",
     ]);
   });
@@ -218,16 +218,16 @@ describe("getOrgBaseModelAllowList", () => {
 
 describe("setOrgBaseModelAllowList", () => {
   it("upserts the deduped list under the org settings key", async () => {
-    await setOrgBaseModelAllowList(["gpt-5.1", "gpt-5.1", "o4-mini"]);
+    await setOrgBaseModelAllowList(["gpt-5.5", "gpt-5.5", "o4-mini"]);
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         key: ORG_BASE_MODEL_ALLOW_LIST_KEY,
-        value: ["gpt-5.1", "o4-mini"],
+        value: ["gpt-5.5", "o4-mini"],
       }),
     );
     expect(onConflictMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        set: expect.objectContaining({ value: ["gpt-5.1", "o4-mini"] }),
+        set: expect.objectContaining({ value: ["gpt-5.5", "o4-mini"] }),
       }),
     );
   });
@@ -267,7 +267,7 @@ describe("setTeamModelPolicy", () => {
 
 describe("resolveTeamModelAllowList", () => {
   it("layers the team inherit override on the stored org base", async () => {
-    state.orgRows = [{ value: ["gpt-5.1", "claude-opus-4.8"] }];
+    state.orgRows = [{ value: ["gpt-5.5", "claude-opus-4.8"] }];
     state.teamRows = [
       {
         modelPolicy: {
@@ -279,13 +279,13 @@ describe("resolveTeamModelAllowList", () => {
       },
     ];
     await expect(resolveTeamModelAllowList("team-1")).resolves.toEqual([
-      "gpt-5.1",
+      "gpt-5.5",
       "o4-mini",
     ]);
   });
 
   it("replace override wins over the org base", async () => {
-    state.orgRows = [{ value: ["gpt-5.1", "claude-opus-4.8"] }];
+    state.orgRows = [{ value: ["gpt-5.5", "claude-opus-4.8"] }];
     state.teamRows = [
       {
         modelPolicy: { mode: "replace", models: ["o4-mini"] },
@@ -298,7 +298,7 @@ describe("resolveTeamModelAllowList", () => {
   });
 
   it("falls back to legacy model_allow_list as replace when no model_policy", async () => {
-    state.orgRows = [{ value: ["gpt-5.1"] }];
+    state.orgRows = [{ value: ["gpt-5.5"] }];
     state.teamRows = [{ modelPolicy: null, modelAllowList: ["legacy-model"] }];
     await expect(resolveTeamModelAllowList("team-1")).resolves.toEqual([
       "legacy-model",
@@ -306,10 +306,10 @@ describe("resolveTeamModelAllowList", () => {
   });
 
   it("passes the org base through for a team without any override", async () => {
-    state.orgRows = [{ value: ["gpt-5.1"] }];
+    state.orgRows = [{ value: ["gpt-5.5"] }];
     state.teamRows = [{ modelPolicy: null, modelAllowList: [] }];
     await expect(resolveTeamModelAllowList("team-1")).resolves.toEqual([
-      "gpt-5.1",
+      "gpt-5.5",
     ]);
   });
 
@@ -320,10 +320,10 @@ describe("resolveTeamModelAllowList", () => {
   });
 
   it("unknown team falls back to the org base", async () => {
-    state.orgRows = [{ value: ["gpt-5.1"] }];
+    state.orgRows = [{ value: ["gpt-5.5"] }];
     state.teamRows = [];
     await expect(resolveTeamModelAllowList("ghost-team")).resolves.toEqual([
-      "gpt-5.1",
+      "gpt-5.5",
     ]);
   });
 });
