@@ -57,14 +57,11 @@ test.describe("Admin team model entitlements — budget models", () => {
     // endpoint to await. Assert the rendered outcome; surface the server error
     // text in the failure message when it breaks.
     await card.getByTestId("save-model-allow-list-btn").click();
-    const outcome = card
-      .getByTestId("model-save-success")
-      .or(card.getByTestId("model-save-error"));
-    await expect(outcome).toBeVisible({ timeout: 15000 });
-    const outcomeText = (await outcome.textContent()) ?? "";
-    expect(outcomeText, `save outcome: ${outcomeText}`).toContain(
-      "Model list saved.",
-    );
+    // Success feedback is a sonner toast — router.refresh() wipes any inline
+    // state, so the toast is the only reliable signal (and what users see).
+    await expect(page.getByText("Model list saved.")).toBeVisible({
+      timeout: 15000,
+    });
 
     // Reload: the page re-reads the allow-list server-side.
     await page.reload();

@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -329,13 +330,19 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     try {
       await setModelAllowListAction(team.id, selectedModels);
       setModelsSuccess(true);
+      // router.refresh() re-renders this component with fresh server props and
+      // wipes the inline success state before anyone reads it — the toast is
+      // the feedback that survives (real bug: Save previously gave no
+      // visible confirmation at all).
+      toast.success("Model list saved.");
       startTransition(() => {
         router.refresh();
       });
     } catch (err) {
-      setModelsError(
-        err instanceof Error ? err.message : "Failed to save model list",
-      );
+      const message =
+        err instanceof Error ? err.message : "Failed to save model list";
+      setModelsError(message);
+      toast.error(message);
     } finally {
       setIsSavingModels(false);
     }
