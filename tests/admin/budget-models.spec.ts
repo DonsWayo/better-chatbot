@@ -53,22 +53,18 @@ test.describe("Admin team model entitlements — budget models", () => {
       .getByTestId("model-checkbox-deepseek-v4-pro")
       .locator('input[type="checkbox"]');
     await grantedModel.check();
-    const [saveRes] = await Promise.all([
-      page.waitForResponse(
-        (res) =>
-          res.url().includes("/api/admin/teams/") &&
-          ["PUT", "PATCH", "POST"].includes(res.request().method()),
-        { timeout: 10000 },
-      ),
-      card.getByTestId("save-model-allow-list-btn").click(),
-    ]);
-    expect(
-      saveRes.ok(),
-      `save failed: ${saveRes.status()} ${await saveRes.text()}`,
-    ).toBeTruthy();
-    await expect(card.getByText("Model list saved.")).toBeVisible({
-      timeout: 10000,
-    });
+    // Saving goes through a Server Action (setModelAllowListAction) — no REST
+    // endpoint to await. Assert the rendered outcome; surface the server error
+    // text in the failure message when it breaks.
+    await card.getByTestId("save-model-allow-list-btn").click();
+    const outcome = card
+      .getByTestId("model-save-success")
+      .or(card.getByTestId("model-save-error"));
+    await expect(outcome).toBeVisible({ timeout: 15000 });
+    const outcomeText = (await outcome.textContent()) ?? "";
+    expect(outcomeText, `save outcome: ${outcomeText}`).toContain(
+      "Model list saved.",
+    );
 
     // Reload: the page re-reads the allow-list server-side.
     await page.reload();

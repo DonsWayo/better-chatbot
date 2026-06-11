@@ -776,10 +776,20 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             {isSavingModels ? "Saving…" : "Save Model List"}
           </Button>
           {modelsError && (
-            <p className="text-sm text-destructive">{modelsError}</p>
+            <p
+              className="text-sm text-destructive"
+              data-testid="model-save-error"
+            >
+              {modelsError}
+            </p>
           )}
           {modelsSuccess && (
-            <p className="text-sm text-green-600">Model list saved.</p>
+            <p
+              className="text-sm text-green-600"
+              data-testid="model-save-success"
+            >
+              Model list saved.
+            </p>
           )}
         </CardContent>
       </Card>
