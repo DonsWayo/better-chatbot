@@ -1,23 +1,24 @@
+import { DEFAULT_USER_ROLE, USER_ROLES } from "app-types/roles";
 // Base auth instance without "server-only" - can be used in seed scripts
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { admin as adminPlugin } from "better-auth/plugins";
+import { eq } from "drizzle-orm";
 import { pgDb } from "lib/db/pg/db.pg";
-import { headers } from "next/headers";
 import {
   AccountTable,
   SessionTable,
   UserTable,
   VerificationTable,
 } from "lib/db/pg/schema.pg";
-import { eq } from "drizzle-orm";
-import { getAuthConfig } from "./config";
-import logger from "logger";
 import { userRepository } from "lib/db/repository";
-import { DEFAULT_USER_ROLE, USER_ROLES } from "app-types/roles";
-import { admin, editor, user, ac } from "./roles";
-import { roleFromEntraClaims, parseJwtClaims } from "./entra-claims";
+import logger from "logger";
+import { headers } from "next/headers";
+import { getAuthConfig } from "./config";
+import { parseJwtClaims, roleFromEntraClaims } from "./entra-claims";
+import { syncEntraTeamMemberships } from "./entra-team-mappings";
+import { ac, admin, editor, user } from "./roles";
 
 const {
   emailAndPasswordEnabled,
@@ -144,6 +145,9 @@ const options = {
           logger.info(
             `Wave 4 Entra: mapped ${groupIds.length} group claim(s) → role "${mappedRole}" for ${user.email}`,
           );
+
+          // Group → TEAM auto-assignment (additive only; never throws).
+          await syncEntraTeamMemberships(user.id as string, groupIds);
         },
       },
     },
@@ -190,6 +194,11 @@ const options = {
                 `Wave 4 Entra re-sync: role updated ${currentUser?.role} → "${mappedRole}" for user ${session.userId}`,
               );
             }
+
+            // Group → TEAM auto-assignment on every sign-in. Additive only:
+            // ensures membership in mapped teams, never removes/downgrades
+            // (see lib/auth/entra-team-mappings.ts for the rationale).
+            await syncEntraTeamMemberships(session.userId, groupIds);
           } catch (err) {
             // Never block sign-in due to re-sync errors
             logger.warn("Entra role re-sync failed (non-fatal):", err);

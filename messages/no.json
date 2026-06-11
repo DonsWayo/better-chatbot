@@ -772,6 +772,20 @@
       "forceOff": "Av",
       "removeOverride": "Fjern overstyring"
     },
+    "EntraTeamMappings": {
+      "title": "Entra-teamtilordninger",
+      "description": "Tilordne Microsoft Entra-gruppe-ID-er til team. Ved hver SSO-pålogging legges brukere i en tilordnet gruppe til teamet som medlem. Kun additivt — pålogging fjerner aldri medlemskap eller endrer eksisterende teamroller.",
+      "noMappings": "Ingen tilordninger konfigurert.",
+      "addMapping": "Legg til tilordning",
+      "groupIdPlaceholder": "Entra-gruppens objekt-ID (GUID)",
+      "selectTeam": "Velg team",
+      "searchTeams": "Søk etter team…",
+      "noTeamsFound": "Ingen team funnet.",
+      "add": "Legg til",
+      "removeMapping": "Fjern tilordning",
+      "duplicateMapping": "Denne gruppen er allerede tilordnet det teamet.",
+      "updateFailed": "Oppdatering mislyktes. Prøv igjen."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Brukere",

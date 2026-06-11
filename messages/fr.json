@@ -574,6 +574,20 @@
       "forceOff": "Désactivé",
       "removeOverride": "Supprimer l'exception"
     },
+    "EntraTeamMappings": {
+      "title": "Mappages d'équipes Entra",
+      "description": "Associez des IDs de groupes Microsoft Entra à des équipes. À chaque connexion SSO, les utilisateurs d'un groupe mappé sont ajoutés à l'équipe comme membre. Additif uniquement : la connexion ne supprime jamais d'adhésions ni ne modifie les rôles d'équipe existants.",
+      "noMappings": "Aucun mappage configuré.",
+      "addMapping": "Ajouter un mappage",
+      "groupIdPlaceholder": "ID d'objet du groupe Entra (GUID)",
+      "selectTeam": "Sélectionner une équipe",
+      "searchTeams": "Rechercher des équipes…",
+      "noTeamsFound": "Aucune équipe trouvée.",
+      "add": "Ajouter",
+      "removeMapping": "Supprimer le mappage",
+      "duplicateMapping": "Ce groupe est déjà mappé à cette équipe.",
+      "updateFailed": "Échec de la mise à jour. Veuillez réessayer."
+    },
     "RolePacks": {
       "title": "Packs de rôle",
       "subtitle": "Contenu de démarrage installable pour un département : agents prêts à l'emploi, un workflow et une routine planifiée.",

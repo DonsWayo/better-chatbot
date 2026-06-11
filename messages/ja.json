@@ -574,6 +574,20 @@
       "forceOff": "オフ",
       "removeOverride": "上書きを削除"
     },
+    "EntraTeamMappings": {
+      "title": "Entra チームマッピング",
+      "description": "Microsoft Entra のグループ ID をチームに対応付けます。SSO サインインのたびに、対応付けられたグループのユーザーはメンバーとしてチームに追加されます。追加のみ — サインインによってメンバーシップが削除されたり、既存のチームロールが変更されることはありません。",
+      "noMappings": "マッピングは設定されていません。",
+      "addMapping": "マッピングを追加",
+      "groupIdPlaceholder": "Entra グループのオブジェクト ID (GUID)",
+      "selectTeam": "チームを選択",
+      "searchTeams": "チームを検索…",
+      "noTeamsFound": "チームが見つかりません。",
+      "add": "追加",
+      "removeMapping": "マッピングを削除",
+      "duplicateMapping": "このグループは既にそのチームにマッピングされています。",
+      "updateFailed": "更新に失敗しました。もう一度お試しください。"
+    },
     "RolePacks": {
       "title": "ロールパック",
       "subtitle": "部門向けのインストール可能なスターターコンテンツ:エージェント、ワークフロー、スケジュール済みルーチン。",

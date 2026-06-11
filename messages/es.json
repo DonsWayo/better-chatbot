@@ -772,6 +772,20 @@
       "forceOff": "Desactivado",
       "removeOverride": "Quitar excepción"
     },
+    "EntraTeamMappings": {
+      "title": "Asignaciones de equipos de Entra",
+      "description": "Asigna IDs de grupos de Microsoft Entra a equipos. En cada inicio de sesión SSO, los usuarios de un grupo asignado se añaden al equipo como miembro. Solo aditivo: el inicio de sesión nunca elimina membresías ni cambia roles de equipo existentes.",
+      "noMappings": "No hay asignaciones configuradas.",
+      "addMapping": "Añadir asignación",
+      "groupIdPlaceholder": "ID de objeto del grupo de Entra (GUID)",
+      "selectTeam": "Seleccionar equipo",
+      "searchTeams": "Buscar equipos…",
+      "noTeamsFound": "No se encontraron equipos.",
+      "add": "Añadir",
+      "removeMapping": "Eliminar asignación",
+      "duplicateMapping": "Este grupo ya está asignado a ese equipo.",
+      "updateFailed": "No se pudo actualizar. Inténtalo de nuevo."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Usuarios",

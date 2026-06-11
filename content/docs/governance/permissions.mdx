@@ -1,0 +1,112 @@
+---
+title: Permissions
+description: Role × capability matrix — global roles (user / editor / admin), team roles (member / editor / admin), and how Entra SSO assigns both.
+---
+
+Two role systems compose:
+
+- **Global role** on the user record (`user.role`, Better Auth admin plugin):
+  `user`, `editor`, or `admin`. Statements live in `src/lib/auth/roles.ts`;
+  helpers in `src/lib/auth/permissions.ts`.
+- **Team role** on the membership row (`asafe_team_member.role`): `member`,
+  `editor`, or `admin`. Enforced by `canManageTeam` / `isTeamAdmin` in
+  `src/lib/admin/teams.ts`.
+
+A global **admin** always passes every check below. Team roles only ever
+*add* capability inside one team — they never widen global access.
+
+## Global roles
+
+Derived from the access-control statements in `src/lib/auth/roles.ts` and the
+gates that consume them.
+
+| Capability | user | editor | admin |
+| --- | :-: | :-: | :-: |
+| Chat & temporary chat (full) | ✅ | ✅ | ✅ |
+| Use tools in chat (MCP tools, app tools) | ✅ | ✅ | ✅ |
+| View / use / list agents & workflows | ✅ | ✅ | ✅ |
+| Create / edit / delete agents & workflows (builders) | ❌ | ✅ | ✅ |
+| Share agents & workflows | ❌ | ✅ | ✅ |
+| Register / edit / delete own MCP servers | ❌ | ✅ | ✅ |
+| Share MCP servers (change visibility) | ❌ | ❌ | ✅ |
+| Company MCP servers (register, multi-team scope, delete) | ❌ | ❌ | ✅ |
+| Local-MCP org/team policy | ❌ | ❌ | ✅ |
+| Knowledge: read collections shared to you (company/team visibility) | ✅ | ✅ | ✅ |
+| Knowledge: create / delete collections, ingest documents | ❌ | ❌ | ✅ |
+| Knowledge: update a collection | owner | owner | ✅ |
+| Teams: create / delete teams | ❌ | ❌ | ✅ |
+| Teams: manage members & rename | ❌* | ❌* | ✅ |
+| Team budgets (set / change periods) | ❌ | ❌ | ✅ |
+| Team policy: guardrails, image/vision/speech, model allow-list, email domains | ❌ | ❌ | ✅ |
+| Org policy: model entitlements base list, user grants | ❌ | ❌ | ✅ |
+| Org policy: memory, feature flags, Entra mappings | ❌ | ❌ | ✅ |
+| User management (roles, ban, erasure, rate-limit reset) | ❌ | ❌ | ✅ |
+| Audit log, usage & compliance exports | ❌ | ❌ | ✅ |
+
+\* unless the user holds the **team admin** role in that team — see below.
+
+Sources, by row: chat/tools/builders — role statements in
+`src/lib/auth/roles.ts` (`user` gets `view/use/list` on `workflow`, `agent`,
+`mcp`; `editor`/`admin` get the full `PERMISSION_TYPES` set; `mcp.share` is
+admin-only) checked via `hasPermission` in `src/lib/auth/permissions.ts`.
+Knowledge — `src/app/api/knowledge/actions.ts` (create/delete/ingest are
+admin-only; update requires "manage" on the unified visibility model: owner or
+org admin; reads resolve through `lib/visibility`). Company MCP and org
+policies — `src/app/api/admin/actions.ts` (every action checks
+`session.user.role !== "admin"`). Teams/budgets/policy —
+`src/app/(chat)/(admin)/admin/teams/[id]/actions.ts`. User management &
+compliance — `requireAdminPermission` in the admin routes and
+`src/app/api/admin/compliance/*`.
+
+## Team roles
+
+Team roles live on `asafe_team_member.role` and apply only inside that team.
+
+| Capability (within the team) | member | editor | admin (team) |
+| --- | :-: | :-: | :-: |
+| Counted as team member (team visibility, team policy, budget attribution) | ✅ | ✅ | ✅ |
+| Add / remove members | ❌ | ❌ | ✅ |
+| Change member team-roles | ❌ | ❌ | ✅ |
+| Rename team / edit description | ❌ | ❌ | ✅ |
+| Delete the team | ❌ | ❌ | ❌ |
+| Set budget | ❌ | ❌ | ❌ |
+| Model allow-list / model policy | ❌ | ❌ | ❌ |
+| Guardrail & capability policy (image gen, vision, speech) | ❌ | ❌ | ❌ |
+| Email-domain allow-list | ❌ | ❌ | ❌ |
+
+The split is deliberate (`src/lib/admin/teams.ts`,
+`src/app/(chat)/(admin)/admin/teams/[id]/actions.ts`):
+
+- **Team admin OR global admin** (`canManageTeam`): day-to-day people
+  management — membership add/remove, member team-roles, rename. These only
+  affect the team itself.
+- **Global admin only** (`requireAdminPermission`): delete team, budgets,
+  model allow-list, guardrail/capability policy, email-domain allow-list.
+  These are org-level cost, security and compliance levers; a team must not
+  be able to loosen them for itself.
+
+Two operational notes:
+
+- The team `editor` role is stored and selectable but currently grants
+  nothing beyond `member` — no code path checks for it yet. It is reserved
+  for team-scoped content curation.
+- The `/admin` UI is layout-gated to **global** admins, so a team admin
+  cannot reach the management screens today. `canManageTeam` authorizes the
+  server actions themselves (defense in depth); surfacing a team-admin UI
+  outside `/admin` is a follow-up.
+
+## Entra SSO assignment
+
+On Microsoft Entra SSO sign-in (`src/lib/auth/auth-instance.ts` hooks):
+
+- **Global role** from group claims (`src/lib/auth/entra-claims.ts`):
+  `ASAFE_ENTRA_ADMIN_GROUP_IDS` → `admin`, `ASAFE_ENTRA_EDITOR_GROUP_IDS` →
+  `editor`, else `ASAFE_DEFAULT_SSO_ROLE` or `user`. Re-synced every sign-in.
+- **Team membership** from the `entra_team_mappings` org setting
+  (`src/lib/auth/entra-team-mappings.ts`, managed in Admin → Teams):
+  each mapped group present in the token's `groups` claim ensures membership
+  in the mapped team with team role `member`. **Additive only** — sign-in
+  never removes memberships or changes existing team roles, so a missing
+  `groups` claim (e.g. Entra group overage) can't strip access and IdP sync
+  never fights manual admin grants. Offboarding remains an explicit admin
+  action.

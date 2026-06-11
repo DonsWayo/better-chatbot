@@ -1,6 +1,7 @@
 {
   "title": "Governance",
   "pages": [
+    "permissions",
     "model-entitlements",
     "budgets-and-usage",
     "guardrails",

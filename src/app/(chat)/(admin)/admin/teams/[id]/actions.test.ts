@@ -4,18 +4,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireAdminPermissionMock,
+  getSessionMock,
+  canManageTeamMock,
   revalidatePathMock,
+  redirectMock,
   updateTeamPolicyMock,
   addTeamMemberMock,
   removeTeamMemberMock,
+  updateTeamMemberRoleMock,
+  updateTeamMock,
+  deleteTeamMock,
   dbSelectLimitMock,
   dbInsertOnConflictMock,
 } = vi.hoisted(() => ({
   requireAdminPermissionMock: vi.fn().mockResolvedValue(undefined),
+  getSessionMock: vi
+    .fn()
+    .mockResolvedValue({ user: { id: "actor-1", role: "user" } }),
+  canManageTeamMock: vi.fn().mockResolvedValue(true),
   revalidatePathMock: vi.fn(),
+  redirectMock: vi.fn(),
   updateTeamPolicyMock: vi.fn().mockResolvedValue(undefined),
   addTeamMemberMock: vi.fn().mockResolvedValue(undefined),
   removeTeamMemberMock: vi.fn().mockResolvedValue(undefined),
+  updateTeamMemberRoleMock: vi.fn().mockResolvedValue(undefined),
+  updateTeamMock: vi.fn().mockResolvedValue(undefined),
+  deleteTeamMock: vi.fn().mockResolvedValue(undefined),
   dbSelectLimitMock: vi
     .fn()
     .mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]),
@@ -26,14 +40,26 @@ vi.mock("lib/auth/permissions", () => ({
   requireAdminPermission: requireAdminPermissionMock,
 }));
 
+vi.mock("lib/auth/server", () => ({
+  getSession: getSessionMock,
+}));
+
 vi.mock("next/cache", () => ({
   revalidatePath: revalidatePathMock,
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: redirectMock,
 }));
 
 vi.mock("lib/admin/teams", () => ({
   addTeamMember: addTeamMemberMock,
   removeTeamMember: removeTeamMemberMock,
   updateTeamPolicy: updateTeamPolicyMock,
+  updateTeamMemberRole: updateTeamMemberRoleMock,
+  updateTeam: updateTeamMock,
+  deleteTeam: deleteTeamMock,
+  canManageTeam: canManageTeamMock,
 }));
 
 const dbSelectWhereMock = vi.fn().mockReturnValue({ limit: dbSelectLimitMock });
@@ -60,14 +86,20 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((_a: unknown, _b: unknown) => ({})),
 }));
 
-// ── test suites ───────────────────────────────────────────────────────────────
+function resetAll() {
+  vi.clearAllMocks();
+  requireAdminPermissionMock.mockResolvedValue(undefined);
+  getSessionMock.mockResolvedValue({ user: { id: "actor-1", role: "user" } });
+  canManageTeamMock.mockResolvedValue(true);
+  dbSelectLimitMock.mockResolvedValue([{ id: "u1", email: "alice@asafe.ai" }]);
+}
+
+// ── global-admin-only actions ─────────────────────────────────────────────────
 
 describe("setModelAllowListAction", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(resetAll);
 
-  it("requires admin, then calls updateTeamPolicy with modelAllowList", async () => {
+  it("requires GLOBAL admin, then calls updateTeamPolicy with modelAllowList", async () => {
     const { setModelAllowListAction } = await import("./actions");
     await setModelAllowListAction("team-1", ["gpt-5.5", "claude-opus-4.8"]);
 
@@ -87,8 +119,9 @@ describe("setModelAllowListAction", () => {
     });
   });
 
-  it("throws if requireAdminPermission rejects", async () => {
+  it("throws if requireAdminPermission rejects — TEAM admin is NOT enough", async () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    canManageTeamMock.mockResolvedValue(true); // team admin
     const { setModelAllowListAction } = await import("./actions");
     await expect(setModelAllowListAction("team-1", [])).rejects.toThrow(
       "Forbidden",
@@ -98,11 +131,9 @@ describe("setModelAllowListAction", () => {
 });
 
 describe("setEmailDomainsAction", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(resetAll);
 
-  it("requires admin, then calls updateTeamPolicy with allowedEmailDomains", async () => {
+  it("requires GLOBAL admin, then calls updateTeamPolicy with allowedEmailDomains", async () => {
     const { setEmailDomainsAction } = await import("./actions");
     await setEmailDomainsAction("team-3", ["asafe.ai", "corp.example.com"]);
 
@@ -113,29 +144,21 @@ describe("setEmailDomainsAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-3");
   });
 
-  it("accepts an empty array to remove domain restrictions", async () => {
+  it("stays global-admin-only even when the caller can manage the team", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    canManageTeamMock.mockResolvedValue(true);
     const { setEmailDomainsAction } = await import("./actions");
-    await setEmailDomainsAction("team-4", []);
-
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-4", {
-      allowedEmailDomains: [],
-    });
-  });
-
-  it("revalidates the correct path", async () => {
-    const { setEmailDomainsAction } = await import("./actions");
-    await setEmailDomainsAction("team-xyz", ["example.org"]);
-
-    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-xyz");
+    await expect(setEmailDomainsAction("team-4", [])).rejects.toThrow(
+      "Forbidden",
+    );
+    expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 });
 
 describe("setPolicyAction", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(resetAll);
 
-  it("requires admin, then calls updateTeamPolicy with the full patch", async () => {
+  it("requires GLOBAL admin, then calls updateTeamPolicy with the full patch", async () => {
     const { setPolicyAction } = await import("./actions");
     await setPolicyAction("team-5", {
       guardrailPolicy: "strict",
@@ -154,13 +177,14 @@ describe("setPolicyAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-5");
   });
 
-  it("forwards partial patches (only some fields)", async () => {
+  it("stays global-admin-only even for a team admin", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    canManageTeamMock.mockResolvedValue(true);
     const { setPolicyAction } = await import("./actions");
-    await setPolicyAction("team-6", { guardrailPolicy: "permissive" });
-
-    expect(updateTeamPolicyMock).toHaveBeenCalledWith("team-6", {
-      guardrailPolicy: "permissive",
-    });
+    await expect(
+      setPolicyAction("team-6", { guardrailPolicy: "permissive" }),
+    ).rejects.toThrow("Forbidden");
+    expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 
   it("propagates errors from updateTeamPolicy", async () => {
@@ -172,19 +196,49 @@ describe("setPolicyAction", () => {
   });
 });
 
-describe("addTeamMemberAction", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Default: user found
-    dbSelectLimitMock.mockResolvedValue([
-      { id: "u1", email: "alice@asafe.ai" },
-    ]);
+describe("deleteTeamAction", () => {
+  beforeEach(resetAll);
+
+  it("requires GLOBAL admin, deletes, revalidates and redirects", async () => {
+    const { deleteTeamAction } = await import("./actions");
+    await deleteTeamAction("team-del");
+    expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
+    expect(deleteTeamMock).toHaveBeenCalledWith("team-del");
+    expect(redirectMock).toHaveBeenCalledWith("/admin/teams");
   });
 
-  it("looks up user by email and calls addTeamMember with userEmail", async () => {
+  it("a team admin (canManageTeam true) CANNOT delete the team", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    canManageTeamMock.mockResolvedValue(true);
+    const { deleteTeamAction } = await import("./actions");
+    await expect(deleteTeamAction("team-del")).rejects.toThrow("Forbidden");
+    expect(deleteTeamMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("setBudgetAction", () => {
+  beforeEach(resetAll);
+
+  it("a team admin (canManageTeam true) CANNOT set the budget", async () => {
+    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
+    canManageTeamMock.mockResolvedValue(true);
+    const { setBudgetAction } = await import("./actions");
+    await expect(
+      setBudgetAction("team-b", "100", "2026-01-01", "2026-02-01"),
+    ).rejects.toThrow("Forbidden");
+  });
+});
+
+// ── team-manage actions (global admin OR team admin) ──────────────────────────
+
+describe("addTeamMemberAction", () => {
+  beforeEach(resetAll);
+
+  it("authorizes via canManageTeam(actor, teamId), looks up user by email and adds", async () => {
     const { addTeamMemberAction } = await import("./actions");
     await addTeamMemberAction("team-8", "alice@asafe.ai", "member");
 
+    expect(canManageTeamMock).toHaveBeenCalledWith("actor-1", "team-8");
     expect(addTeamMemberMock).toHaveBeenCalledWith(
       "team-8",
       "u1",
@@ -192,6 +246,31 @@ describe("addTeamMemberAction", () => {
       "alice@asafe.ai",
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-8");
+  });
+
+  it("does NOT require global admin (team admin path never calls requireAdminPermission)", async () => {
+    const { addTeamMemberAction } = await import("./actions");
+    await addTeamMemberAction("team-8", "alice@asafe.ai", "member");
+    expect(requireAdminPermissionMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when canManageTeam is false (plain member / outsider)", async () => {
+    canManageTeamMock.mockResolvedValue(false);
+    const { addTeamMemberAction } = await import("./actions");
+    await expect(
+      addTeamMemberAction("team-8", "alice@asafe.ai", "member"),
+    ).rejects.toThrow("Unauthorized");
+    expect(addTeamMemberMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when unauthenticated", async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const { addTeamMemberAction } = await import("./actions");
+    await expect(
+      addTeamMemberAction("team-8", "alice@asafe.ai", "member"),
+    ).rejects.toThrow("Unauthorized");
+    expect(canManageTeamMock).not.toHaveBeenCalled();
+    expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
 
   it("throws 'User not found' when email has no matching DB record", async () => {
@@ -202,98 +281,43 @@ describe("addTeamMemberAction", () => {
     ).rejects.toThrow("User not found");
     expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
-});
 
-describe("removeTeamMemberAction", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("requires admin, calls removeTeamMember, and revalidates", async () => {
-    const { removeTeamMemberAction } = await import("./actions");
-    await removeTeamMemberAction("member-1", "team-9");
-
-    expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
-    expect(removeTeamMemberMock).toHaveBeenCalledWith("member-1");
-    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-9");
-  });
-});
-
-describe("addTeamMemberAction — additional", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    dbSelectLimitMock.mockResolvedValue([
-      { id: "u1", email: "alice@asafe.ai" },
-    ]);
-  });
-
-  it("requireAdminPermission called before addTeamMember", async () => {
+  it("authorization runs before the member is added", async () => {
     const callOrder: string[] = [];
-    requireAdminPermissionMock.mockImplementationOnce(async () => {
-      callOrder.push("admin");
+    canManageTeamMock.mockImplementationOnce(async () => {
+      callOrder.push("authz");
+      return true;
     });
     addTeamMemberMock.mockImplementationOnce(async () => {
       callOrder.push("add");
     });
     const { addTeamMemberAction } = await import("./actions");
     await addTeamMemberAction("team-x", "alice@asafe.ai", "member");
-    expect(callOrder[0]).toBe("admin");
-    expect(callOrder[1]).toBe("add");
-  });
-
-  it("revalidates the correct team path", async () => {
-    const { addTeamMemberAction } = await import("./actions");
-    await addTeamMemberAction("team-path-check", "alice@asafe.ai", "admin");
-    expect(revalidatePathMock).toHaveBeenCalledWith(
-      "/admin/teams/team-path-check",
-    );
-  });
-
-  it("addTeamMember called exactly once on success", async () => {
-    const { addTeamMemberAction } = await import("./actions");
-    await addTeamMemberAction("team-once", "alice@asafe.ai", "member");
-    expect(addTeamMemberMock).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(["authz", "add"]);
   });
 });
 
-describe("setModelAllowListAction — additional", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+describe("removeTeamMemberAction", () => {
+  beforeEach(resetAll);
 
-  it("revalidates correct team path", async () => {
-    const { setModelAllowListAction } = await import("./actions");
-    await setModelAllowListAction("team-revalidate", ["model-a"]);
-    expect(revalidatePathMock).toHaveBeenCalledWith(
-      "/admin/teams/team-revalidate",
-    );
-  });
-
-  it("updateTeamPolicy not called when permission is denied", async () => {
-    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
-    const { setModelAllowListAction } = await import("./actions");
-    await expect(setModelAllowListAction("team-x", [])).rejects.toThrow(
-      "Forbidden",
-    );
-    expect(updateTeamPolicyMock).not.toHaveBeenCalled();
-  });
-
-  it("updateTeamPolicy called exactly once on success", async () => {
-    const { setModelAllowListAction } = await import("./actions");
-    await setModelAllowListAction("team-count", ["m1", "m2"]);
-    expect(updateTeamPolicyMock).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("removeTeamMemberAction — additional", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("requireAdminPermission called exactly once", async () => {
+  it("authorizes via canManageTeam and removes with team-scoped delete", async () => {
     const { removeTeamMemberAction } = await import("./actions");
-    await removeTeamMemberAction("member-2", "team-10");
-    expect(requireAdminPermissionMock).toHaveBeenCalledTimes(1);
+    await removeTeamMemberAction("member-1", "team-9");
+
+    expect(canManageTeamMock).toHaveBeenCalledWith("actor-1", "team-9");
+    // teamId forwarded — scopes the delete so a team admin cannot remove
+    // members of other teams via a foreign memberId.
+    expect(removeTeamMemberMock).toHaveBeenCalledWith("member-1", "team-9");
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-9");
+  });
+
+  it("throws and does not remove when canManageTeam is false", async () => {
+    canManageTeamMock.mockResolvedValue(false);
+    const { removeTeamMemberAction } = await import("./actions");
+    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow(
+      "Unauthorized",
+    );
+    expect(removeTeamMemberMock).not.toHaveBeenCalled();
   });
 
   it("removeTeamMember called exactly once per action", async () => {
@@ -301,59 +325,55 @@ describe("removeTeamMemberAction — additional", () => {
     await removeTeamMemberAction("member-3", "team-11");
     expect(removeTeamMemberMock).toHaveBeenCalledTimes(1);
   });
+});
 
-  it("throws when requireAdminPermission rejects", async () => {
-    requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
-    const { removeTeamMemberAction } = await import("./actions");
-    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow(
-      "Forbidden",
+describe("updateMemberRoleAction", () => {
+  beforeEach(resetAll);
+
+  it("authorizes via canManageTeam and updates with team-scoped query", async () => {
+    const { updateMemberRoleAction } = await import("./actions");
+    await updateMemberRoleAction("member-5", "team-12", "editor");
+
+    expect(canManageTeamMock).toHaveBeenCalledWith("actor-1", "team-12");
+    expect(updateTeamMemberRoleMock).toHaveBeenCalledWith(
+      "member-5",
+      "editor",
+      "team-12",
     );
-    expect(removeTeamMemberMock).not.toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-12");
   });
 
-  it("revalidates the correct team path on success", async () => {
-    const { removeTeamMemberAction } = await import("./actions");
-    await removeTeamMemberAction("mem-id-unique", "team-path-99");
-    expect(revalidatePathMock).toHaveBeenCalledWith(
-      "/admin/teams/team-path-99",
-    );
+  it("throws when canManageTeam is false", async () => {
+    canManageTeamMock.mockResolvedValue(false);
+    const { updateMemberRoleAction } = await import("./actions");
+    await expect(
+      updateMemberRoleAction("member-5", "team-12", "admin"),
+    ).rejects.toThrow("Unauthorized");
+    expect(updateTeamMemberRoleMock).not.toHaveBeenCalled();
   });
 });
 
-describe("team actions — requireAdminPermission guard invariants", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.resetModules();
-    requireAdminPermissionMock.mockResolvedValue(undefined);
+describe("renameTeamAction", () => {
+  beforeEach(resetAll);
+
+  it("authorizes via canManageTeam and updates name/description", async () => {
+    const { renameTeamAction } = await import("./actions");
+    await renameTeamAction("team-13", "New Name", "desc");
+
+    expect(canManageTeamMock).toHaveBeenCalledWith("actor-1", "team-13");
+    expect(updateTeamMock).toHaveBeenCalledWith("team-13", {
+      name: "New Name",
+      description: "desc",
+    });
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-13");
   });
 
-  it("addTeamMemberAction calls requireAdminPermission", async () => {
-    const { addTeamMemberAction } = await import("./actions");
-    await addTeamMemberAction("t1", "user@example.com", "member");
-    expect(requireAdminPermissionMock).toHaveBeenCalled();
-  });
-
-  it("removeTeamMemberAction calls revalidatePath with team-scoped path", async () => {
-    const { removeTeamMemberAction } = await import("./actions");
-    await removeTeamMemberAction("mem-a", "team-xyz");
-    expect(revalidatePathMock).toHaveBeenCalledWith(
-      expect.stringContaining("team-xyz"),
+  it("throws when canManageTeam is false", async () => {
+    canManageTeamMock.mockResolvedValue(false);
+    const { renameTeamAction } = await import("./actions");
+    await expect(renameTeamAction("team-13", "New Name")).rejects.toThrow(
+      "Unauthorized",
     );
-  });
-
-  it("addTeamMember not called when requireAdminPermission throws", async () => {
-    requireAdminPermissionMock.mockRejectedValueOnce(new Error("no admin"));
-    const { addTeamMemberAction } = await import("./actions");
-    await expect(
-      addTeamMemberAction("t1", "user@example.com", "member"),
-    ).rejects.toThrow();
-    expect(addTeamMemberMock).not.toHaveBeenCalled();
-  });
-
-  it("removeTeamMember not called when requireAdminPermission throws", async () => {
-    requireAdminPermissionMock.mockRejectedValueOnce(new Error("no admin"));
-    const { removeTeamMemberAction } = await import("./actions");
-    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow();
-    expect(removeTeamMemberMock).not.toHaveBeenCalled();
+    expect(updateTeamMock).not.toHaveBeenCalled();
   });
 });

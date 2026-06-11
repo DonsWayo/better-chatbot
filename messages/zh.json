@@ -576,6 +576,20 @@
       "forceOff": "关",
       "removeOverride": "移除覆盖"
     },
+    "EntraTeamMappings": {
+      "title": "Entra 团队映射",
+      "description": "将 Microsoft Entra 组 ID 映射到团队。每次 SSO 登录时，映射组中的用户将以成员身份加入团队。仅追加 — 登录绝不会移除成员资格或更改现有团队角色。",
+      "noMappings": "尚未配置映射。",
+      "addMapping": "添加映射",
+      "groupIdPlaceholder": "Entra 组对象 ID (GUID)",
+      "selectTeam": "选择团队",
+      "searchTeams": "搜索团队…",
+      "noTeamsFound": "未找到团队。",
+      "add": "添加",
+      "removeMapping": "移除映射",
+      "duplicateMapping": "该组已映射到该团队。",
+      "updateFailed": "更新失败,请重试。"
+    },
     "RolePacks": {
       "title": "角色包",
       "subtitle": "面向部门的可安装入门内容:现成的智能体、工作流和定时例程。",

@@ -589,6 +589,20 @@
       "forceOff": "끄기",
       "removeOverride": "재정의 제거"
     },
+    "EntraTeamMappings": {
+      "title": "Entra 팀 매핑",
+      "description": "Microsoft Entra 그룹 ID를 팀에 매핑합니다. SSO 로그인 시마다 매핑된 그룹의 사용자가 팀에 멤버로 추가됩니다. 추가 전용 — 로그인으로 멤버십이 제거되거나 기존 팀 역할이 변경되지 않습니다.",
+      "noMappings": "구성된 매핑이 없습니다.",
+      "addMapping": "매핑 추가",
+      "groupIdPlaceholder": "Entra 그룹 개체 ID (GUID)",
+      "selectTeam": "팀 선택",
+      "searchTeams": "팀 검색…",
+      "noTeamsFound": "팀을 찾을 수 없습니다.",
+      "add": "추가",
+      "removeMapping": "매핑 제거",
+      "duplicateMapping": "이 그룹은 이미 해당 팀에 매핑되어 있습니다.",
+      "updateFailed": "업데이트하지 못했습니다. 다시 시도해 주세요."
+    },
     "RolePacks": {
       "title": "역할 팩",
       "subtitle": "부서를 위한 설치형 스타터 콘텐츠: 에이전트, 워크플로우, 예약된 루틴.",

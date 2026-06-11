@@ -347,20 +347,111 @@ export async function addTeamMember(
     });
 }
 
-export async function removeTeamMember(memberId: string) {
+/**
+ * Remove a team member row. When `teamId` is provided the delete is scoped to
+ * that team — defense in depth so a TEAM admin authorized for team A cannot
+ * pass a memberId belonging to team B.
+ */
+export async function removeTeamMember(memberId: string, teamId?: string) {
   await db
     .delete(AsafeTeamMemberTable)
-    .where(eq(AsafeTeamMemberTable.id, memberId));
+    .where(
+      teamId
+        ? and(
+            eq(AsafeTeamMemberTable.id, memberId),
+            eq(AsafeTeamMemberTable.teamId, teamId),
+          )
+        : eq(AsafeTeamMemberTable.id, memberId),
+    );
 }
 
+/**
+ * Update a team member's team-scoped role. When `teamId` is provided the
+ * update is scoped to that team (same defense-in-depth as removeTeamMember).
+ */
 export async function updateTeamMemberRole(
   memberId: string,
   role: "admin" | "editor" | "member",
+  teamId?: string,
 ) {
   await db
     .update(AsafeTeamMemberTable)
     .set({ role })
-    .where(eq(AsafeTeamMemberTable.id, memberId));
+    .where(
+      teamId
+        ? and(
+            eq(AsafeTeamMemberTable.id, memberId),
+            eq(AsafeTeamMemberTable.teamId, teamId),
+          )
+        : eq(AsafeTeamMemberTable.id, memberId),
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Team-admin tier (asafe_team_member.role = "admin")
+//
+// Authorization split for team management (see
+// content/docs/governance/permissions.mdx):
+//   • canManageTeam (global admin OR team admin): membership add/remove,
+//     member team-role changes, rename/description — day-to-day people
+//     management that only affects the team itself.
+//   • global admin ONLY: delete team, budgets, model allow-list, guardrail/
+//     capability policy, email-domain allow-list — org-level cost, security
+//     and compliance levers a team must not be able to loosen for itself.
+//
+// Note: the /admin UI routes are gated to global admins at the layout, so a
+// team admin cannot currently reach the management screens. These checks make
+// the ACTIONS correctly authorized (defense in depth + ready for a future
+// team-admin surface); building that UI is a documented follow-up.
+// ---------------------------------------------------------------------------
+
+/** True when the user has team-scoped role "admin" in this team. */
+export async function isTeamAdmin(
+  userId: string,
+  teamId: string,
+): Promise<boolean> {
+  try {
+    const [row] = await db
+      .select({ role: AsafeTeamMemberTable.role })
+      .from(AsafeTeamMemberTable)
+      .where(
+        and(
+          eq(AsafeTeamMemberTable.userId, userId),
+          eq(AsafeTeamMemberTable.teamId, teamId),
+        ),
+      )
+      .limit(1);
+    return row?.role === "admin";
+  } catch {
+    // Fail closed: an unreadable membership store grants nothing.
+    return false;
+  }
+}
+
+/**
+ * Can this user manage the team (member add/remove, member roles, rename)?
+ * Global admins always can; otherwise requires team_member.role === "admin".
+ * Fails closed on any error.
+ */
+export async function canManageTeam(
+  userId: string,
+  teamId: string,
+): Promise<boolean> {
+  try {
+    const [[userRow], teamAdmin] = await Promise.all([
+      db
+        .select({ role: UserTable.role })
+        .from(UserTable)
+        .where(eq(UserTable.id, userId))
+        .limit(1),
+      isTeamAdmin(userId, teamId),
+    ]);
+    // Same comma-separated-roles convention as lib/user/utils getIsUserAdmin.
+    const isGlobalAdmin = userRow?.role?.split(",").includes("admin") ?? false;
+    return isGlobalAdmin || teamAdmin;
+  } catch {
+    return false;
+  }
 }
 
 export async function updateTeam(

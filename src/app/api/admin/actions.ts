@@ -26,6 +26,11 @@ import {
   setOrgLocalMcpEnabled,
   setTeamLocalMcpEnabled,
 } from "lib/ai/mcp/local-policy";
+import {
+  type EntraTeamMapping,
+  parseEntraTeamMappings,
+  setEntraTeamMappings,
+} from "lib/auth/entra-team-mappings";
 import { getSession } from "lib/auth/server";
 import { eraseUserData } from "lib/compliance/gdpr";
 import logger from "lib/logger";
@@ -282,6 +287,33 @@ export async function updateOrgLocalMcpPolicyAction(input: {
       enabled: input.enabled,
     },
   });
+}
+
+// ── Entra group → team mappings (Wave 4, ADR-0005) ──────────────────────────
+// Replaces the whole `entra_team_mappings` list in asafe_org_settings. The
+// SSO sign-in hook (lib/auth/auth-instance.ts) reads it on every sign-in and
+// additively ensures membership in mapped teams.
+
+export async function updateEntraTeamMappingsAction(
+  mappings: EntraTeamMapping[],
+): Promise<EntraTeamMapping[]> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  if (session.user.role !== "admin") throw new Error("Admin required");
+  // Re-validate on the server: drop malformed entries / dedupe pairs.
+  const clean = parseEntraTeamMappings(mappings);
+  await setEntraTeamMappings(clean);
+  const { writeAuditLog } = await import("lib/compliance/audit");
+  void writeAuditLog({
+    userId: session.user.id,
+    eventType: "admin_action",
+    details: {
+      action: "entra_team_mappings_updated",
+      mappingCount: clean.length,
+      mappings: clean,
+    },
+  });
+  return clean;
 }
 
 // ── Company MCP servers ──────────────────────────────────────────────────────

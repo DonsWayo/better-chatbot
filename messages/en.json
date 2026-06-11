@@ -772,6 +772,20 @@
       "forceOff": "Off",
       "removeOverride": "Remove override"
     },
+    "EntraTeamMappings": {
+      "title": "Entra team mappings",
+      "description": "Map Microsoft Entra group IDs to teams. On every SSO sign-in, users in a mapped group are added to the team as a member. Additive only — sign-in never removes memberships or changes existing team roles.",
+      "noMappings": "No mappings configured.",
+      "addMapping": "Add mapping",
+      "groupIdPlaceholder": "Entra group object ID (GUID)",
+      "selectTeam": "Select team",
+      "searchTeams": "Search teams…",
+      "noTeamsFound": "No teams found.",
+      "add": "Add",
+      "removeMapping": "Remove mapping",
+      "duplicateMapping": "This group is already mapped to that team.",
+      "updateFailed": "Failed to update. Please try again."
+    },
     "title": "Admin",
     "Sidebar": {
       "users": "Users",
