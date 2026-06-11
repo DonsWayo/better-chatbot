@@ -1,4 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const metering = vi.hoisted(() => ({
+  recordUsageMock: vi.fn(),
+  estimateCostUsdMock: vi.fn(),
+}));
+
+vi.mock("lib/ai/budget", () => ({
+  recordUsage: metering.recordUsageMock,
+  estimateCostUsd: metering.estimateCostUsdMock,
+}));
+
 import { EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "./index";
 
 describe("embedding constants", () => {
@@ -178,6 +189,115 @@ describe("embedText — success cases", () => {
     const { embedText } = await import("./index");
     const result = await embedText("test");
     expect(result).toHaveLength(EMBEDDING_DIMENSION);
+  });
+});
+
+describe("embedding usage metering (W3 ledger, ADR-0003)", () => {
+  const originalFetch = globalThis.fetch;
+  const fakeEmbedding = Array.from({ length: EMBEDDING_DIMENSION }, () => 0.1);
+
+  beforeEach(() => {
+    vi.stubEnv("OPENROUTER_API_KEY", "sk-or-test-key");
+    metering.recordUsageMock.mockReset().mockResolvedValue(undefined);
+    metering.estimateCostUsdMock.mockReset().mockReturnValue(0.000123);
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  function mockEmbeddingResponse(usage?: {
+    prompt_tokens?: number;
+    total_tokens?: number;
+  }) {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ index: 0, embedding: fakeEmbedding }],
+        ...(usage ? { usage } : {}),
+      }),
+    }) as unknown as typeof fetch;
+  }
+
+  it("embedText records usage with the response prompt_tokens", async () => {
+    mockEmbeddingResponse({ prompt_tokens: 42, total_tokens: 42 });
+    const { embedText } = await import("./index");
+    await embedText("hello", { userId: "u1", teamId: "team-1" });
+
+    await vi.waitFor(() =>
+      expect(metering.recordUsageMock).toHaveBeenCalledTimes(1),
+    );
+    expect(metering.estimateCostUsdMock).toHaveBeenCalledWith(
+      EMBEDDING_MODEL,
+      42,
+      0,
+    );
+    expect(metering.recordUsageMock).toHaveBeenCalledWith({
+      userId: "u1",
+      teamId: "team-1",
+      sessionId: null,
+      model: EMBEDDING_MODEL,
+      provider: "openRouter",
+      taskClass: "embedding",
+      tier: null,
+      promptTokens: 42,
+      completionTokens: 0,
+      costUsd: 0.000123,
+    });
+  });
+
+  it("embedBatch records usage with the batch prompt_tokens", async () => {
+    mockEmbeddingResponse({ prompt_tokens: 1234 });
+    const { embedBatch } = await import("./index");
+    await embedBatch(["a"], { userId: "u2" });
+
+    await vi.waitFor(() =>
+      expect(metering.recordUsageMock).toHaveBeenCalledTimes(1),
+    );
+    const call = metering.recordUsageMock.mock.calls[0][0];
+    expect(call.userId).toBe("u2");
+    expect(call.teamId).toBeNull(); // missing team → null, like recordUsage expects
+    expect(call.promptTokens).toBe(1234);
+    expect(call.completionTokens).toBe(0);
+  });
+
+  it("does not record when no userId attribution is provided (no system user row possible)", async () => {
+    mockEmbeddingResponse({ prompt_tokens: 42 });
+    const { embedText } = await import("./index");
+    await embedText("hello");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(metering.recordUsageMock).not.toHaveBeenCalled();
+  });
+
+  it("does not record when the response has no usage object", async () => {
+    mockEmbeddingResponse(undefined);
+    const { embedText } = await import("./index");
+    await embedText("hello", { userId: "u1" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(metering.recordUsageMock).not.toHaveBeenCalled();
+  });
+
+  it("metering failure never breaks embedText", async () => {
+    mockEmbeddingResponse({ prompt_tokens: 42 });
+    metering.recordUsageMock.mockRejectedValue(new Error("ledger down"));
+    const { embedText } = await import("./index");
+    const result = await embedText("hello", { userId: "u1" });
+    expect(result).toHaveLength(EMBEDDING_DIMENSION);
+    await vi.waitFor(() =>
+      expect(metering.recordUsageMock).toHaveBeenCalledTimes(1),
+    );
+  });
+
+  it("metering failure never breaks embedBatch", async () => {
+    mockEmbeddingResponse({ prompt_tokens: 7 });
+    metering.recordUsageMock.mockRejectedValue(new Error("ledger down"));
+    const { embedBatch } = await import("./index");
+    const result = await embedBatch(["a"], { userId: "u1", teamId: "t1" });
+    expect(result).toHaveLength(1);
+    await vi.waitFor(() =>
+      expect(metering.recordUsageMock).toHaveBeenCalledTimes(1),
+    );
   });
 });
 

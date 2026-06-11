@@ -123,7 +123,7 @@ export async function buildMemoryPromptBlock(
   const queryEmbedding =
     currentMessageText?.trim() &&
     actives.some((m) => m.embedding && m.embedding.length > 0)
-      ? await embedText(currentMessageText).catch(() => null)
+      ? await embedText(currentMessageText, { userId }).catch(() => null)
       : null;
 
   const formatted = formatMemoryBlock(rankMemories(actives, queryEmbedding));

@@ -550,6 +550,8 @@ export async function POST(request: Request) {
               queryText,
               knowledgeCollectionIds,
               session.user.id,
+              undefined,
+              userTeamId,
             ).catch(() => null);
             if (ragPayload) {
               ragContext = ragPayload.context;

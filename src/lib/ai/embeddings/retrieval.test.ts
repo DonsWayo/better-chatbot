@@ -299,7 +299,19 @@ describe("hybridRetrieve — db orchestration", () => {
     h.executeMock.mockResolvedValue({ rows: [] });
     await hybridRetrieve("query", ["col-1", "col-2"]);
     expect(h.embedTextMock).toHaveBeenCalledTimes(1);
-    expect(h.embedTextMock).toHaveBeenCalledWith("query");
+    expect(h.embedTextMock).toHaveBeenCalledWith("query", undefined);
+  });
+
+  it("threads the billing attribution through to embedText", async () => {
+    h.executeMock.mockResolvedValue({ rows: [] });
+    await hybridRetrieve("query", ["col-1"], 6, {
+      userId: "u1",
+      teamId: "team-1",
+    });
+    expect(h.embedTextMock).toHaveBeenCalledWith("query", {
+      userId: "u1",
+      teamId: "team-1",
+    });
   });
 });
 
@@ -373,5 +385,25 @@ describe("retrieveForChat — access-filtered entry point", () => {
     h.executeMock.mockResolvedValue({ rows: [] });
     const result = await retrieveForChat("query", ["col-1"], "u1");
     expect(result).toBeNull();
+  });
+
+  it("attributes the query embedding to the acting user and team", async () => {
+    h.canAccessMock.mockResolvedValue(true);
+    h.executeMock.mockResolvedValue({ rows: [] });
+    await retrieveForChat("query", ["col-1"], "u1", 6, "team-9");
+    expect(h.embedTextMock).toHaveBeenCalledWith("query", {
+      userId: "u1",
+      teamId: "team-9",
+    });
+  });
+
+  it("defaults attribution teamId to null when no team is given", async () => {
+    h.canAccessMock.mockResolvedValue(true);
+    h.executeMock.mockResolvedValue({ rows: [] });
+    await retrieveForChat("query", ["col-1"], "u1");
+    expect(h.embedTextMock).toHaveBeenCalledWith("query", {
+      userId: "u1",
+      teamId: null,
+    });
   });
 });

@@ -106,7 +106,12 @@ describe("POST /api/knowledge/ingest", () => {
     expect(body.sourceRef).toBe("policy.md");
     expect(ingestDocumentMock).toHaveBeenCalledWith(
       "Long document content here…",
-      { collectionId: "col-1", sourceRef: "policy.md", maxTokens: undefined },
+      {
+        collectionId: "col-1",
+        sourceRef: "policy.md",
+        maxTokens: undefined,
+        attribution: { userId: "a1" },
+      },
     );
   });
 

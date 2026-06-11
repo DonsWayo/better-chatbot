@@ -171,7 +171,7 @@ export async function ingestKnowledgeTextAction(input: {
   text: string;
   sourceRef?: string;
 }): Promise<IngestKnowledgeTextResult> {
-  await requireAdmin();
+  const user = await requireAdmin();
 
   if (!input.collectionId) throw new Error("collectionId required");
   const text = input.text?.trim();
@@ -183,6 +183,7 @@ export async function ingestKnowledgeTextAction(input: {
   const chunks = await ingestDocument(text, {
     collectionId: input.collectionId,
     sourceRef,
+    attribution: { userId: user.id },
   });
 
   return { chunks, sourceRef };

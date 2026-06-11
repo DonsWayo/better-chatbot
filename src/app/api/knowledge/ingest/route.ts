@@ -78,6 +78,7 @@ export async function POST(req: Request) {
     collectionId: body.collectionId,
     sourceRef,
     maxTokens: body.maxTokens,
+    attribution: { userId: session.user.id },
   });
 
   return NextResponse.json({

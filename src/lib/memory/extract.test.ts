@@ -189,6 +189,33 @@ describe("extractMemoriesFromTurn", () => {
     );
   });
 
+  it("attributes embedding calls to the acting user and team (W3 metering)", async () => {
+    h.generateObjectMock.mockResolvedValue({
+      object: {
+        memories: [
+          {
+            kind: "preference",
+            content: "Prefers replies in Spanish",
+            explicit: true,
+            confidence: 0.4,
+            supersedes: null,
+          },
+        ],
+      },
+    });
+    await extractMemoriesFromTurn({
+      userId: "u1",
+      teamId: "team-7",
+      threadId: "t1",
+      userText: "remember that I prefer Spanish",
+      assistantText: "Noted!",
+    });
+    expect(h.embedTextMock).toHaveBeenCalledWith("Prefers replies in Spanish", {
+      userId: "u1",
+      teamId: "team-7",
+    });
+  });
+
   it("drops non-explicit candidates when implicit is not allowed", async () => {
     h.generateObjectMock.mockResolvedValue({
       object: {

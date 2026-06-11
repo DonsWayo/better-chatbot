@@ -27,7 +27,7 @@
 - [x] Add citation tracking: record which chunks/sources informed the answer; render clickable citations in the UI. — `[Source N]` citations + sources row (`citation-bar.tsx`, `message-rag-sources.tsx`); sources are listed/expandable, but there is no click-through link to the underlying document yet
 - [x] Extend "archive"/collections to represent knowledge sets; admin controls for which teams query which collections. — knowledge collections with visibility + multi-team `teamIds` (`src/lib/knowledge/collections.ts`); `admin/knowledge` + Studio knowledge UI
 - [x] Implement re-ingest/update on source change; handle deletions (remove embeddings). — re-ingest replaces a document's chunks (delete-then-insert in `embeddings/ingest.ts`); document DELETE endpoint removes embeddings (cascade)
-- [ ] Account for retrieval/embedding cost in the Wave 3 usage ledger. — OPEN: no `recordUsage`/usage-event write on the embedding or retrieval paths; only chat completions are metered
+- [x] Account for retrieval/embedding cost in the Wave 3 usage ledger. — done via `embedText`/`embedBatch` metering (`src/lib/ai/embeddings/index.ts`): OpenRouter `usage.prompt_tokens` recorded fire-and-forget through `recordUsage` (model `openai/text-embedding-3-small` @ $0.02/1M, price verified 2026-06-11; `taskClass: "embedding"`); attribution threaded from `retrieveForChat` (user+team), the knowledge ingest routes/action (admin user), and memory extraction/injection
 - [x] Tests: ingestion produces correct chunks/embeddings; retrieval respects permissions; citations map to real sources; e2e: upload a doc, ask about it, get a cited answer. — `chunker/embeddings/retrieval/ingest` unit tests + `tests/asafe/rag-collection.spec.ts`, `tests/asafe/knowledge-documents.spec.ts`, `tests/asafe/admin-knowledge.spec.ts`
 
 ## Acceptance criteria
@@ -35,7 +35,7 @@
 - [x] Given an approved document a user may access, when they ask about its content, then the answer is grounded in it and cites the source. — covered by RAG e2e specs
 - [x] Given a collection a user's team cannot access, when they query, then its content is not retrieved. — visibility enforced inside `retrieveForChat`; `retrieval.test.ts`
 - [x] Given a source document is updated, when re-ingested, then retrieval reflects the new content (and deletions remove old embeddings).
-- [ ] Embedding/retrieval costs appear in the usage ledger; `pnpm check && pnpm test` green; e2e green. — OPEN: embedding/retrieval costs are not metered into `asafe_usage_event` (test suite itself verified green 2026-06-11, one unrelated Wave 9 realtime test failing)
+- [x] Embedding/retrieval costs appear in the usage ledger; `pnpm check && pnpm test` green; e2e green. — done via embedding metering above: every embedding path writes `asafe_usage_event` rows when an acting user is known (`user_id` is a required FK, so attribution-less calls are skipped by design); unit-tested in `embeddings.test.ts` (token capture, attribution threading, metering failure never breaks embedding)
 
 ## Open questions
 

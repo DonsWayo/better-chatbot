@@ -30,6 +30,36 @@ Per ADR-0003, **the platform's own price table is the source of truth** for cost
 OpenRouter's reported cost is captured alongside as a cross-check — so the ledger keeps
 working if transport ever moves to direct providers.
 
+## Embeddings metering
+
+Embedding calls are metered into the same ledger as chat completions. Every
+`embedText`/`embedBatch` call (`src/lib/ai/embeddings`) captures the
+`usage.prompt_tokens` reported by the OpenRouter embeddings API and records a
+fire-and-forget usage event — model `openai/text-embedding-3-small`, input tokens only,
+zero completion tokens, `taskClass: "embedding"`. The price table pins the model at
+**$0.02 per 1M tokens** (verified against OpenRouter's embeddings model listing,
+2026-06-11).
+
+Attribution is threaded from every embedding entry point:
+
+- **RAG retrieval** — `retrieveForChat` bills the chatting user and their team.
+- **Knowledge ingestion** — the ingest routes and server action bill the admin who
+  uploaded the document.
+- **User memory** — extraction and injection bill the user whose memory is being
+  embedded (extraction also carries the team).
+
+Metering never blocks or fails an embedding call. Because `usage_event.user_id` is a
+required foreign key, there is no "system" attribution: an embedding call without a
+known acting user is simply not recorded (all production call sites thread one).
+
+## Compression savings (what is *not* in the ledger)
+
+W11 context-compression savings are **Prometheus-only** (`asafe_compression_chars_saved_total`
+counter + ratio histogram, surfaced in the Grafana "Compression Chars Saved" panel). They
+are deliberately not written to `usage_event`: the table is a spend ledger with no
+event-type column, so negative-cost or savings rows would corrupt cost and budget
+aggregation. See `src/lib/ai/compression/metrics.ts`.
+
 ## Enforcement policy
 
 Configurable per team, with safe defaults:

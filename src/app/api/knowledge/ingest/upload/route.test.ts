@@ -238,6 +238,7 @@ describe("POST /api/knowledge/ingest/upload — success", () => {
     expect(ingestDocumentMock).toHaveBeenCalledWith("extracted body", {
       collectionId: "col-1",
       sourceRef: "report.pdf",
+      attribution: { userId: "a1" },
     });
   });
 
@@ -271,6 +272,7 @@ describe("POST /api/knowledge/ingest/upload — success", () => {
     expect(ingestDocumentMock).toHaveBeenCalledWith("body", {
       collectionId: "col-1",
       sourceRef: "HR Handbook 2026",
+      attribution: { userId: "a1" },
     });
   });
 

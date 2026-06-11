@@ -159,6 +159,8 @@ ${input.assistantText.slice(0, EXTRACTION_TEXT_LIMIT)}`;
 
 export interface ExtractMemoriesInput {
   userId: string;
+  /** Billing attribution for embedding calls (W3 usage ledger). */
+  teamId?: string | null;
   threadId: string;
   userText: string;
   assistantText: string;
@@ -197,7 +199,10 @@ export async function extractMemoriesFromTurn(
     const key = normalize(candidate.content);
     if (!key || existingByContent.has(key)) continue; // dedup vs actives
 
-    const embedding = await embedText(candidate.content).catch((e) => {
+    const embedding = await embedText(candidate.content, {
+      userId: input.userId,
+      teamId: input.teamId ?? null,
+    }).catch((e) => {
       logger.warn("embedding failed (storing without):", e?.message ?? e);
       return null;
     });
@@ -257,6 +262,7 @@ export async function runPostTurnMemoryExtraction(
 
   const stored = await extractMemoriesFromTurn({
     userId: input.userId,
+    teamId: input.teamId,
     threadId: input.threadId,
     userText: input.userText,
     assistantText: input.assistantText,

@@ -129,6 +129,7 @@ export async function POST(req: Request) {
   const chunks = await ingestDocument(scanned.text, {
     collectionId,
     sourceRef,
+    attribution: { userId: session.user.id },
   });
 
   return NextResponse.json({

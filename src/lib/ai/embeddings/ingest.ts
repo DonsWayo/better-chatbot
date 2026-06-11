@@ -1,6 +1,6 @@
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { AsafeDocumentChunkTable } from "lib/db/pg/schema.pg";
-import { embedBatch } from "./index";
+import { embedBatch, type EmbeddingAttribution } from "./index";
 import { chunkText } from "./chunker";
 import { eq, and } from "drizzle-orm";
 
@@ -8,11 +8,13 @@ export interface IngestOptions {
   collectionId: string;
   sourceRef: string;
   maxTokens?: number;
+  /** Who to bill the embedding tokens to (W3 usage ledger). */
+  attribution?: EmbeddingAttribution;
 }
 
 /** Ingest a document: chunk → embed → store. Returns number of chunks written. */
 export async function ingestDocument(text: string, options: IngestOptions): Promise<number> {
-  const { collectionId, sourceRef, maxTokens } = options;
+  const { collectionId, sourceRef, maxTokens, attribution } = options;
 
   // Remove old chunks for this sourceRef in this collection
   await db.delete(AsafeDocumentChunkTable)
@@ -26,7 +28,7 @@ export async function ingestDocument(text: string, options: IngestOptions): Prom
   const chunks = chunkText(text, { maxTokens });
   if (chunks.length === 0) return 0;
 
-  const embeddings = await embedBatch(chunks);
+  const embeddings = await embedBatch(chunks, attribution);
 
   await db.insert(AsafeDocumentChunkTable).values(
     chunks.map((chunkContent, i) => ({

@@ -3,8 +3,12 @@
 /**
  * W11 — compression savings metrics.
  *
- * Records token-reduction stats to the W3 usage ledger. Uses prom-client
- * counters for real-time observability.
+ * Prometheus-only by design: savings are emitted as prom-client counters and
+ * a ratio histogram (Grafana "Compression Chars Saved" panel). They are
+ * deliberately NOT written to the W3 usage ledger — `asafe_usage_event` is a
+ * spend ledger with no event-type/metadata column, so a negative-cost or
+ * savings row would corrupt cost/budget aggregation (ADR-0003). Revisit only
+ * if the ledger ever grows an event-type discriminator.
  */
 
 import { Counter, Histogram } from "prom-client";

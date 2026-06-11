@@ -1,7 +1,7 @@
 import type { RagSource } from "app-types/chat";
 import { sql } from "drizzle-orm";
 import { canAccess } from "lib/visibility";
-import { embedText } from "./index";
+import { embedText, type EmbeddingAttribution } from "./index";
 
 /**
  * Hybrid retrieval (Wave 6 phase 2, ADR-0007): reciprocal rank fusion of
@@ -101,10 +101,11 @@ export async function hybridRetrieve(
   query: string,
   collectionIds: string[],
   topK = DEFAULT_TOP_K,
+  attribution?: EmbeddingAttribution,
 ): Promise<RetrievedChunk[]> {
   if (collectionIds.length === 0) return [];
 
-  const queryEmbedding = await embedText(query);
+  const queryEmbedding = await embedText(query, attribution);
   const { pgDb: db } = await import("lib/db/pg/db.pg");
 
   const idList = sql.join(
@@ -230,11 +231,15 @@ export async function retrieveForChat(
   collectionIds: string[],
   userId: string,
   topK = DEFAULT_TOP_K,
+  teamId?: string | null,
 ): Promise<RagPayload | null> {
   const accessible = await filterAccessibleCollections(collectionIds, userId);
   if (accessible.length === 0) return null;
 
-  const chunks = await hybridRetrieve(query, accessible, topK);
+  const chunks = await hybridRetrieve(query, accessible, topK, {
+    userId,
+    teamId: teamId ?? null,
+  });
   if (chunks.length === 0) return null;
 
   const names = await getCollectionNames(accessible).catch(

@@ -31,6 +31,9 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
   "gpt-5.5": { promptPerM: 2.5, completionPerM: 10 },
   "gemini-3.5-flash": { promptPerM: 0.15, completionPerM: 0.6 },
   "gemini-3.1-flash-lite": { promptPerM: 0.1, completionPerM: 0.4 },
+  // Embeddings (input-only). Verified against OpenRouter /api/v1/embeddings/models
+  // on 2026-06-11: prompt $0.00000002/token = $0.02 per 1M tokens, completion $0.
+  "openai/text-embedding-3-small": { promptPerM: 0.02, completionPerM: 0 },
 };
 
 const DEFAULT_PRICING: ModelPricing = { promptPerM: 1, completionPerM: 4 };
