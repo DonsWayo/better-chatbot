@@ -387,7 +387,11 @@ export async function POST(request: Request) {
       mentions.push(...agent.instructions.mentions);
     }
 
-    const useImageTool = canUseTools && Boolean(imageTool?.model);
+    // W9 feature toggle, enforced server-side like allowVision (default-deny,
+    // enabled per team in /admin). Found unenforced by the wave audit.
+    const imageGenAllowed = Boolean(teamPolicy?.allowImageGen);
+    const useImageTool =
+      canUseTools && imageGenAllowed && Boolean(imageTool?.model);
 
     const isToolCallAllowed =
       canUseTools &&

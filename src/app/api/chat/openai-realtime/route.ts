@@ -1,26 +1,26 @@
-import { NextRequest } from "next/server";
-import { getSession } from "auth/server";
 import { VercelAIMcpTool } from "app-types/mcp";
+import { getSession } from "auth/server";
+import {
+  buildMcpServerCustomizationsSystemPrompt,
+  buildSpeechSystemPrompt,
+} from "lib/ai/prompts";
+import { NextRequest } from "next/server";
 import {
   filterMcpServerCustomizations,
   loadMcpTools,
   mergeSystemPrompt,
 } from "../shared.chat";
-import {
-  buildMcpServerCustomizationsSystemPrompt,
-  buildSpeechSystemPrompt,
-} from "lib/ai/prompts";
 
-import { safe } from "ts-safe";
+import { ChatMention } from "app-types/chat";
+import { colorize } from "consola/utils";
 import { DEFAULT_VOICE_TOOLS } from "lib/ai/speech";
+import globalLogger from "lib/logger";
+import { getUserPreferences } from "lib/user/server";
+import { safe } from "ts-safe";
 import {
   rememberAgentAction,
   rememberMcpServerCustomizationsAction,
 } from "../actions";
-import globalLogger from "lib/logger";
-import { colorize } from "consola/utils";
-import { getUserPreferences } from "lib/user/server";
-import { ChatMention } from "app-types/chat";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `OpenAI Realtime API: `),
@@ -41,6 +41,22 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user.id) {
       return new Response("Unauthorized", { status: 401 });
+    }
+
+    // W9 feature toggle, enforced server-side like allowVision (default-deny,
+    // enabled per team in /admin). Found unenforced by the wave audit.
+    const { getTeamPolicy, getUserPrimaryTeamId } = await import(
+      "lib/admin/teams"
+    );
+    const teamId = await getUserPrimaryTeamId(session.user.id);
+    const teamPolicy = teamId ? await getTeamPolicy(teamId) : null;
+    if (!teamPolicy?.allowSpeech) {
+      return new Response(
+        JSON.stringify({
+          error: "Voice chat is not enabled for your team.",
+        }),
+        { status: 403 },
+      );
     }
 
     const { voice, mentions, agentId } = (await request.json()) as {
