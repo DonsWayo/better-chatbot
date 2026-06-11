@@ -387,7 +387,10 @@ export class MCPClientsManager {
       throw err;
     });
 
-    return this.clients.get(id)!;
+    // Return the persisted server id (serializable) — NOT the live client,
+    // which is circular (client → manager) and breaks Server Action / RSC
+    // serialization with a stack overflow.
+    return id;
   }
 
   /**

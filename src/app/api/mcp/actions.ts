@@ -151,6 +151,10 @@ export async function saveMcpClientAction(
     visibility: server.visibility || "private",
   };
 
+  // persistClient resolves to the persisted server's id (a plain string).
+  // It must NOT return the live MCP client — that holds a back-reference to
+  // the manager (a circular graph), and a Server Action returning it makes
+  // Next.js blow the stack serializing it across the RSC boundary.
   return mcpClientsManager.persistClient(serverWithUser);
 }
 

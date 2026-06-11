@@ -1,9 +1,9 @@
 import { getSession } from "auth/server";
+import { logger } from "better-auth";
+import { canCreateMCP } from "lib/auth/permissions";
 import { McpServerTable } from "lib/db/pg/schema.pg";
 import { NextResponse } from "next/server";
 import { saveMcpClientAction } from "./actions";
-import { canCreateMCP } from "lib/auth/permissions";
-import { logger } from "better-auth";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -23,9 +23,9 @@ export async function POST(request: Request) {
   const json = (await request.json()) as typeof McpServerTable.$inferInsert;
 
   try {
-    const result = await saveMcpClientAction(json);
+    const id = await saveMcpClientAction(json);
 
-    return NextResponse.json({ success: true, id: result.client.getInfo().id });
+    return NextResponse.json({ success: true, id });
   } catch (error) {
     logger.error("Failed to save MCP client", { error });
     const message =
@@ -35,9 +35,6 @@ export async function POST(request: Request) {
     // are client errors, not server errors — surface them as 403, not 500.
     const isAuthzError =
       /administrator|permission|not allowed|must be logged in/i.test(message);
-    return NextResponse.json(
-      { message },
-      { status: isAuthzError ? 403 : 500 },
-    );
+    return NextResponse.json({ message }, { status: isAuthzError ? 403 : 500 });
   }
 }
