@@ -88,70 +88,124 @@ describe("saveMcpClientAction", () => {
     delete process.env.NOT_ALLOW_ADD_MCP_SERVERS;
   });
 
-  it("throws when unauthenticated", async () => {
+  // The action returns a structured { success: false, error } result instead
+  // of throwing: thrown Server Action errors are masked into an opaque 500 in
+  // production, so the client would never see the actual reason.
+  it("returns structured error when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "Test",
-        config: { url: "http://mcp" },
-      } as any),
-    ).rejects.toThrow(/logged in/i);
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: { url: "http://mcp" },
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/logged in/i),
+    });
   });
 
-  it("throws when user cannot create MCP", async () => {
+  it("returns structured permission-denial error when user cannot create MCP", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(false);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "Test",
-        config: { url: "http://mcp" },
-      } as any),
-    ).rejects.toThrow(/permission/i);
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: { url: "http://mcp" },
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/permission/i),
+    });
+    expect(persistClientMock).not.toHaveBeenCalled();
   });
 
-  it("throws when NOT_ALLOW_ADD_MCP_SERVERS env is set", async () => {
+  it("returns structured error when NOT_ALLOW_ADD_MCP_SERVERS env is set", async () => {
     process.env.NOT_ALLOW_ADD_MCP_SERVERS = "1";
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow(/Not allowed/i);
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: {},
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/Not allowed/i),
+    });
   });
 
-  it("throws for non-admin trying to create org-scoped server", async () => {
+  it("returns structured error for non-admin creating org-scoped server", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "valid-name",
-        scope: "org",
-        config: {},
-      } as any),
-    ).rejects.toThrow(/admin/i);
+    const result = await saveMcpClientAction({
+      name: "valid-name",
+      scope: "org",
+      config: {},
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/admin/i),
+    });
   });
 
-  it("throws for non-admin trying to create team-scoped server", async () => {
+  it("returns structured error for non-admin creating team-scoped server", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "valid-name",
-        scope: "team",
-        config: {},
-      } as any),
-    ).rejects.toThrow(/admin/i);
+    const result = await saveMcpClientAction({
+      name: "valid-name",
+      scope: "team",
+      config: {},
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/admin/i),
+    });
   });
 
-  it("throws when name contains invalid characters", async () => {
+  it("returns structured error when name contains invalid characters", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "invalid name!", config: {} } as any),
-    ).rejects.toThrow();
+    const result = await saveMcpClientAction({
+      name: "invalid name!",
+      config: {},
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/alphanumeric/i),
+    });
+  });
+
+  it("returns a user-readable error when connecting/persisting fails (e.g. unreachable URL)", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "editor" });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    persistClientMock.mockRejectedValueOnce(
+      new Error("fetch failed: ECONNREFUSED 127.0.0.1:3007"),
+    );
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      name: "qa-x",
+      config: { url: "http://localhost:3007/mcp" },
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/ECONNREFUSED/),
+    });
+  });
+
+  it("returns { success: true, id } when an editor saves a remote connector", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "editor-1", role: "editor" });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    persistClientMock.mockResolvedValueOnce("srv-editor-1");
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      name: "qa-x",
+      config: { url: "http://localhost:3007/mcp" },
+    } as any);
+    expect(result).toEqual({ success: true, id: "srv-editor-1" });
+    expect(persistClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "editor-1", visibility: "private" }),
+    );
   });
 });
 
@@ -228,9 +282,11 @@ describe("saveMcpClientAction — guard chains", () => {
   it("never calls insertMcpServer when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow();
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: {},
+    } as any);
+    expect(result.success).toBe(false);
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 
@@ -238,18 +294,22 @@ describe("saveMcpClientAction — guard chains", () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(false);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow();
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: {},
+    } as any);
+    expect(result.success).toBe(false);
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 
   it("never calls insertMcpServer when env flag blocks request", async () => {
     process.env.NOT_ALLOW_ADD_MCP_SERVERS = "1";
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow();
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: {},
+    } as any);
+    expect(result.success).toBe(false);
     expect(insertMcpServerMock).not.toHaveBeenCalled();
   });
 });
@@ -311,43 +371,43 @@ describe("saveMcpClientAction — additional", () => {
     delete process.env.NOT_ALLOW_ADD_MCP_SERVERS;
   });
 
-  it("throws when user is null (not logged in)", async () => {
+  it("returns structured error when user is null (not logged in)", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow();
+    const result = await saveMcpClientAction({
+      name: "Test",
+      config: {},
+    } as any);
+    expect(result.success).toBe(false);
   });
 
   it("getCurrentUser called exactly once per invocation", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow();
+    await saveMcpClientAction({ name: "Test", config: {} } as any);
     expect(getCurrentUserMock).toHaveBeenCalledTimes(1);
   });
 
   it("canCreateMCP not called when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({ name: "Test", config: {} } as any),
-    ).rejects.toThrow();
+    await saveMcpClientAction({ name: "Test", config: {} } as any);
     expect(canCreateMCPMock).not.toHaveBeenCalled();
   });
 
-  it("throws for org scope from non-admin user", async () => {
+  it("returns structured error for org scope from non-admin user", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u-basic", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "valid-name",
-        scope: "org",
-        config: {},
-      } as any),
-    ).rejects.toThrow(/admin/i);
+    const result = await saveMcpClientAction({
+      name: "valid-name",
+      scope: "org",
+      config: {},
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/admin/i),
+    });
   });
 });
 
@@ -514,30 +574,31 @@ describe("saveMcpClientAction — local-MCP policy gate (stdio)", () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValue(true);
     getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
-    persistClientMock.mockResolvedValue({ id: "srv-1" });
+    persistClientMock.mockResolvedValue("srv-1");
   });
 
   it("rejects stdio configs when the policy denies (default)", async () => {
     resolveLocalMcpPolicyMock.mockResolvedValue(false);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "local-server",
-        config: STDIO_CONFIG,
-      } as unknown as SaveMcpPayload),
-    ).rejects.toThrow(/organization's policy/i);
+    const result = await saveMcpClientAction({
+      name: "local-server",
+      config: STDIO_CONFIG,
+    } as unknown as SaveMcpPayload);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/organization's policy/i),
+    });
     expect(persistClientMock).not.toHaveBeenCalled();
   });
 
   it("resolves the policy for the saving user's team", async () => {
     resolveLocalMcpPolicyMock.mockResolvedValue(false);
     const { saveMcpClientAction } = await import("./actions");
-    await expect(
-      saveMcpClientAction({
-        name: "local-server",
-        config: STDIO_CONFIG,
-      } as unknown as SaveMcpPayload),
-    ).rejects.toThrow();
+    const result = await saveMcpClientAction({
+      name: "local-server",
+      config: STDIO_CONFIG,
+    } as unknown as SaveMcpPayload);
+    expect(result.success).toBe(false);
     expect(getUserPrimaryTeamIdMock).toHaveBeenCalledWith("u1");
     expect(resolveLocalMcpPolicyMock).toHaveBeenCalledWith("team-1");
   });
@@ -545,10 +606,11 @@ describe("saveMcpClientAction — local-MCP policy gate (stdio)", () => {
   it("allows stdio configs when the policy is enabled", async () => {
     resolveLocalMcpPolicyMock.mockResolvedValue(true);
     const { saveMcpClientAction } = await import("./actions");
-    await saveMcpClientAction({
+    const result = await saveMcpClientAction({
       name: "local-server",
       config: STDIO_CONFIG,
     } as unknown as SaveMcpPayload);
+    expect(result).toEqual({ success: true, id: "srv-1" });
     expect(persistClientMock).toHaveBeenCalledWith(
       expect.objectContaining({ name: "local-server", userId: "u1" }),
     );

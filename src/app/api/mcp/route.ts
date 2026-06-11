@@ -23,9 +23,15 @@ export async function POST(request: Request) {
   const json = (await request.json()) as typeof McpServerTable.$inferInsert;
 
   try {
-    const id = await saveMcpClientAction(json);
+    // saveMcpClientAction returns a structured result (it no longer throws
+    // for expected failures); normalize back to an exception so the status
+    // mapping below covers both structured errors and unexpected throws.
+    const result = await saveMcpClientAction(json);
+    if (!result.success) {
+      throw new Error(result.error);
+    }
 
-    return NextResponse.json({ success: true, id });
+    return NextResponse.json({ success: true, id: result.id });
   } catch (error) {
     logger.error("Failed to save MCP client", { error });
     const message =

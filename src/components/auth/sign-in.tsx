@@ -19,7 +19,6 @@ import { authClient } from "auth/client";
 import { Loader } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { safe } from "ts-safe";
 import { GithubIcon } from "ui/github-icon";
 import { GoogleIcon } from "ui/google-icon";
 import { MicrosoftIcon } from "ui/microsoft-icon";
@@ -38,6 +37,7 @@ export default function SignIn({
   const t = useTranslations("Auth.SignIn");
 
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const hasSocial = socialAuthenticationProviders.length > 0;
 
@@ -46,24 +46,34 @@ export default function SignIn({
     password: "",
   });
 
-  const emailAndPasswordSignIn = () => {
+  const emailAndPasswordSignIn = async () => {
+    if (loading) return;
     setLoading(true);
-    safe(() =>
-      authClient.signIn.email(
-        {
-          email: formData.email,
-          password: formData.password,
-          callbackURL: "/",
-        },
-        {
-          onError(ctx) {
-            toast.error(ctx.error.message || ctx.error.statusText);
-          },
-        },
-      ),
-    )
-      .watch(() => setLoading(false))
-      .unwrap();
+    setErrorMessage(null);
+    try {
+      const { error } = await authClient.signIn.email({
+        email: formData.email,
+        password: formData.password,
+        callbackURL: "/",
+      });
+      if (error) {
+        const message =
+          error.code === "INVALID_EMAIL_OR_PASSWORD" || error.status === 401
+            ? t("invalidEmailOrPassword")
+            : error.message || error.statusText || t("invalidEmailOrPassword");
+        setErrorMessage(message);
+        toast.error(message);
+      }
+    } catch (e) {
+      const message =
+        e instanceof Error && e.message
+          ? e.message
+          : t("invalidEmailOrPassword");
+      setErrorMessage(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialSignIn = (provider: SocialAuthenticationProvider) => {
@@ -132,7 +142,10 @@ export default function SignIn({
                   autoFocus
                   disabled={loading}
                   value={formData.email}
-                  onChange={(e) => setFormData({ email: e.target.value })}
+                  onChange={(e) => {
+                    setErrorMessage(null);
+                    setFormData({ email: e.target.value });
+                  }}
                   type="email"
                   placeholder="admin@example.com"
                   required
@@ -152,11 +165,23 @@ export default function SignIn({
                       emailAndPasswordSignIn();
                     }
                   }}
-                  onChange={(e) => setFormData({ password: e.target.value })}
+                  onChange={(e) => {
+                    setErrorMessage(null);
+                    setFormData({ password: e.target.value });
+                  }}
                   type="password"
                   required
                 />
               </div>
+              {errorMessage && (
+                <p
+                  role="alert"
+                  data-testid="signin-error"
+                  className="text-sm text-destructive -my-2"
+                >
+                  {errorMessage}
+                </p>
+              )}
               <Button
                 className="w-full"
                 onClick={emailAndPasswordSignIn}

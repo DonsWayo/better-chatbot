@@ -55,7 +55,10 @@ describe("POST /api/mcp", () => {
   it("creates MCP server and returns its id", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canCreateMCPMock.mockResolvedValueOnce(true);
-    saveMcpClientActionMock.mockResolvedValueOnce("mcp-new");
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: true,
+      id: "mcp-new",
+    });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ name: "My MCP", url: "http://mcp" }));
     expect(res.status).toBe(200);
@@ -71,7 +74,10 @@ describe("POST /api/mcp", () => {
       name: "my-mcp",
       config: { url: "http://mcp.example.com" },
     };
-    saveMcpClientActionMock.mockResolvedValueOnce("srv-1");
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: true,
+      id: "srv-1",
+    });
     const { POST } = await import("./route");
     await POST(makeRequest(serverPayload));
     expect(saveMcpClientActionMock).toHaveBeenCalledWith(serverPayload);
@@ -119,7 +125,8 @@ describe("POST /api/mcp", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canCreateMCPMock.mockResolvedValueOnce(true);
     saveMcpClientActionMock.mockResolvedValueOnce({
-      client: { getInfo: () => ({ id: "srv-ok" }) },
+      success: true,
+      id: "srv-ok",
     });
     const { POST } = await import("./route");
     await POST(makeRequest({ name: "new-mcp" }));
@@ -157,7 +164,10 @@ describe("POST /api/mcp — additional", () => {
   it("200 body has success:true and id on creation", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canCreateMCPMock.mockResolvedValueOnce(true);
-    saveMcpClientActionMock.mockResolvedValueOnce("mcp-success");
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: true,
+      id: "mcp-success",
+    });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ name: "test-mcp" }));
     const body = await res.json();
@@ -199,7 +209,8 @@ describe("POST /api/mcp — response shape", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canCreateMCPMock.mockResolvedValueOnce(true);
     saveMcpClientActionMock.mockResolvedValueOnce({
-      client: { getInfo: () => ({ id: "mcp-ok" }) },
+      success: true,
+      id: "mcp-ok",
     });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ name: "new-mcp" }));

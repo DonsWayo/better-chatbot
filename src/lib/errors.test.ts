@@ -9,6 +9,7 @@ import {
   StorageQuotaExceededError,
   UnsupportedFileTypeError,
   NotImplementedError,
+  extractApiErrorMessage,
 } from "./errors";
 
 describe("AppError", () => {
@@ -102,7 +103,9 @@ describe("FileStorageError subclasses — inheritance", () => {
   });
 
   it("UnsupportedFileTypeError is instanceof FileStorageError", () => {
-    expect(new UnsupportedFileTypeError("text/plain")).toBeInstanceOf(FileStorageError);
+    expect(new UnsupportedFileTypeError("text/plain")).toBeInstanceOf(
+      FileStorageError,
+    );
   });
 });
 
@@ -135,5 +138,58 @@ describe("AppError subclasses — inheritance", () => {
     for (const e of errors) {
       expect(e).toBeInstanceOf(Error);
     }
+  });
+});
+
+describe("extractApiErrorMessage", () => {
+  it("returns plain strings unchanged", () => {
+    expect(extractApiErrorMessage("Something broke")).toBe("Something broke");
+  });
+
+  it("extracts message field from a JSON body string", () => {
+    expect(extractApiErrorMessage('{"message":"Team budget exhausted"}')).toBe(
+      "Team budget exhausted",
+    );
+  });
+
+  it("extracts error field when message is absent", () => {
+    expect(
+      extractApiErrorMessage('{"error":"Voice chat is not enabled."}'),
+    ).toBe("Voice chat is not enabled.");
+  });
+
+  it("prefers message over error code", () => {
+    expect(
+      extractApiErrorMessage(
+        '{"error":"voice_not_configured","message":"Voice is not available on this deployment."}',
+      ),
+    ).toBe("Voice is not available on this deployment.");
+  });
+
+  it("handles nested error objects", () => {
+    expect(
+      extractApiErrorMessage('{"error":{"message":"Team budget exhausted"}}'),
+    ).toBe("Team budget exhausted");
+  });
+
+  it("accepts already-parsed objects", () => {
+    expect(extractApiErrorMessage({ message: "boom" })).toBe("boom");
+    expect(extractApiErrorMessage({ error: "boom" })).toBe("boom");
+  });
+
+  it("returns invalid JSON as-is", () => {
+    expect(extractApiErrorMessage("{not json")).toBe("{not json");
+  });
+
+  it("handles null/undefined safely", () => {
+    expect(extractApiErrorMessage(null)).toBe("");
+    expect(extractApiErrorMessage(undefined)).toBe("");
+  });
+
+  it("never returns a raw JSON object string for API-style bodies", () => {
+    const result = extractApiErrorMessage(
+      '{"message":"Team budget exhausted"}',
+    );
+    expect(result.startsWith("{")).toBe(false);
   });
 });

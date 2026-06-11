@@ -1,3 +1,4 @@
+import { canManageMCPServer } from "lib/auth/permissions";
 import { mcpRepository } from "lib/db/repository";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -5,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Alert } from "ui/alert";
 
+import { ConnectorDeleteButton } from "@/components/connector-delete-button";
 import MCPEditor from "@/components/mcp-editor";
 import { ConnectorCustomizationSection } from "@/components/settings/connector-customization-section";
 
@@ -24,6 +26,14 @@ export default async function ConnectorModifyPage({
     return redirect("/settings/connectors");
   }
 
+  // Same permission removeMcpClientAction enforces server-side (owner of a
+  // private server, or admin) — only show the delete affordance when the
+  // action would actually succeed.
+  const canDelete = await canManageMCPServer(
+    mcpClient.userId,
+    mcpClient.visibility,
+  );
+
   return (
     <div className="flex flex-col gap-2">
       <Link
@@ -33,13 +43,18 @@ export default async function ConnectorModifyPage({
         <ArrowLeft className="size-3" />
         {t("Common.back")}
       </Link>
-      <header>
-        <h2 className="text-3xl font-semibold my-2">
-          {t("MCP.mcpConfiguration")}
-        </h2>
-        <p className="text text-muted-foreground">
-          {t("MCP.configureYourMcpServerConnectionSettings")}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <h2 className="text-3xl font-semibold my-2">
+            {t("MCP.mcpConfiguration")}
+          </h2>
+          <p className="text text-muted-foreground">
+            {t("MCP.configureYourMcpServerConnectionSettings")}
+          </p>
+        </div>
+        {canDelete && (
+          <ConnectorDeleteButton id={mcpClient.id} name={mcpClient.name} />
+        )}
       </header>
 
       <main className="my-8 flex flex-col gap-10">

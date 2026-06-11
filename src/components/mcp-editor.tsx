@@ -11,7 +11,6 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import JsonView from "./ui/json-view";
 import { toast } from "sonner";
-import { safe } from "ts-safe";
 import { useRouter } from "next/navigation";
 import { createDebounce, isNull, safeJSONParse } from "lib/utils";
 import { saveMcpClientAction } from "@/app/api/mcp/actions";
@@ -165,23 +164,33 @@ export default function MCPEditor({
       );
     }
 
-    safe(() => setIsLoading(true))
-      .map(async () => {
-        if (shouldInsert) {
-          const exist = await existMcpClientByServerNameAction(name);
-          if (exist) {
-            throw new Error(t("MCP.nameAlreadyExists"));
-          }
+    setIsLoading(true);
+    try {
+      if (shouldInsert) {
+        const exist = await existMcpClientByServerNameAction(name);
+        if (exist) {
+          toast.error(t("MCP.nameAlreadyExists"), { id: "mcp-editor-error" });
+          return;
         }
-      })
-      .map(() => saveMcpClientAction({ name, config, id } as never))
-      .ifOk(() => {
-        toast.success(t("MCP.configurationSavedSuccessfully"));
-        mutate("/api/mcp/list");
-        router.push("/settings/connectors");
-      })
-      .ifFail(handleErrorWithToast)
-      .watch(() => setIsLoading(false));
+      }
+      // The action returns a structured result instead of throwing — thrown
+      // Server Action errors are masked into an opaque 500 in production, so
+      // the user would never see why the save failed (permission denial,
+      // validation error, unreachable MCP URL, ...).
+      const result = await saveMcpClientAction({ name, config, id } as never);
+      if (!result.success) {
+        toast.error(result.error, { id: "mcp-editor-error" });
+        return;
+      }
+      toast.success(t("MCP.configurationSavedSuccessfully"));
+      mutate("/api/mcp/list");
+      router.push("/settings/connectors");
+    } catch (error) {
+      // Network failures / unexpected server errors (masked in production).
+      handleErrorWithToast(error as Error, "mcp-editor-error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleConfigChange = (data: string) => {

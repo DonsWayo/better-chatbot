@@ -251,7 +251,9 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // preload uses ipcRenderer; contextBridge still isolates renderer
-      preload: path.join(__dirname, "preload.js"),
+      // preload.cts → emitted as CommonJS preload.cjs (Electron require()s the
+      // preload; with "type":"module" a plain .js would be ESM → ERR_REQUIRE_ESM)
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
 

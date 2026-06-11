@@ -257,9 +257,14 @@ export function ChatBotVoice() {
   }, [voiceChat.isOpen]);
 
   useEffect(() => {
-    if (error && isActive) {
-      toast.error(error.message);
+    if (!error) return;
+    toast.error(error.message);
+    if (isActive) {
       stop();
+    } else {
+      // Session never started (e.g. voice not enabled / not configured):
+      // close the drawer cleanly instead of leaving a broken error state.
+      endVoiceChat();
     }
   }, [error]);
 

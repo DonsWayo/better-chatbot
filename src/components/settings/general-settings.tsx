@@ -53,11 +53,14 @@ export function GeneralSettings() {
             aria-label={t("theme")}
             data-testid="settings-theme-toggle"
           >
+            {/* pointer-events-none: these are decorative indicators; without it
+                they intercept the click (elementFromPoint hits them instead of
+                the switch) and the first tap is swallowed. */}
             <div
               className={cn(
                 theme === "dark" &&
                   "bg-accent ring ring-muted-foreground/40 text-foreground",
-                "rounded-full p-1.5",
+                "pointer-events-none rounded-full p-1.5",
               )}
             >
               <MoonStar className="size-3.5" />
@@ -66,7 +69,7 @@ export function GeneralSettings() {
               className={cn(
                 theme === "light" &&
                   "bg-accent ring ring-muted-foreground/40 text-foreground",
-                "rounded-full p-1.5",
+                "pointer-events-none rounded-full p-1.5",
               )}
             >
               <Sun className="size-3.5" />
@@ -87,7 +90,9 @@ export function GeneralSettings() {
             <SelectContent className="max-h-96">
               {BASE_THEMES.map((style) => (
                 <SelectItem key={style} value={style}>
-                  {capitalizeFirstLetter(style)}
+                  {style === "default"
+                    ? t("themeStyleDefault")
+                    : capitalizeFirstLetter(style)}
                 </SelectItem>
               ))}
             </SelectContent>

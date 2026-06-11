@@ -1,7 +1,10 @@
 "use client";
+import { addItemToArchiveAction } from "@/app/api/archive/actions";
 import { deleteThreadAction, updateThreadAction } from "@/app/api/chat/actions";
 import { appStore } from "@/app/store";
+import { useArchives } from "@/hooks/queries/use-archives";
 import { useToRef } from "@/hooks/use-latest";
+import { notify } from "lib/notify";
 import {
   Archive,
   ChevronRight,
@@ -10,12 +13,20 @@ import {
   Trash,
   UploadIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { type PropsWithChildren, useState } from "react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 import { safe } from "ts-safe";
 import { Button } from "ui/button";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "ui/command";
 import {
   Dialog,
   DialogClose,
@@ -26,24 +37,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "ui/dialog";
-import { Input } from "ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "ui/dropdown-menu";
-import { useTranslations } from "next-intl";
-import { addItemToArchiveAction } from "@/app/api/archive/actions";
-import { useShallow } from "zustand/shallow";
+import { Input } from "ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 import { ChatExportPopup } from "./export/chat-export-popup";
 
 type Props = PropsWithChildren<{
@@ -66,9 +67,9 @@ export function ThreadDropdown({
   const t = useTranslations();
   const push = useToRef(router.push);
 
-  const [currentThreadId, archiveList] = appStore(
-    useShallow((state) => [state.currentThreadId, state.archiveList]),
-  );
+  const currentThreadId = appStore((state) => state.currentThreadId);
+  const { data } = useArchives();
+  const archiveList = data ?? [];
 
   const [open, setOpen] = useState(false);
 
@@ -93,6 +94,13 @@ export function ThreadDropdown({
   };
 
   const handleDelete = async (_e: React.MouseEvent) => {
+    const ok = await notify.confirm({
+      title: t("Chat.Thread.deleteChat"),
+      description: `${t("Chat.Thread.areYouSureYouWantToDeleteThisChatThread")} ${t("Chat.Thread.thisActionCannotBeUndone")}`,
+      okText: t("Common.delete"),
+      cancelText: t("Common.cancel"),
+    });
+    if (!ok) return;
     safe()
       .watch(() => setIsDeleting(true))
       .ifOk(() => deleteThreadAction(threadId))

@@ -1,8 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
+const { getSessionMock, getTeamPolicyMock, getUserPrimaryTeamIdMock } =
+  vi.hoisted(() => ({
+    getSessionMock: vi.fn(),
+    getTeamPolicyMock: vi.fn(),
+    getUserPrimaryTeamIdMock: vi.fn(),
+  }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/admin/teams", () => ({
+  getTeamPolicy: getTeamPolicyMock,
+  getUserPrimaryTeamId: getUserPrimaryTeamIdMock,
+}));
 vi.mock("../shared.chat", () => ({
   filterMcpServerCustomizations: vi.fn(() => ({})),
   loadMcpTools: vi.fn().mockResolvedValue({}),
@@ -32,6 +41,18 @@ function makeRequest(body?: unknown): any {
   return { json: () => Promise.resolve(body ?? {}) };
 }
 
+function entitled() {
+  getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+  getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
+  getTeamPolicyMock.mockResolvedValue({ allowSpeech: true });
+}
+
+function notEntitled() {
+  getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+  getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
+  getTeamPolicyMock.mockResolvedValue({ allowSpeech: false });
+}
+
 describe("POST /api/chat/openai-realtime", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,29 +66,12 @@ describe("POST /api/chat/openai-realtime", () => {
     expect(res.status).toBe(401);
   });
 
-  it("checks OPENAI_API_KEY before auth when key is missing", async () => {
+  it("returns 401 (not 500) when unauthenticated and key missing — auth runs before key check", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ model: "gpt-4o" }));
-    expect(res.status).toBe(500);
-  });
-
-  it("returns 500 when OPENAI_API_KEY is missing", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const { POST } = await import("./route");
-    const res = await POST(makeRequest({ model: "gpt-4o" }));
-    expect(res.status).toBe(500);
-  });
-
-  it("500 body has error field when API key missing", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const { POST } = await import("./route");
-    const res = await POST(makeRequest({}));
-    const body = await res.json();
-    expect(body).toHaveProperty("error");
+    expect(res.status).toBe(401);
   });
 
   it("401 body text is 'Unauthorized' not JSON", async () => {
@@ -79,34 +83,11 @@ describe("POST /api/chat/openai-realtime", () => {
     expect(text).toBe("Unauthorized");
   });
 
-  it("never calls getSession when API key is missing", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    const { POST } = await import("./route");
-    await POST(makeRequest({}));
-    expect(getSessionMock).not.toHaveBeenCalled();
-  });
-
   it("returns 401 when session user id is empty string", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "" } });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
     expect(res.status).toBe(401);
-  });
-
-  it("key-missing 500 error message mentions OPENAI_API_KEY", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const { POST } = await import("./route");
-    const res = await POST(makeRequest({}));
-    const body = await res.json();
-    expect(body.error).toContain("OPENAI_API_KEY");
-  });
-
-  it("getSession called exactly once when API key is present", async () => {
-    getSessionMock.mockResolvedValue(null);
-    const { POST } = await import("./route");
-    await POST(makeRequest({}));
-    expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns 401 when session user id is undefined", async () => {
@@ -116,22 +97,58 @@ describe("POST /api/chat/openai-realtime", () => {
     expect(res.status).toBe(401);
   });
 
-  it("500 response body is valid JSON when key is missing", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    getSessionMock.mockResolvedValue(null);
+  it("returns 403 when team policy does not allow speech", async () => {
+    notEntitled();
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(403);
     const body = await res.json();
-    expect(typeof body.error).toBe("string");
+    expect(body.error).toBe("Voice chat is not enabled for your team.");
   });
 
-  it("401 text equals exactly Unauthorized when session user id is empty string", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "" } });
+  it("returns 403 when user has no team", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    getUserPrimaryTeamIdMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(403);
+    expect(getTeamPolicyMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 (not 503) for non-entitled user even when key is missing — entitlement runs before key check", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    notEntitled();
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 503 with voice_not_configured for entitled user when key is missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    entitled();
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({}));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe("voice_not_configured");
+    expect(body.message).toBe("Voice is not available on this deployment.");
+  });
+
+  it("503 body never mentions OPENAI_API_KEY", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    entitled();
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
     const text = await res.text();
-    expect(text).toBe("Unauthorized");
+    expect(text).not.toContain("OPENAI_API_KEY");
+  });
+
+  it("getSession is always called, even when key is missing", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({}));
+    expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -158,57 +175,19 @@ describe("POST /api/chat/openai-realtime — additional", () => {
     expect(res.status).toBe(500);
   });
 
-  it("result is a Response instance when API key missing", async () => {
+  it("result is a Response instance when API key missing for entitled user", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
-    getSessionMock.mockResolvedValue(null);
+    entitled();
     const { POST } = await import("./route");
     const res = await POST(makeRequest({}));
     expect(res).toBeInstanceOf(Response);
+    expect(res.status).toBe(503);
   });
 
-  it("getSession not called when OPENAI_API_KEY is absent", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    const { POST } = await import("./route");
-    await POST(makeRequest({}));
-    expect(getSessionMock).not.toHaveBeenCalled();
-  });
-});
-
-describe("POST /api/chat/openai-realtime — call count invariants", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.resetModules();
-  });
-
-  it("getSession called exactly once when API key is present", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+  it("getSession called exactly once per request", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
     await POST(makeRequest({}));
     expect(getSessionMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("POST returns 401 Response when unauthenticated", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "sk-test");
-    getSessionMock.mockResolvedValue(null);
-    const { POST } = await import("./route");
-    const res = await POST(makeRequest({}));
-    expect(res).toBeInstanceOf(Response);
-    expect(res.status).toBe(401);
-  });
-
-  it("POST returns 503 Response when API key is absent", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "");
-    const { POST } = await import("./route");
-    const res = await POST(makeRequest({}));
-    expect(res).toBeInstanceOf(Response);
-  });
-
-  it("getSession not called twice on single POST request", async () => {
-    vi.stubEnv("OPENAI_API_KEY", "sk-test");
-    getSessionMock.mockResolvedValue(null);
-    const { POST } = await import("./route");
-    await POST(makeRequest({}));
-    expect(getSessionMock).not.toHaveBeenCalledTimes(2);
   });
 });

@@ -28,15 +28,8 @@ const logger = globalLogger.withDefaults({
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "OPENAI_API_KEY is not set" }),
-        {
-          status: 500,
-        },
-      );
-    }
-
+    // Auth and entitlement checks must run before any deployment-config
+    // checks so callers get accurate 401/403 responses first.
     const session = await getSession();
 
     if (!session?.user.id) {
@@ -56,6 +49,19 @@ export async function POST(request: NextRequest) {
           error: "Voice chat is not enabled for your team.",
         }),
         { status: 403 },
+      );
+    }
+
+    // Entitled user but the deployment has no OpenAI key: service unavailable,
+    // not a server error.
+    if (!process.env.OPENAI_API_KEY) {
+      logger.error("OPENAI_API_KEY is not set; voice chat unavailable");
+      return Response.json(
+        {
+          error: "voice_not_configured",
+          message: "Voice is not available on this deployment.",
+        },
+        { status: 503 },
       );
     }
 

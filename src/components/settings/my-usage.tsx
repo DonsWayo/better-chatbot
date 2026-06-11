@@ -1,6 +1,7 @@
 "use client";
 
 import { Coins, MessageSquare, Wallet, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Badge } from "ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
@@ -46,6 +47,7 @@ function fmtTokens(n: number) {
 }
 
 export function MyUsageSection() {
+  const t = useTranslations("Settings");
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +82,7 @@ export function MyUsageSection() {
 
   return (
     <section data-testid="my-usage-section">
-      <h2 className="font-medium mb-3">Usage (last 30 days)</h2>
+      <h2 className="font-medium mb-3">{t("usageTitle")}</h2>
 
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-3 mb-4">
@@ -90,21 +92,23 @@ export function MyUsageSection() {
             <p className="text-xl font-semibold">
               {fmtCost(summary.totalCostUsd)}
             </p>
-            <p className="text-xs text-muted-foreground">Cost</p>
+            <p className="text-xs text-muted-foreground">{t("usageCost")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <Zap className="size-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xl font-semibold">{fmtTokens(totalTokens)}</p>
-            <p className="text-xs text-muted-foreground">Tokens</p>
+            <p className="text-xs text-muted-foreground">{t("usageTokens")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <MessageSquare className="size-4 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xl font-semibold">{summary.requestCount}</p>
-            <p className="text-xs text-muted-foreground">Requests</p>
+            <p className="text-xs text-muted-foreground">
+              {t("usageRequests")}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -115,13 +119,13 @@ export function MyUsageSection() {
           <CardHeader className="pb-2 pt-4">
             <CardTitle className="text-sm flex items-center gap-2">
               <Wallet className="size-4" />
-              Team Budget
+              {t("usageTeamBudget")}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
             <div className="flex justify-between text-sm mb-1">
               <span className={budgetColor + " font-medium"}>
-                {budget.pct}% used
+                {t("usagePercentUsed", { pct: budget.pct })}
               </span>
               <span className="text-muted-foreground">
                 {fmtCost(budget.usedUsd)} / {fmtCost(budget.budgetUsd)}
@@ -134,7 +138,7 @@ export function MyUsageSection() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Period:{" "}
+              {t("usagePeriod")}:{" "}
               {new Date(budget.periodStart).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -154,7 +158,7 @@ export function MyUsageSection() {
       {byModel.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-4">
-            <CardTitle className="text-sm">By model</CardTitle>
+            <CardTitle className="text-sm">{t("usageByModel")}</CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
             <div className="space-y-2">
@@ -168,8 +172,12 @@ export function MyUsageSection() {
                       {row.model}
                     </Badge>
                     <span className="text-muted-foreground text-xs truncate">
-                      {fmtTokens(row.promptTokens + row.completionTokens)}{" "}
-                      tokens · {row.requestCount} req
+                      {t("usageTokensAndRequests", {
+                        tokens: fmtTokens(
+                          row.promptTokens + row.completionTokens,
+                        ),
+                        requests: row.requestCount,
+                      })}
                     </span>
                   </div>
                   <span className="font-medium shrink-0">
@@ -183,9 +191,7 @@ export function MyUsageSection() {
       )}
 
       {byModel.length === 0 && summary.requestCount === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No activity in the last 30 days.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("usageNoActivity")}</p>
       )}
     </section>
   );

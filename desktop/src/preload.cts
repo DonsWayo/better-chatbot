@@ -4,6 +4,10 @@
  * Runs in an isolated context (contextIsolation:true).
  * Exposes a minimal, typed surface to the renderer via contextBridge.
  *
+ * NOTE: this file is .cts on purpose — Electron loads preload scripts via
+ * require(), and package.json has "type":"module", so the preload must be
+ * emitted as CommonJS with a .cjs extension (dist/preload.cjs). Keep it .cts.
+ *
  * DO NOT expose Node.js APIs or electron internals directly to the renderer.
  * Every new capability requires deliberate review here.
  */

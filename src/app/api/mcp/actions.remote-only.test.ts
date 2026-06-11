@@ -54,29 +54,37 @@ beforeEach(() => {
 });
 
 describe("saveMcpClientAction — remote-only deployment (cloud)", () => {
+  // Structured results (not throws): thrown Server Action errors are masked
+  // into an opaque 500 in production, hiding the reason from the user.
   it("rejects stdio configs with a clear error", async () => {
-    await expect(
-      saveMcpClientAction({
-        name: "local-server",
-        config: STDIO_CONFIG,
-      } as Parameters<typeof saveMcpClientAction>[0]),
-    ).rejects.toThrow(/Local \(stdio\) MCP servers are not supported/);
+    const result = await saveMcpClientAction({
+      name: "local-server",
+      config: STDIO_CONFIG,
+    } as Parameters<typeof saveMcpClientAction>[0]);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(
+        /Local \(stdio\) MCP servers are not supported/,
+      ),
+    });
   });
 
   it("error message mentions the desktop app", async () => {
-    await expect(
-      saveMcpClientAction({
-        name: "local-server",
-        config: STDIO_CONFIG,
-      } as Parameters<typeof saveMcpClientAction>[0]),
-    ).rejects.toThrow(/desktop app/);
+    const result = await saveMcpClientAction({
+      name: "local-server",
+      config: STDIO_CONFIG,
+    } as Parameters<typeof saveMcpClientAction>[0]);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/desktop app/),
+    });
   });
 
   it("does not persist a stdio config", async () => {
     await saveMcpClientAction({
       name: "local-server",
       config: STDIO_CONFIG,
-    } as Parameters<typeof saveMcpClientAction>[0]).catch(() => undefined);
+    } as Parameters<typeof saveMcpClientAction>[0]);
     expect(mcpClientsManagerMock.persistClient).not.toHaveBeenCalled();
   });
 
@@ -86,7 +94,7 @@ describe("saveMcpClientAction — remote-only deployment (cloud)", () => {
       name: "remote-server",
       config: REMOTE_CONFIG,
     } as Parameters<typeof saveMcpClientAction>[0]);
-    expect(result).toBe("server-1");
+    expect(result).toEqual({ success: true, id: "server-1" });
     expect(mcpClientsManagerMock.persistClient).toHaveBeenCalledWith(
       expect.objectContaining({ config: REMOTE_CONFIG }),
     );

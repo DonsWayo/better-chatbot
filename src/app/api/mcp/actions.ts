@@ -67,9 +67,37 @@ export async function selectMcpClientAction(id: string) {
   };
 }
 
+export type SaveMcpClientResult =
+  | { success: true; id: string }
+  | { success: false; error: string };
+
+/**
+ * Saves (creates or updates) an MCP connector.
+ *
+ * Returns a structured result instead of throwing: in production Next.js
+ * masks errors thrown from Server Actions into an opaque 500 ("digest")
+ * response, so the client would never see WHY the save failed (permission
+ * denial, validation error, unreachable server URL, ...). Returning the
+ * message keeps it user-readable across the RSC boundary.
+ */
 export async function saveMcpClientAction(
   server: typeof McpServerTable.$inferInsert,
-) {
+): Promise<SaveMcpClientResult> {
+  try {
+    const id = await saveMcpClientOrThrow(server);
+    return { success: true, id };
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Failed to save the MCP connection. Please try again.";
+    return { success: false, error: message };
+  }
+}
+
+async function saveMcpClientOrThrow(
+  server: typeof McpServerTable.$inferInsert,
+): Promise<string> {
   if (process.env.NOT_ALLOW_ADD_MCP_SERVERS) {
     throw new Error("Not allowed to add MCP servers");
   }
@@ -159,6 +187,8 @@ export async function saveMcpClientAction(
   // It must NOT return the live MCP client — that holds a back-reference to
   // the manager (a circular graph), and a Server Action returning it makes
   // Next.js blow the stack serializing it across the RSC boundary.
+  // Note: persistClient also CONNECTS to the server; an unreachable URL
+  // rejects here and surfaces as a structured error to the caller.
   return mcpClientsManager.persistClient(serverWithUser);
 }
 

@@ -56,7 +56,7 @@ export function UserAccessCard({
         <CardContent className="space-y-6">
           {/* Roles Section */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-medium flex items-center gap-2">
                 <UserCheck className="h-4 w-4" />
                 {t("roles")}
@@ -128,8 +128,11 @@ export function UserAccessCard({
             </Label>
 
             <div className="rounded-lg border bg-muted/30 p-3">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
+              {/* flex-wrap + min-w-0 so long localized button labels (e.g.
+                  Japanese "Change Password") wrap below instead of
+                  overflowing the card at narrow widths. */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0 space-y-1">
                   <p className="text-sm font-medium">
                     {tCommon("passwordManagement")}
                   </p>
@@ -169,8 +172,8 @@ export function UserAccessCard({
               </Label>
 
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0 space-y-1">
                     <p className="text-sm font-medium text-destructive">
                       {t("deleteUser")}
                     </p>

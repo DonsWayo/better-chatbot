@@ -71,12 +71,25 @@ export function SidebarHeaderShared({
             <Link href={href} onClick={handleLinkClick}>
               <h4 className="font-bold">{title}</h4>
               {showMobileToggle && (
+                // md:hidden (not sm:hidden): the mobile Sheet branch is active
+                // below 768px (useIsMobile), so the close control must be
+                // visible across that whole range.
                 <div
-                  className="ml-auto block sm:hidden"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Close sidebar"
+                  className="ml-auto block cursor-pointer p-1 md:hidden"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setOpenMobile(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setOpenMobile(false);
+                    }
                   }}
                   data-state={open ? "open" : "closed"}
                   data-testid="sidebar-header-toggle-mobile"

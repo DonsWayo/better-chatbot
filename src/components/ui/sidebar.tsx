@@ -28,7 +28,11 @@ import { COOKIE_KEY_SIDEBAR_STATE } from "lib/const";
 
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
-const SIDEBAR_WIDTH_MOBILE = "100%";
+// Must be narrower than the viewport so the Sheet overlay stays visible and
+// tappable — at 100% the dialog covered the whole screen and trapped the user
+// (no backdrop to tap, toggle button underneath the dialog). 18rem matches
+// the shadcn default and leaves a dismissable backdrop strip on small phones.
+const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
@@ -187,7 +191,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) max-w-[85vw] p-0 [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,

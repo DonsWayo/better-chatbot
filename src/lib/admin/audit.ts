@@ -74,7 +74,12 @@ export async function getAuditLog(
         createdAt: AsafeAuditLogTable.createdAt,
       })
       .from(AsafeAuditLogTable)
-      .leftJoin(UserTable, eq(UserTable.id, AsafeAuditLogTable.userId))
+      // audit user_id is text (may hold non-uuid actor ids); user.id is uuid —
+      // cast the uuid side so Postgres doesn't reject the join (uuid = text).
+      .leftJoin(
+        UserTable,
+        sql`${UserTable.id}::text = ${AsafeAuditLogTable.userId}`,
+      )
       .where(where)
       .orderBy(desc(AsafeAuditLogTable.createdAt))
       .limit(limit)

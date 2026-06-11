@@ -5,6 +5,7 @@ import { memo, useMemo, useState } from "react";
 import equal from "lib/equal";
 
 import { cn, truncateString } from "lib/utils";
+import { extractApiErrorMessage } from "lib/errors";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import {
   UserMessagePart,
@@ -210,6 +211,15 @@ export const ErrorMessage = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const maxLength = 200;
   const t = useTranslations();
+  // API routes respond with JSON bodies (e.g. {"message":"Team budget
+  // exhausted"}); never render the raw JSON string to the user.
+  const displayMessage = useMemo(() => {
+    const message = extractApiErrorMessage(error.message);
+    if (/budget exhausted/i.test(message)) {
+      return t("Chat.budgetExhausted");
+    }
+    return message;
+  }, [error.message, t]);
   return (
     <div className="w-full mx-auto max-w-3xl px-6 animate-in fade-in mt-4">
       <div className="flex flex-col gap-2">
@@ -223,10 +233,10 @@ export const ErrorMessage = ({
               <div className="text-sm text-muted-foreground">
                 <div className="whitespace-pre-wrap">
                   {isExpanded
-                    ? error.message
-                    : truncateString(error.message, maxLength)}
+                    ? displayMessage
+                    : truncateString(displayMessage, maxLength)}
                 </div>
-                {error.message.length > maxLength && (
+                {displayMessage.length > maxLength && (
                   <Button
                     onClick={() => setIsExpanded(!isExpanded)}
                     variant={"ghost"}

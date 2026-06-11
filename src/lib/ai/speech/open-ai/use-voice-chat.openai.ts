@@ -8,6 +8,7 @@ import {
   VoiceChatSession,
 } from "..";
 import { generateUUID } from "lib/utils";
+import { extractApiErrorMessage } from "lib/errors";
 import { TextPart, ToolUIPart } from "ai";
 import {
   OpenAIRealtimeServerEvent,
@@ -150,11 +151,17 @@ export function useOpenAIVoiceChat(props?: VoiceChatOptions): VoiceChatSession {
         },
       );
       if (response.status !== 200) {
-        throw new Error(await response.text());
+        // API errors come back as JSON bodies (e.g. {"error":"...","message":
+        // "..."}); surface the human-readable message, never raw JSON.
+        const raw = await response.text();
+        const message = extractApiErrorMessage(raw);
+        throw new Error(
+          message || `Voice session failed (status ${response.status})`,
+        );
       }
       const session = await response.json();
       if (session.error) {
-        throw new Error(session.error.message);
+        throw new Error(extractApiErrorMessage(session.error));
       }
 
       return session;
@@ -479,6 +486,7 @@ export function useOpenAIVoiceChat(props?: VoiceChatOptions): VoiceChatSession {
       setIsActive(false);
       setIsListening(false);
       setIsLoading(false);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
     }
