@@ -38,7 +38,7 @@ const STATUS_LABEL_KEY: Record<AgentSessionStatus, string> = {
 
 const STATUS_BADGE_CLASS: Record<AgentSessionStatus, string> = {
   queued: "bg-muted text-muted-foreground",
-  running: "bg-[#FFC72C]/15 text-[#9a7b00] dark:text-[#FFC72C]",
+  running: "bg-primary/15 text-[#0E7C83] dark:text-primary",
   awaiting_approval: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   paused: "bg-muted text-muted-foreground",
   completed: "bg-green-500/15 text-green-600 dark:text-green-400",
@@ -47,7 +47,7 @@ const STATUS_BADGE_CLASS: Record<AgentSessionStatus, string> = {
 };
 
 const STEP_STATUS_CLASS: Record<AgentStepStatus, string> = {
-  running: "bg-[#FFC72C]/15 text-[#9a7b00] dark:text-[#FFC72C]",
+  running: "bg-primary/15 text-[#0E7C83] dark:text-primary",
   completed: "bg-green-500/15 text-green-600 dark:text-green-400",
   failed: "bg-red-500/15 text-red-600 dark:text-red-400",
   skipped: "bg-muted text-muted-foreground",

@@ -31,7 +31,7 @@ export function AupClient({ version }: AupClientProps) {
           </CardTitle>
         </div>
         <p className="text-sm text-muted-foreground">
-          Version {version} — Please read and accept before using Asafe AI.
+          Version {version} — Please read and accept before using Conek AI.
         </p>
       </CardHeader>
 
@@ -49,7 +49,7 @@ export function AupClient({ version }: AupClientProps) {
 
           <h2 className="font-semibold mt-4">2. Authorised Use</h2>
           <p>
-            Asafe AI is for professional use by A Safe Digital employees. Use it
+            Conek AI is for professional use by A Safe Digital employees. Use it
             to assist with legitimate work tasks. Do not use it for personal,
             commercial, or unlawful purposes.
           </p>
@@ -116,7 +116,7 @@ export function AupClient({ version }: AupClientProps) {
           />
           <span>
             I have read and agree to the Acceptable Use Policy. I understand
-            that my use of Asafe AI is logged and subject to these terms.
+            that my use of Conek AI is logged and subject to these terms.
           </span>
         </label>
 

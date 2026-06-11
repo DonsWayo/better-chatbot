@@ -109,7 +109,7 @@ export function RoutinesList({ routines }: { routines: RoutineItem[] }) {
               </p>
             </div>
             {enabled && (
-              <Badge className="rounded-full border-transparent bg-[#FFC72C]/15 text-[#9a7b00] dark:text-[#FFC72C]">
+              <Badge className="rounded-full border-transparent bg-primary/15 text-[#0E7C83] dark:text-primary">
                 {t("enabled")}
               </Badge>
             )}

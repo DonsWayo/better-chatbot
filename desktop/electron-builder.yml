@@ -2,7 +2,7 @@
 # https://www.electron.build/configuration/configuration
 
 appId: com.asafe.ai
-productName: Asafe AI
+productName: Conek AI
 
 # Source files to include in the packaged app
 files:
@@ -34,7 +34,7 @@ mac:
   # gatekeeperAssess: false     # skip local gatekeeper check during dev
   # Deep-link callback for SSO (asafe:// scheme)
   protocols:
-    - name: Asafe AI
+    - name: Conek AI
       schemes:
         - asafe
 
@@ -57,7 +57,7 @@ win:
   # Code-signing: set WIN_CSC_LINK + WIN_CSC_KEY_PASSWORD in CI (TBD, see ADR-0010).
   # Deep-link callback for SSO (registered by NSIS installer)
   protocols:
-    - name: Asafe AI
+    - name: Conek AI
       schemes:
         - asafe
 

@@ -29,7 +29,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Asafe AI",
+  title: "Conek AI",
   description:
     "A Safe Digital's internal AI assistant — connected, governed, and grounded in company knowledge.",
 };

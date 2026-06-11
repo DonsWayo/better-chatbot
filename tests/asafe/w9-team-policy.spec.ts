@@ -227,7 +227,7 @@ test.describe("W9: team policy API", () => {
     await page.goto(BASE);
     await page.waitForTimeout(1500);
     const dialog = page.getByRole("dialog", {
-      name: "Asafe AI — Acceptable Use Policy",
+      name: "Conek AI — Acceptable Use Policy",
     });
     await expect(dialog).not.toBeVisible();
   });

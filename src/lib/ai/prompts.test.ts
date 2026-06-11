@@ -102,9 +102,9 @@ describe("buildAgentGenerationPrompt", () => {
 });
 
 describe("buildUserSystemPrompt", () => {
-  it("defaults to Asafe AI when no agent or preferences given", () => {
+  it("defaults to Conek AI when no agent or preferences given", () => {
     const prompt = buildUserSystemPrompt();
-    expect(prompt).toContain("You are Asafe AI");
+    expect(prompt).toContain("You are Conek AI");
   });
 
   it("uses agent name when provided", () => {

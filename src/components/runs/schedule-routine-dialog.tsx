@@ -247,7 +247,7 @@ export function ScheduleRoutineDialog() {
           <Button
             onClick={submit}
             disabled={!canSubmit}
-            className="rounded-full bg-[#FFC72C] text-black hover:bg-[#FFC72C]/80"
+            className="rounded-full bg-primary text-primary-foreground hover:bg-[#2BA6AD]"
             data-testid="schedule-submit"
           >
             {submitting && <Loader2 className="size-3.5 animate-spin" />}

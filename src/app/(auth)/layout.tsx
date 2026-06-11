@@ -1,7 +1,7 @@
+import { ConekLogo } from "@/components/layouts/conek-logo";
 import { getSession } from "lib/auth/server";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { AsafeLogo } from "@/components/layouts/asafe-logo";
 import { FlipWords } from "ui/flip-words";
 
 export default async function AuthLayout({
@@ -37,7 +37,7 @@ export default async function AuthLayout({
             />
             {/* Content above video */}
             <div className="relative z-10 animate-in fade-in duration-1000">
-              <AsafeLogo className="h-10" />
+              <ConekLogo className="h-10" />
             </div>
             <div className="flex-1" />
             <div className="relative z-10">

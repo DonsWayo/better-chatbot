@@ -6,7 +6,7 @@ description: The in-app onboarding tours — what they cover, how they are trigg
 ## What the tours cover
 
 asafe-ai ships three short in-app tours, built on [NextStep](https://nextstepjs.com)
-with a custom card that follows the design language (one yellow action, calm copy):
+with a custom card that follows the design language (one teal action, calm copy):
 
 | Tour | Who sees it | When it fires | Stops |
 |---|---|---|---|
@@ -43,5 +43,5 @@ Everything is under `src/components/tour/`:
 
 - `app-tours.tsx` — provider + auto-start controller, mounted in the `(chat)` layout
 - `use-tour-steps.tsx` — builds the localized step definitions (`Tours` i18n namespace)
-- `asafe-tour-card.tsx` — the custom card (dialog semantics, step dots, yellow primary)
+- `asafe-tour-card.tsx` — the custom card (dialog semantics, step dots, teal primary)
 - `tour-logic.ts` — pure auto-start decision logic, unit-tested in `tour-logic.test.ts`

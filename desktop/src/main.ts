@@ -13,22 +13,22 @@
  */
 
 import {
-  app,
   BrowserWindow,
   Menu,
   MenuItem,
+  type MenuItemConstructorOptions,
   Notification,
+  app,
   dialog,
   ipcMain,
   nativeTheme,
   shell,
-  type MenuItemConstructorOptions,
 } from "electron";
-import { createSplashWindow, dismissSplash } from "./splash.js";
-import { OpencodeManager } from "./opencode-manager.js";
 // electron-updater is CommonJS — named imports break under ESM ("type": "module")
 import electronUpdaterPkg from "electron-updater";
 import windowStateKeeper from "electron-window-state";
+import { OpencodeManager } from "./opencode-manager.js";
+import { createSplashWindow, dismissSplash } from "./splash.js";
 
 const { autoUpdater } = electronUpdaterPkg;
 import path from "node:path";
@@ -36,8 +36,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const APP_URL =
-  process.env["ASAFE_APP_URL"] ?? "http://localhost:3000";
+const APP_URL = process.env["ASAFE_APP_URL"] ?? "http://localhost:3000";
 
 const UPDATE_URL = process.env["ASAFE_UPDATE_URL"];
 
@@ -244,7 +243,7 @@ function createWindow(): void {
     height: windowState.height,
     minWidth: 800,
     minHeight: 600,
-    title: "Asafe AI",
+    title: "Conek AI",
     show: false, // revealed by revealMainWindow() once ready (splash handoff)
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
     ...framelessOptions(),
@@ -315,9 +314,7 @@ function buildMenu(): void {
 
     {
       label: "File",
-      submenu: [
-        isMac ? { role: "close" as const } : { role: "quit" as const },
-      ],
+      submenu: [isMac ? { role: "close" as const } : { role: "quit" as const }],
     },
 
     {
@@ -374,7 +371,7 @@ function buildMenu(): void {
       role: "help" as const,
       submenu: [
         {
-          label: "Asafe AI Documentation",
+          label: "Conek AI Documentation",
           click: () => void shell.openExternal("https://docs.asafe.ai"),
         },
         {
@@ -464,7 +461,7 @@ function initAutoUpdate(): void {
     console.info("[auto-update] Update downloaded — installing on restart.");
     if (Notification.isSupported()) {
       const n = new Notification({
-        title: "Asafe AI update ready",
+        title: "Conek AI update ready",
         body: "A new version will be installed when you restart the app.",
       });
       n.show();
@@ -489,10 +486,10 @@ function initAutoUpdate(): void {
 // App identity — name, About panel, dev dock icon
 // ---------------------------------------------------------------------------
 
-app.setName("Asafe AI");
+app.setName("Conek AI");
 
 app.setAboutPanelOptions({
-  applicationName: "Asafe AI",
+  applicationName: "Conek AI",
   applicationVersion: app.getVersion(),
   copyright: "© 2026 A-SAFE Digital",
   credits:

@@ -138,7 +138,7 @@ export function UserInstructionsContent() {
             <Skeleton className="h-9" />
           ) : (
             <Input
-              placeholder="Asafe AI"
+              placeholder="Conek AI"
               value={preferences.botName}
               onChange={(e) => {
                 setPreferences({

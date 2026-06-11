@@ -409,7 +409,7 @@ export default function ChatBot({
     }
   }, [pendingThreadMention, threadId, appStoreMutate]);
 
-  // Draft handed over by the Cmd-K palette ("Ask A-SAFE AI: …") — prefill
+  // Draft handed over by the Cmd-K palette ("Ask Conek AI: …") — prefill
   // the composer once, then clear it. Only the new-chat instance ("/")
   // consumes it; ChatBot instances on /chat/[thread] must not steal the
   // draft while the palette navigates home.

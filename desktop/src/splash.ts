@@ -1,15 +1,15 @@
 /**
  * Branded splash window — shown while the web app loads.
  *
- * Brand safety-yellow card with the A-SAFE logo, a shine sweep across the
+ * Conek-teal card with the Conek AI logo, a shine sweep across the
  * wordmark, a pulsing halo glow, and loading dots. Self-contained: the logo
  * is inlined as base64 and the page is loaded from a data: URL, so nothing
  * extra needs to resolve at runtime (works identically packaged and in dev).
  */
 
-import { BrowserWindow, app } from "electron";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { BrowserWindow, app } from "electron";
 
 const SPLASH_WIDTH = 460;
 const SPLASH_HEIGHT = 320;
@@ -19,7 +19,10 @@ function loadLogoBase64(): string | null {
     const logoPath = path.join(app.getAppPath(), "assets", "splash-logo.png");
     return readFileSync(logoPath).toString("base64");
   } catch (err) {
-    console.warn("[splash] Logo asset missing — splash will be text-only:", err);
+    console.warn(
+      "[splash] Logo asset missing — splash will be text-only:",
+      err,
+    );
     return null;
   }
 }
@@ -30,10 +33,10 @@ function buildSplashHtml(): string {
 
   const logoMarkup = logoBase64
     ? `<div class="logo-wrap">
-         <img class="logo" src="${logoSrc}" alt="A-SAFE" draggable="false" />
+         <img class="logo" src="${logoSrc}" alt="Conek AI" draggable="false" />
          <div class="shine" style="-webkit-mask-image:url('${logoSrc}')"></div>
        </div>`
-    : `<div class="logo-text">A-SAFE</div>`;
+    : `<div class="logo-text">Conek AI</div>`;
 
   return /* html */ `<!doctype html>
 <html>
@@ -58,7 +61,7 @@ function buildSplashHtml(): string {
     width: 400px;
     height: 250px;
     border-radius: 50%;
-    background: radial-gradient(ellipse at center, rgba(255, 199, 44, 0.45), transparent 65%);
+    background: radial-gradient(ellipse at center, rgba(53, 191, 198, 0.45), transparent 65%);
     filter: blur(36px);
     animation: halo-pulse 2.6s ease-in-out infinite;
   }
@@ -67,13 +70,13 @@ function buildSplashHtml(): string {
     50%      { opacity: 1;    transform: scale(1.06); }
   }
 
-  /* Brand card — near-black with the yellow wordmark for maximum legibility */
+  /* Brand card — near-black with the teal wordmark for maximum legibility */
   .card {
     position: relative;
     width: 380px;
     height: 240px;
     border-radius: 24px;
-    border: 1px solid rgba(255, 199, 44, 0.25);
+    border: 1px solid rgba(53, 191, 198, 0.25);
     background: linear-gradient(160deg, #232323 0%, #161616 55%, #0d0d0d 100%);
     box-shadow:
       0 20px 60px rgba(0, 0, 0, 0.6),
@@ -91,15 +94,15 @@ function buildSplashHtml(): string {
     to   { opacity: 1; transform: scale(1) translateY(0); }
   }
 
-  /* Soft yellow light rays inside the card, like the app background */
+  /* Soft teal light rays inside the card, like the app background */
   .card::before {
     content: "";
     position: absolute;
     inset: -40%;
     background:
       conic-gradient(from 200deg at 30% -10%,
-        transparent 0deg, rgba(255, 199, 44, 0.14) 8deg, transparent 18deg,
-        transparent 40deg, rgba(255, 199, 44, 0.09) 50deg, transparent 62deg);
+        transparent 0deg, rgba(53, 191, 198, 0.14) 8deg, transparent 18deg,
+        transparent 40deg, rgba(53, 191, 198, 0.09) 50deg, transparent 62deg);
     animation: rays-drift 7s ease-in-out infinite alternate;
     pointer-events: none;
   }
@@ -136,17 +139,17 @@ function buildSplashHtml(): string {
     font-size: 52px;
     font-weight: 800;
     letter-spacing: 2px;
-    color: #1a1a1a;
+    color: #35bfc6;
   }
 
-  /* Loading dots — yellow pellets on the dark card */
+  /* Loading dots — teal pellets on the dark card */
   .dots { display: flex; gap: 10px; }
   .dots span {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #ffc72c;
-    box-shadow: 0 0 8px rgba(255, 199, 44, 0.45);
+    background: #35bfc6;
+    box-shadow: 0 0 8px rgba(53, 191, 198, 0.45);
     opacity: 0.4;
     animation: dot-bounce 1.2s ease-in-out infinite;
   }

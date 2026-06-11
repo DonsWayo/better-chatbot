@@ -29,7 +29,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
  *     /api/realtime/presence-users.
  *
  * Design language (docs/design/ui-language.md): small overlapping rounded
- * avatars, 1px border, no loud colors — the yellow "alive" pulse stays
+ * avatars, 1px border, no loud colors — the teal "alive" pulse stays
  * reserved for Runs.
  */
 

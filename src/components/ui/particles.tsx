@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { Renderer, Camera, Geometry, Program, Mesh } from "ogl";
 import { useTheme } from "next-themes";
+import { Camera, Geometry, Mesh, Program, Renderer } from "ogl";
+import React, { useEffect, useRef } from "react";
 
 interface ParticlesProps {
   particleCount?: number;
@@ -111,20 +111,20 @@ const Particles: React.FC<ParticlesProps> = ({
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const { theme } = useTheme();
 
-  // A-SAFE polymer pellets ("materia prima") — the safety-yellow granulate
+  // Conek polymer pellets ("materia prima") — the teal granulate
   // that barriers are injection-molded from.
   const getDefaultColors = (): [number, number, number][] => {
     if (theme === "dark") {
       return [
-        hexToRgb("#FFC72C"), // brand safety yellow
-        hexToRgb("#FFD75E"), // light pellet
-        hexToRgb("#F0B400"), // amber pellet
+        hexToRgb("#35BFC6"), // Conek brand teal
+        hexToRgb("#6FD9DE"), // light pellet
+        hexToRgb("#2BA6AD"), // deep teal pellet
       ];
     } else {
       return [
-        hexToRgb("#F0B400"), // amber pellet (contrast on light bg)
-        hexToRgb("#D99E00"), // deep amber
-        hexToRgb("#FFC72C"), // brand safety yellow
+        hexToRgb("#2BA6AD"), // deep teal pellet (contrast on light bg)
+        hexToRgb("#1B8A91"), // deepest teal
+        hexToRgb("#35BFC6"), // Conek brand teal
       ];
     }
   };

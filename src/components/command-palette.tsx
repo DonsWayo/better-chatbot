@@ -53,7 +53,7 @@ import { useShallow } from "zustand/shallow";
 
 // Cmd-K command palette (docs/design/information-architecture.md §6):
 // search threads / folders / agents, go-to navigation (role-filtered), and
-// the "Ask A-SAFE AI" fallback that turns a failed search into a chat.
+// the "Ask Conek AI" fallback that turns a failed search into a chat.
 
 type FolderLite = {
   id: string;
@@ -475,7 +475,7 @@ export function CommandPalette({ user }: { user?: BasicUser }) {
                 onSelect={askAi}
                 data-testid="palette-ask-ai"
               >
-                <Sparkles className="text-[#9a7b00] dark:text-[#FFC72C]" />
+                <Sparkles className="text-[#0E7C83] dark:text-primary" />
                 {t("askAi", { query: query.trim() })}
               </CommandItem>
             </CommandGroup>

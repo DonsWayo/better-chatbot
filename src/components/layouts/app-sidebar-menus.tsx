@@ -122,7 +122,7 @@ export function AppSidebarMenus({
                   {pendingApprovals > 0 && (
                     <span
                       className="ml-auto rounded-full px-1.5 text-[10px] font-semibold tabular-nums text-black"
-                      style={{ backgroundColor: "#FFC72C" }}
+                      style={{ backgroundColor: "var(--primary)" }}
                       data-testid="sidebar-inbox-count"
                     >
                       {pendingApprovals}

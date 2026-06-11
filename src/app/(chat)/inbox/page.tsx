@@ -39,7 +39,7 @@ const ROLE_LABEL_KEY: Record<ApprovalRequestedRole, string> = {
 };
 
 const RUN_STATUS_CLASS: Partial<Record<AgentSessionStatus, string>> = {
-  running: "bg-[#FFC72C]/15 text-[#9a7b00] dark:text-[#FFC72C]",
+  running: "bg-primary/15 text-[#0E7C83] dark:text-primary",
   awaiting_approval: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   completed: "bg-green-500/15 text-green-600 dark:text-green-400",
   failed: "bg-red-500/15 text-red-600 dark:text-red-400",
@@ -120,8 +120,8 @@ export default async function InboxPage() {
       </Link>
 
       <div className="mb-6 flex items-center gap-3">
-        <span className="flex size-10 items-center justify-center rounded-2xl bg-[#FFC72C]/15">
-          <Inbox className="size-5 text-[#9a7b00] dark:text-[#FFC72C]" />
+        <span className="flex size-10 items-center justify-center rounded-2xl bg-primary/15">
+          <Inbox className="size-5 text-[#0E7C83] dark:text-primary" />
         </span>
         <div>
           <h1 className="font-display text-lg font-semibold tracking-tight">
@@ -136,7 +136,7 @@ export default async function InboxPage() {
           <TabsTrigger value="inbox" className="rounded-full">
             {t("inboxTab")}
             {approvals.length > 0 && (
-              <Badge className="ml-1 rounded-full border-transparent bg-[#FFC72C] text-black tabular-nums">
+              <Badge className="ml-1 rounded-full border-transparent bg-primary text-primary-foreground tabular-nums">
                 {approvals.length}
               </Badge>
             )}

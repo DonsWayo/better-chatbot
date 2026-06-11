@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { hasAcceptedAup, CURRENT_AUP_VERSION } from "lib/compliance/aup";
 import { AupClient } from "@/components/compliance/aup-client";
 
-export const metadata = { title: "Acceptable Use Policy — Asafe AI" };
+export const metadata = { title: "Acceptable Use Policy — Conek AI" };
 
 export default async function AupPage() {
   const session = await getSession();

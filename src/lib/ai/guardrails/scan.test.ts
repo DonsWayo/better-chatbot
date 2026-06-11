@@ -228,8 +228,8 @@ describe("scanOutput", () => {
     expect(result.leaked).toBe(true);
   });
 
-  it('detects "You are Asafe AI" leak', () => {
-    const result = scanOutput("You are Asafe AI and you help users.");
+  it('detects "You are Conek AI" leak', () => {
+    const result = scanOutput("You are Conek AI and you help users.");
     expect(result.leaked).toBe(true);
   });
 

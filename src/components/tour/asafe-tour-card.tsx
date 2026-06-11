@@ -6,7 +6,7 @@ import type { CardComponentProps } from "nextstepjs";
 import { Button } from "ui/button";
 
 // Custom NextStep card following docs/design/ui-language.md: rounded-2xl
-// card surface, Bricolage display title, exactly one filled yellow action
+// card surface, Bricolage display title, exactly one filled teal action
 // (Next/Done), ghost Back/Skip, tiny step dots. NextStep ships no a11y
 // semantics, so the dialog role/labels live here. ←/→/Esc keyboard control
 // is built into NextStep itself.
@@ -71,7 +71,7 @@ export function AsafeTourCard({
               {t("skip")}
             </Button>
           )}
-          {/* The one filled yellow action per view (ui-language.md §2) */}
+          {/* The one filled teal action per view (ui-language.md §2) */}
           <Button size="sm" autoFocus onClick={nextStep}>
             {isLast ? t("done") : t("next")}
           </Button>

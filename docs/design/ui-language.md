@@ -1,4 +1,4 @@
-# asafe-ai Design Language — "Calm Industrial"
+# Conek AI Design Language — "Calm Industrial"
 
 > The codified UI/UX guide. Every new surface follows this. Inspirations researched:
 > Linear (rationed accent, warm monochrome, weight-precision typography), simple-ai.dev
@@ -15,16 +15,17 @@ Two registers:
 - **Zen register** (end users): almost nothing on screen. New Chat, the composer, their work.
 - **Operator register** (admins/editors): density allowed, but the same calm bones.
 
-## 2. Color — rationed yellow
+## 2. Color — rationed teal
 
 Linear rations its acid lime to one filled action per screen. We do the same with
-safety yellow:
+Conek teal (sampled from the Conek mark):
 
 | Role | Value | Rule |
 |---|---|---|
-| Accent | `#FFC72C` (`--primary`, oklch 0.84 0.17 90) | **One filled yellow element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
-| Accent hover | `#F0B400` | darker, never lighter |
-| Ink | `#1A1A1A` | text on yellow is always near-black |
+| Accent | `#35BFC6` (`--primary`, oklch 0.737 0.113 200) | **One filled teal element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
+| Accent hover | `#2BA6AD` | darker, never lighter |
+| Ink | `#0A3438` (`--primary-foreground`, oklch 0.299 0.045 204) | text on teal is always dark teal ink — white on `#35BFC6` is ~2.2:1 and fails WCAG; the ink hits 6.0:1 |
+| Teal as text (light mode) | `#0E7C83` | the readable teal for text on white (4.97:1); raw `#35BFC6` is decoration-only on light backgrounds |
 | Neutrals | warm gray scale (existing tokens) | everything else lives here; borders at 1px, low-alpha |
 | Status | green ok / amber waiting / red failed | only inside status pills, never as washes |
 
@@ -51,7 +52,7 @@ washes of color, never purple gradients.
 The barrier metaphor, literally:
 - Interactions compress slightly (`scale(0.98)`) and spring back — `cubic-bezier(0.2, 0.9, 0.3, 1.2)`.
 - One orchestrated entrance per page (staggered 40ms fade-up), not scattered micro-noise.
-- Long-running things breathe: the yellow pulse dot (Runs) is the canonical "alive" signal.
+- Long-running things breathe: the teal pulse dot (Runs) is the canonical "alive" signal.
 - Durations: 150ms hover, 300ms layout, 500ms entrance. Nothing over 600ms except splash.
 
 ## 6. Layout
@@ -63,7 +64,7 @@ The barrier metaphor, literally:
 
 ## 7. Component rules
 
-- Buttons: one yellow primary per view; secondary = ghost/outline neutral.
+- Buttons: one teal primary per view; secondary = ghost/outline neutral.
 - Badges/pills: lowercase-calm, tinted bg at 10–15% alpha + readable foreground.
 - Tables: row hover tint, no zebra; numeric columns right-aligned, mono for ids/costs.
 - Dialogs: rounded-2xl, single clear primary, escape always works.

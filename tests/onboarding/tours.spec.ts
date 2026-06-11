@@ -29,7 +29,7 @@ import {
 const FRESH_TOUR_USER = TEST_USERS.testUsers[8];
 
 // Welcome tour has 6 steps, admin tour has 5 (use-tour-steps.tsx).
-const WELCOME_TITLE = "Welcome to A-SAFE AI";
+const WELCOME_TITLE = "Welcome to Conek AI";
 
 test.describe.configure({ mode: "serial" });
 

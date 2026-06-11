@@ -43,7 +43,7 @@ export function CostPreview({
     <span
       data-testid="cost-preview"
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-[#FFC72C]/40 bg-[#FFC72C]/10 px-3 py-1 text-xs text-[#9a7b00] dark:text-[#FFC72C]",
+        "inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs text-[#0E7C83] dark:text-primary",
         className,
       )}
     >

@@ -63,7 +63,7 @@ function StatusDot({ status }: { status: RunSession["status"] }) {
     return (
       <span
         className="size-2 shrink-0 rounded-full animate-pulse"
-        style={{ backgroundColor: "#FFC72C" }}
+        style={{ backgroundColor: "var(--primary)" }}
       />
     );
   }

@@ -8,7 +8,7 @@ import { AppSidebarAgents } from "./app-sidebar-agents";
 import { AppSidebarMenus } from "./app-sidebar-menus";
 import { AppSidebarRuns } from "./app-sidebar-runs";
 import { AppSidebarThreads } from "./app-sidebar-threads";
-import { AsafeLogo } from "./asafe-logo";
+import { ConekLogo } from "./conek-logo";
 import { SidebarHeaderShared } from "./sidebar-header";
 
 import { BasicUser } from "app-types/user";
@@ -47,7 +47,7 @@ export function AppSidebar({
       collapsible="offcanvas"
       className="border-r border-sidebar-border/80"
     >
-      {/* A-SAFE pellet particles drifting behind the sidebar content */}
+      {/* Conek pellet particles drifting behind the sidebar content */}
       <div className="absolute inset-0 pointer-events-none z-0 opacity-50 fade-in animate-in duration-5000">
         <Particles
           className="bg-transparent"
@@ -58,7 +58,7 @@ export function AppSidebar({
         />
       </div>
       <SidebarHeaderShared
-        title={<AsafeLogo className="h-7" />}
+        title={<ConekLogo className="h-7" />}
         href="/"
         enableShortcuts={true}
         onLinkClick={() => {

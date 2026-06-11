@@ -215,7 +215,7 @@ export const CodeExecutor = memo(function CodeExecutor({
           ) : (
             <div className="w-1 h-1 mr-1 ring ring-border rounded-full" />
           )}
-          Asafe AI
+          Conek AI
           <Percent className="size-2" />
         </div>
         {logs}

@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <RootProvider theme={{ enabled: false }}>
       <DocsLayout
         tree={source.getPageTree()}
-        nav={{ title: "asafe-ai docs" }}
+        nav={{ title: "Conek AI docs" }}
         githubUrl="https://github.com/cgoinglove/better-chatbot"
       >
         {children}

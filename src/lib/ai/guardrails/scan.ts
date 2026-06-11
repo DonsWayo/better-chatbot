@@ -166,7 +166,7 @@ export function scanInput(text: string, policy: GuardrailPolicy): ScanResult {
 export function scanOutput(text: string): { text: string; leaked: boolean } {
   // Common markers that indicate a system prompt has been echoed back
   const leakMarkers = [
-    /You are (an AI assistant|a helpful assistant|Asafe AI)/gi,
+    /You are (an AI assistant|a helpful assistant|Conek AI)/gi,
     /Your instructions are:/gi,
     /System:\s*You/gi,
     /<system>/gi,

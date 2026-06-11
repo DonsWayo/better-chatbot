@@ -1,6 +1,6 @@
 ---
 title: Design language — Calm Industrial
-description: The codified UI/UX rules every asafe-ai surface follows — rationed yellow, precise type, motion that absorbs.
+description: The codified UI/UX rules every Conek AI surface follows — rationed teal, precise type, motion that absorbs.
 ---
 
 A-SAFE makes industrial safety equipment: **calm, engineered, impossible to misread**. The
@@ -15,13 +15,14 @@ and motion that absorbs, with engineered precision underneath. The authoritative
 - **Zen register** (end users): almost nothing on screen — New Chat, the composer, their work.
 - **Operator register** (admins/editors): density allowed, but the same calm bones.
 
-## Color — rationed yellow
+## Color — rationed teal
 
 | Role | Value | Rule |
 |---|---|---|
-| Accent | `#FFC72C` (`--primary`) | **One filled yellow element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
-| Accent hover | `#F0B400` | Darker, never lighter. |
-| Ink | `#1A1A1A` | Text on yellow is always near-black. |
+| Accent | `#35BFC6` (`--primary`) | **One filled teal element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
+| Accent hover | `#2BA6AD` | Darker, never lighter. |
+| Ink | `#0A3438` (`--primary-foreground`) | Text on teal is always dark teal ink — white on teal fails contrast (~2.2:1); the ink reads at 6.0:1. |
+| Teal as text (light mode) | `#0E7C83` | The readable teal on white (4.97:1); raw `#35BFC6` is decoration-only on light backgrounds. |
 | Neutrals | Warm gray scale | Everything else; 1px low-alpha borders. |
 | Status | Green ok / amber waiting / red failed | Only inside status pills, never as washes. |
 
@@ -43,7 +44,7 @@ purple gradients.
   elevation theater.
 - **Flex, absorb, reform** — the barrier metaphor, literally: interactions compress
   slightly (`scale(0.98)`) and spring back via `cubic-bezier(0.2, 0.9, 0.3, 1.2)`; one
-  orchestrated entrance per page (staggered 40ms fade-up); the yellow pulse dot (Runs) is
+  orchestrated entrance per page (staggered 40ms fade-up); the teal pulse dot (Runs) is
   the canonical "alive" signal. Durations: 150ms hover, 300ms layout, 500ms entrance —
   nothing over 600ms except splash.
 
@@ -52,7 +53,7 @@ purple gradients.
 - Content column `max-w-3xl` for reading surfaces; admin tables may go wide.
 - Empty states: one display-font line, friendly ("All clear — nothing needs your sign-off
   right now."), no illustration clutter.
-- One yellow primary button per view; badges lowercase-calm at 10–15% alpha tint; tables
+- One teal primary button per view; badges lowercase-calm at 10–15% alpha tint; tables
   hover-tint with right-aligned mono numerics; comboboxes over raw selects for anything
   with >6 options (the MCP teams pattern); skeletons that match final geometry.
 - Voice: calm, specific, no exclamation marks in UI chrome. **Cost and consequences stated

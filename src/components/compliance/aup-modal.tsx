@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useEffect, useState } from "react";
 
 /**
  * Acceptable-Use Policy modal (EU AI Act Article 50 transparency + GDPR).
@@ -53,39 +53,66 @@ export function AupModal() {
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Asafe AI — Acceptable Use Policy</DialogTitle>
+          <DialogTitle>Conek AI — Acceptable Use Policy</DialogTitle>
           <DialogDescription>
             Please read and accept before using the assistant.
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="h-64 rounded border p-4 text-sm leading-relaxed">
-          <p className="mb-3 font-medium">You are interacting with an AI assistant.</p>
+          <p className="mb-3 font-medium">
+            You are interacting with an AI assistant.
+          </p>
           <p className="mb-2">
             This tool uses artificial intelligence to help you with work tasks.
-            <strong> EU AI Act, Article 50 requires us to inform you of this.</strong>
+            <strong>
+              {" "}
+              EU AI Act, Article 50 requires us to inform you of this.
+            </strong>
           </p>
           <p className="mb-2 font-medium">This tool must NOT be used to:</p>
           <ul className="mb-3 list-disc pl-5 space-y-1">
-            <li>Make automated employment decisions (hiring, firing, performance grading, disciplinary actions).</li>
-            <li>Process special-category personal data without explicit authorisation from your DPO.</li>
-            <li>Generate content that is discriminatory, illegal, or violates A Safe Digital's Code of Conduct.</li>
+            <li>
+              Make automated employment decisions (hiring, firing, performance
+              grading, disciplinary actions).
+            </li>
+            <li>
+              Process special-category personal data without explicit
+              authorisation from your DPO.
+            </li>
+            <li>
+              Generate content that is discriminatory, illegal, or violates A
+              Safe Digital's Code of Conduct.
+            </li>
           </ul>
           <p className="mb-2 font-medium">By using this tool you agree that:</p>
           <ul className="mb-3 list-disc pl-5 space-y-1">
-            <li>Your prompts are logged for security and compliance purposes (GDPR lawful basis: legitimate interest).</li>
+            <li>
+              Your prompts are logged for security and compliance purposes (GDPR
+              lawful basis: legitimate interest).
+            </li>
             <li>Audit logs are retained for a minimum of 6 months.</li>
-            <li>You will exercise human oversight over all AI outputs before acting on them.</li>
-            <li>Sensitive personal data should not be entered unless explicitly required and authorised.</li>
+            <li>
+              You will exercise human oversight over all AI outputs before
+              acting on them.
+            </li>
+            <li>
+              Sensitive personal data should not be entered unless explicitly
+              required and authorised.
+            </li>
           </ul>
           <p className="text-muted-foreground text-xs">
-            Questions? Contact your Data Protection Officer at dpo@asafedigital.com.
-            Full policy: intranet/ai-policy.
+            Questions? Contact your Data Protection Officer at
+            dpo@asafedigital.com. Full policy: intranet/ai-policy.
           </p>
         </ScrollArea>
 
         <DialogFooter>
-          <Button onClick={handleAccept} disabled={accepting} className="w-full">
+          <Button
+            onClick={handleAccept}
+            disabled={accepting}
+            className="w-full"
+          >
             {accepting ? "Recording acceptance…" : "I understand and accept"}
           </Button>
         </DialogFooter>

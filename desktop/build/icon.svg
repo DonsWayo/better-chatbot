@@ -1,7 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- A-SAFE app icon: near-black rounded square, brand-yellow A-SAFE mark -->
-  <rect width="1024" height="1024" rx="232" fill="#1A1A1A"/>
-  <g transform="translate(512 532) scale(0.78) translate(-540 -540)">
-    <path fill="#FFC40C" d="M696.34,939.06h134.01l-69.96-139.92c84.8-67.68,139.17-171.88,139.17-288.81,0-204.01-165.39-369.39-369.39-369.39S160.78,306.32,160.78,510.33c0,116.93,54.37,221.13,139.17,288.81l-69.96,139.92h133.95l165.97-333.77,166.43,333.77ZM583.4,445.25c-21.35-43.18-85.97-42.68-106.83.67l-121.14,242.28h0c-46.11-45.29-74.78-108.28-74.78-177.87,0-137.59,111.94-249.53,249.53-249.53s249.53,111.94,249.53,249.53c0,69.59-28.67,132.58-74.78,177.87l-121.52-242.95Z"/>
+  <!-- Conek AI app icon: teal rounded square, white Conek mark -->
+  <rect width="1024" height="1024" rx="232" fill="#35BFC6"/>
+  <g transform="translate(12 12) scale(10)">
+    <mask id="conek-peak-gap">
+      <rect width="100" height="100" fill="white"/>
+      <polygon points="46,32 54,32 70,70 30,70" fill="black"/>
+    </mask>
+    <path fill="#fff" fill-rule="evenodd" mask="url(#conek-peak-gap)" d="M50 21a24 24 0 1 1 0 48 24 24 0 0 1 0-48Zm0 11a13 13 0 1 0 0 26 13 13 0 0 0 0-26Z"/>
+    <polygon fill="#fff" points="50,33 65,66 35,66"/>
+    <path d="M31 61 22 84M69 61l9 23" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/>
   </g>
 </svg>

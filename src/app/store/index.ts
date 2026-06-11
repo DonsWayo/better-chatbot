@@ -49,7 +49,7 @@ export interface AppState {
   chatModel?: ChatModel;
   openShortcutsPopup: boolean;
   openCommandPalette: boolean;
-  /** Draft text handed to the new-chat composer (e.g. Cmd-K "Ask A-SAFE AI"). */
+  /** Draft text handed to the new-chat composer (e.g. Cmd-K "Ask Conek AI"). */
   pendingChatDraft?: string;
   temporaryChat: {
     isOpen: boolean;

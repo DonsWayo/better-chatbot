@@ -100,7 +100,7 @@ export function ApprovalDecisionButtons({
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            className="rounded-full bg-[#FFC72C] text-black hover:bg-[#FFC72C]/80"
+            className="rounded-full bg-primary text-primary-foreground hover:bg-[#2BA6AD]"
             disabled={isPending}
             onClick={approve}
             data-testid="approval-approve"
