@@ -832,7 +832,12 @@
       "backToTeams": "Tilbake til team"
     },
     "Knowledge": {
-      "backToKnowledge": "Tilbake til kunnskap"
+      "backToKnowledge": "Tilbake til kunnskap",
+      "ingestSuccess": "{count} biter ble lastet inn",
+      "uploadUnsupported": "Filtypen støttes ikke. Bruk .pdf, .docx, .txt eller .md",
+      "uploadTooLarge": "Filen er for stor (maks {max} MB)",
+      "uploadSuccess": "{name} lastet inn — {chunks} biter",
+      "uploadSuccessPages": "{name} lastet inn — {pages} sider, {chunks} biter"
     }
   },
   "MCP": {

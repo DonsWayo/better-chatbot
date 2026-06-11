@@ -606,7 +606,12 @@
       "backToTeams": "팀 목록으로 돌아가기"
     },
     "Knowledge": {
-      "backToKnowledge": "지식 목록으로 돌아가기"
+      "backToKnowledge": "지식 목록으로 돌아가기",
+      "ingestSuccess": "{count}개 청크를 수집했습니다",
+      "uploadUnsupported": "지원하지 않는 파일 형식입니다. .pdf, .docx, .txt 또는 .md를 사용하세요",
+      "uploadTooLarge": "파일이 너무 큽니다 (최대 {max}MB)",
+      "uploadSuccess": "{name} 수집 완료 — 청크 {chunks}개",
+      "uploadSuccessPages": "{name} 수집 완료 — {pages}페이지, 청크 {chunks}개"
     }
   },
   "Runs": {

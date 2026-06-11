@@ -593,7 +593,12 @@
       "backToTeams": "返回团队列表"
     },
     "Knowledge": {
-      "backToKnowledge": "返回知识库列表"
+      "backToKnowledge": "返回知识库列表",
+      "ingestSuccess": "已导入 {count} 个分块",
+      "uploadUnsupported": "不支持的文件类型。请使用 .pdf、.docx、.txt 或 .md",
+      "uploadTooLarge": "文件过大（最大 {max} MB）",
+      "uploadSuccess": "{name} 已导入 — {chunks} 个分块",
+      "uploadSuccessPages": "{name} 已导入 — {pages} 页，{chunks} 个分块"
     }
   },
   "Runs": {

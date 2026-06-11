@@ -828,7 +828,12 @@
       "visibilityTeam": "Team only",
       "ingestDocument": "Ingest Document",
       "chunksIngested": "chunks ingested",
-      "backToKnowledge": "Back to Knowledge"
+      "backToKnowledge": "Back to Knowledge",
+      "ingestSuccess": "Ingested {count} chunks",
+      "uploadUnsupported": "Unsupported file type. Use .pdf, .docx, .txt or .md",
+      "uploadTooLarge": "File is too large (max {max} MB)",
+      "uploadSuccess": "{name} ingested — {chunks} chunks",
+      "uploadSuccessPages": "{name} ingested — {pages} pages, {chunks} chunks"
     },
     "Usage": {
       "title": "Usage",

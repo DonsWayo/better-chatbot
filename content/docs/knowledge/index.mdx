@@ -76,12 +76,37 @@ what the viewer may read.
 - **Studio → Knowledge** is the management surface: builders see the collections they
   can access as cards (visibility pill included), create or edit a collection with the
   standard visibility picker, and open one to see its documents. Ingestion happens
-  there too — paste text or drop a `.txt`/`.md` file and it is chunked, embedded and
-  listed with its chunk count.
+  there too — paste text or upload a `.pdf` / `.docx` / `.txt` / `.md` file and it is
+  extracted, chunked, embedded and listed with its chunk count.
 - **In chat**, type `@` and pick from the *Knowledge* group to ground the conversation
   in one **or several** collections — each mention adds a collection to the retrieval
   set for that message, and answers come back with the numbered source pills described
   above.
+
+## Supported file formats & extraction
+
+File uploads go to `POST /api/knowledge/ingest/upload` (multipart `FormData`), where
+the **server** extracts the text — nothing is parsed in the browser — before handing
+it to the same chunk → embed → store pipeline as pasted text
+(`src/lib/file-ingest/extract.ts`):
+
+| format | parser | notes |
+|--------|--------|-------|
+| `.pdf` | [`unpdf`](https://github.com/unjs/unpdf) (pdf.js, no native deps) | all pages merged; page count reported back |
+| `.docx` | [`mammoth`](https://github.com/mwilliamson/mammoth.js) `extractRawText` | paragraphs become double-newline-separated text |
+| `.txt`, `.md` | UTF-8 passthrough | — |
+
+Limits and failure modes (all with explicit error messages):
+
+- **Max upload size: 20 MB** — larger files are rejected with `413`.
+- **Max extracted text: 2,000,000 characters** (~500k tokens) — exceeded → `413`.
+- Unsupported types (e.g. `.pptx`, legacy `.doc`) → `415`.
+- Corrupted / password-protected files, or PDFs with no text layer (scanned
+  image-only documents — there is no OCR), → `422`.
+
+`sourceRef` defaults to the uploaded filename; re-ingesting the same `sourceRef` into
+a collection replaces its previous chunks, so re-uploading a revised file updates the
+document in place.
 
 ## API surface
 
@@ -92,4 +117,7 @@ what the viewer may read.
 - `PATCH /api/knowledge/collections/:id` — requires `manage` (owner or admin); same
   fields as create.
 - `DELETE /api/knowledge/collections/:id` — admin.
-- `POST /api/knowledge/ingest` — admin; chunk + embed a document into a collection.
+- `POST /api/knowledge/ingest` — admin; chunk + embed pasted text into a collection.
+- `POST /api/knowledge/ingest/upload` — admin; multipart upload (`file`,
+  `collectionId`, optional `sourceRef`) → server-side extraction → same pipeline.
+  Returns `{ chunks, pageCount?, characters }`.

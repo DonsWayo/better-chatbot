@@ -22,6 +22,11 @@ import {
   ingestKnowledgeTextAction,
 } from "@/app/api/knowledge/actions";
 import { authClient } from "auth/client";
+import {
+  MAX_UPLOAD_BYTES,
+  SUPPORTED_FILE_ACCEPT,
+  SUPPORTED_FILE_PATTERN,
+} from "lib/file-ingest/constants";
 import { notify } from "lib/notify";
 import { getIsUserAdmin } from "lib/user/utils";
 import { fetcher } from "lib/utils";
@@ -41,8 +46,6 @@ import type {
   KnowledgeDocumentSummary,
 } from "./types";
 
-const TEXT_FILE_PATTERN = /\.(txt|md|markdown)$/i;
-
 interface CollectionResponse {
   collection?: KnowledgeCollectionSummary;
 }
@@ -52,8 +55,9 @@ interface DocumentsResponse {
 
 /**
  * Studio › Knowledge › collection detail — documents in the collection plus
- * (for admins) the paste/upload ingest panel. Ingestion reads .txt/.md files
- * client-side and sends plain text to the ingest server action.
+ * (for admins) the paste/upload ingest panel. Pasted text goes through the
+ * ingest server action; files (.pdf/.docx/.txt/.md) are posted as FormData to
+ * /api/knowledge/ingest/upload, where the server extracts the text.
  */
 export function KnowledgeCollectionDetail({ id }: { id: string }) {
   const t = useTranslations();
@@ -81,7 +85,9 @@ export function KnowledgeCollectionDetail({ id }: { id: string }) {
   const collection = collectionData?.collection;
   const documents = documentsData?.documents ?? [];
   const canEdit =
-    isAdmin || (collection?.createdBy != null && collection.createdBy === session?.user?.id);
+    isAdmin ||
+    (collection?.createdBy != null &&
+      collection.createdBy === session?.user?.id);
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -280,7 +286,11 @@ export function KnowledgeCollectionDetail({ id }: { id: string }) {
   );
 }
 
-/** Paste/upload ingest panel — admin only. Reads .txt/.md files client-side. */
+/**
+ * Paste/upload ingest panel — admin only. Pasted text is sent through the
+ * server action; selected files (.pdf/.docx/.txt/.md) are uploaded as
+ * FormData and extracted server-side.
+ */
 function IngestPanel({
   collectionId,
   onIngested,
@@ -293,19 +303,64 @@ function IngestPanel({
   const [sourceRef, setSourceRef] = useState("");
   const [text, setText] = useState("");
   const [ingesting, setIngesting] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const onFileSelected = useCallback(
     async (file: File | undefined) => {
-      if (!file) return;
-      if (!TEXT_FILE_PATTERN.test(file.name)) {
+      if (!file || uploading) return;
+      if (!SUPPORTED_FILE_PATTERN.test(file.name)) {
         toast.error(t("Knowledge.uploadUnsupported"));
         return;
       }
-      const content = await file.text();
-      setText(content);
-      setSourceRef((prev) => prev.trim() || file.name);
+      if (file.size > MAX_UPLOAD_BYTES) {
+        toast.error(
+          t("Knowledge.uploadTooLarge", {
+            max: Math.floor(MAX_UPLOAD_BYTES / (1024 * 1024)),
+          }),
+        );
+        return;
+      }
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("collectionId", collectionId);
+      const label = sourceRef.trim() || file.name;
+      formData.append("sourceRef", label);
+      await safe(async () => {
+        const res = await fetch("/api/knowledge/ingest/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const body = (await res.json()) as {
+          error?: string;
+          chunks?: number;
+          pageCount?: number;
+        };
+        if (!res.ok) {
+          throw new Error(body.error || res.statusText);
+        }
+        return body;
+      })
+        .ifOk((result) => {
+          toast.success(
+            result.pageCount
+              ? t("Knowledge.uploadSuccessPages", {
+                  name: label,
+                  pages: result.pageCount,
+                  chunks: result.chunks ?? 0,
+                })
+              : t("Knowledge.uploadSuccess", {
+                  name: label,
+                  chunks: result.chunks ?? 0,
+                }),
+          );
+          setSourceRef("");
+          onIngested();
+        })
+        .ifFail(handleErrorWithToast)
+        .watch(() => setUploading(false));
     },
-    [t],
+    [collectionId, onIngested, sourceRef, t, uploading],
   );
 
   const ingest = useCallback(async () => {
@@ -320,9 +375,7 @@ function IngestPanel({
       }),
     )
       .ifOk((result) => {
-        toast.success(
-          t("Knowledge.ingestSuccess", { count: result.chunks }),
-        );
+        toast.success(t("Knowledge.ingestSuccess", { count: result.chunks }));
         setText("");
         setSourceRef("");
         onIngested();
@@ -347,7 +400,7 @@ function IngestPanel({
             id="knowledge-source-name"
             value={sourceRef}
             placeholder={t("Knowledge.sourceNamePlaceholder")}
-            disabled={ingesting}
+            disabled={ingesting || uploading}
             onChange={(e) => setSourceRef(e.target.value)}
             data-testid="knowledge-ingest-source"
           />
@@ -356,7 +409,7 @@ function IngestPanel({
           value={text}
           placeholder={t("Knowledge.pastePlaceholder")}
           rows={6}
-          disabled={ingesting}
+          disabled={ingesting || uploading}
           onChange={(e) => setText(e.target.value)}
           data-testid="knowledge-ingest-text"
         />
@@ -364,7 +417,7 @@ function IngestPanel({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.markdown,text/plain,text/markdown"
+            accept={SUPPORTED_FILE_ACCEPT}
             className="hidden"
             onChange={(e) => {
               void onFileSelected(e.target.files?.[0]);
@@ -377,17 +430,21 @@ function IngestPanel({
             variant="outline"
             size="sm"
             className="rounded-full"
-            disabled={ingesting}
+            disabled={ingesting || uploading}
             onClick={() => fileInputRef.current?.click()}
             data-testid="knowledge-ingest-upload"
           >
-            <Upload className="size-3.5" />
+            {uploading ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Upload className="size-3.5" />
+            )}
             {t("Knowledge.uploadFile")}
           </Button>
           <Button
             type="button"
             size="sm"
-            disabled={ingesting || text.trim().length === 0}
+            disabled={ingesting || uploading || text.trim().length === 0}
             onClick={() => void ingest()}
             data-testid="knowledge-ingest-submit"
           >

@@ -591,7 +591,12 @@
       "backToTeams": "チーム一覧に戻る"
     },
     "Knowledge": {
-      "backToKnowledge": "ナレッジ一覧に戻る"
+      "backToKnowledge": "ナレッジ一覧に戻る",
+      "ingestSuccess": "{count}個のチャンクを取り込みました",
+      "uploadUnsupported": "サポートされていないファイル形式です。.pdf、.docx、.txt、.md を使用してください",
+      "uploadTooLarge": "ファイルが大きすぎます（最大{max}MB）",
+      "uploadSuccess": "{name}を取り込みました — {chunks}チャンク",
+      "uploadSuccessPages": "{name}を取り込みました — {pages}ページ、{chunks}チャンク"
     }
   },
   "Runs": {

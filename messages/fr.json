@@ -591,7 +591,12 @@
       "backToTeams": "Retour aux équipes"
     },
     "Knowledge": {
-      "backToKnowledge": "Retour aux connaissances"
+      "backToKnowledge": "Retour aux connaissances",
+      "ingestSuccess": "{count} segments ingérés",
+      "uploadUnsupported": "Type de fichier non pris en charge. Utilisez .pdf, .docx, .txt ou .md",
+      "uploadTooLarge": "Fichier trop volumineux (max {max} Mo)",
+      "uploadSuccess": "{name} ingéré — {chunks} segments",
+      "uploadSuccessPages": "{name} ingéré — {pages} pages, {chunks} segments"
     }
   },
   "Runs": {

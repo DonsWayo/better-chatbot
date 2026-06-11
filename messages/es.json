@@ -828,7 +828,12 @@
       "visibilityTeam": "Solo el equipo",
       "ingestDocument": "Ingerir documento",
       "chunksIngested": "fragmentos ingeridos",
-      "backToKnowledge": "Volver a conocimiento"
+      "backToKnowledge": "Volver a conocimiento",
+      "ingestSuccess": "{count} fragmentos ingeridos",
+      "uploadUnsupported": "Tipo de archivo no compatible. Usa .pdf, .docx, .txt o .md",
+      "uploadTooLarge": "El archivo es demasiado grande (máx. {max} MB)",
+      "uploadSuccess": "{name} ingerido — {chunks} fragmentos",
+      "uploadSuccessPages": "{name} ingerido — {pages} páginas, {chunks} fragmentos"
     },
     "Usage": {
       "title": "Uso",
