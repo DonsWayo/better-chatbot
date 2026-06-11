@@ -30,7 +30,13 @@ async function createAgentAs(
     const page = await context.newPage();
     const res = await page.request.post("/api/agent", {
       headers: { "Content-Type": "application/json" },
-      data: { ...body, instructions: {} },
+      // userId is required by AgentCreateSchema but the route overrides it with
+      // the authenticated session user — any placeholder satisfies validation.
+      data: {
+        ...body,
+        instructions: {},
+        userId: "00000000-0000-0000-0000-000000000000",
+      },
       timeout: 15000,
     });
     if (!res.ok()) {
