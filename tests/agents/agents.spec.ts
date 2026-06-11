@@ -31,8 +31,10 @@ test.describe("Agent Access Spec", () => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    // Should have sidebar with agents section
-    const agentsLink = page.locator('a[href="/agents"]');
+    // Should have sidebar with agents section (links straight to Studio,
+    // avoiding the /agents -> /studio redirect hop)
+    const agentsLink = page.getByTestId("agents-link");
     await expect(agentsLink).toBeVisible();
+    await expect(agentsLink).toHaveAttribute("href", "/studio");
   });
 });

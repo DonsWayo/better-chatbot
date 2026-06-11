@@ -100,7 +100,7 @@ export function AppSidebarAgents({ userRole }: { userRole?: string | null }) {
         <SidebarMenu className="group/agents" data-testid="agents-sidebar-menu">
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="font-semibold">
-              <Link href="/agents" data-testid="agents-link">
+              <Link href="/studio" data-testid="agents-link">
                 {t("Layout.agents")}
               </Link>
             </SidebarMenuButton>
