@@ -56,12 +56,22 @@ test.describe("Admin team model entitlements — budget models", () => {
     // Saving goes through a Server Action (setModelAllowListAction) — no REST
     // endpoint to await. Assert the rendered outcome; surface the server error
     // text in the failure message when it breaks.
-    await card.getByTestId("save-model-allow-list-btn").click();
-    // Success feedback is a sonner toast — router.refresh() wipes any inline
-    // state, so the toast is the only reliable signal (and what users see).
-    await expect(page.getByText("Model list saved.")).toBeVisible({
-      timeout: 15000,
-    });
+    // Saving runs a Server Action — its POST goes to the page URL itself.
+    // Await that POST (deterministic), then verify persistence below; the
+    // sonner toast only lives ~4s so it is not a reliable e2e signal.
+    const [actionRes] = await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.request().method() === "POST" &&
+          res.url().includes(`/admin/teams/${team.id}`),
+        { timeout: 15000 },
+      ),
+      card.getByTestId("save-model-allow-list-btn").click(),
+    ]);
+    expect(
+      actionRes.ok(),
+      `server action failed: ${actionRes.status()}`,
+    ).toBeTruthy();
 
     // Reload: the page re-reads the allow-list server-side.
     await page.reload();
