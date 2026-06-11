@@ -8,7 +8,7 @@
  * Each test creates its own browser context so the suite is fully parallel-safe.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 // ---------------------------------------------------------------------------
@@ -124,7 +124,10 @@ test.describe("Entitlement Gate — Model Picker UI", () => {
     // Popover must contain at least one model option
     const options = page.locator('[data-testid^="model-option-"]');
     const count = await options.count();
-    expect(count, "no model options found in the popover for admin").toBeGreaterThan(0);
+    expect(
+      count,
+      "no model options found in the popover for admin",
+    ).toBeGreaterThan(0);
 
     // Dismiss
     await page.keyboard.press("Escape");

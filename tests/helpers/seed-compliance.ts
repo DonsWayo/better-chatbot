@@ -1,6 +1,9 @@
-import { pgDb } from "../../src/lib/db/pg/db.pg";
-import { UserTable, AsafeAupAcceptanceTable } from "../../src/lib/db/pg/schema.pg";
 import { sql } from "drizzle-orm";
+import { pgDb } from "../../src/lib/db/pg/db.pg";
+import {
+  AsafeAupAcceptanceTable,
+  UserTable,
+} from "../../src/lib/db/pg/schema.pg";
 import { TEST_EMAIL_DOMAIN } from "../constants/test-users";
 
 /**

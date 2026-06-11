@@ -29,8 +29,8 @@
  *   - http_req_failed rate < 0.01 (1%) → SLO pass
  */
 
-import http from "k6/http";
 import { check, sleep } from "k6";
+import http from "k6/http";
 import { Counter, Rate, Trend } from "k6/metrics";
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ const stages = {
   ],
   spike: [
     { duration: "1m", target: 10 },
-    { duration: "30s", target: 200 },  // spike
+    { duration: "30s", target: 200 }, // spike
     { duration: "1m", target: 10 },
     { duration: "30s", target: 0 },
   ],
@@ -82,7 +82,7 @@ export const options = {
     http_req_duration: ["p(95)<30000", "p(99)<60000"],
     chat_errors: ["rate<0.01"],
     http_req_failed: ["rate<0.02"],
-    rate_limited: ["rate<0.05"],   // < 5% rate-limited is acceptable at load
+    rate_limited: ["rate<0.05"], // < 5% rate-limited is acceptable at load
   },
 };
 
@@ -154,7 +154,9 @@ export default function () {
 export function setup() {
   const res = http.get(`${BASE_URL}/api/health`);
   if (res.status !== 200) {
-    throw new Error(`Health check failed: ${res.status} — is the app running at ${BASE_URL}?`);
+    throw new Error(
+      `Health check failed: ${res.status} — is the app running at ${BASE_URL}?`,
+    );
   }
   console.log(`Load test target: ${BASE_URL} (stage: ${STAGE})`);
 }

@@ -8,7 +8,7 @@
  * setup project (which has race conditions under 3 concurrent workers).
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
@@ -23,7 +23,12 @@ async function signInViaApi(page: any, email: string, password: string) {
   expect(res.status()).toBe(200);
 }
 
-async function apiRequest(page: any, method: string, path: string, body?: unknown) {
+async function apiRequest(
+  page: any,
+  method: string,
+  path: string,
+  body?: unknown,
+) {
   return page.request.fetch(`${BASE}${path}`, {
     method,
     data: body ? JSON.stringify(body) : undefined,
@@ -59,7 +64,9 @@ test.describe("W9: team policy API", () => {
     await context.close();
   });
 
-  test("1. PATCH /api/admin/teams/[id] — 401 for unauthenticated", async ({ page }) => {
+  test("1. PATCH /api/admin/teams/[id] — 401 for unauthenticated", async ({
+    page,
+  }) => {
     // Explicitly sign out by clearing cookies
     await page.context().clearCookies();
 
@@ -72,7 +79,11 @@ test.describe("W9: team policy API", () => {
   test("2. Non-admin gets 403 on PATCH team policy", async ({ page }) => {
     // Re-sign in as regular user
     await page.context().clearCookies();
-    await signInViaApi(page, TEST_USERS.regular.email, TEST_USERS.regular.password);
+    await signInViaApi(
+      page,
+      TEST_USERS.regular.email,
+      TEST_USERS.regular.password,
+    );
 
     const res = await apiRequest(page, "PATCH", `/api/admin/teams/some-id`, {
       guardrailPolicy: "strict",
@@ -113,7 +124,9 @@ test.describe("W9: team policy API", () => {
     expect(res.status()).toBe(200);
   });
 
-  test("7. Admin enables all multimodal flags simultaneously", async ({ page }) => {
+  test("7. Admin enables all multimodal flags simultaneously", async ({
+    page,
+  }) => {
     if (!teamId) test.skip();
     const res = await apiRequest(page, "PATCH", `/api/admin/teams/${teamId}`, {
       allowImageGen: true,
@@ -126,17 +139,26 @@ test.describe("W9: team policy API", () => {
 
   test("8. PATCH with empty body is a no-op (200)", async ({ page }) => {
     if (!teamId) test.skip();
-    const res = await apiRequest(page, "PATCH", `/api/admin/teams/${teamId}`, {});
+    const res = await apiRequest(
+      page,
+      "PATCH",
+      `/api/admin/teams/${teamId}`,
+      {},
+    );
     expect(res.status()).toBe(200);
   });
 
-  test("9. GET /api/compliance/aup — 401 for unauthenticated", async ({ page }) => {
+  test("9. GET /api/compliance/aup — 401 for unauthenticated", async ({
+    page,
+  }) => {
     await page.context().clearCookies();
     const res = await page.request.get(`${BASE}/api/compliance/aup`);
     expect(res.status()).toBe(401);
   });
 
-  test("10. GET /api/compliance/aup — returns accepted boolean", async ({ page }) => {
+  test("10. GET /api/compliance/aup — returns accepted boolean", async ({
+    page,
+  }) => {
     const res = await page.request.get(`${BASE}/api/compliance/aup`);
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -179,7 +201,9 @@ test.describe("W9: team policy API", () => {
     expect([200, 201]).toContain(res.status());
   });
 
-  test("15. POST /api/feedback — thumbs-down with comment", async ({ page }) => {
+  test("15. POST /api/feedback — thumbs-down with comment", async ({
+    page,
+  }) => {
     const res = await apiRequest(page, "POST", "/api/feedback", {
       messageId: `msg-w9-down-${Date.now()}`,
       threadId: `thread-w9-down-${Date.now()}`,

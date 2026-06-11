@@ -2,7 +2,7 @@
  * E2E tests for W12 admin quality + guardrails pages.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
@@ -19,7 +19,10 @@ test.describe("Admin Quality dashboard (/admin/quality)", () => {
     await page.goto(`${BASE}/admin/quality`, { waitUntil: "networkidle" });
 
     // Page title or heading should contain "Quality"
-    const heading = await page.getByRole("heading", { level: 1 }).first().textContent();
+    const heading = await page
+      .getByRole("heading", { level: 1 })
+      .first()
+      .textContent();
     expect(heading).toMatch(/quality/i);
 
     await ctx.close();
@@ -102,7 +105,10 @@ test.describe("Admin Guardrails events (/admin/guardrails)", () => {
 
     await page.goto(`${BASE}/admin/guardrails`, { waitUntil: "networkidle" });
 
-    const heading = await page.getByRole("heading", { level: 1 }).first().textContent();
+    const heading = await page
+      .getByRole("heading", { level: 1 })
+      .first()
+      .textContent();
     expect(heading).toMatch(/guardrail/i);
 
     await ctx.close();
@@ -164,7 +170,9 @@ test.describe("Admin sidebar — Quality and Guardrails nav items", () => {
     await ctx.close();
   });
 
-  test("admin sidebar has guardrails nav item at /admin", async ({ browser }) => {
+  test("admin sidebar has guardrails nav item at /admin", async ({
+    browser,
+  }) => {
     const ctx = await browser.newContext({
       storageState: TEST_USERS.admin.authFile,
     });

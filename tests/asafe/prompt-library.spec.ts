@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 const PROMPTS_URL = "/api/prompts";
@@ -70,9 +70,7 @@ test.describe("Prompt Library API", () => {
       expect(list.status()).toBe(200);
       const prompts = await list.json();
 
-      const found = prompts.find(
-        (p: { id: string }) => p.id === id,
-      );
+      const found = prompts.find((p: { id: string }) => p.id === id);
       expect(found).toBeDefined();
 
       await tryCleanup(page, id);
@@ -177,9 +175,7 @@ test.describe("Prompt Library API", () => {
       expect(list.status()).toBe(200);
       const prompts = await list.json();
 
-      const found = prompts.find(
-        (p: { id: string }) => p.id === id,
-      );
+      const found = prompts.find((p: { id: string }) => p.id === id);
       expect(found).toBeDefined();
       expect(found.visibility).toBe("org");
 

@@ -9,7 +9,7 @@
  * This file adds 5 complementary tests that do NOT duplicate those scenarios.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 let _c = 0;
@@ -69,13 +69,19 @@ test("Regular user's private prompt is NOT visible to another user (editor)", as
   const prompts = await list.json();
 
   // Filter by the regular user's authorId to be precise
-  const editorSeesRegularPrivate = prompts.some((p: { id: string; authorId?: string }) => {
-    // Match by id directly, or by authorId if the server returns it
-    if (p.id === promptId) return true;
-    if (regularAuthorId && p.authorId === regularAuthorId && p.id === promptId)
-      return true;
-    return false;
-  });
+  const editorSeesRegularPrivate = prompts.some(
+    (p: { id: string; authorId?: string }) => {
+      // Match by id directly, or by authorId if the server returns it
+      if (p.id === promptId) return true;
+      if (
+        regularAuthorId &&
+        p.authorId === regularAuthorId &&
+        p.id === promptId
+      )
+        return true;
+      return false;
+    },
+  );
 
   expect(editorSeesRegularPrivate).toBe(false);
 
@@ -98,7 +104,8 @@ test("Admin org-visibility prompt is visible to regular user in GET /api/prompts
   const created = await adminPage.request.post(PROMPTS_URL, {
     data: {
       title,
-      content: "This org-wide prompt should appear for all authenticated users.",
+      content:
+        "This org-wide prompt should appear for all authenticated users.",
       visibility: "org",
     },
     failOnStatusCode: false,

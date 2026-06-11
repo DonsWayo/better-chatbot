@@ -39,8 +39,7 @@ export const createMcpServer = async (
       data: {
         name: server.name,
         config: server.config ?? {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
         visibility: server.visibility ?? "private",
       },

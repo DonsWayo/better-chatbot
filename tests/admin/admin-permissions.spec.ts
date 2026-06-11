@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 import { ensureSidebarOpen } from "../helpers/sidebar-helper";
 
@@ -70,9 +70,7 @@ test.describe("Permissions", () => {
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
     await page.getByTestId("sidebar-user-button").click();
-    await expect(
-      page.getByTestId("admin-console-menu-item"),
-    ).toBeVisible();
+    await expect(page.getByTestId("admin-console-menu-item")).toBeVisible();
     await context.close();
   });
   test("editor does NOT see the Admin console item in the user menu", async ({
@@ -86,9 +84,7 @@ test.describe("Permissions", () => {
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
     await page.getByTestId("sidebar-user-button").click();
-    await expect(
-      page.getByTestId("admin-console-menu-item"),
-    ).not.toBeVisible();
+    await expect(page.getByTestId("admin-console-menu-item")).not.toBeVisible();
     await context.close();
   });
   test("regular user does NOT see the Admin console item in the user menu", async ({
@@ -102,9 +98,7 @@ test.describe("Permissions", () => {
     await page.waitForLoadState("networkidle");
     await ensureSidebarOpen(page);
     await page.getByTestId("sidebar-user-button").click();
-    await expect(
-      page.getByTestId("admin-console-menu-item"),
-    ).not.toBeVisible();
+    await expect(page.getByTestId("admin-console-menu-item")).not.toBeVisible();
     await context.close();
   });
   test("Admin console item navigates into the admin users page", async ({

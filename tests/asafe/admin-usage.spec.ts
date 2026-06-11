@@ -8,7 +8,7 @@
  * Each test creates its own browser context so the suite is parallel-safe.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 test("admin: /admin/usage loads without redirect (URL still contains /admin)", async ({
@@ -79,9 +79,7 @@ test("admin at /admin: admin-sidebar-link-usage is present", async ({
 
   await page.goto("/admin", { waitUntil: "networkidle" });
 
-  const count = await page
-    .getByTestId("admin-sidebar-link-usage")
-    .count();
+  const count = await page.getByTestId("admin-sidebar-link-usage").count();
   expect(
     count,
     `Admin must see admin-sidebar-link-usage in the sidebar, found ${count}`,
@@ -100,9 +98,7 @@ test("regular user at '/': admin-sidebar-link-usage is absent", async ({
 
   await page.goto("/", { waitUntil: "networkidle" });
 
-  const count = await page
-    .getByTestId("admin-sidebar-link-usage")
-    .count();
+  const count = await page.getByTestId("admin-sidebar-link-usage").count();
   expect(
     count,
     `Regular user must not see admin-sidebar-link-usage, found ${count}`,

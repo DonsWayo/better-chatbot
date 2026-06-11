@@ -54,12 +54,24 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: "pnpm start",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001",
-    reuseExistingServer: !process.env.CI,
-    timeout: 180 * 1000, // 3 minutes for build and start
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+  webServer: [
+    {
+      command: "pnpm start",
+      url: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001",
+      reuseExistingServer: !process.env.CI,
+      timeout: 180 * 1000, // 3 minutes for build and start
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+    {
+      // Remote MCP fixture (streamable HTTP) — production builds enforce the
+      // cloud remote-only posture, so MCP specs create servers against this.
+      command: "node tests/fixtures/test-mcp-http-server.mjs",
+      url: `http://localhost:${process.env.E2E_MCP_PORT || 3007}/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30 * 1000,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  ],
 });

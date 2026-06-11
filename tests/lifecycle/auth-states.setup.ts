@@ -1,7 +1,7 @@
-import { test as setup, expect } from "@playwright/test";
 import * as fs from "node:fs";
-import { TEST_USERS } from "../constants/test-users";
+import { expect, test as setup } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { TEST_USERS } from "../constants/test-users";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
 

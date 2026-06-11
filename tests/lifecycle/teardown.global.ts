@@ -1,13 +1,13 @@
+import { config } from "dotenv";
+import { eq, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import {
-  UserTable,
-  SessionTable,
   AgentTable,
   BookmarkTable,
   ChatThreadTable,
+  SessionTable,
+  UserTable,
 } from "../../src/lib/db/pg/schema.pg";
-import { eq, like, or } from "drizzle-orm";
-import { config } from "dotenv";
 
 config();
 

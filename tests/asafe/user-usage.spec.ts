@@ -2,7 +2,7 @@
  * E2E tests for W3 self-service usage view (/settings).
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";

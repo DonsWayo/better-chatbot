@@ -7,7 +7,7 @@
  * SLO tests verify that /api/metrics exposes the W12 Prometheus metrics.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
@@ -123,7 +123,10 @@ test.describe("W12 — kill switch (DB-backed)", () => {
     // Only proceed if the feature-flag admin API exists
     const canToggle = await setKillSwitch(adminPage, true);
     if (!canToggle) {
-      test.skip(true, "Feature-flag admin API not available — skip kill-switch E2E");
+      test.skip(
+        true,
+        "Feature-flag admin API not available — skip kill-switch E2E",
+      );
       return;
     }
 

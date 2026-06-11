@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 const FEEDBACK_URL = "/api/feedback";
@@ -7,9 +7,7 @@ test.describe("Feedback API", () => {
   test.describe("Authenticated user — happy path", () => {
     test.use({ storageState: TEST_USERS.regular.authFile });
 
-    test("POST with 'up' rating returns 200 { ok: true }", async ({
-      page,
-    }) => {
+    test("POST with 'up' rating returns 200 { ok: true }", async ({ page }) => {
       const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const threadId = `thread-${Date.now()}`;
 
@@ -40,7 +38,12 @@ test.describe("Feedback API", () => {
 
       // Second POST: thumbs down — should upsert, not error
       const second = await page.request.post(FEEDBACK_URL, {
-        data: { messageId, threadId, rating: "down", comment: "Changed my mind" },
+        data: {
+          messageId,
+          threadId,
+          rating: "down",
+          comment: "Changed my mind",
+        },
       });
       expect(second.status()).toBe(200);
       const body = await second.json();

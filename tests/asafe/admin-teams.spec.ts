@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 import {
-  ensureSidebarOpen,
   ensureAdminSidebarReady,
+  ensureSidebarOpen,
 } from "../helpers/sidebar-helper";
 
 // No REST API exists for /api/admin/teams — teams are managed via server actions.
@@ -26,9 +26,7 @@ test.describe("Admin Teams Page - Access Control", () => {
     // the page loaded for an admin and was not replaced by the unauthorized
     // boundary. (A substring match on "401"/"403" is unsafe — team names contain
     // timestamps that can include those digits.)
-    await expect(
-      page.getByRole("button", { name: /new team/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /new team/i })).toBeVisible();
 
     await context.close();
   });

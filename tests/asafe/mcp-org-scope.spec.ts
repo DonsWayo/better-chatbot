@@ -1,4 +1,4 @@
-import { test, expect, Page, BrowserContext } from "@playwright/test";
+import { BrowserContext, Page, expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 import { deleteMcpServer } from "../helpers/delete-data";
 
@@ -28,8 +28,7 @@ test.describe("MCP Org-Scope API Permissions", () => {
       data: {
         name: generateServerName("user-org-scope"),
         config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
         visibility: "private",
         scope: "org",
@@ -57,8 +56,7 @@ test.describe("MCP Org-Scope API Permissions", () => {
       data: {
         name: generateServerName("user-personal-scope"),
         config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
         visibility: "private",
         scope: "personal",
@@ -84,8 +82,7 @@ test.describe("MCP Org-Scope API Permissions", () => {
       data: {
         name: generateServerName("editor-org-scope"),
         config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
         visibility: "private",
         scope: "org",
@@ -112,8 +109,7 @@ test.describe("MCP Org-Scope API Permissions", () => {
       data: {
         name: generateServerName("editor-team-scope"),
         config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
         visibility: "private",
         scope: "team",
@@ -150,8 +146,7 @@ test.describe
         data: {
           name: serverName,
           config: {
-            command: "node",
-            args: ["tests/fixtures/test-mcp-server.js"],
+            url: "http://localhost:3007/mcp",
           },
           visibility: "private",
           scope: "personal",
@@ -199,8 +194,7 @@ test.describe
         data: {
           name: serverName,
           config: {
-            command: "node",
-            args: ["tests/fixtures/test-mcp-server.js"],
+            url: "http://localhost:3007/mcp",
           },
           visibility: "private",
           scope: "org",

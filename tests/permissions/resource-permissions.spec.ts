@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 import { clickAndWaitForNavigation } from "../utils/test-helpers";
 
@@ -459,8 +459,7 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
       await commandInput.fill(
         JSON.stringify(
           {
-            command: "node",
-            args: ["tests/fixtures/test-mcp-server.js"],
+            url: "http://localhost:3007/mcp",
           },
 
           null,
@@ -503,8 +502,7 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
     editorPage.getByTestId("mcp-config-editor").fill(
       JSON.stringify(
         {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
 
         null,
@@ -537,7 +535,10 @@ test.describe("MCP Sharing Workflow - Complete Scenario", () => {
 
     // A basic user sees the read-only "Available MCP Servers" heading.
     await expect(
-      userPage.getByRole("heading", { level: 1, name: /Available MCP Servers/i }),
+      userPage.getByRole("heading", {
+        level: 1,
+        name: /Available MCP Servers/i,
+      }),
     ).toBeVisible();
 
     // User should NOT see create button

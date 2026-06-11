@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 import {
-  ensureSidebarOpen,
   ensureAdminSidebarReady,
+  ensureSidebarOpen,
 } from "../helpers/sidebar-helper";
 
 let _c = 0;
@@ -26,9 +26,7 @@ test.describe("Admin sidebar link visibility", () => {
     await page.goto("/admin", { waitUntil: "networkidle" });
     await ensureAdminSidebarReady(page);
 
-    const count = await page
-      .getByTestId("admin-sidebar-link-teams")
-      .count();
+    const count = await page.getByTestId("admin-sidebar-link-teams").count();
     expect(count).toBeGreaterThan(0);
 
     await ctx.close();
@@ -45,9 +43,7 @@ test.describe("Admin sidebar link visibility", () => {
     await page.goto("/admin", { waitUntil: "networkidle" });
     await ensureAdminSidebarReady(page);
 
-    const count = await page
-      .getByTestId("admin-sidebar-link-usage")
-      .count();
+    const count = await page.getByTestId("admin-sidebar-link-usage").count();
     expect(count).toBeGreaterThan(0);
 
     await ctx.close();
@@ -146,9 +142,7 @@ test.describe("Admin sidebar link visibility", () => {
     await page.goto("/", { waitUntil: "networkidle" });
     await ensureSidebarOpen(page);
 
-    const count = await page
-      .getByTestId("admin-sidebar-link-teams")
-      .count();
+    const count = await page.getByTestId("admin-sidebar-link-teams").count();
     expect(count).toBe(0);
 
     await ctx.close();
@@ -165,9 +159,7 @@ test.describe("Admin sidebar link visibility", () => {
     await page.goto("/", { waitUntil: "networkidle" });
     await ensureSidebarOpen(page);
 
-    const count = await page
-      .getByTestId("admin-sidebar-link-teams")
-      .count();
+    const count = await page.getByTestId("admin-sidebar-link-teams").count();
     expect(count).toBe(0);
 
     await ctx.close();

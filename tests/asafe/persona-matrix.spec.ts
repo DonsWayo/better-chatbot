@@ -1,4 +1,4 @@
-import { test, expect, BrowserContext, Page } from "@playwright/test";
+import { BrowserContext, Page, expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 let counter = 0;
@@ -197,7 +197,7 @@ test.describe("Personas 10-14: Regular user — write restrictions", () => {
         headers: { "Content-Type": "application/json" },
         data: {
           name: uid(),
-          config: { command: "node", args: [] },
+          config: { url: "http://localhost:3007/mcp" },
           visibility: "private",
         },
         failOnStatusCode: false,
@@ -297,183 +297,182 @@ test.describe("Personas 10-14: Regular user — write restrictions", () => {
 // Block 4: Editor — elevated write (Personas 15-19)
 // ---------------------------------------------------------------------------
 
-test.describe.serial("Personas 15-19: Editor — elevated write", () => {
-  let editorContext: BrowserContext;
-  let editorPage: Page;
-  let editorServerId: string | undefined;
+test.describe
+  .serial("Personas 15-19: Editor — elevated write", () => {
+    let editorContext: BrowserContext;
+    let editorPage: Page;
+    let editorServerId: string | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    editorContext = await browser.newContext({
-      storageState: TEST_USERS.editor.authFile,
+    test.beforeAll(async ({ browser }) => {
+      editorContext = await browser.newContext({
+        storageState: TEST_USERS.editor.authFile,
+      });
+      editorPage = await editorContext.newPage();
     });
-    editorPage = await editorContext.newPage();
-  });
 
-  test.afterAll(async () => {
-    if (editorServerId) {
-      await editorPage.request
-        .delete(`/api/mcp/${editorServerId}`, { failOnStatusCode: false })
-        .catch(() => {
-          // best-effort cleanup
-        });
-    }
-    await editorContext.close();
-  });
-
-  test("P15: POST /api/mcp (personal scope) → 200, capture id", async () => {
-    const response = await editorPage.request.post("/api/mcp", {
-      headers: { "Content-Type": "application/json" },
-      data: {
-        name: `e2e-editor-${uid()}`,
-        config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
-        },
-        visibility: "private",
-        scope: "personal",
-      },
-      failOnStatusCode: false,
+    test.afterAll(async () => {
+      if (editorServerId) {
+        await editorPage.request
+          .delete(`/api/mcp/${editorServerId}`, { failOnStatusCode: false })
+          .catch(() => {
+            // best-effort cleanup
+          });
+      }
+      await editorContext.close();
     });
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    editorServerId = body.id;
-    expect(editorServerId).toBeTruthy();
-  });
 
-  test("P16: POST /api/mcp (org scope) → 401 or 403 (editor cannot create org-scoped MCP)", async () => {
-    const response = await editorPage.request.post("/api/mcp", {
-      headers: { "Content-Type": "application/json" },
-      data: {
-        name: uid(),
-        config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
-        },
-        visibility: "private",
-        scope: "org",
-      },
-      failOnStatusCode: false,
-    });
-    expect([401, 403]).toContain(response.status());
-  });
-
-  test("P17: POST /api/prompts → 201 (editor can create prompts)", async () => {
-    const response = await editorPage.request.post("/api/prompts", {
-      headers: { "Content-Type": "application/json" },
-      data: {
-        title: `ep-${uid()}`,
-        content: "c",
-        visibility: "private",
-      },
-      failOnStatusCode: false,
-    });
-    expect(response.status()).toBe(201);
-  });
-
-  test("P18: GET /api/knowledge/collections → 200", async () => {
-    const response = await editorPage.request.get(
-      "/api/knowledge/collections",
-      { failOnStatusCode: false },
-    );
-    expect(response.status()).toBe(200);
-  });
-
-  test("P19: POST /api/knowledge/collections → 403 (editor cannot create collections)", async () => {
-    const response = await editorPage.request.post(
-      "/api/knowledge/collections",
-      {
+    test("P15: POST /api/mcp (personal scope) → 200, capture id", async () => {
+      const response = await editorPage.request.post("/api/mcp", {
         headers: { "Content-Type": "application/json" },
-        data: { name: uid() },
+        data: {
+          name: `e2e-editor-${uid()}`,
+          config: {
+            url: "http://localhost:3007/mcp",
+          },
+          visibility: "private",
+          scope: "personal",
+        },
         failOnStatusCode: false,
-      },
-    );
-    expect(response.status()).toBe(403);
+      });
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      editorServerId = body.id;
+      expect(editorServerId).toBeTruthy();
+    });
+
+    test("P16: POST /api/mcp (org scope) → 401 or 403 (editor cannot create org-scoped MCP)", async () => {
+      const response = await editorPage.request.post("/api/mcp", {
+        headers: { "Content-Type": "application/json" },
+        data: {
+          name: uid(),
+          config: {
+            url: "http://localhost:3007/mcp",
+          },
+          visibility: "private",
+          scope: "org",
+        },
+        failOnStatusCode: false,
+      });
+      expect([401, 403]).toContain(response.status());
+    });
+
+    test("P17: POST /api/prompts → 201 (editor can create prompts)", async () => {
+      const response = await editorPage.request.post("/api/prompts", {
+        headers: { "Content-Type": "application/json" },
+        data: {
+          title: `ep-${uid()}`,
+          content: "c",
+          visibility: "private",
+        },
+        failOnStatusCode: false,
+      });
+      expect(response.status()).toBe(201);
+    });
+
+    test("P18: GET /api/knowledge/collections → 200", async () => {
+      const response = await editorPage.request.get(
+        "/api/knowledge/collections",
+        { failOnStatusCode: false },
+      );
+      expect(response.status()).toBe(200);
+    });
+
+    test("P19: POST /api/knowledge/collections → 403 (editor cannot create collections)", async () => {
+      const response = await editorPage.request.post(
+        "/api/knowledge/collections",
+        {
+          headers: { "Content-Type": "application/json" },
+          data: { name: uid() },
+          failOnStatusCode: false,
+        },
+      );
+      expect(response.status()).toBe(403);
+    });
   });
-});
 
 // ---------------------------------------------------------------------------
 // Block 5: Admin — full control (Personas 20-23)
 // ---------------------------------------------------------------------------
 
-test.describe.serial("Personas 20-23: Admin — full control", () => {
-  let adminContext: BrowserContext;
-  let adminPage: Page;
-  let adminCollectionId: string | undefined;
-  let adminMcpServerId: string | undefined;
+test.describe
+  .serial("Personas 20-23: Admin — full control", () => {
+    let adminContext: BrowserContext;
+    let adminPage: Page;
+    let adminCollectionId: string | undefined;
+    let adminMcpServerId: string | undefined;
 
-  test.beforeAll(async ({ browser }) => {
-    adminContext = await browser.newContext({
-      storageState: TEST_USERS.admin.authFile,
+    test.beforeAll(async ({ browser }) => {
+      adminContext = await browser.newContext({
+        storageState: TEST_USERS.admin.authFile,
+      });
+      adminPage = await adminContext.newPage();
     });
-    adminPage = await adminContext.newPage();
-  });
 
-  test.afterAll(async () => {
-    if (adminCollectionId) {
-      await adminPage.request
-        .delete(`/api/knowledge/collections/${adminCollectionId}`, {
+    test.afterAll(async () => {
+      if (adminCollectionId) {
+        await adminPage.request
+          .delete(`/api/knowledge/collections/${adminCollectionId}`, {
+            failOnStatusCode: false,
+          })
+          .catch(() => {
+            // best-effort cleanup
+          });
+      }
+      if (adminMcpServerId) {
+        await adminPage.request
+          .delete(`/api/mcp/${adminMcpServerId}`, { failOnStatusCode: false })
+          .catch(() => {
+            // best-effort cleanup
+          });
+      }
+      await adminContext.close();
+    });
+
+    test("P20: POST /api/knowledge/collections → 200 or 201, capture id", async () => {
+      const response = await adminPage.request.post(
+        "/api/knowledge/collections",
+        {
+          headers: { "Content-Type": "application/json" },
+          data: { name: `admin-col-${uid()}` },
           failOnStatusCode: false,
-        })
-        .catch(() => {
-          // best-effort cleanup
-        });
-    }
-    if (adminMcpServerId) {
-      await adminPage.request
-        .delete(`/api/mcp/${adminMcpServerId}`, { failOnStatusCode: false })
-        .catch(() => {
-          // best-effort cleanup
-        });
-    }
-    await adminContext.close();
-  });
-
-  test("P20: POST /api/knowledge/collections → 200 or 201, capture id", async () => {
-    const response = await adminPage.request.post(
-      "/api/knowledge/collections",
-      {
-        headers: { "Content-Type": "application/json" },
-        data: { name: `admin-col-${uid()}` },
-        failOnStatusCode: false,
-      },
-    );
-    expect([200, 201]).toContain(response.status());
-    const body = await response.json();
-    adminCollectionId = body.collection?.id ?? body.id;
-    expect(adminCollectionId).toBeTruthy();
-  });
-
-  test("P21: page.goto('/admin') → final URL includes '/admin'", async () => {
-    await adminPage.goto("/admin", { waitUntil: "networkidle" });
-    expect(adminPage.url()).toContain("/admin");
-  });
-
-  test("P22: POST /api/mcp (org scope) → 200, capture id", async () => {
-    const response = await adminPage.request.post("/api/mcp", {
-      headers: { "Content-Type": "application/json" },
-      data: {
-        name: `admin-org-${uid()}`,
-        config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
         },
-        visibility: "private",
-        scope: "org",
-      },
-      failOnStatusCode: false,
+      );
+      expect([200, 201]).toContain(response.status());
+      const body = await response.json();
+      adminCollectionId = body.collection?.id ?? body.id;
+      expect(adminCollectionId).toBeTruthy();
     });
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    adminMcpServerId = body.id;
-    expect(adminMcpServerId).toBeTruthy();
-  });
 
-  test("P23: GET /api/prompts → 200 array", async () => {
-    const response = await adminPage.request.get("/api/prompts", {
-      failOnStatusCode: false,
+    test("P21: page.goto('/admin') → final URL includes '/admin'", async () => {
+      await adminPage.goto("/admin", { waitUntil: "networkidle" });
+      expect(adminPage.url()).toContain("/admin");
     });
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(Array.isArray(body)).toBe(true);
+
+    test("P22: POST /api/mcp (org scope) → 200, capture id", async () => {
+      const response = await adminPage.request.post("/api/mcp", {
+        headers: { "Content-Type": "application/json" },
+        data: {
+          name: `admin-org-${uid()}`,
+          config: {
+            url: "http://localhost:3007/mcp",
+          },
+          visibility: "private",
+          scope: "org",
+        },
+        failOnStatusCode: false,
+      });
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      adminMcpServerId = body.id;
+      expect(adminMcpServerId).toBeTruthy();
+    });
+
+    test("P23: GET /api/prompts → 200 array", async () => {
+      const response = await adminPage.request.get("/api/prompts", {
+        failOnStatusCode: false,
+      });
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      expect(Array.isArray(body)).toBe(true);
+    });
   });
-});

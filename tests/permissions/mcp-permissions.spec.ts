@@ -1,7 +1,7 @@
-import { test, expect, Page, BrowserContext } from "@playwright/test";
+import { BrowserContext, Page, expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
-import { deleteMcpServer } from "../helpers/delete-data";
 import { createMcpServer } from "../helpers/create-data";
+import { deleteMcpServer } from "../helpers/delete-data";
 
 // Helper to get MCP servers via API
 async function getMcpServers(page: Page) {
@@ -504,8 +504,7 @@ test.describe("MCP API Permissions", () => {
       data: {
         name: generateServerName("user-api-test"),
         config: {
-          command: "node",
-          args: ["tests/fixtures/test-mcp-server.js"],
+          url: "http://localhost:3007/mcp",
         },
         visibility: "private",
       },

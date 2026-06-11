@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { ensureSidebarOpen } from "../helpers/sidebar-helper";
 
 // The editable profile moved out of a popup/drawer into the /settings/account
@@ -13,7 +13,8 @@ async function readSidebarName(page: Page): Promise<string> {
     state: "visible",
     timeout: 5000,
   });
-  const name = (await page.getByTestId("sidebar-user-name").textContent()) ?? "";
+  const name =
+    (await page.getByTestId("sidebar-user-name").textContent()) ?? "";
   // Close the dropdown again.
   await page.keyboard.press("Escape");
   return name.trim();

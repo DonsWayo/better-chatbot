@@ -1,11 +1,11 @@
-import { test, expect, Page } from "@playwright/test";
+import { Page, expect, test } from "@playwright/test";
+import { TEST_USERS } from "../constants/test-users";
 import {
-  uniqueTestName,
   clickAndWaitForNavigation,
   openDropdown,
   selectDropdownOption,
+  uniqueTestName,
 } from "../utils/test-helpers";
-import { TEST_USERS } from "../constants/test-users";
 
 // Saving an agent now lands on /studio (the role-gated builder home with the
 // Agents + Workflows tabs), which renders the same AgentsList as /agents. The

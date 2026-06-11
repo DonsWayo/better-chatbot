@@ -12,14 +12,25 @@
  * Each test creates its own browser context so the suite is parallel-safe.
  */
 
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
 
 let _c = 0;
-function uid(): string { _c++; return `${_c}-${process.pid}`; }
+function uid(): string {
+  _c++;
+  return `${_c}-${process.pid}`;
+}
 
 function chatBody() {
-  return { id: uid(), message: { id: uid(), role: "user", parts: [{ type: "text", text: "test" }] }, toolChoice: "none" };
+  return {
+    id: uid(),
+    message: {
+      id: uid(),
+      role: "user",
+      parts: [{ type: "text", text: "test" }],
+    },
+    toolChoice: "none",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -164,7 +175,9 @@ test.describe("Chat API auth and role smoke", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("UI model picker — role gating", () => {
-  test("admin at '/': model-selector-button is present", async ({ browser }) => {
+  test("admin at '/': model-selector-button is present", async ({
+    browser,
+  }) => {
     const ctx = await browser.newContext({
       storageState: TEST_USERS.admin.authFile,
     });
