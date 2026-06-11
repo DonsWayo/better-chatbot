@@ -1,26 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Drizzle mock chain (model-policy.test.ts pattern) ────────────────────────
-// select({...}).from(T).where(eq(key)).limit(1) → rows keyed by the settings
-// key captured via the eq() mock, so the four parallel reads inside
-// resolveMemoryPolicy can be fed independently.
+// ── Drizzle mock chain (local-policy.test.ts pattern) ────────────────────────
+// select({...}).from(T).where(cond) resolves rows keyed by the eq()/like()
+// condition captured through the operator mocks, so point reads (readBool,
+// .limit(1)) and the team-override LIKE scans can be fed independently.
 
 const h = vi.hoisted(() => {
   const state = {
     rowsByKey: {} as Record<string, unknown[]>,
+    likeRows: [] as Array<{ key: string; value: unknown }>,
     selectThrows: false,
-    lastEqKey: [] as string[],
   };
 
   const eqMock = vi.fn((_col: unknown, key: unknown) => ({ key }));
+  const likeMock = vi.fn((_col: unknown, pattern: unknown) => ({
+    like: pattern,
+  }));
+
+  const resolveRows = (cond: { key?: string; like?: string }) => {
+    if (state.selectThrows) return Promise.reject(new Error("db down"));
+    if (cond?.like !== undefined) {
+      const prefix = String(cond.like).replace(/%$/, "");
+      return Promise.resolve(
+        state.likeRows.filter((row) => row.key.startsWith(prefix)),
+      );
+    }
+    return Promise.resolve(state.rowsByKey[cond?.key ?? ""] ?? []);
+  };
 
   const fromMock = vi.fn(() => ({
-    where: vi.fn((cond: { key?: string }) => ({
-      limit: vi.fn().mockImplementation(() => {
-        if (state.selectThrows) return Promise.reject(new Error("db down"));
-        return Promise.resolve(state.rowsByKey[cond?.key ?? ""] ?? []);
-      }),
-    })),
+    where: vi.fn((cond: { key?: string; like?: string }) => {
+      const rowsPromise = resolveRows(cond);
+      return {
+        limit: vi.fn().mockImplementation(() => rowsPromise),
+        then: rowsPromise.then.bind(rowsPromise),
+        catch: rowsPromise.catch.bind(rowsPromise),
+      };
+    }),
   }));
   const selectMock = vi.fn().mockReturnValue({ from: fromMock });
 
@@ -30,7 +46,7 @@ const h = vi.hoisted(() => {
     .mockReturnValue({ onConflictDoUpdate: onConflictMock });
   const insertMock = vi.fn().mockReturnValue({ values: insertValuesMock });
 
-  return { state, eqMock, selectMock, insertMock, insertValuesMock };
+  return { state, eqMock, likeMock, selectMock, insertMock, insertValuesMock };
 });
 
 vi.mock("lib/db/pg/db.pg", () => ({
@@ -39,7 +55,7 @@ vi.mock("lib/db/pg/db.pg", () => ({
 vi.mock("lib/db/pg/schema.pg", () => ({
   AsafeOrgSettingsTable: { key: "key", value: "value" },
 }));
-vi.mock("drizzle-orm", () => ({ eq: h.eqMock }));
+vi.mock("drizzle-orm", () => ({ eq: h.eqMock, like: h.likeMock }));
 vi.mock("server-only", () => ({}));
 
 import {
@@ -47,15 +63,19 @@ import {
   ORG_MEMORY_ENABLED_KEY,
   ORG_MEMORY_IMPLICIT_EXTRACTION_KEY,
   isMemoryMode,
+  listTeamMemoryOverrides,
   resolveMemoryLayers,
   resolveMemoryPolicy,
   setOrgMemoryEnabled,
+  setTeamMemoryEnabled,
+  setTeamMemoryImplicitExtraction,
   teamMemoryEnabledKey,
   teamMemoryImplicitExtractionKey,
 } from "./policy";
 
 beforeEach(() => {
   h.state.rowsByKey = {};
+  h.state.likeRows = [];
   h.state.selectThrows = false;
   vi.clearAllMocks();
 });
@@ -155,6 +175,62 @@ describe("setters", () => {
     expect(h.insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({ key: ORG_MEMORY_ENABLED_KEY, value: null }),
     );
+  });
+});
+
+describe("team setters", () => {
+  it("setTeamMemoryEnabled writes the team-scoped key", async () => {
+    await setTeamMemoryEnabled("t1", false);
+    expect(h.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: teamMemoryEnabledKey("t1"),
+        value: false,
+      }),
+    );
+  });
+
+  it("setTeamMemoryImplicitExtraction clears with null", async () => {
+    await setTeamMemoryImplicitExtraction("t1", null);
+    expect(h.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: teamMemoryImplicitExtractionKey("t1"),
+        value: null,
+      }),
+    );
+  });
+});
+
+describe("listTeamMemoryOverrides", () => {
+  it("returns [] when no overrides are stored", async () => {
+    await expect(listTeamMemoryOverrides()).resolves.toEqual([]);
+  });
+
+  it("merges the two key families per team, sorted by teamId", async () => {
+    h.state.likeRows = [
+      { key: teamMemoryEnabledKey("t2"), value: false },
+      { key: teamMemoryEnabledKey("t1"), value: true },
+      { key: teamMemoryImplicitExtractionKey("t1"), value: true },
+    ];
+    await expect(listTeamMemoryOverrides()).resolves.toEqual([
+      { teamId: "t1", enabled: true, implicitExtraction: true },
+      { teamId: "t2", enabled: false, implicitExtraction: null },
+    ]);
+  });
+
+  it("treats non-boolean values (cleared overrides) as inherit", async () => {
+    h.state.likeRows = [
+      { key: teamMemoryEnabledKey("t1"), value: null },
+      { key: teamMemoryImplicitExtractionKey("t1"), value: "yes" },
+      { key: teamMemoryImplicitExtractionKey("t2"), value: false },
+    ];
+    await expect(listTeamMemoryOverrides()).resolves.toEqual([
+      { teamId: "t2", enabled: null, implicitExtraction: false },
+    ]);
+  });
+
+  it("fails soft to [] when the store is unreadable", async () => {
+    h.state.selectThrows = true;
+    await expect(listTeamMemoryOverrides()).resolves.toEqual([]);
   });
 });
 

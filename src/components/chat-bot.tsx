@@ -7,6 +7,7 @@ import { cn, createDebounce, generateUUID, truncateString } from "lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChatGreeting } from "./chat-greeting";
+import { MemoryUpdatedPill } from "./memory/memory-updated-pill";
 import { ErrorMessage, PreviewMessage } from "./message";
 import PromptInput from "./prompt-input";
 import { useTypingBeacon } from "./realtime/use-typing-beacon";
@@ -548,6 +549,7 @@ export default function ChatBot({
             />
           </div>
 
+          <MemoryUpdatedPill threadId={threadId} status={status} />
           <PromptInput
             input={input}
             threadId={threadId}

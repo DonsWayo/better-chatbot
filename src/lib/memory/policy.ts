@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { AsafeOrgSettingsTable } from "lib/db/pg/schema.pg";
 
@@ -40,12 +40,16 @@ export const DEFAULT_MEMORY_POLICY: MemoryPolicy = {
 export const ORG_MEMORY_ENABLED_KEY = "memory_enabled";
 export const ORG_MEMORY_IMPLICIT_EXTRACTION_KEY = "memory_implicit_extraction";
 
+export const TEAM_MEMORY_ENABLED_KEY_PREFIX = "team_memory_enabled:";
+export const TEAM_MEMORY_IMPLICIT_EXTRACTION_KEY_PREFIX =
+  "team_memory_implicit_extraction:";
+
 export function teamMemoryEnabledKey(teamId: string): string {
-  return `team_memory_enabled:${teamId}`;
+  return `${TEAM_MEMORY_ENABLED_KEY_PREFIX}${teamId}`;
 }
 
 export function teamMemoryImplicitExtractionKey(teamId: string): string {
-  return `team_memory_implicit_extraction:${teamId}`;
+  return `${TEAM_MEMORY_IMPLICIT_EXTRACTION_KEY_PREFIX}${teamId}`;
 }
 
 export function isMemoryMode(value: unknown): value is MemoryMode {
@@ -127,6 +131,64 @@ export async function setTeamMemoryImplicitExtraction(
   enabled: boolean | null,
 ): Promise<void> {
   await writeBool(teamMemoryImplicitExtractionKey(teamId), enabled);
+}
+
+/** One team's stored memory overrides; `null` field = inherit (not set). */
+export interface TeamMemoryOverride {
+  teamId: string;
+  enabled: boolean | null;
+  implicitExtraction: boolean | null;
+}
+
+/**
+ * All stored team memory overrides, for the admin overrides UI. Scans the two
+ * team-key prefixes the same way `isLocalMcpRuntimeEnabled`
+ * (lib/ai/mcp/local-policy.ts) scans its prefix. Non-boolean values (e.g.
+ * cleared with `null`) mean inherit and are dropped; teams with neither field
+ * set are omitted. Fails soft to `[]` — listing is a UI affordance, not an
+ * enforcement path.
+ */
+export async function listTeamMemoryOverrides(): Promise<TeamMemoryOverride[]> {
+  const scan = (prefix: string) =>
+    db
+      .select({
+        key: AsafeOrgSettingsTable.key,
+        value: AsafeOrgSettingsTable.value,
+      })
+      .from(AsafeOrgSettingsTable)
+      .where(like(AsafeOrgSettingsTable.key, `${prefix}%`));
+  try {
+    const [enabledRows, implicitRows] = await Promise.all([
+      scan(TEAM_MEMORY_ENABLED_KEY_PREFIX),
+      scan(TEAM_MEMORY_IMPLICIT_EXTRACTION_KEY_PREFIX),
+    ]);
+    const byTeam = new Map<string, TeamMemoryOverride>();
+    const entry = (teamId: string): TeamMemoryOverride => {
+      let row = byTeam.get(teamId);
+      if (!row) {
+        row = { teamId, enabled: null, implicitExtraction: null };
+        byTeam.set(teamId, row);
+      }
+      return row;
+    };
+    for (const row of enabledRows) {
+      const teamId = row.key.slice(TEAM_MEMORY_ENABLED_KEY_PREFIX.length);
+      if (!teamId || typeof row.value !== "boolean") continue;
+      entry(teamId).enabled = row.value;
+    }
+    for (const row of implicitRows) {
+      const teamId = row.key.slice(
+        TEAM_MEMORY_IMPLICIT_EXTRACTION_KEY_PREFIX.length,
+      );
+      if (!teamId || typeof row.value !== "boolean") continue;
+      entry(teamId).implicitExtraction = row.value;
+    }
+    return [...byTeam.values()].sort((a, b) =>
+      a.teamId.localeCompare(b.teamId),
+    );
+  } catch {
+    return [];
+  }
 }
 
 /**

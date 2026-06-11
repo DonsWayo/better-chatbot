@@ -77,10 +77,25 @@ model entitlements. Keys (jsonb booleans; unset → default):
 | `team_memory_enabled:<teamId>` | unset | team override (wins over org when set) |
 | `team_memory_implicit_extraction:<teamId>` | unset | team override |
 
-The org-level switches are editable under **Admin → Feature flags** (User memory card);
-team overrides are set via `src/lib/memory/policy.ts` setters (no UI yet). Policy
+Both layers are editable under **Admin → Feature flags** (User memory card). The two
+switches set the org base; the **Team overrides** section below them edits the
+team keys: pick a team from the combobox, then set each field to *Inherit* (key
+cleared — follows the org), *On*, or *Off* (forced for that team). Removing a row
+clears the stored override back to inherit. Team-override changes are audit-logged
+(`admin_action` / `memory_team_policy_updated`, attributed to the team). Policy
 cascades over the user's own setting: when policy disables memory, nothing is read or
 written regardless of the user's mode.
+
+## "Memory updated" indicator in chat
+
+When a turn stores at least one memory, a small dismissible pill ("Memory updated ·
+View") appears above the composer, linking to Settings → Personalization. Because
+extraction is fire-and-forget *after* the response stream, the chat response cannot
+carry the signal — instead the client checks `GET /api/memory?since=<turn start>`
+at most twice (4s and 10s after the stream settles) and shows the pill only when the
+turn produced new memories. At most one pill per turn; no further polling. The
+`since` query parameter returns only memories created strictly after the given ISO
+instant (without it, the route behaves exactly as before).
 
 ## Erasure & GDPR
 
@@ -95,8 +110,6 @@ written regardless of the user's mode.
 
 ## Follow-ups (documented, not yet implemented)
 
-- In-chat "Memory updated" indicator after a turn stores a memory — requires touching
-  the message-rendering surface; the manager page is the v1 transparency surface.
-- Admin UI for per-team policy overrides (the keys work today via the policy lib).
-- Audit-logging of admin memory-policy toggles (sibling feature-flag toggles do not
-  audit-log yet either; do both together).
+- Audit-logging of the admin **org-level** memory-policy toggles (team-override
+  changes already audit-log; sibling feature-flag toggles do not audit-log yet
+  either — do both together).

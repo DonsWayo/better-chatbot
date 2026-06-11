@@ -38,12 +38,15 @@ Local stdio servers stay off for everyone until an admin opts the org — or a t
 1. **Policy** (`src/lib/ai/mcp/local-policy.ts`) — layered org → team in
    `asafe_org_settings`, same pattern as the memory policy and model entitlements:
    - `local_mcp_enabled` — org base; **unset = FALSE** (default-deny).
-   - `team_local_mcp_enabled:<teamId>` — team override (wins when set; no admin UI
-     yet — set via `setTeamLocalMcpEnabled`).
+   - `team_local_mcp_enabled:<teamId>` — team override (wins when set).
 
-   The org switch lives on **Admin → Feature flags → "Local MCP (desktop)"**; toggles
-   are audit-logged (`admin_action`) and take effect immediately — the MCP manager's
-   in-memory gate is flipped without restarting or deleting configs.
+   Both layers live on **Admin → Feature flags → "Local MCP (desktop)"**: the switch
+   sets the org base, and the **Team overrides** section edits the team keys (pick a
+   team from the combobox, then *Inherit* / *On* / *Off*; removing a row clears the
+   override back to inherit). Org and team changes are audit-logged (`admin_action`)
+   and take effect immediately — every change re-resolves the MCP manager's
+   in-memory gate (org base OR any team override on) without restarting or deleting
+   configs.
 2. **Enforcement** — two layers:
    - *Save time* (`saveMcpClientAction`): a stdio config is rejected unless the saving
      user's org/team policy allows local MCP.

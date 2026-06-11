@@ -24,6 +24,7 @@ import {
 import {
   isLocalMcpRuntimeEnabled,
   setOrgLocalMcpEnabled,
+  setTeamLocalMcpEnabled,
 } from "lib/ai/mcp/local-policy";
 import { getSession } from "lib/auth/server";
 import { eraseUserData } from "lib/compliance/gdpr";
@@ -31,6 +32,8 @@ import logger from "lib/logger";
 import {
   setOrgMemoryEnabled,
   setOrgMemoryImplicitExtraction,
+  setTeamMemoryEnabled,
+  setTeamMemoryImplicitExtraction,
 } from "lib/memory/policy";
 import { getUser } from "lib/user/server";
 import { getTranslations } from "next-intl/server";
@@ -177,12 +180,83 @@ export async function updateOrgMemoryPolicyAction(input: {
 }
 
 /**
+ * Per-team memory-policy override (`team_memory_*:<teamId>` keys). Tri-state
+ * per field: `true`/`false` force the value for the team; `null` clears the
+ * override back to inherit; `undefined` leaves the field untouched.
+ */
+export async function updateTeamMemoryPolicyAction(input: {
+  teamId: string;
+  enabled?: boolean | null;
+  implicitExtraction?: boolean | null;
+}): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  if (session.user.role !== "admin") throw new Error("Admin required");
+  if (!input.teamId) throw new Error("teamId required");
+  if (input.enabled !== undefined) {
+    await setTeamMemoryEnabled(input.teamId, input.enabled);
+  }
+  if (input.implicitExtraction !== undefined) {
+    await setTeamMemoryImplicitExtraction(
+      input.teamId,
+      input.implicitExtraction,
+    );
+  }
+  const { writeAuditLog } = await import("lib/compliance/audit");
+  void writeAuditLog({
+    userId: session.user.id,
+    teamId: input.teamId,
+    eventType: "admin_action",
+    details: {
+      action: "memory_team_policy_updated",
+      teamId: input.teamId,
+      ...(input.enabled !== undefined && { enabled: input.enabled }),
+      ...(input.implicitExtraction !== undefined && {
+        implicitExtraction: input.implicitExtraction,
+      }),
+    },
+  });
+}
+
+/**
+ * Per-team local-MCP override (`team_local_mcp_enabled:<teamId>`). Tri-state:
+ * `true`/`false` force; `null` clears back to inherit. Re-resolves the MCP
+ * manager's process-wide runtime gate the same way the org action does — a
+ * team override can open the gate while the org base is off (and vice versa).
+ */
+export async function updateTeamLocalMcpPolicyAction(input: {
+  teamId: string;
+  enabled: boolean | null;
+}): Promise<void> {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  if (session.user.role !== "admin") throw new Error("Admin required");
+  if (!input.teamId) throw new Error("teamId required");
+  await setTeamLocalMcpEnabled(input.teamId, input.enabled);
+  const [{ mcpClientsManager }, { writeAuditLog }] = await Promise.all([
+    import("lib/ai/mcp/mcp-manager"),
+    import("lib/compliance/audit"),
+  ]);
+  mcpClientsManager.setLocalMcpEnabled(await isLocalMcpRuntimeEnabled());
+  void writeAuditLog({
+    userId: session.user.id,
+    teamId: input.teamId,
+    eventType: "admin_action",
+    details: {
+      action: "local_mcp_team_policy_updated",
+      teamId: input.teamId,
+      enabled: input.enabled,
+    },
+  });
+}
+
+/**
  * Org-base switch for the local-MCP governance plane (ADR-0010; default-deny
  * per ADR-0009). Persists `local_mcp_enabled` in asafe_org_settings, then
  * flips the MCP manager's in-memory gate so enforcement (tool filtering +
  * call rejection) is immediate. Team overrides live under the
- * `team_local_mcp_enabled:<teamId>` keys (lib/ai/mcp/local-policy.ts — no
- * admin UI yet).
+ * `team_local_mcp_enabled:<teamId>` keys — see
+ * `updateTeamLocalMcpPolicyAction` above.
  */
 export async function updateOrgLocalMcpPolicyAction(input: {
   enabled: boolean;
