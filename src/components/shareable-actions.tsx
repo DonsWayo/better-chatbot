@@ -256,6 +256,7 @@ export function ShareableActions({
               variant="ghost"
               size="icon"
               className="size-8 text-muted-foreground hover:text-foreground"
+              data-testid={`${type}-edit-button`}
               disabled={isAnyLoading || disabled}
               onClick={(e) => {
                 e.preventDefault();
@@ -281,6 +282,7 @@ export function ShareableActions({
               variant="ghost"
               size="icon"
               className="size-8 text-muted-foreground hover:text-destructive"
+              data-testid={`${type}-delete-button`}
               disabled={isAnyLoading || disabled}
               onClick={(e) => {
                 e.preventDefault();

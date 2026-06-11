@@ -147,7 +147,7 @@ test.describe
 
       await editorPage.goto("/mcp", { waitUntil: "networkidle" });
       await expect(
-        adminPage
+        editorPage
           .getByTestId("mcp-server-card")
           .filter({ hasText: featuredServerName }),
       ).toHaveAttribute("data-featured", "true");
@@ -163,7 +163,7 @@ test.describe
 
       await userPage.goto("/mcp", { waitUntil: "networkidle" });
       await expect(
-        adminPage
+        userPage
           .getByTestId("mcp-server-card")
           .filter({ hasText: featuredServerName }),
       ).toHaveAttribute("data-featured", "true");

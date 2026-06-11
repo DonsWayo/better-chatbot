@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
+import { createMcpServer } from "../helpers/create-data";
+import { deleteMcpServer } from "../helpers/delete-data";
 import { clickAndWaitForNavigation } from "../utils/test-helpers";
 
 /**
@@ -14,7 +16,11 @@ test.describe("Resource Permissions - Regular User", () => {
   test("should NOT see create agent button on agents page", async ({
     page,
   }) => {
+    // /agents redirects into the builder-gated /studio, and Studio bounces
+    // non-builders back to "/" — a regular user never reaches any
+    // create-agent surface.
     await page.goto("/agents");
+    await page.waitForURL((url) => url.pathname === "/");
 
     // Should NOT see the "Create Agent" button in header
     await expect(page.getByTestId("create-agent-button")).not.toBeVisible();
@@ -97,7 +103,10 @@ test.describe("Resource Permissions - Regular User", () => {
   });
 
   test("should NOT see create workflow options", async ({ page }) => {
+    // /workflow redirects into the builder-gated /studio (Workflows tab),
+    // which bounces non-builders back to "/".
     await page.goto("/workflow");
+    await page.waitForURL((url) => url.pathname === "/");
 
     // Should NOT see "Create with Example" dropdown
     await expect(
@@ -109,35 +118,81 @@ test.describe("Resource Permissions - Regular User", () => {
   });
 
   test("should NOT see add MCP server button", async ({ page }) => {
+    // /mcp redirects to Settings › Connectors, which basic users can view
+    // read-only — anchor on the heading so the not-visible check below is
+    // asserted against a fully rendered page, not a blank one.
     await page.goto("/mcp");
+    await page.waitForURL(/\/settings\/connectors/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: /Available MCP Servers/i }),
+    ).toBeVisible();
 
     // Should NOT see "Add MCP Server" button
     await expect(page.getByTestId("add-mcp-server-button")).not.toBeVisible();
   });
 
-  test("should be able to bookmark shared resources", async ({ page }) => {
-    await page.goto("/agents");
-
-    // Look for shared agents section
-    const sharedSection = page.locator("text=/Shared Agents/i");
-    if (await sharedSection.isVisible()) {
-      const sharedAgents = page.getByTestId("shareable-card").filter({
-        has: page.getByTestId("bookmark-button"),
+  test("should be able to bookmark shared resources", async ({
+    page,
+    browser,
+  }) => {
+    // The gallery (and its bookmark buttons) moved into the builder-gated
+    // Studio, so a regular user has no bookmark UI surface anymore. The
+    // capability is asserted through the same endpoint the UI calls
+    // (POST/DELETE /api/bookmark) plus the list the UI reads from.
+    //
+    // NOTE: bookmarkRepository.checkItemAccess still only accepts the legacy
+    // org-wide visibilities ("public"/"readonly"), not the modern levels
+    // ("company"/"shared"/"team"), so the seed uses legacy "public".
+    const adminContext = await browser.newContext({
+      storageState: TEST_USERS.admin.authFile,
+    });
+    let agentId = "";
+    const agentName = `Bookmarkable Agent ${Date.now()}`;
+    try {
+      const adminPage = await adminContext.newPage();
+      // userId is required by AgentCreateSchema but the route overrides it with
+      // the authenticated session user — any placeholder satisfies validation.
+      const createRes = await adminPage.request.post("/api/agent", {
+        headers: { "Content-Type": "application/json" },
+        data: {
+          name: agentName,
+          description: "Org-wide agent for the bookmark test",
+          instructions: {},
+          visibility: "public",
+          userId: "00000000-0000-0000-0000-000000000000",
+        },
+        timeout: 15000,
       });
-
-      const sharedCount = await sharedAgents.count();
-      if (sharedCount > 0) {
-        // Should be able to toggle bookmark
-        const bookmarkBtn = sharedAgents.first().getByTestId("bookmark-button");
-        await expect(bookmarkBtn).toBeVisible();
-
-        // Can click bookmark
-        await bookmarkBtn.click();
-
-        // Verify bookmark state changed (aria-pressed or similar indicator)
-        await expect(bookmarkBtn).toHaveAttribute("aria-pressed", /.*/);
-      }
+      expect(createRes.ok()).toBeTruthy();
+      agentId = ((await createRes.json()) as { id: string }).id;
+    } finally {
+      await adminContext.close();
     }
+
+    // Regular user can bookmark the shared agent…
+    const bookmarkRes = await page.request.post("/api/bookmark", {
+      headers: { "Content-Type": "application/json" },
+      data: { itemId: agentId, itemType: "agent" },
+    });
+    expect(bookmarkRes.ok()).toBeTruthy();
+
+    // …and the agent list the UI reads from reflects the bookmark.
+    const listRes = await page.request.get("/api/agent?filters=all", {
+      timeout: 15000,
+    });
+    expect(listRes.ok()).toBeTruthy();
+    const agents = (await listRes.json()) as Array<{
+      id: string;
+      isBookmarked?: boolean;
+    }>;
+    expect(agents.find((a) => a.id === agentId)?.isBookmarked).toBe(true);
+
+    // Can toggle it back off.
+    const unbookmarkRes = await page.request.delete("/api/bookmark", {
+      headers: { "Content-Type": "application/json" },
+      data: { itemId: agentId, itemType: "agent" },
+    });
+    expect(unbookmarkRes.ok()).toBeTruthy();
   });
 });
 
@@ -226,7 +281,8 @@ test.describe("Resource Permissions - Editor User", () => {
     // Saving an agent now lands on /studio.
     await clickAndWaitForNavigation(page, "agent-save-button", "**/studio");
 
-    // Re-open the agent from the dedicated (non-tabbed) /agents list.
+    // Re-open the agent from the gallery — /agents redirects into the Studio
+    // Agents tab, which renders the same AgentsList.
     await page.goto("/agents");
     await page.waitForLoadState("networkidle");
     await page.locator(`main a:has-text("${agentName}")`).first().click();
@@ -257,32 +313,42 @@ test.describe("Resource Permissions - Editor User", () => {
 
     await expect(page).toHaveURL(/\/settings\/connectors\/create/);
 
-    // Editor should NOT see visibility options
-    await expect(page.getByTestId("mcp-visibility-select")).not.toBeVisible();
+    // The create form exposes no visibility control to anyone — featuring
+    // happens later on the server card, and the editor/admin gating of that
+    // dropdown is covered in tests/permissions/mcp-permissions.spec.ts
+    // ("editor cannot set server as featured via UI"). Here just assert the
+    // editor reached a working create form.
+    await expect(page.getByTestId("mcp-config-editor")).toBeVisible();
   });
 
   test("editor sees own MCP servers in 'My MCP Servers' section", async ({
     page,
   }) => {
-    await page.goto("/mcp");
+    // Seed a server through the API so the section is guaranteed to render,
+    // then assert the owner affordances on its card (the dashboard now lives
+    // at Settings › Connectors; /mcp redirects there).
+    const serverName = `editor-own-${Date.now()}`;
+    const { id } = await createMcpServer(
+      { page },
+      { name: serverName, visibility: "private" },
+    );
 
-    // If editor has created any MCP servers, they should appear under "My MCP Servers"
-    const myServersSection = page.locator("text=/My MCP Servers/i");
+    try {
+      await page.goto("/mcp");
+      await page.waitForURL(/\/settings\/connectors/);
 
-    // Editor may or may not have created servers, so check conditionally
-    const hasServers = await myServersSection
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
+      const myServersSection = page.getByTestId("my-mcp-servers-section");
+      await expect(myServersSection).toBeVisible();
+      await expect(myServersSection.getByText(serverName)).toBeVisible();
 
-    if (hasServers) {
-      // Should be able to see edit/delete buttons on own servers
-      const mcpCard = page.getByTestId("mcp-card").first();
-      if (await mcpCard.isVisible()) {
-        await expect(page.getByTestId("edit-mcp-button").first()).toBeVisible();
-        await expect(
-          page.getByTestId("delete-mcp-button").first(),
-        ).toBeVisible();
-      }
+      // Owners get edit + delete on their own card.
+      const card = page
+        .getByTestId("mcp-server-card")
+        .filter({ hasText: serverName });
+      await expect(card.getByTestId("mcp-edit-button")).toBeVisible();
+      await expect(card.getByTestId("mcp-delete-button")).toBeVisible();
+    } finally {
+      await deleteMcpServer({ page }, id);
     }
   });
 });
@@ -335,41 +401,39 @@ test.describe("Resource Permissions - Admin User", () => {
 
     await expect(page).toHaveURL(/\/settings\/connectors\/create/);
 
-    // Admin SHOULD see visibility/sharing options
-    const visibilitySelect = page.getByTestId("mcp-visibility-select");
-    if (
-      await visibilitySelect.isVisible({ timeout: 1000 }).catch(() => false)
-    ) {
-      // Admin can select featured visibility
-      await visibilitySelect.click();
-      await page.getByRole("option", { name: /featured/i }).click();
-    }
+    // Featuring is not part of the create form — admins feature a server from
+    // its card afterward; that flow is covered in
+    // tests/permissions/mcp-permissions.spec.ts ("admin can set any server as
+    // featured via UI"). Here just assert the admin reached a working create
+    // form.
+    await expect(page.getByTestId("mcp-config-editor")).toBeVisible();
   });
 
   test("admin can manage all MCP servers including shared ones", async ({
     page,
   }) => {
-    await page.goto("/mcp");
+    // Card-level edit/delete renders only for the server's owner; cross-user
+    // management is API-level and covered in
+    // tests/permissions/mcp-permissions.spec.ts ("admin can delete any user's
+    // MCP server"). Assert the owner affordances on an admin-owned card here.
+    const serverName = `admin-managed-${Date.now()}`;
+    const { id } = await createMcpServer(
+      { page },
+      { name: serverName, visibility: "private" },
+    );
 
-    // Admin can edit/delete any MCP server
-    const mcpCards = page.getByTestId("mcp-card");
-    const cardCount = await mcpCards.count();
+    try {
+      await page.goto("/mcp");
+      await page.waitForURL(/\/settings\/connectors/);
 
-    if (cardCount > 0) {
-      // Check first card has management buttons
-      const firstCard = mcpCards.first();
-
-      // Admin should see edit/delete on all servers
-      const editBtn = firstCard.getByTestId("edit-mcp-button");
-      const deleteBtn = firstCard.getByTestId("delete-mcp-button");
-
-      // These should be visible for admin on any server
-      if (await editBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await expect(editBtn).toBeVisible();
-      }
-      if (await deleteBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await expect(deleteBtn).toBeVisible();
-      }
+      const card = page
+        .getByTestId("mcp-server-card")
+        .filter({ hasText: serverName });
+      await expect(card).toBeVisible();
+      await expect(card.getByTestId("mcp-edit-button")).toBeVisible();
+      await expect(card.getByTestId("mcp-delete-button")).toBeVisible();
+    } finally {
+      await deleteMcpServer({ page }, id);
     }
   });
 });
