@@ -11,7 +11,6 @@ const APPROVED_MODEL_IDS = [
   "kimi-k2.6",
   "deepseek-v4-flash",
   "deepseek-v4-pro",
-  "hy3-preview",
 ] as const;
 
 const PatchTeamSchema = z.object({

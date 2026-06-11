@@ -60,8 +60,7 @@ describe.skipIf(!RUN)("routeModel → real model integration", () => {
       const decision = routeModel({ text: "summarize: hello world" });
       expect(decision.tier).toBe("cheap");
 
-      // hy3-preview is a reasoning model: give it room to think before the
-      // visible answer, or the output budget is spent entirely on reasoning.
+      // generous budget in case the routed model spends tokens on reasoning.
       const { text } = await generateText({
         model: customModelProvider.getModel(decision.model),
         prompt: "Reply with the single word OK",

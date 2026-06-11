@@ -19,9 +19,9 @@ A single org-wide allow-list stored under the app-settings key
 `org_base_model_allow_list` (`getOrgBaseModelAllowList` / `setOrgBaseModelAllowList`).
 `null` means **unrestricted** — every registered model is allowed.
 
-The registered short list is eight models (live OpenRouter pricing on this
+The registered short list is seven models (live OpenRouter pricing on this
 account, June 2026). The four **routing-tier** models are what "Auto" selects
-between — the entire cost stack lands at $0.10–$3.41 per million tokens (`hy3-preview`, $0.06/$0.21, stays registered for entitled picks but is too slow — 12–19s reasoning latency — for the snappy tier):
+between — the entire cost stack lands at $0.10–$3.41 per million tokens (Tencent Hy3 was evaluated at $0.06/$0.21 but dropped: 12–19s reasoning latency and a chronically rate-limited single upstream):
 
 | Tier | Model | $/M in | $/M out | Context |
 |---|---|---|---|---|

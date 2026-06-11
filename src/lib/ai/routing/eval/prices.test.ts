@@ -38,7 +38,7 @@ describe("MODEL_PRICES", () => {
     }
   });
 
-  it("covers the full 8-model approved registry", () => {
+  it("covers the full 7-model approved registry", () => {
     expect(Object.keys(MODEL_PRICES).sort()).toEqual(
       [
         "gpt-5.5",
@@ -48,7 +48,6 @@ describe("MODEL_PRICES", () => {
         "kimi-k2.6",
         "deepseek-v4-pro",
         "deepseek-v4-flash",
-        "hy3-preview",
       ].sort(),
     );
   });
@@ -96,13 +95,6 @@ describe("MODEL_PRICES", () => {
     expect(MODEL_PRICES["deepseek-v4-flash"]).toEqual({
       inPerMTok: 0.1,
       outPerMTok: 0.2,
-    });
-  });
-
-  it("hy3-preview (cheap tier) has correct per-million-token rates", () => {
-    expect(MODEL_PRICES["hy3-preview"]).toEqual({
-      inPerMTok: 0.06,
-      outPerMTok: 0.21,
     });
   });
 

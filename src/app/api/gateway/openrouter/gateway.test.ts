@@ -487,7 +487,6 @@ describe("GET /api/gateway/openrouter/models", () => {
         "kimi-k2.6",
         "deepseek-v4-flash",
         "deepseek-v4-pro",
-        "hy3-preview",
       ].sort(),
     );
     for (const m of body.data) {

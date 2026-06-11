@@ -75,7 +75,6 @@ export const GATEWAY_MODELS: readonly GatewayModel[] = [
     name: "DeepSeek V4 Pro",
     slug: "deepseek/deepseek-v4-pro",
   },
-  { id: "hy3-preview", name: "Tencent Hy3", slug: "tencent/hy3-preview" },
 ];
 
 /**

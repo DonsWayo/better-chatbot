@@ -37,9 +37,11 @@ export const MAX_GENERATED_EDGES = 40;
 
 // Frontier-tier default from the cost stack (cost directive 2026-06) — generated
 // LLM nodes should not pin a premium, entitlement-only model.
+// Structured generation wants fast, reliable JSON — the balanced tier, not a
+// reasoning model (kimi spends 30s+ thinking before emitting the object).
 export const DEFAULT_WORKFLOW_LLM_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "kimi-k2.6",
+  model: "deepseek-v4-pro",
 };
 
 const textToTiptap = (text: string): TipTapMentionJsonContent => ({

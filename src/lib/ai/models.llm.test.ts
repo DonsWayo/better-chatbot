@@ -8,7 +8,7 @@ const RUN = Boolean(
 );
 
 /** The approved static registry in models.ts — update when the short list changes. */
-const EXPECTED_MODEL_COUNT = 8;
+const EXPECTED_MODEL_COUNT = 7;
 
 /** name (UI id) -> OpenRouter slug, derived from the live registry objects. */
 function openRouterModels(): { name: string; slug: string }[] {
@@ -59,9 +59,13 @@ describe.skipIf(!RUN)("OpenRouter static registry smoke (real API)", () => {
       `"${name}" (${slug}) answers a minimal chat completion`,
       { timeout: 30_000 },
       async () => {
-        const res = await fetch(
-          "https://openrouter.ai/api/v1/chat/completions",
-          {
+        // Transient upstream 429s (provider throttling) must not fail the
+        // registry check — retry up to 3 attempts with a short backoff.
+        let res: Response | undefined;
+        let body = "";
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 2500));
+          res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -73,10 +77,12 @@ describe.skipIf(!RUN)("OpenRouter static registry smoke (real API)", () => {
               // OpenAI rejects max_output_tokens < 16, so 16 is the floor.
               max_tokens: 16,
             }),
-            signal: AbortSignal.timeout(29_000),
-          },
-        );
-        const body = await res.text();
+            signal: AbortSignal.timeout(20_000),
+          });
+          body = await res.text();
+          if (res.status !== 429 && !body.includes('"code":429')) break;
+        }
+        if (!res) throw new Error("unreachable: no fetch attempt ran");
         const detail = `${slug} → ${body.slice(0, 300)}`;
         const parsed = JSON.parse(body) as { error?: { message?: string } };
 

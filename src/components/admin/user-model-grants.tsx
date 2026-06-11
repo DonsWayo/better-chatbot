@@ -27,7 +27,6 @@ const APPROVED_MODELS = [
   { id: "kimi-k2.6", label: "Kimi K2.6" },
   { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
   { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
-  { id: "hy3-preview", label: "Tencent Hy3" },
 ];
 
 interface Grant {

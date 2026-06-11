@@ -43,7 +43,6 @@ const staticModels = {
     "kimi-k2.6": openrouter("moonshotai/kimi-k2.6"), // frontier tier
     "deepseek-v4-flash": openrouter("deepseek/deepseek-v4-flash"), // fast tier
     "deepseek-v4-pro": openrouter("deepseek/deepseek-v4-pro"), // balanced tier
-    "hy3-preview": openrouter("tencent/hy3-preview"), // cheap tier
   },
 };
 
@@ -85,7 +84,6 @@ registerFileSupport(
 registerFileSupport(staticModels.openRouter["kimi-k2.6"]);
 registerFileSupport(staticModels.openRouter["deepseek-v4-flash"]);
 registerFileSupport(staticModels.openRouter["deepseek-v4-pro"]);
-registerFileSupport(staticModels.openRouter["hy3-preview"]);
 
 const openaiCompatibleProviders = openaiCompatibleModelsSafeParse(
   process.env.OPENAI_COMPATIBLE_DATA,

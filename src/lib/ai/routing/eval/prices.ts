@@ -16,5 +16,4 @@ export const MODEL_PRICES: Record<
   "kimi-k2.6": { inPerMTok: 0.68, outPerMTok: 3.41 }, // frontier
   "deepseek-v4-pro": { inPerMTok: 0.43, outPerMTok: 0.87 }, // balanced
   "deepseek-v4-flash": { inPerMTok: 0.1, outPerMTok: 0.2 }, // fast
-  "hy3-preview": { inPerMTok: 0.06, outPerMTok: 0.21 }, // cheap
 };

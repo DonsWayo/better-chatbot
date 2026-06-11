@@ -88,16 +88,15 @@ describe("inference posture", () => {
       "kimi-k2.6",
       "deepseek-v4-flash",
       "deepseek-v4-pro",
-      "hy3-preview",
     ]);
   });
 
-  it("has exactly 8 approved models in the registry", () => {
+  it("has exactly 7 approved models in the registry", () => {
     const { customModelProvider } = modelsModule;
     const openRouter = customModelProvider.modelsInfo.find(
       (m) => m.provider === "openRouter",
     );
-    expect(openRouter?.models).toHaveLength(8);
+    expect(openRouter?.models).toHaveLength(7);
   });
 
   it("each model has a non-empty name", () => {

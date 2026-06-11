@@ -106,7 +106,6 @@ const APPROVED_MODELS = [
     label: "DeepSeek V4 Pro",
     note: "balanced default",
   },
-  { id: "hy3-preview", label: "Tencent Hy3", note: "cheapest" },
 ] as const;
 
 interface UsageRow {

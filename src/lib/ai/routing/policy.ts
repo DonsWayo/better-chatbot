@@ -16,7 +16,7 @@ export const TIER_MODEL: Record<ModelTier, ChatModel> = {
   frontier: { provider: PROVIDER, model: "kimi-k2.6" }, // $0.68/$3.41 per M, 262k ctx
   balanced: { provider: PROVIDER, model: "deepseek-v4-pro" }, // $0.43/$0.87 per M, 1M ctx
   fast: { provider: PROVIDER, model: "deepseek-v4-flash" }, // $0.10/$0.20 per M, 1M ctx
-  // hy3-preview is $0.04/M cheaper but is a reasoning model with 12–19s
+  // tencent hy3 was evaluated ($0.06/$0.21) but dropped: 12–19s reasoning
   // latency even on trivial completions — wrong profile for the snappy tier.
   // It stays in the registry for entitled picks.
   cheap: { provider: PROVIDER, model: "deepseek-v4-flash" }, // $0.10/$0.20 per M, 1M ctx

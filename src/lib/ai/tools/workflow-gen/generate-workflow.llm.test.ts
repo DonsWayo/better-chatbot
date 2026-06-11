@@ -32,20 +32,20 @@ const mockSaveStructure = vi.mocked(workflowRepository.saveStructure);
 const mockCreateDraftRevision = vi.mocked(createDraftRevision);
 
 describe.skipIf(!RUN)(
-  "generate-workflow with a real cheap model (deepseek-v4-flash)",
+  "generate-workflow with a real model (deepseek-v4-pro)",
   () => {
     it(
       'a real model drafts a valid "check that safeguru.com is up" workflow',
-      // retry: deepseek-v4-flash occasionally returns an empty structured
+      // retry: providers occasionally return an empty structured
       // response under load — a provider blip, not a schema regression.
-      { timeout: 30_000, retry: 2 },
+      { timeout: 60_000, retry: 2 },
       async () => {
         // Real structured generation against the tool's actual zod input schema
         // (incl. the slugify transform and weak-model JSON-string coercions).
         const { object } = await generateObject({
           model: customModelProvider.getModel({
             provider: "openRouter",
-            model: "deepseek-v4-flash",
+            model: "deepseek-v4-pro",
           }),
           schema: generateWorkflowInputSchema,
           system: generateWorkflowToolDescription,
