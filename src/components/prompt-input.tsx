@@ -549,6 +549,7 @@ export default function PromptInput({
                       size={"sm"}
                       className="rounded-full hover:bg-input! p-2! data-[state=open]:bg-input!"
                       disabled={!threadId}
+                      data-testid="composer-plus-button"
                     >
                       <PlusIcon />
                     </Button>
