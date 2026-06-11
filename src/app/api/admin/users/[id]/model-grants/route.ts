@@ -3,7 +3,7 @@ import { getSession } from "lib/auth/server";
 import { listUserModelGrants, grantUserModel } from "lib/admin/user-grants";
 import { z } from "zod";
 
-const APPROVED_MODEL_IDS = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "gemini-3.1-flash-lite"] as const;
+const APPROVED_MODEL_IDS = ["gpt-5.5", "claude-opus-4.8", "gemini-3.5-flash", "gemini-3.1-flash-lite", "minimax-m3", "kimi-k2.5", "deepseek-v4-flash"] as const;
 
 const GrantBodySchema = z.object({
   modelId: z.enum(APPROVED_MODEL_IDS),

@@ -55,8 +55,8 @@ against better-auth server-side; provider API keys, OAuth access tokens, or bare
 ids are rejected. The desktop never holds provider credentials — the gateway injects the
 server-held `OPENROUTER_API_KEY` upstream and never echoes it in errors.
 
-**Models:** the request's `model` may be the friendly id (`gpt-5.1`) or its OpenRouter
-slug alias (`openai/gpt-5.1`). It must be on the approved short list **and** in the
+**Models:** the request's `model` may be the friendly id (`gpt-5.5`) or its OpenRouter
+slug alias (`openai/gpt-5.5`). It must be on the approved short list **and** in the
 caller's effective allow-list per the [layered entitlements](/docs/governance/model-entitlements)
 (org base + team override + per-user grants).
 

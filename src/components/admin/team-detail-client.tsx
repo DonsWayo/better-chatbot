@@ -94,6 +94,13 @@ const APPROVED_MODELS = [
     label: "Gemini 3.1 Flash Lite",
     note: "cheapest",
   },
+  { id: "minimax-m3", label: "MiniMax M3", note: "budget" },
+  { id: "kimi-k2.5", label: "Kimi K2.5", note: "budget" },
+  {
+    id: "deepseek-v4-flash",
+    label: "DeepSeek V4 Flash",
+    note: "budget — lowest cost",
+  },
 ] as const;
 
 interface UsageRow {

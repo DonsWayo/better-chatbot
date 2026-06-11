@@ -85,15 +85,18 @@ describe("inference posture", () => {
       "claude-opus-4.8",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite",
+      "minimax-m3",
+      "kimi-k2.5",
+      "deepseek-v4-flash",
     ]);
   });
 
-  it("has exactly 4 approved models in the registry", () => {
+  it("has exactly 7 approved models in the registry", () => {
     const { customModelProvider } = modelsModule;
     const openRouter = customModelProvider.modelsInfo.find(
       (m) => m.provider === "openRouter",
     );
-    expect(openRouter?.models).toHaveLength(4);
+    expect(openRouter?.models).toHaveLength(7);
   });
 
   it("each model has a non-empty name", () => {

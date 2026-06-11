@@ -19,6 +19,14 @@ A single org-wide allow-list stored under the app-settings key
 `org_base_model_allow_list` (`getOrgBaseModelAllowList` / `setOrgBaseModelAllowList`).
 `null` means **unrestricted** — every registered model is allowed.
 
+The registered short list (live OpenRouter pricing, June 2026): `gpt-5.5`
+(balanced), `claude-opus-4.8` (frontier), `gemini-3.5-flash` (fast),
+`gemini-3.1-flash-lite` (cheapest in routing), plus a **budget tier** exposed
+only through entitlements — `minimax-m3`, `kimi-k2.5`, `deepseek-v4-flash`
+(roughly $0.15–0.80 per active user/month at typical usage). A cost-minded org
+base list is the budget tier + flash-lite, with frontier models granted per
+team or per user.
+
 ## Layer 2 — team override
 
 Each team can carry a `modelPolicy` in one of two modes (`resolveModelAllowList`):

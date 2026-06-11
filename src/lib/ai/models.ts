@@ -39,6 +39,11 @@ const staticModels = {
     "gemini-3.5-flash": openrouter("google/gemini-3.5-flash"),
     // cheapest — trivial / high-volume tasks
     "gemini-3.1-flash-lite": openrouter("google/gemini-3.1-flash-lite"),
+    // budget tier (~$0.15–0.80/user/mo at typical usage; live OpenRouter
+    // pricing 2026-06): exposed via entitlements, not in routing tiers yet.
+    "minimax-m3": openrouter("minimax/minimax-m3"),
+    "kimi-k2.5": openrouter("moonshotai/kimi-k2.5"),
+    "deepseek-v4-flash": openrouter("deepseek/deepseek-v4-flash"),
   },
 };
 
@@ -76,6 +81,10 @@ registerFileSupport(
   staticModels.openRouter["gemini-3.1-flash-lite"],
   GEMINI_FILE_MIME_TYPES,
 );
+// Budget tier: default (conservative) file mime set.
+registerFileSupport(staticModels.openRouter["minimax-m3"]);
+registerFileSupport(staticModels.openRouter["kimi-k2.5"]);
+registerFileSupport(staticModels.openRouter["deepseek-v4-flash"]);
 
 const openaiCompatibleProviders = openaiCompatibleModelsSafeParse(
   process.env.OPENAI_COMPATIBLE_DATA,
