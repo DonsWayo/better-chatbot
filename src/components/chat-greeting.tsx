@@ -1,7 +1,7 @@
 "use client";
 
 import { BasicUser } from "app-types/user";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { fetcher } from "lib/utils";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";

@@ -5,7 +5,7 @@ import { ExaSearchResponse } from "lib/ai/tools/web/web-search";
 import equal from "lib/equal";
 import { notify } from "lib/notify";
 import { toAny, truncateString } from "lib/utils";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   AlertTriangleIcon,
   CheckIcon,

@@ -31,7 +31,7 @@ import {
   ChatAttachment,
   ChatModel,
 } from "app-types/chat";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { getStorageManager } from "lib/browser-stroage";
 import { Shortcuts, isShortcutEvent } from "lib/keyboard-shortcuts";
 import { ArrowDown, FilePlus, Loader } from "lucide-react";

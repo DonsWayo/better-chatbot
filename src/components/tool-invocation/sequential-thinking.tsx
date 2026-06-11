@@ -11,7 +11,7 @@
 //   CircleIcon,
 //   Loader2Icon,
 // } from "lucide-react";
-// import { motion } from "framer-motion";
+// import { motion } from "motion/react";
 
 // import { TextShimmer } from "ui/text-shimmer";
 // import { ThoughtData } from "lib/ai/tools/thinking/sequential-thinking";

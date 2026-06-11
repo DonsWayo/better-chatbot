@@ -34,7 +34,7 @@ import {
   deleteMessageAction,
   deleteMessagesByChatIdAfterTimestampAction,
 } from "@/app/api/chat/actions";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { SelectModel } from "./select-model";
 
 import { ChatMetadata, ChatModel, ManualToolConfirmTag } from "app-types/chat";
