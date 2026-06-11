@@ -144,8 +144,8 @@ config:
 
 # Sensitive env -> referenced Secret (created by External Secrets Operator from AWS Secrets
 # Manager). Required keys: POSTGRES_URL, BETTER_AUTH_SECRET, OPENROUTER_API_KEY, REDIS_URL,
-# MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET. Optional: SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN,
-# METRICS_AUTH_TOKEN.
+# MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET. Optional: BRAVE_API_KEY, EXA_API_KEY (web
+# search/URL extraction), SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN, METRICS_AUTH_TOKEN.
 existingSecret: "asafe-ai-secrets"
 
 # Extra raw env vars if ever needed (list of {name, value}).

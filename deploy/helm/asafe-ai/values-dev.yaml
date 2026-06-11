@@ -1,0 +1,30 @@
+# Environment overrides for conek-dev (EKS cluster conek-cloud, account 588738611061).
+# Deploy with:  helm upgrade --install asafe-ai deploy/helm/asafe-ai -n asafe-ai \
+#                 -f deploy/helm/asafe-ai/values-dev.yaml --set image.tag=<short-sha>
+# (or just run deploy/deploy-dev.sh). Do NOT use --reuse-values: it resurrects whatever was
+# stored in the previous release — this file is the source of truth for dev config.
+
+image:
+  repository: 588738611061.dkr.ecr.eu-central-1.amazonaws.com/conek/asafe-ai
+  # tag is set per deploy (--set image.tag=<short-sha of HEAD>), never pinned here.
+
+# HPA (autoscaling.enabled default) owns replicas; kept at 1 to match dev capacity intent.
+replicaCount: 1
+
+ingress:
+  host: ai.conek.dev
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: ai.conek.dev
+
+# Explicit even though it's the chart default — a previous release had this disabled, which
+# silently skipped DB migrations (missing-column 500s). Keep it on.
+migrateJob:
+  enabled: true
+
+config:
+  BETTER_AUTH_URL: "https://ai.conek.dev"
+  DISABLE_DB_MIGRATE_ON_BOOT: "true"
+  # Dev uses pod-local file storage (ephemeral — uploads don't survive pod restarts).
+  # Switch to s3 + IRSA before this matters (chart default shows the s3 shape).
+  FILE_STORAGE_TYPE: "local"
+  MICROSOFT_TENANT_ID: "dbb77643-9921-4ba4-baeb-2dcdf0652bfe"

@@ -42,18 +42,25 @@ docker push "$ECR/asafe-ai:$TAG"
 
 ### Install / upgrade
 
+Per-environment config lives in a checked-in values file (`helm/asafe-ai/values-dev.yaml` for
+conek-dev) — **never deploy with `--reuse-values`**, which resurrects whatever the previous
+release stored (this once silently carried `migrateJob.enabled=false` and skipped migrations).
+
 ```bash
+# conek-dev one-liner (build arm64 image → push ECR → helm upgrade → verify):
+./deploy/deploy-dev.sh            # tag defaults to git short sha
+
+# or manually / other environments:
 helm upgrade --install asafe-ai ./helm/asafe-ai \
   --namespace asafe-ai \
-  --set image.repository="$ECR/asafe-ai" \
+  -f ./helm/asafe-ai/values-<env>.yaml \
   --set image.tag="$TAG" \
-  --set ingress.host=asafe-ai.internal.asafe.example \
-  --set config.BETTER_AUTH_URL=https://asafe-ai.internal.asafe.example \
-  --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::<acct>:role/asafe-ai
+  --wait --timeout 10m
 ```
 
 The pre-upgrade hook Job runs DB migrations **once** per release; app pods run with
-`DISABLE_DB_MIGRATE_ON_BOOT=true` so replicas never race on migration.
+`DISABLE_DB_MIGRATE_ON_BOOT=true` so replicas never race on migration. The completed Job is
+kept until the next upgrade — check it with `kubectl -n asafe-ai logs job/asafe-ai-migrate`.
 
 ### Static manifests (environments without Helm)
 
@@ -66,5 +73,9 @@ kubectl apply -f asafe-ai.k8s.yaml
 
 See [`.env.example`](../.env.example). Sensitive keys live in the `asafe-ai-secrets` Secret:
 `POSTGRES_URL`, `BETTER_AUTH_SECRET`, `OPENROUTER_API_KEY`, `REDIS_URL`,
-`MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` (Entra SSO — ADR-0005); optional `SENTRY_DSN`,
-`NEXT_PUBLIC_SENTRY_DSN`, `METRICS_AUTH_TOKEN`. Non-sensitive config is the chart's `config:` block.
+`MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` (Entra SSO — ADR-0005); optional
+`BRAVE_API_KEY` / `EXA_API_KEY` (web search + URL extraction), `SENTRY_DSN`,
+`NEXT_PUBLIC_SENTRY_DSN`, `METRICS_AUTH_TOKEN`. Non-sensitive config is the chart's `config:`
+block. To add a secret key: put it in AWS Secrets Manager (`conek-dev/<env>/asafe-ai-secrets`),
+add the mapping in [`k8s/external-secret.yaml`](k8s/external-secret.yaml), `kubectl apply` it —
+pods pick up the whole Secret via `envFrom` on next rollout.

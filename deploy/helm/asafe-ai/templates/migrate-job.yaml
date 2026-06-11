@@ -12,7 +12,9 @@ metadata:
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-5"
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    # Only before-hook-creation (NOT hook-succeeded): the completed Job sticks around until the
+    # next upgrade so its logs stay inspectable (kubectl -n asafe-ai logs job/asafe-ai-migrate).
+    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   backoffLimit: {{ .Values.migrateJob.backoffLimit }}
   template:
