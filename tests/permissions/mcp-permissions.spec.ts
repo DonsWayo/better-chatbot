@@ -485,8 +485,11 @@ test.describe("MCP UI Permissions", () => {
       adminPage.getByTestId("mcp-server-card").filter({ hasText: serverName }),
     ).toHaveAttribute("data-featured", "true");
 
-    // Cleanup
-    await deleteMcpServer({ browser }, id);
+    // Cleanup. Delete via the still-open admin page rather than passing
+    // `{ browser }` — deleteMcpServer closes whatever access object it is given,
+    // and closing the shared browser here would make the following
+    // adminContext.close() throw "browser has been closed".
+    await deleteMcpServer({ page: adminPage }, id);
     await adminContext.close();
   });
 });

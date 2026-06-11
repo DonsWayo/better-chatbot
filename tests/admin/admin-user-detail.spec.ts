@@ -56,17 +56,23 @@ test.describe("Admin User Detail Page", () => {
         .first();
       await userRow.click();
       await page.waitForURL(/\/admin\/users\/.+/);
-      await page.waitForLoadState("networkidle");
 
-      // Should have either active or banned status badge
-      const activeBadge = page.getByTestId("status-badge-active");
-      const bannedBadge = page.getByTestId("status-badge-banned");
+      // Anchor on the detail page being rendered (server-driven, not behind a
+      // Suspense boundary) before asserting on the badge. The Account Status
+      // badge always renders exactly one of status-badge-active /
+      // status-badge-banned (user-status-badge.tsx) for every user, including
+      // the admin's own row.
+      await expect(page.getByTestId("user-detail-content")).toBeVisible({
+        timeout: 10000,
+      });
+      await expect(page.getByTestId("user-name-input")).toBeVisible({
+        timeout: 10000,
+      });
 
-      const hasStatusBadge =
-        (await activeBadge.isVisible({ timeout: 1000 }).catch(() => false)) ||
-        (await bannedBadge.isVisible({ timeout: 1000 }).catch(() => false));
-
-      expect(hasStatusBadge).toBe(true);
+      const statusBadge = page.locator(
+        "[data-testid='status-badge-active'], [data-testid='status-badge-banned']",
+      );
+      await expect(statusBadge).toBeVisible({ timeout: 10000 });
     });
   });
 
