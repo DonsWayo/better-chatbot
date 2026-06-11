@@ -191,7 +191,7 @@
       "createAccount": "Opprett konto"
     },
     "Intro": {
-      "description": "Velkommen til Asafe AI. Logg inn for å oppleve våre AI-drevne samtaleverktøy."
+      "description": "Velkommen til Conek AI. Logg inn for å oppleve våre AI-drevne samtaleverktøy."
     }
   },
   "Chat": {
@@ -1010,6 +1010,7 @@
     "emptyFolder": "Ingen samtaler i denne mappen ennå",
     "noFolders": "Ingen mapper ennå",
     "team": "team",
+    "generating": "Genererer…",
     "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet"
   },
   "Memory": {
@@ -1052,7 +1053,7 @@
     "language": "Språk",
     "languageDescription": "Velg språk for grensesnittet.",
     "gdprTitle": "Data og personvern",
-    "gdprDescription": "Last ned en kopi av alle dataene dine lagret i A-SAFE AI (GDPR art. 20 — rett til dataportabilitet).",
+    "gdprDescription": "Last ned en kopi av alle dataene dine lagret i Conek AI (GDPR art. 20 — rett til dataportabilitet).",
     "downloadMyData": "Last ned mine data",
     "archivesDescription": "Områder for å lagre chathistorikk.",
     "personalization": "Personalisering",
@@ -1069,7 +1070,7 @@
     "agents": "Agenter",
     "admin": "Administrasjon",
     "back": "Tilbake",
-    "askAi": "Spør A-SAFE AI: \"{query}\""
+    "askAi": "Spør Conek AI: \"{query}\""
   },
   "Studio": {
     "title": "Studio",
@@ -1077,7 +1078,7 @@
     "workflows": "Arbeidsflyter",
     "backToStudio": "Tilbake til Studio",
     "describeWorkflow": "Beskriv en arbeidsflyt",
-    "describeWorkflowHint": "Ingen arbeidsflyter ennå. Raskeste vei i gang: beskriv hva du vil ha i chatten, så lager A-SAFE AI et utkast til arbeidsflyten for deg.",
+    "describeWorkflowHint": "Ingen arbeidsflyter ennå. Raskeste vei i gang: beskriv hva du vil ha i chatten, så lager Conek AI et utkast til arbeidsflyten for deg.",
     "describeWorkflowDraft": "Lag en arbeidsflyt som "
   },
   "Visibility": {
@@ -1122,14 +1123,14 @@
     "stepOf": "Steg {current} av {total}",
     "replayWelcome": "Spill av velkomstomvisningen på nytt",
     "Welcome": {
-      "introTitle": "Velkommen til A-SAFE AI",
+      "introTitle": "Velkommen til Conek AI",
       "introContent": "En rask omvisning — seks stopp, under ett minutt. Bruk piltastene for å bla, Esc for å avslutte.",
       "newChatTitle": "Start en ny chat",
       "newChatContent": "Samtalene dine begynner her. Ett klikk, eller hurtigtasten som vises når du holder musepekeren over.",
       "searchTitle": "Finn hva som helst",
       "searchContent": "Søk i chatter, agenter og mer fra ett sted, når som helst, med kommandopaletten.",
       "inboxTitle": "Innboksen din",
-      "inboxContent": "Godkjenninger, kjøringshistorikk og rutiner havner her. Et gult merke betyr at noe venter på deg.",
+      "inboxContent": "Godkjenninger, kjøringshistorikk og rutiner havner her. Et blågrønt merke betyr at noe venter på deg.",
       "composerTitle": "Skrivefeltet",
       "composerContent": "Skriv til assistenten her. Legg ved filer, nevn agenter og arbeidsflyter, eller velg en annen modell.",
       "profileTitle": "Profil og innstillinger",

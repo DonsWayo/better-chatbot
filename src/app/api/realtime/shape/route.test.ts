@@ -142,7 +142,9 @@ describe("GET /api/realtime/shape — chat_message ACL", () => {
     const upstream = new URL(String(fetchMock.mock.calls[0][0]));
     expect(upstream.searchParams.get("where")).toBe(`"thread_id" = $1`);
     expect(upstream.searchParams.get("params[1]")).toBe(THREAD_ID);
-    expect(upstream.searchParams.get("columns")).toBe("id,created_at");
+    // metadata rides along so streaming partial persists reach the shape log
+    // (near-live shared generation); never the heavy json[] parts column.
+    expect(upstream.searchParams.get("columns")).toBe("id,created_at,metadata");
     expect(upstream.searchParams.get("secret")).toBeNull();
   });
 });

@@ -43,7 +43,7 @@ pick a whitelisted shape but can never widen one — `table`, `where`, `params`,
 
 | Shape | Definition (server-side) | Access check |
 | --- | --- | --- |
-| `table=chat_message&threadId=<uuid>` | `chat_message WHERE thread_id = $1`, columns `id,created_at` | `canReadThread` — thread owner, or `team`-visible thread in a team folder the caller belongs to |
+| `table=chat_message&threadId=<uuid>` | `chat_message WHERE thread_id = $1`, columns `id,created_at,metadata` | `canReadThread` — thread owner, or `team`-visible thread in a team folder the caller belongs to |
 | `table=agent_session` | `agent_session WHERE user_id = <caller>` | always scoped to the caller's own sessions |
 | `table=asafe_presence&contextType=thread\|folder&contextId=<uuid>` | `asafe_presence WHERE context_type = $1 AND context_id = $2`, columns `id,user_id,context_type,context_id,last_seen_at` | same gate as the context itself — `canReadThread` for threads, `canAccessFolder` (owner or team member) for folders |
 
@@ -55,10 +55,48 @@ gets `403` (same gate as the shared thread page itself).
 The read-only shared view (`/shared/[threadId]`) stays a server component — it already
 owns the row → `UIMessage` mapping and the `PreviewMessage` rendering pipeline. A small
 client island (`src/components/realtime/live-thread-messages.tsx`) subscribes to the
-thread's `chat_message` shape (ids only) and calls `router.refresh()` (debounced) when
-the message set changes, so the server re-renders with the full pipeline. The shape is a
-*change signal*, not a second rendering path — that keeps SSR, i18n, and message
-rendering in one place and avoids parsing the `json[]` parts column client-side.
+thread's `chat_message` shape (ids + metadata only) and calls `router.refresh()`
+(debounced) when the message set changes, so the server re-renders with the full
+pipeline. The shape is a *change signal*, not a second rendering path — that keeps SSR,
+i18n, and message rendering in one place and avoids parsing the `json[]` parts column
+client-side.
+
+## Near-live shared generation (v1)
+
+When the owner of a team-shared thread generates a response, teammates watching the
+read-only view see it **grow during generation** instead of appearing only when it
+finishes. No new infrastructure — it rides the exact pipeline above:
+
+1. **Throttled partial persistence (owner's server request)** — while the model
+   streams, the chat route (`src/app/api/chat/route.ts`, helper in
+   `src/app/api/chat/shared-stream-partials.ts`) upserts the in-progress assistant
+   message — same message id the final persist will use, accumulated text so far, and a
+   `{ streaming: true, streamingAt }` metadata flag — at most **every ~2.5 seconds**.
+   The thread's sharedness is resolved lazily on the first streamed token
+   (`isThreadShared`): non-shared and temporary threads get **zero** extra writes.
+   Partial writes are fire-and-forget; a failure can never break the owner's stream.
+   The user's question is persisted just before the first partial so viewers see it and
+   `created_at` ordering stays correct.
+2. **Change signal** — each partial upsert bumps `metadata.streamingAt`, which is part
+   of the pinned `chat_message` shape columns, so Electric emits an update and the live
+   island refreshes the server component. The page re-renders the partially-persisted
+   message through the normal pipeline; messages whose streaming flag is fresh show a
+   calm "generating…" pulse. Flags orphaned by a crashed stream age out client-side
+   after two minutes — no cleanup job.
+3. **Final persist (unchanged)** — the existing `onFinish` write overwrites the same
+   row with the complete parts and metadata, clearing the flag.
+
+**Privacy is unchanged**: partials are ordinary `chat_message` rows on a thread that is
+already team-shared, served through the same shape proxy and the same `canReadThread`
+ACL as the finished message. Nobody sees anything they could not read two seconds later
+anyway. The owner's own streaming UI is untouched — partial persistence is purely
+server-side.
+
+**Why not token-level fan-out (v2)?** True per-token mirroring would need a stream
+broker — something to fan one model stream out to N viewers across pods (Redis
+pub/sub, a dedicated SSE relay, or Electric write-path support). This v1 deliberately
+rides the existing Postgres → Electric read path on EKS instead: ~2.5 s granularity for
+zero new moving parts, no new auth surface, and no second source of truth.
 
 ## Presence
 
@@ -120,8 +158,11 @@ shape proxy applies the identical access checks as the content itself).
 - **Phase 3 (shipped)** — presence heartbeats + avatar stacks over the
   `asafe_presence` shape (table-backed, so it rides the existing Electric pipeline).
 - **Phase 4 (shipped, first slice)** — typing indicators on the presence row.
-- **Next** — shared model streams, shape subscriptions for folder trees and unread
-  badges, and write attribution for multiple humans in one thread.
+- **Phase 5 (shipped, v1)** — near-live shared generation via throttled partial
+  persistence (see above); token-level fan-out would need a stream broker and stays
+  on the v2 list.
+- **Next** — shape subscriptions for folder trees and unread badges, and write
+  attribution for multiple humans in one thread.
 
 ## Configuration
 

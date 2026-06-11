@@ -71,7 +71,7 @@
       "createAccount": "アカウントを作成"
     },
     "Intro": {
-      "description": "Asafe AI へようこそ。AIを活用した会話ツールを体験するためにサインインしてください。"
+      "description": "Conek AI へようこそ。AIを活用した会話ツールを体験するためにサインインしてください。"
     }
   },
   "Chat": {
@@ -709,6 +709,7 @@
     "emptyFolder": "このフォルダにはまだ会話がありません",
     "noFolders": "まだフォルダがありません",
     "team": "チーム",
+    "generating": "生成中…",
     "sharedWithTeamReadOnly": "{team}と共有 · 読み取り専用"
   },
   "Memory": {
@@ -751,7 +752,7 @@
     "language": "言語",
     "languageDescription": "インターフェースの言語を選択します。",
     "gdprTitle": "データとプライバシー",
-    "gdprDescription": "A-SAFE AI に保存されているすべてのデータのコピーをダウンロードします（GDPR 第20条 — データポータビリティの権利）。",
+    "gdprDescription": "Conek AI に保存されているすべてのデータのコピーをダウンロードします（GDPR 第20条 — データポータビリティの権利）。",
     "downloadMyData": "自分のデータをダウンロード",
     "archivesDescription": "チャット履歴を保存するスペースです。",
     "personalization": "パーソナライズ",
@@ -768,7 +769,7 @@
     "agents": "エージェント",
     "admin": "管理",
     "back": "戻る",
-    "askAi": "A-SAFE AI に質問: \"{query}\""
+    "askAi": "Conek AI に質問: \"{query}\""
   },
   "Studio": {
     "title": "スタジオ",
@@ -776,7 +777,7 @@
     "workflows": "ワークフロー",
     "backToStudio": "スタジオに戻る",
     "describeWorkflow": "ワークフローを説明する",
-    "describeWorkflowHint": "ワークフローはまだありません。チャットで作りたい内容を説明すれば、A-SAFE AI がワークフローの下書きを作成します。",
+    "describeWorkflowHint": "ワークフローはまだありません。チャットで作りたい内容を説明すれば、Conek AI がワークフローの下書きを作成します。",
     "describeWorkflowDraft": "次のようなワークフローを作成して："
   },
   "Visibility": {
@@ -821,14 +822,14 @@
     "stepOf": "ステップ {current} / {total}",
     "replayWelcome": "ウェルカムツアーをもう一度見る",
     "Welcome": {
-      "introTitle": "A-SAFE AI へようこそ",
+      "introTitle": "Conek AI へようこそ",
       "introContent": "かんたんなご案内です。6つのステップ、1分かかりません。矢印キーで移動、Esc で終了できます。",
       "newChatTitle": "新しいチャットを始める",
       "newChatContent": "会話はここから始まります。クリックひとつ、またはホバーで表示されるショートカットで。",
       "searchTitle": "なんでも検索",
       "searchContent": "チャットやエージェントなどを、コマンドパレットからいつでもまとめて検索できます。",
       "inboxTitle": "受信トレイ",
-      "inboxContent": "承認、実行履歴、ルーチンはすべてここに届きます。黄色いバッジは対応待ちの印です。",
+      "inboxContent": "承認、実行履歴、ルーチンはすべてここに届きます。ティールのバッジは対応待ちの印です。",
       "composerTitle": "コンポーザー",
       "composerContent": "ここでアシスタントに話しかけます。ファイルの添付、エージェントやワークフローのメンション、モデルの切り替えもできます。",
       "profileTitle": "プロフィールと設定",

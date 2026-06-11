@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSessionMock } = vi.hoisted(() => ({ getSessionMock: vi.fn() }));
+const { getSessionMock, isThreadSharedMock } = vi.hoisted(() => ({
+  getSessionMock: vi.fn(),
+  isThreadSharedMock: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
@@ -88,6 +91,11 @@ vi.mock("lib/admin/teams", () => ({
   getUserPrimaryTeamId: vi.fn().mockResolvedValue(null),
   getTeamPolicy: vi.fn().mockResolvedValue(null),
 }));
+// Near-live shared generation: the partial-persist gate. Mocked so importing
+// the route never touches the real module (which pulls in the pg pool).
+vi.mock("lib/teamspaces/folders", () => ({
+  isThreadShared: isThreadSharedMock,
+}));
 vi.mock("lib/user/server", () => ({
   getUserPreferences: vi.fn().mockResolvedValue(null),
 }));
@@ -116,6 +124,7 @@ vi.mock("lib/utils", () => ({
 vi.mock("./shared.chat", () => ({
   filterMCPToolsByMentions: vi.fn((tools: any) => tools),
   filterMCPToolsByAllowedMCPServers: vi.fn((tools: any) => tools),
+  extractInProgressToolPart: vi.fn(() => []),
   filterMcpServerCustomizations: vi.fn(() => ({})),
   loadMcpTools: vi.fn().mockResolvedValue({}),
   loadWorkFlowTools: vi.fn().mockResolvedValue({}),
@@ -137,12 +146,9 @@ vi.mock("logger", () => ({
   },
 }));
 vi.mock("consola/utils", () => ({ colorize: (_c: string, s: string) => s }));
-vi.mock("ts-safe", () => ({
-  safe: vi.fn(() => ({
-    ifOk: () => ({ ifFail: () => ({ unwrap: () => null }) }),
-  })),
-  errorIf: vi.fn(),
-}));
+// Real ts-safe: the streaming tests below actually run the route's execute()
+// callback, whose safe()/errorIf chains must behave (the old stub never ran).
+vi.mock("ts-safe", async (importOriginal) => await importOriginal());
 vi.mock("app-types/chat", () => ({
   chatApiSchemaRequestBodySchema: { parse: (b: unknown) => b },
 }));
@@ -154,6 +160,8 @@ vi.mock("ai", () => ({
   stepCountIs: vi.fn(() => false),
   streamText: vi.fn(() => ({
     toUIMessageStreamResponse: vi.fn(() => new Response("{}")),
+    consumeStream: vi.fn(),
+    toUIMessageStream: vi.fn(() => ({})),
   })),
 }));
 vi.mock("lib/ai/tools", () => ({ ImageToolName: "image" }));
@@ -499,5 +507,135 @@ describe("POST /api/chat — layered model entitlements (ADR-0009)", () => {
     // grants are additive only — never consulted when nothing restricts
     const { getUserModelGrants } = await import("lib/admin/user-grants");
     expect(vi.mocked(getUserModelGrants)).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Near-live shared generation: throttled partial persistence ─────────────
+
+describe("POST /api/chat — near-live shared generation (partial persistence)", () => {
+  const baseBody = {
+    id: "t1",
+    message: {
+      id: "m1",
+      role: "user",
+      parts: [{ type: "text", text: "hello there" }],
+    },
+    toolChoice: "none",
+  };
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+  async function setupStreaming(shared: boolean) {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { checkRateLimit } = await import("lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValue({
+      allowed: true,
+      limit: 10,
+      remaining: 9,
+      resetAt: Date.now() + 60_000,
+    } as Awaited<ReturnType<typeof checkRateLimit>>);
+    const { chatRepository } = await import("lib/db/repository");
+    vi.mocked(chatRepository.selectThreadDetails).mockResolvedValue({
+      id: "t1",
+      userId: "u1",
+      messages: [],
+    } as unknown as Awaited<
+      ReturnType<typeof chatRepository.selectThreadDetails>
+    >);
+    const { checkBudget } = await import("lib/ai/budget");
+    vi.mocked(checkBudget).mockResolvedValue({
+      allowed: true,
+    } as Awaited<ReturnType<typeof checkBudget>>);
+    const { routeModel } = await import("lib/ai/routing/route-model");
+    vi.mocked(routeModel).mockReturnValue({
+      model: { provider: "openRouter", model: "gemini-3.5-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "task=general → fast",
+      candidates: [{ provider: "openRouter", model: "gemini-3.5-flash" }],
+    });
+    isThreadSharedMock.mockResolvedValue(shared);
+  }
+
+  /** POST, then run the captured execute() so streamText's onChunk is wired. */
+  async function runStream() {
+    const { createUIMessageStream, streamText } = await import("ai");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+    const uiOpts = vi.mocked(createUIMessageStream).mock.calls.at(-1)?.[0] as {
+      execute: (args: { writer: unknown }) => Promise<void>;
+      generateId: () => string;
+    };
+    await uiOpts.execute({
+      writer: { write: vi.fn(), merge: vi.fn(), onError: vi.fn() },
+    });
+    const stOpts = vi.mocked(streamText).mock.calls.at(-1)?.[0] as unknown as {
+      onChunk: (event: { chunk: { type: string; text: string } }) => void;
+    };
+    return { uiOpts, stOpts };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("persists a throttled partial (user msg first, streaming flag set) for shared threads", async () => {
+    await setupStreaming(true);
+    const { stOpts } = await runStream();
+
+    stOpts.onChunk({ chunk: { type: "text-delta", text: "Hel" } });
+    await flush(); // shared gate resolves
+    stOpts.onChunk({ chunk: { type: "text-delta", text: "lo" } });
+    await flush(); // fire-and-forget upserts settle
+
+    const { chatRepository } = await import("lib/db/repository");
+    const calls = vi
+      .mocked(chatRepository.upsertMessage)
+      .mock.calls.map((c) => c[0]);
+    expect(calls.length).toBe(2);
+    // The user message lands before the first partial so viewers see the
+    // question and createdAt ordering stays user → assistant.
+    expect(calls[0]).toMatchObject({ id: "m1", role: "user", threadId: "t1" });
+    expect(calls[1]).toMatchObject({
+      id: "uuid-1", // mocked generateUUID — same id the final persist targets
+      role: "assistant",
+      threadId: "t1",
+      parts: [{ type: "text", text: "Hello" }],
+    });
+    expect(calls[1].metadata).toMatchObject({ streaming: true });
+    expect(typeof calls[1].metadata?.streamingAt).toBe("number");
+    expect(isThreadSharedMock).toHaveBeenCalledTimes(1);
+    expect(isThreadSharedMock).toHaveBeenCalledWith("t1");
+  });
+
+  it("makes ZERO partial writes for non-shared threads", async () => {
+    await setupStreaming(false);
+    const { stOpts } = await runStream();
+
+    stOpts.onChunk({ chunk: { type: "text-delta", text: "Hel" } });
+    await flush();
+    stOpts.onChunk({ chunk: { type: "text-delta", text: "lo" } });
+    stOpts.onChunk({ chunk: { type: "text-delta", text: " world" } });
+    await flush();
+
+    const { chatRepository } = await import("lib/db/repository");
+    expect(vi.mocked(chatRepository.upsertMessage)).not.toHaveBeenCalled();
+  });
+
+  it("does not check sharedness until the first text chunk (no hot-path query)", async () => {
+    await setupStreaming(true);
+    const { stOpts } = await runStream();
+    expect(isThreadSharedMock).not.toHaveBeenCalled();
+    stOpts.onChunk({ chunk: { type: "text-delta", text: "x" } });
+    expect(isThreadSharedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("pins the stream's generated response id to the partials' target id", async () => {
+    await setupStreaming(true);
+    const { uiOpts } = await runStream();
+    // createUIMessageStream derives the final responseMessage id from this —
+    // it MUST match the id partial upserts wrote, or partials would orphan.
+    expect(uiOpts.generateId()).toBe("uuid-1");
   });
 });

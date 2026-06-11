@@ -1,13 +1,16 @@
+import { isActivelyStreaming } from "@/app/api/chat/shared-stream-partials";
 import { PreviewMessage } from "@/components/message";
 import { LiveThreadMessages } from "@/components/realtime/live-thread-messages";
 import { PresenceAvatars } from "@/components/realtime/presence-avatars";
 import { UIMessage } from "ai";
+import { ChatMetadata } from "app-types/chat";
 import { getSession } from "auth/server";
 import { chatRepository } from "lib/db/repository";
 import { canReadThread, getThreadTeam } from "lib/teamspaces/folders";
 import { Users } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Fragment } from "react";
 
 export default async function SharedThreadPage({
   params,
@@ -77,12 +80,28 @@ export default async function SharedThreadPage({
           </h1>
         </div>
         {messages.map((message, index) => (
-          <PreviewMessage
-            key={message.id}
-            message={message}
-            isLastMessage={index === messages.length - 1}
-            readonly={true}
-          />
+          <Fragment key={message.id}>
+            <PreviewMessage
+              message={message}
+              isLastMessage={index === messages.length - 1}
+              readonly={true}
+            />
+            {/* Near-live shared generation: the owner is still streaming this
+                message (throttled partial persists carry a fresh streaming
+                flag; stale flags from crashed streams age out on their own). */}
+            {isActivelyStreaming(message.metadata as ChatMetadata) && (
+              <div
+                className="w-full mx-auto max-w-3xl px-6 mt-1 flex items-center gap-2 text-xs text-muted-foreground"
+                data-testid="shared-thread-generating"
+              >
+                <span className="relative flex size-2" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/50" />
+                  <span className="relative inline-flex size-2 rounded-full bg-primary/70" />
+                </span>
+                <span className="italic">{t("generating")}</span>
+              </div>
+            )}
+          </Fragment>
         ))}
       </div>
     </div>

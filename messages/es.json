@@ -191,7 +191,7 @@
       "createAccount": "Crear cuenta"
     },
     "Intro": {
-      "description": "Bienvenido a Asafe AI. Inicia sesión para experimentar nuestras herramientas conversacionales impulsadas por IA."
+      "description": "Bienvenido a Conek AI. Inicia sesión para experimentar nuestras herramientas conversacionales impulsadas por IA."
     }
   },
   "Chat": {
@@ -1065,6 +1065,7 @@
     "emptyFolder": "Aún no hay conversaciones en esta carpeta",
     "noFolders": "Aún no hay carpetas",
     "team": "equipo",
+    "generating": "Generando…",
     "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura"
   },
   "Memory": {
@@ -1107,7 +1108,7 @@
     "language": "Idioma",
     "languageDescription": "Elige el idioma de la interfaz.",
     "gdprTitle": "Datos y privacidad",
-    "gdprDescription": "Descarga una copia de todos tus datos almacenados en A-SAFE AI (art. 20 del RGPD — derecho a la portabilidad de los datos).",
+    "gdprDescription": "Descarga una copia de todos tus datos almacenados en Conek AI (art. 20 del RGPD — derecho a la portabilidad de los datos).",
     "downloadMyData": "Descargar mis datos",
     "archivesDescription": "Espacios para guardar el historial de chats.",
     "personalization": "Personalización",
@@ -1124,7 +1125,7 @@
     "agents": "Agentes",
     "admin": "Administración",
     "back": "Atrás",
-    "askAi": "Preguntar a A-SAFE AI: \"{query}\""
+    "askAi": "Preguntar a Conek AI: \"{query}\""
   },
   "Studio": {
     "title": "Estudio",
@@ -1132,7 +1133,7 @@
     "workflows": "Flujos de trabajo",
     "backToStudio": "Volver al Estudio",
     "describeWorkflow": "Describe un flujo de trabajo",
-    "describeWorkflowHint": "Aún no hay flujos de trabajo. La forma más rápida de empezar: describe lo que quieres en el chat y A-SAFE AI redactará el flujo de trabajo por ti.",
+    "describeWorkflowHint": "Aún no hay flujos de trabajo. La forma más rápida de empezar: describe lo que quieres en el chat y Conek AI redactará el flujo de trabajo por ti.",
     "describeWorkflowDraft": "Crea un flujo de trabajo que "
   },
   "Visibility": {
@@ -1177,14 +1178,14 @@
     "stepOf": "Paso {current} de {total}",
     "replayWelcome": "Repetir el tour de bienvenida",
     "Welcome": {
-      "introTitle": "Bienvenido a A-SAFE AI",
+      "introTitle": "Bienvenido a Conek AI",
       "introContent": "Un vistazo rápido — seis paradas, menos de un minuto. Usa las flechas para moverte y Esc para salir.",
       "newChatTitle": "Iniciar un chat nuevo",
       "newChatContent": "Tus conversaciones empiezan aquí. Un clic, o el atajo que aparece al pasar el cursor.",
       "searchTitle": "Encuentra cualquier cosa",
       "searchContent": "Busca chats, agentes y más desde un solo lugar, en cualquier momento, con la paleta de comandos.",
       "inboxTitle": "Tu bandeja de entrada",
-      "inboxContent": "Aprobaciones, historial de ejecuciones y rutinas llegan aquí. Una insignia amarilla significa que algo te espera.",
+      "inboxContent": "Aprobaciones, historial de ejecuciones y rutinas llegan aquí. Una insignia turquesa significa que algo te espera.",
       "composerTitle": "El compositor",
       "composerContent": "Escribe al asistente aquí. Adjunta archivos, menciona agentes y flujos de trabajo, o elige otro modelo.",
       "profileTitle": "Perfil y ajustes",

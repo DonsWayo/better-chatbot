@@ -16,8 +16,14 @@ import { useEffect, useRef, useState } from "react";
  * PreviewMessage with the full parts/metadata pipeline. Re-rendering messages
  * client-side from raw shape rows would duplicate that mapping (and force
  * parsing the Postgres json[] parts column), so the shape is used purely as a
- * change signal over a tiny `id,created_at` column set — the proxy pins the
- * column list server-side.
+ * change signal over a tiny `id,created_at,metadata` column set — the proxy
+ * pins the column list server-side.
+ *
+ * `metadata` is part of the signal because near-live shared generation
+ * (content/docs/collaboration/realtime.mdx) re-upserts the in-progress
+ * assistant message every ~2.5s with a bumped `streamingAt`; fingerprinting
+ * ids alone would miss those in-place updates and viewers would only refresh
+ * once the final message lands.
  */
 
 const REFRESH_DEBOUNCE_MS = 300;
@@ -25,7 +31,14 @@ const REFRESH_DEBOUNCE_MS = 300;
 type ChatMessageSignalRow = {
   id: string;
   created_at: string;
+  metadata: Record<string, unknown> | string | null;
 };
+
+/** Stable-enough serialization of a row's metadata for the change signal. */
+function metadataSignal(metadata: ChatMessageSignalRow["metadata"]): string {
+  if (metadata == null) return "";
+  return typeof metadata === "string" ? metadata : JSON.stringify(metadata);
+}
 
 function LiveThreadMessagesSubscriber({
   threadId,
@@ -44,11 +57,12 @@ function LiveThreadMessagesSubscriber({
     },
   });
 
-  // Order-independent fingerprint of the message set; new/removed rows change it.
+  // Order-independent fingerprint of the message set; new/removed rows change
+  // it, and so do in-place metadata bumps from streaming partial persists.
   const fingerprint = isLoading
     ? null
     : data
-        .map((row) => row.id)
+        .map((row) => `${row.id}:${metadataSignal(row.metadata)}`)
         .sort()
         .join("|");
 

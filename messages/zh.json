@@ -72,7 +72,7 @@
       "createAccount": "创建账户"
     },
     "Intro": {
-      "description": "欢迎来到 MCP 聊天机器人。登录以体验我们的 AI 驱动的对话工具。"
+      "description": "欢迎来到 Conek AI。登录以体验我们的 AI 驱动的对话工具。"
     }
   },
   "Chat": {
@@ -711,6 +711,7 @@
     "emptyFolder": "此文件夹中还没有对话",
     "noFolders": "还没有文件夹",
     "team": "团队",
+    "generating": "生成中…",
     "sharedWithTeamReadOnly": "与{team}共享 · 只读"
   },
   "Memory": {
@@ -753,7 +754,7 @@
     "language": "语言",
     "languageDescription": "选择界面语言。",
     "gdprTitle": "数据与隐私",
-    "gdprDescription": "下载存储在 A-SAFE AI 中的所有数据副本（GDPR 第 20 条 — 数据可携权）。",
+    "gdprDescription": "下载存储在 Conek AI 中的所有数据副本（GDPR 第 20 条 — 数据可携权）。",
     "downloadMyData": "下载我的数据",
     "archivesDescription": "用于保存聊天历史的空间。",
     "personalization": "个性化",
@@ -770,7 +771,7 @@
     "agents": "智能体",
     "admin": "管理",
     "back": "返回",
-    "askAi": "向 A-SAFE AI 提问：\"{query}\""
+    "askAi": "向 Conek AI 提问：\"{query}\""
   },
   "Studio": {
     "title": "工作室",
@@ -778,7 +779,7 @@
     "workflows": "工作流",
     "backToStudio": "返回工作室",
     "describeWorkflow": "描述一个工作流",
-    "describeWorkflowHint": "还没有工作流。最快的开始方式：在聊天中描述你想要的内容，A-SAFE AI 会为你起草工作流。",
+    "describeWorkflowHint": "还没有工作流。最快的开始方式：在聊天中描述你想要的内容，Conek AI 会为你起草工作流。",
     "describeWorkflowDraft": "创建一个工作流，它可以 "
   },
   "Visibility": {
@@ -823,14 +824,14 @@
     "stepOf": "第 {current} 步，共 {total} 步",
     "replayWelcome": "重新播放欢迎导览",
     "Welcome": {
-      "introTitle": "欢迎使用 A-SAFE AI",
+      "introTitle": "欢迎使用 Conek AI",
       "introContent": "快速导览——六个站点，不到一分钟。使用方向键移动，按 Esc 退出。",
       "newChatTitle": "开始新对话",
       "newChatContent": "你的对话从这里开始。单击一下，或使用悬停时显示的快捷键。",
       "searchTitle": "搜索一切",
       "searchContent": "通过命令面板，随时在一个地方搜索对话、智能体等内容。",
       "inboxTitle": "你的收件箱",
-      "inboxContent": "审批、运行历史和例行任务都会汇集到这里。黄色徽标表示有事项等待你处理。",
+      "inboxContent": "审批、运行历史和例行任务都会汇集到这里。青绿色徽标表示有事项等待你处理。",
       "composerTitle": "输入区",
       "composerContent": "在这里与助手交流。可以附加文件、提及智能体和工作流，或切换其他模型。",
       "profileTitle": "个人资料与设置",

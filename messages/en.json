@@ -191,7 +191,7 @@
       "createAccount": "Create account"
     },
     "Intro": {
-      "description": "Welcome to Asafe AI. Sign in to experience our AI-powered conversational tools."
+      "description": "Welcome to Conek AI. Sign in to experience our AI-powered conversational tools."
     }
   },
   "Chat": {
@@ -1065,6 +1065,7 @@
     "emptyFolder": "No conversations in this folder yet",
     "noFolders": "No folders yet",
     "team": "team",
+    "generating": "Generating…",
     "sharedWithTeamReadOnly": "Shared with {team} · read-only"
   },
   "Memory": {
@@ -1107,7 +1108,7 @@
     "language": "Language",
     "languageDescription": "Choose your interface language.",
     "gdprTitle": "Data & privacy",
-    "gdprDescription": "Download a copy of all your data stored in A-SAFE AI (GDPR Art. 20 — right to data portability).",
+    "gdprDescription": "Download a copy of all your data stored in Conek AI (GDPR Art. 20 — right to data portability).",
     "downloadMyData": "Download my data",
     "archivesDescription": "Spaces to store chat history.",
     "personalization": "Personalization",
@@ -1124,7 +1125,7 @@
     "agents": "Agents",
     "admin": "Admin",
     "back": "Back",
-    "askAi": "Ask A-SAFE AI: \"{query}\""
+    "askAi": "Ask Conek AI: \"{query}\""
   },
   "Studio": {
     "title": "Studio",
@@ -1132,7 +1133,7 @@
     "workflows": "Workflows",
     "backToStudio": "Back to Studio",
     "describeWorkflow": "Describe a workflow",
-    "describeWorkflowHint": "No workflows yet. The fastest way to start: describe what you want in chat and A-SAFE AI will draft the workflow for you.",
+    "describeWorkflowHint": "No workflows yet. The fastest way to start: describe what you want in chat and Conek AI will draft the workflow for you.",
     "describeWorkflowDraft": "Create a workflow that "
   },
   "Visibility": {
@@ -1177,14 +1178,14 @@
     "stepOf": "Step {current} of {total}",
     "replayWelcome": "Replay welcome tour",
     "Welcome": {
-      "introTitle": "Welcome to A-SAFE AI",
+      "introTitle": "Welcome to Conek AI",
       "introContent": "A quick look around — six stops, under a minute. Use the arrow keys to move, Esc to leave.",
       "newChatTitle": "Start a new chat",
       "newChatContent": "Your conversations begin here. One click, or the shortcut shown on hover.",
       "searchTitle": "Find anything",
       "searchContent": "Search chats, agents and more from one place, any time, with the command palette.",
       "inboxTitle": "Your inbox",
-      "inboxContent": "Approvals, run history and routines all land here. A yellow badge means something is waiting on you.",
+      "inboxContent": "Approvals, run history and routines all land here. A teal badge means something is waiting on you.",
       "composerTitle": "The composer",
       "composerContent": "Write to the assistant here. Attach files, mention agents and workflows, or pick a different model.",
       "profileTitle": "Profile and settings",

@@ -32,6 +32,17 @@ export type ChatMetadata = {
   ragCollectionId?: string;
   /** asafe-ai (ADR-0007, phase 2): deduped sources behind this message's [Source N] citations. */
   ragSources?: RagSource[];
+  /**
+   * Near-live shared generation (v1): true while this assistant message is a
+   * throttled partial persist of an in-progress stream on a team-shared
+   * thread. The final onFinish persist overwrites metadata and clears it.
+   */
+  streaming?: boolean;
+  /**
+   * Epoch ms of the last partial persist. Readers only render "generating…"
+   * while this is fresh, so a flag orphaned by a crashed stream ages out.
+   */
+  streamingAt?: number;
 };
 
 export type ChatModel = {

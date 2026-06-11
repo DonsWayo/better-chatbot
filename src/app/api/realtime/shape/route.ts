@@ -65,8 +65,12 @@ export async function GET(request: Request) {
     originUrl.searchParams.set("table", "chat_message");
     originUrl.searchParams.set("where", `"thread_id" = $1`);
     originUrl.searchParams.set("params[1]", threadId);
-    // The live island only needs a change signal; keep the log payload tiny.
-    originUrl.searchParams.set("columns", "id,created_at");
+    // The live island only needs a change signal; keep the log payload tiny
+    // (never the heavy json[] parts column). `metadata` is included because
+    // near-live shared generation bumps metadata.streamingAt on every
+    // throttled partial persist — without it, in-place updates to a streaming
+    // message would never reach the shape log.
+    originUrl.searchParams.set("columns", "id,created_at,metadata");
   } else if (table === "agent_session") {
     originUrl.searchParams.set("table", "agent_session");
     originUrl.searchParams.set("where", `"user_id" = $1`);

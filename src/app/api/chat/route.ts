@@ -54,6 +54,7 @@ import {
   ttftMs,
 } from "lib/observability/slo";
 import { checkRateLimit } from "lib/rate-limit";
+import { isThreadShared } from "lib/teamspaces/folders";
 import { getUserPreferences } from "lib/user/server";
 import { generateUUID } from "lib/utils";
 // W11: compression wired via wrapWithCompression middleware at model creation (line ~253)
@@ -61,6 +62,7 @@ import {
   rememberAgentAction,
   rememberMcpServerCustomizationsAction,
 } from "./actions";
+import { createPartialPersister } from "./shared-stream-partials";
 import {
   convertToSavePart,
   excludeToolExecution,
@@ -412,6 +414,44 @@ export async function POST(request: Request) {
     activeRequests.inc();
     let ttftObserved = false;
 
+    // Near-live shared generation (v1): pin the assistant message id up front
+    // (mirroring the SDK's own derivation — the last original message's id
+    // when it is an assistant continuation, a fresh uuid otherwise) so the
+    // throttled partial persists below and the final onFinish persist target
+    // the SAME row. `generateId` on createUIMessageStream returns this id.
+    const assistantMessageId =
+      message.role === "assistant" ? message.id : generateUUID();
+
+    // Owner-side only, server-side only: when (and only when) the thread is
+    // team-shared, upsert the in-progress assistant text at most every ~2.5s
+    // so teammates' read-only views grow during generation via the existing
+    // Electric chat_message shape. The user message is persisted before the
+    // first partial so viewers see the question and createdAt ordering stays
+    // correct. Failures never break the stream (fire-and-forget).
+    let userMessagePersistedForPartial = message.role === "assistant";
+    const partialPersister = createPartialPersister({
+      isShared: () => isThreadShared(thread!.id),
+      persist: async (accumulatedText) => {
+        if (!userMessagePersistedForPartial) {
+          await chatRepository.upsertMessage({
+            threadId: thread!.id,
+            role: message.role,
+            parts: message.parts.map(convertToSavePart),
+            id: message.id,
+          });
+          userMessagePersistedForPartial = true;
+        }
+        await chatRepository.upsertMessage({
+          threadId: thread!.id,
+          id: assistantMessageId,
+          role: "assistant",
+          parts: [{ type: "text", text: accumulatedText }],
+          metadata: { ...metadata, streaming: true, streamingAt: Date.now() },
+        });
+      },
+      onError: (e) => logger.warn("partial stream persist failed:", e),
+    });
+
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
         const MCP_TOOLS = await safe()
@@ -655,16 +695,21 @@ export async function POST(request: Request) {
           toolChoice: "auto",
           abortSignal: request.signal,
           onChunk: ({ chunk }) => {
-            if (!ttftObserved && chunk.type === "text-delta") {
-              ttftMs.observe(
-                {
-                  provider: effectiveModel?.provider ?? "unknown",
-                  model: effectiveModel?.model ?? "unknown",
-                  task_class: routing?.taskClass ?? "unknown",
-                },
-                Date.now() - requestStart,
-              );
-              ttftObserved = true;
+            if (chunk.type === "text-delta") {
+              if (!ttftObserved) {
+                ttftMs.observe(
+                  {
+                    provider: effectiveModel?.provider ?? "unknown",
+                    model: effectiveModel?.model ?? "unknown",
+                    task_class: routing?.taskClass ?? "unknown",
+                  },
+                  Date.now() - requestStart,
+                );
+                ttftObserved = true;
+              }
+              // Shared threads only: throttled partial persistence (no-op
+              // otherwise; see shared-stream-partials.ts).
+              partialPersister.append(chunk.text);
             }
           },
         });
@@ -681,7 +726,9 @@ export async function POST(request: Request) {
         );
       },
 
-      generateId: generateUUID,
+      // Must match the partial persister's target row (near-live shared
+      // generation) — the SDK calls this exactly once for the response id.
+      generateId: () => assistantMessageId,
       onFinish: async ({ responseMessage }) => {
         if (responseMessage.id == message.id) {
           await chatRepository.upsertMessage({
