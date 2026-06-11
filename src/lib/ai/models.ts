@@ -40,7 +40,7 @@ const staticModels = {
     // every slug verified servable on this account). NOTE: minimax/minimax-m3
     // was removed — this account's OpenRouter data policy returns 404
     // ("no endpoints matching guardrail restrictions") for it.
-    "kimi-k2.5": openrouter("moonshotai/kimi-k2.5"), // frontier tier
+    "kimi-k2.6": openrouter("moonshotai/kimi-k2.6"), // frontier tier
     "deepseek-v4-flash": openrouter("deepseek/deepseek-v4-flash"), // fast tier
     "deepseek-v4-pro": openrouter("deepseek/deepseek-v4-pro"), // balanced tier
     "hy3-preview": openrouter("tencent/hy3-preview"), // cheap tier
@@ -82,7 +82,7 @@ registerFileSupport(
   GEMINI_FILE_MIME_TYPES,
 );
 // Cost stack: default (conservative) file mime set.
-registerFileSupport(staticModels.openRouter["kimi-k2.5"]);
+registerFileSupport(staticModels.openRouter["kimi-k2.6"]);
 registerFileSupport(staticModels.openRouter["deepseek-v4-flash"]);
 registerFileSupport(staticModels.openRouter["deepseek-v4-pro"]);
 registerFileSupport(staticModels.openRouter["hy3-preview"]);

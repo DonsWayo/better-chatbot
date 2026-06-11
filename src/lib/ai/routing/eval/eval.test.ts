@@ -6,7 +6,7 @@ import { MODEL_PRICES } from "./prices";
 // Wave 2 routing eval — sanity guard (ADR-0004).
 // Asserts that the blended cost when routing is <= always choosing frontier.
 
-const FRONTIER_MODEL = "kimi-k2.5"; // TIER_MODEL.frontier (cost stack, 2026-06)
+const FRONTIER_MODEL = "kimi-k2.6"; // TIER_MODEL.frontier (cost stack, 2026-06)
 
 // Synthetic token counts used consistently across the eval script and test.
 const INPUT_TOKENS = 1_000;

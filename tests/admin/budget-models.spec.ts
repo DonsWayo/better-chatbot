@@ -19,7 +19,7 @@ test.use({ storageState: TEST_USERS.admin.authFile });
 
 const BUDGET_MODELS = [
   { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
-  { id: "kimi-k2.5", label: "Kimi K2.5" },
+  { id: "kimi-k2.6", label: "Kimi K2.6" },
   { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
 ] as const;
 
@@ -86,7 +86,7 @@ test.describe("Admin team model entitlements — budget models", () => {
     // A model that was not granted stays unchecked.
     await expect(
       page
-        .getByTestId("model-checkbox-kimi-k2.5")
+        .getByTestId("model-checkbox-kimi-k2.6")
         .locator('input[type="checkbox"]'),
     ).not.toBeChecked();
 

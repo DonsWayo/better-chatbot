@@ -35,10 +35,10 @@ describe("routeModel", () => {
     expect(d.taskClass).toBe("long_context");
   });
 
-  it("routes reasoning to the frontier tier (kimi-k2.5)", () => {
+  it("routes reasoning to the frontier tier (kimi-k2.6)", () => {
     const d = routeModel({ text: "explain why the sky is blue, step by step" });
     expect(d.taskClass).toBe("reasoning");
-    expect(d.model.model).toBe("kimi-k2.5");
+    expect(d.model.model).toBe("kimi-k2.6");
   });
 
   it("defaults plain chat to general (deepseek-v4-flash)", () => {
@@ -52,7 +52,7 @@ describe("routeModel", () => {
       text: "explain why this matters, step by step",
       allowedModels: [{ provider: "openRouter", model: "deepseek-v4-pro" }],
     });
-    // reasoning prefers kimi-k2.5, but the allow-list only permits deepseek-v4-pro
+    // reasoning prefers kimi-k2.6, but the allow-list only permits deepseek-v4-pro
     expect(d.model.model).toBe("deepseek-v4-pro");
   });
 
@@ -61,7 +61,7 @@ describe("routeModel", () => {
       text: "explain why this matters, step by step",
       allowedModels: ["deepseek-v4-pro"],
     });
-    // reasoning prefers kimi-k2.5, but the resolved entitlement list only permits deepseek-v4-pro
+    // reasoning prefers kimi-k2.6, but the resolved entitlement list only permits deepseek-v4-pro
     expect(d.model.model).toBe("deepseek-v4-pro");
     expect(d.candidates.every((c) => c.model === "deepseek-v4-pro")).toBe(true);
   });
@@ -70,13 +70,13 @@ describe("routeModel", () => {
     const d = routeModel({
       text: "explain why this matters, step by step",
       allowedModels: [
-        { provider: "openRouter", model: "kimi-k2.5" },
+        { provider: "openRouter", model: "kimi-k2.6" },
         "deepseek-v4-pro",
       ],
     });
-    expect(d.model.model).toBe("kimi-k2.5");
+    expect(d.model.model).toBe("kimi-k2.6");
     expect(d.candidates.map((c) => c.model)).toEqual([
-      "kimi-k2.5",
+      "kimi-k2.6",
       "deepseek-v4-pro",
     ]);
   });

@@ -79,8 +79,8 @@ describe("LONG_CONTEXT_CHARS", () => {
 });
 
 describe("TIER_MODEL — specific model assignments (cost stack, 2026-06)", () => {
-  it("frontier tier uses kimi-k2.5 (servable stand-in for MiniMax M3)", () => {
-    expect(TIER_MODEL.frontier.model).toBe("kimi-k2.5");
+  it("frontier tier uses kimi-k2.6 (servable stand-in for MiniMax M3)", () => {
+    expect(TIER_MODEL.frontier.model).toBe("kimi-k2.6");
   });
 
   it("balanced tier uses deepseek-v4-pro", () => {

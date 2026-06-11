@@ -39,7 +39,7 @@ export const MAX_GENERATED_EDGES = 40;
 // LLM nodes should not pin a premium, entitlement-only model.
 export const DEFAULT_WORKFLOW_LLM_MODEL: ChatModel = {
   provider: "openRouter",
-  model: "kimi-k2.5",
+  model: "kimi-k2.6",
 };
 
 const textToTiptap = (text: string): TipTapMentionJsonContent => ({

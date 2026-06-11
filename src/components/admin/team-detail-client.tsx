@@ -95,7 +95,7 @@ const APPROVED_MODELS = [
     label: "Gemini 3.1 Flash Lite",
     note: "premium — light",
   },
-  { id: "kimi-k2.5", label: "Kimi K2.5", note: "frontier default" },
+  { id: "kimi-k2.6", label: "Kimi K2.6", note: "frontier default" },
   {
     id: "deepseek-v4-flash",
     label: "DeepSeek V4 Flash",

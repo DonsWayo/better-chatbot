@@ -45,7 +45,7 @@ describe("MODEL_PRICES", () => {
         "claude-opus-4.8",
         "gemini-3.5-flash",
         "gemini-3.1-flash-lite",
-        "kimi-k2.5",
+        "kimi-k2.6",
         "deepseek-v4-pro",
         "deepseek-v4-flash",
         "hy3-preview",
@@ -78,10 +78,10 @@ describe("MODEL_PRICES", () => {
     });
   });
 
-  it("kimi-k2.5 (frontier tier) has correct per-million-token rates", () => {
-    expect(MODEL_PRICES["kimi-k2.5"]).toEqual({
-      inPerMTok: 0.35,
-      outPerMTok: 1.89,
+  it("kimi-k2.6 (frontier tier) has correct per-million-token rates", () => {
+    expect(MODEL_PRICES["kimi-k2.6"]).toEqual({
+      inPerMTok: 0.68,
+      outPerMTok: 3.41,
     });
   });
 

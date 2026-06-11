@@ -64,7 +64,7 @@ export const GATEWAY_MODELS: readonly GatewayModel[] = [
     name: "Gemini 3.1 Flash Lite",
     slug: "google/gemini-3.1-flash-lite",
   },
-  { id: "kimi-k2.5", name: "Kimi K2.5", slug: "moonshotai/kimi-k2.5" },
+  { id: "kimi-k2.6", name: "Kimi K2.6", slug: "moonshotai/kimi-k2.6" },
   {
     id: "deepseek-v4-flash",
     name: "DeepSeek V4 Flash",

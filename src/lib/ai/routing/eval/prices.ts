@@ -13,7 +13,7 @@ export const MODEL_PRICES: Record<
   "gemini-3.5-flash": { inPerMTok: 1.5, outPerMTok: 9 },
   "gemini-3.1-flash-lite": { inPerMTok: 0.25, outPerMTok: 1.5 },
   // Cost stack — the Auto routing tiers.
-  "kimi-k2.5": { inPerMTok: 0.35, outPerMTok: 1.89 }, // frontier
+  "kimi-k2.6": { inPerMTok: 0.68, outPerMTok: 3.41 }, // frontier
   "deepseek-v4-pro": { inPerMTok: 0.43, outPerMTok: 0.87 }, // balanced
   "deepseek-v4-flash": { inPerMTok: 0.1, outPerMTok: 0.2 }, // fast
   "hy3-preview": { inPerMTok: 0.06, outPerMTok: 0.21 }, // cheap

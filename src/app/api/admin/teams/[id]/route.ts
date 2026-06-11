@@ -8,7 +8,7 @@ const APPROVED_MODEL_IDS = [
   "claude-opus-4.8",
   "gemini-3.5-flash",
   "gemini-3.1-flash-lite",
-  "kimi-k2.5",
+  "kimi-k2.6",
   "deepseek-v4-flash",
   "deepseek-v4-pro",
   "hy3-preview",
