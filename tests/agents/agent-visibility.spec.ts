@@ -98,8 +98,19 @@ test.describe("Agent visibility and sharing between users", () => {
     },
   );
 
-  async function agentCard(page: Page, name: string) {
-    return page.locator(`[data-testid="agent-card-name"]:has-text("${name}")`);
+  // The agent gallery moved into the builder-gated Studio (the /agents route
+  // now redirects there), so regular users no longer browse a gallery. The
+  // visibility model is surfaced for everyone through GET /api/agent — the same
+  // endpoint the UI lists from — so assert against it directly.
+  async function listVisibleAgentNames(page: Page): Promise<string[]> {
+    const res = await page.request.get("/api/agent?filters=all", {
+      timeout: 15000,
+    });
+    if (!res.ok()) {
+      throw new Error(`GET /api/agent failed: ${res.status()}`);
+    }
+    const agents = (await res.json()) as Array<{ name: string }>;
+    return agents.map((a) => a.name);
   }
 
   test("regular user sees the company agent but not the private one", async ({
@@ -110,13 +121,9 @@ test.describe("Agent visibility and sharing between users", () => {
     });
     try {
       const page = await context.newPage();
-      await page.goto("/agents");
-      await page.waitForLoadState("networkidle");
-
-      await expect(await agentCard(page, companyAgentName)).toBeVisible({
-        timeout: 10000,
-      });
-      await expect(await agentCard(page, privateAgentName)).not.toBeVisible();
+      const names = await listVisibleAgentNames(page);
+      expect(names).toContain(companyAgentName);
+      expect(names).not.toContain(privateAgentName);
     } finally {
       await context.close();
     }
@@ -130,12 +137,8 @@ test.describe("Agent visibility and sharing between users", () => {
     });
     try {
       const page = await context.newPage();
-      await page.goto("/agents");
-      await page.waitForLoadState("networkidle");
-
-      await expect(await agentCard(page, sharedAgentName)).toBeVisible({
-        timeout: 10000,
-      });
+      const names = await listVisibleAgentNames(page);
+      expect(names).toContain(sharedAgentName);
 
       // And can open it (read access via the grant).
       await page.goto(`/agent/${sharedAgentId}`);
@@ -156,11 +159,9 @@ test.describe("Agent visibility and sharing between users", () => {
     });
     try {
       const page = await context.newPage();
-      await page.goto("/agents");
-      await page.waitForLoadState("networkidle");
-
-      await expect(await agentCard(page, sharedAgentName)).not.toBeVisible();
-      await expect(await agentCard(page, privateAgentName)).not.toBeVisible();
+      const names = await listVisibleAgentNames(page);
+      expect(names).not.toContain(sharedAgentName);
+      expect(names).not.toContain(privateAgentName);
     } finally {
       await context.close();
     }
