@@ -31,10 +31,10 @@ import {
   ChatAttachment,
   ChatModel,
 } from "app-types/chat";
-import { AnimatePresence, motion } from "motion/react";
 import { getStorageManager } from "lib/browser-stroage";
 import { Shortcuts, isShortcutEvent } from "lib/keyboard-shortcuts";
 import { ArrowDown, FilePlus, Loader } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -371,6 +371,23 @@ export default function ChatBot({
       behavior: "smooth",
     });
   }, []);
+
+  // Auto-follow the stream: while a response is generating AND the user is at
+  // the bottom, keep the view pinned as content grows. Scrolling up flips
+  // isAtBottom (via onScroll), which breaks the follow — reading back during
+  // a long generation is never hijacked. Runs after every render on purpose:
+  // streamed tokens change content height without changing messages identity.
+  useEffect(() => {
+    if (!isLoading || !isAtBottom) return;
+    const container = containerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: "instant" });
+  });
+
+  // Sending a message always snaps to the bottom, even after reading back.
+  useEffect(() => {
+    if (status === "submitted") scrollToBottom();
+  }, [status, scrollToBottom]);
 
   useEffect(() => {
     appStoreMutate({ currentThreadId: threadId });
