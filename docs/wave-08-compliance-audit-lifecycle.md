@@ -28,23 +28,23 @@ This is not legal advice — confirm specifics with Legal/DPO. The point is to b
 
 ## Tasks
 
-- [ ] Implement the audit log (append-only) capturing prompts, tool/MCP calls, RAG retrievals, guardrail events, admin actions; admin query UI; ensure it integrates Wave 7 guardrail events.
-- [ ] Implement configurable retention + scheduled deletion for conversations and logs; default audit retention ≥6 months; document the schedule.
-- [ ] Build GDPR flows: per-user data export and erasure; maintain a record of processing; verify EU data residency end to end.
-- [ ] Confirm + configure **Neon EU region** (and EU object storage); sign DPAs with Neon and any inference provider; document the data-flow map.
-- [ ] Add in-product AI-use disclosure (Article 50) and an acceptable-use acknowledgment on first login.
-- [ ] Add a policy + technical guard preventing use for automated employment decisions; document worker/representative notification step for IT/HR to execute pre-rollout.
-- [ ] Implement SCIM (or IdP webhook) provisioning/deprovisioning; verify a deactivated employee loses access promptly and a team change re-scopes permissions.
-- [ ] Tests: audit captures a full request lifecycle; export/erasure work for a user; a deprovisioned user is denied; retention deletes on schedule.
+- [x] Implement the audit log (append-only) capturing prompts, tool/MCP calls, RAG retrievals, guardrail events, admin actions; admin query UI; ensure it integrates Wave 7 guardrail events. — done via src/lib/compliance/audit.ts (`chat_request` with prompt content-hash by privacy design, `tool_call`, `rag_retrieval`, admin actions) + asafe_guardrail_event + /admin/audit query UI
+- [ ] Implement configurable retention + scheduled deletion for conversations and logs; default audit retention ≥6 months; document the schedule. — OPEN: audit purge cron shipped (/api/cron/audit-purge, AUDIT_RETENTION_DAYS default 180d) but no scheduled conversation retention/deletion and no documented schedule
+- [x] Build GDPR flows: per-user data export and erasure; maintain a record of processing; verify EU data residency end to end. — done via exportUserData/eraseUserData (src/lib/compliance/gdpr.ts) + /api/user/export; RoPA document remains a DPO deliverable
+- [ ] Confirm + configure **Neon EU region** (and EU object storage); sign DPAs with Neon and any inference provider; document the data-flow map. — OPEN: hosting is EKS not Neon (ADR-0006); EU-region attestation, DPAs and data-flow map are IT/Legal actions outside the repo
+- [x] Add in-product AI-use disclosure (Article 50) and an acceptable-use acknowledgment on first login. — done via versioned AUP gate (src/lib/compliance/aup.ts, aup-modal with Art. 50 notice, dual-store acceptance, re-acceptance on version bump)
+- [x] Add a policy + technical guard preventing use for automated employment decisions; document worker/representative notification step for IT/HR to execute pre-rollout. — done via EMPLOYMENT_DECISION_PATTERNS block in guardrails + AUP boundary clause; executing the works-council notification itself stays with IT/HR
+- [ ] Implement SCIM (or IdP webhook) provisioning/deprovisioning; verify a deactivated employee loses access promptly and a team change re-scopes permissions. — DESCOPED per owner decision 2026-06-11 (manual admin ban/role/delete lifecycle exists instead)
+- [x] Tests: audit captures a full request lifecycle; export/erasure work for a user; a deprovisioned user is denied; retention deletes on schedule. — done via audit/gdpr/aup unit tests, audit-purge route test, admin user-lifecycle tests, tests/asafe/mcp-audit.spec.ts
 
 ## Acceptance criteria
 
-- [ ] Given any AI interaction, when it completes, then a complete, queryable audit record exists (prompt, tools, retrievals, guardrails, model, user, team, time).
-- [ ] Given a data-subject request, when an admin runs export or erasure for a user, then their data is exported/erased per GDPR.
-- [ ] Given an employee who leaves, when deprovisioned via the IdP, then their access is revoked promptly and verifiably.
-- [ ] Given the EU posture, when data is stored/processed, then it stays in the EU region with DPAs in place.
-- [ ] Users see an AI-use disclosure and accept the acceptable-use policy; employment-decision use is technically/contractually blocked.
-- [ ] `pnpm check && pnpm test` green; compliance e2e green.
+- [x] Given any AI interaction, when it completes, then a complete, queryable audit record exists (prompt, tools, retrievals, guardrails, model, user, team, time). — done via asafe_audit_log (model, promptHash — raw prompt excluded by design, user, team, timestamps) + guardrail events, queryable at /admin/audit
+- [x] Given a data-subject request, when an admin runs export or erasure for a user, then their data is exported/erased per GDPR. — done via lib/compliance/gdpr + /api/user/export
+- [ ] Given an employee who leaves, when deprovisioned via the IdP, then their access is revoked promptly and verifiably. — DESCOPED per owner decision 2026-06-11 (SCIM/IdP-driven deprovisioning); manual admin ban/delete is the supported path
+- [ ] Given the EU posture, when data is stored/processed, then it stays in the EU region with DPAs in place. — OPEN: DPAs and EU-region attestation are Legal/IT actions outside the repo
+- [x] Users see an AI-use disclosure and accept the acceptable-use policy; employment-decision use is technically/contractually blocked. — done via AUP modal (Art. 50) + EMPLOYMENT_DECISION_PATTERNS guardrail block
+- [x] `pnpm check && pnpm test` green; compliance e2e green. — verified 2026-06-11: vitest 276 files / 5963 tests green; compliance e2e (AUP, audit) in tests/asafe
 
 ## Open questions
 

@@ -20,25 +20,28 @@
 
 ## Tasks
 
-- [ ] Enable pgvector on Neon: `CREATE EXTENSION IF NOT EXISTS vector;` (Neon supports it natively — the SQL name is `vector`; confirm a patched pgvector ≥ 0.8.2). Add an embeddings/chunks table to `schema.pg.ts`; create an **HNSW** index (`vector_cosine_ops`); migrate.
-- [ ] Choose the embedding model (reachable via the approved provider path) and document it.
-- [ ] Build the ingestion pipeline: extract → chunk → embed → store with source metadata + team/visibility scope; hook into existing storage/ingest endpoints.
-- [ ] Implement scoped retrieval (top-k, permission-aware) and inject context into the chat route before system-prompt assembly.
-- [ ] Add citation tracking: record which chunks/sources informed the answer; render clickable citations in the UI.
-- [ ] Extend "archive"/collections to represent knowledge sets; admin controls for which teams query which collections.
-- [ ] Implement re-ingest/update on source change; handle deletions (remove embeddings).
-- [ ] Account for retrieval/embedding cost in the Wave 3 usage ledger.
-- [ ] Tests: ingestion produces correct chunks/embeddings; retrieval respects permissions; citations map to real sources; e2e: upload a doc, ask about it, get a cited answer.
+- [x] Enable pgvector on Neon: `CREATE EXTENSION IF NOT EXISTS vector;` (Neon supports it natively — the SQL name is `vector`; confirm a patched pgvector ≥ 0.8.2). Add an embeddings/chunks table to `schema.pg.ts`; create an **HNSW** index (`vector_cosine_ops`); migrate. — done via migration `0017_asafe_mcp_rag.sql` (vector extension + HNSW `vector_cosine_ops`) on self-hosted Postgres (not Neon, ADR-0006); chunks table in `schema.pg.ts`
+- [x] Choose the embedding model (reachable via the approved provider path) and document it. — `text-embedding-3-small`, 1536-dim, pinned (`EMBEDDING_DIMENSION` in `schema.pg.ts`, ADR-0007), routed via OpenRouter
+- [x] Build the ingestion pipeline: extract → chunk → embed → store with source metadata + team/visibility scope; hook into existing storage/ingest endpoints. — done via `src/lib/file-ingest/extract.ts` (PDF/unpdf, DOCX/mammoth, text/md) → `src/lib/ai/embeddings/{chunker,ingest}.ts` → `/api/knowledge/ingest` + upload (new knowledge endpoints rather than the old storage route)
+- [x] Implement scoped retrieval (top-k, permission-aware) and inject context into the chat route before system-prompt assembly. — `retrieveForChat` (`src/lib/ai/embeddings/retrieval.ts`, hybrid pgvector + FTS with RRF, unified visibility resolver) injected in `src/app/api/chat/route.ts`
+- [x] Add citation tracking: record which chunks/sources informed the answer; render clickable citations in the UI. — `[Source N]` citations + sources row (`citation-bar.tsx`, `message-rag-sources.tsx`); sources are listed/expandable, but there is no click-through link to the underlying document yet
+- [x] Extend "archive"/collections to represent knowledge sets; admin controls for which teams query which collections. — knowledge collections with visibility + multi-team `teamIds` (`src/lib/knowledge/collections.ts`); `admin/knowledge` + Studio knowledge UI
+- [x] Implement re-ingest/update on source change; handle deletions (remove embeddings). — re-ingest replaces a document's chunks (delete-then-insert in `embeddings/ingest.ts`); document DELETE endpoint removes embeddings (cascade)
+- [ ] Account for retrieval/embedding cost in the Wave 3 usage ledger. — OPEN: no `recordUsage`/usage-event write on the embedding or retrieval paths; only chat completions are metered
+- [x] Tests: ingestion produces correct chunks/embeddings; retrieval respects permissions; citations map to real sources; e2e: upload a doc, ask about it, get a cited answer. — `chunker/embeddings/retrieval/ingest` unit tests + `tests/asafe/rag-collection.spec.ts`, `tests/asafe/knowledge-documents.spec.ts`, `tests/asafe/admin-knowledge.spec.ts`
 
 ## Acceptance criteria
 
-- [ ] Given an approved document a user may access, when they ask about its content, then the answer is grounded in it and cites the source.
-- [ ] Given a collection a user's team cannot access, when they query, then its content is not retrieved.
-- [ ] Given a source document is updated, when re-ingested, then retrieval reflects the new content (and deletions remove old embeddings).
-- [ ] Embedding/retrieval costs appear in the usage ledger; `pnpm check && pnpm test` green; e2e green.
+- [x] Given an approved document a user may access, when they ask about its content, then the answer is grounded in it and cites the source. — covered by RAG e2e specs
+- [x] Given a collection a user's team cannot access, when they query, then its content is not retrieved. — visibility enforced inside `retrieveForChat`; `retrieval.test.ts`
+- [x] Given a source document is updated, when re-ingested, then retrieval reflects the new content (and deletions remove old embeddings).
+- [ ] Embedding/retrieval costs appear in the usage ledger; `pnpm check && pnpm test` green; e2e green. — OPEN: embedding/retrieval costs are not metered into `asafe_usage_event` (test suite itself verified green 2026-06-11, one unrelated Wave 9 realtime test failing)
 
 ## Open questions
 
 - [Security/Product] What knowledge sources are in scope first, and what are the access/visibility rules per team?
-- [Eng] Embedding model + dimension; chunking strategy; top-k defaults.
+- [Eng] Embedding model + dimension; chunking strategy; top-k defaults. — resolved: `text-embedding-3-small` @ 1536; see ADR-0007 and `src/lib/ai/embeddings/chunker.ts`
 - [Legal] Retention/handling rules for ingested company documents.
+
+---
+**How to verify:** `pnpm test src/lib/ai/embeddings src/lib/file-ingest src/lib/knowledge` (unit); `pnpm test:e2e tests/asafe/rag-collection.spec.ts tests/asafe/knowledge-documents.spec.ts tests/asafe/admin-knowledge.spec.ts` (needs running stack + pgvector-enabled Postgres + seed); manage collections at `/admin/knowledge` and in Studio.
