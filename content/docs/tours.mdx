@@ -1,0 +1,47 @@
+---
+title: Product tours
+description: The in-app onboarding tours — what they cover, how they are triggered, stored and replayed.
+---
+
+## What the tours cover
+
+asafe-ai ships three short in-app tours, built on [NextStep](https://nextstepjs.com)
+with a custom card that follows the design language (one yellow action, calm copy):
+
+| Tour | Who sees it | When it fires | Stops |
+|---|---|---|---|
+| `welcome` | everyone | first visit to the home screen (`/`) | intro, New Chat, Search, Inbox, the composer, profile/settings menu |
+| `studio` | builders/admins (same predicate as the sidebar Studio entry) | first visit to `/studio` | Studio intro, Agents tab, Workflows tab, Knowledge tab |
+| `admin` | admins | first visit to `/admin` | console intro, Users, Teams & model entitlements, MCP servers, Feature flags |
+
+Tours never fire on top of an open modal — the Acceptable-Use Policy dialog on
+first login always wins; the tour starts after it is accepted.
+
+## Keyboard controls
+
+- **→** next step, **←** previous step
+- **Esc** leaves the tour (recorded as skipped, so it will not auto-start again)
+
+## How completion is stored
+
+Finishing or skipping a tour appends its name to
+`UserPreferences.completedTours` (the same `preferences` JSON column on the
+user row that personalization uses), persisted through the existing
+`PUT /api/user/preferences` route. A tour whose name is in that array never
+auto-starts again.
+
+## Replaying
+
+Settings → Personalization has a **Replay welcome tour** button. It queues a
+one-shot replay request and navigates home, where the tour controller picks it
+up regardless of completion state. To reset tours for a user manually, remove
+the entries from `completedTours` in their preferences.
+
+## Where the code lives
+
+Everything is under `src/components/tour/`:
+
+- `app-tours.tsx` — provider + auto-start controller, mounted in the `(chat)` layout
+- `use-tour-steps.tsx` — builds the localized step definitions (`Tours` i18n namespace)
+- `asafe-tour-card.tsx` — the custom card (dialog semantics, step dots, yellow primary)
+- `tour-logic.ts` — pure auto-start decision logic, unit-tested in `tour-logic.test.ts`

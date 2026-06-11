@@ -780,5 +780,49 @@
       "edit": "編集",
       "manage": "管理"
     }
+  },
+  "Tours": {
+    "back": "戻る",
+    "skip": "スキップ",
+    "next": "次へ",
+    "done": "完了",
+    "stepOf": "ステップ {current} / {total}",
+    "replayWelcome": "ウェルカムツアーをもう一度見る",
+    "Welcome": {
+      "introTitle": "A-SAFE AI へようこそ",
+      "introContent": "かんたんなご案内です。6つのステップ、1分かかりません。矢印キーで移動、Esc で終了できます。",
+      "newChatTitle": "新しいチャットを始める",
+      "newChatContent": "会話はここから始まります。クリックひとつ、またはホバーで表示されるショートカットで。",
+      "searchTitle": "なんでも検索",
+      "searchContent": "チャットやエージェントなどを、コマンドパレットからいつでもまとめて検索できます。",
+      "inboxTitle": "受信トレイ",
+      "inboxContent": "承認、実行履歴、ルーチンはすべてここに届きます。黄色いバッジは対応待ちの印です。",
+      "composerTitle": "コンポーザー",
+      "composerContent": "ここでアシスタントに話しかけます。ファイルの添付、エージェントやワークフローのメンション、モデルの切り替えもできます。",
+      "profileTitle": "プロフィールと設定",
+      "profileContent": "パーソナライズ、テーマ、アカウント設定はこのメニューにあります。ご案内は以上です。"
+    },
+    "Studio": {
+      "introTitle": "これが Studio です",
+      "introContent": "ビルダーのホーム。エージェント、ワークフロー、ナレッジがタブで整理されています。",
+      "agentsTitle": "エージェント",
+      "agentsContent": "独自の指示とツールを持つカスタムエージェントを作成・管理します。",
+      "workflowsTitle": "ワークフロー",
+      "workflowsContent": "ステップをつなげて、どのチャットからでも呼び出せる再利用可能なワークフローを作れます。",
+      "knowledgeTitle": "ナレッジ",
+      "knowledgeContent": "アシスタントが参照できるコレクションにドキュメントをアップロードします。"
+    },
+    "Admin": {
+      "introTitle": "管理コンソール",
+      "introContent": "プラットフォーム運用に必要なものはすべてこのナビにあります。主なポイントをご紹介します。",
+      "usersTitle": "ユーザー",
+      "usersContent": "アカウント、ロール、アクセス権を管理します。",
+      "teamsTitle": "チームとモデル権限",
+      "teamsContent": "メンバーをチームに編成し、各チームが使えるモデルを設定します。組織全体のデフォルトにチームごとの上書きを重ねられます。",
+      "mcpTitle": "MCP サーバー",
+      "mcpContent": "社内ツールサーバーを接続してスコープを設定します。接続テストもその場で行えます。",
+      "flagsTitle": "フィーチャーフラグ",
+      "flagsContent": "デプロイなしでプラットフォーム機能のオン・オフを切り替えます。"
+    }
   }
 }

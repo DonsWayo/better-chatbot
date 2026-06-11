@@ -1136,5 +1136,49 @@
       "edit": "Edit",
       "manage": "Manage"
     }
+  },
+  "Tours": {
+    "back": "Back",
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Done",
+    "stepOf": "Step {current} of {total}",
+    "replayWelcome": "Replay welcome tour",
+    "Welcome": {
+      "introTitle": "Welcome to A-SAFE AI",
+      "introContent": "A quick look around — six stops, under a minute. Use the arrow keys to move, Esc to leave.",
+      "newChatTitle": "Start a new chat",
+      "newChatContent": "Your conversations begin here. One click, or the shortcut shown on hover.",
+      "searchTitle": "Find anything",
+      "searchContent": "Search chats, agents and more from one place, any time, with the command palette.",
+      "inboxTitle": "Your inbox",
+      "inboxContent": "Approvals, run history and routines all land here. A yellow badge means something is waiting on you.",
+      "composerTitle": "The composer",
+      "composerContent": "Write to the assistant here. Attach files, mention agents and workflows, or pick a different model.",
+      "profileTitle": "Profile and settings",
+      "profileContent": "Personalization, theme and account settings live in this menu. That is the tour — enjoy."
+    },
+    "Studio": {
+      "introTitle": "This is Studio",
+      "introContent": "The builder home: agents, workflows and knowledge in one place, organised as tabs.",
+      "agentsTitle": "Agents",
+      "agentsContent": "Create and manage custom agents with their own instructions and tools.",
+      "workflowsTitle": "Workflows",
+      "workflowsContent": "Chain steps into repeatable workflows you can call from any chat.",
+      "knowledgeTitle": "Knowledge",
+      "knowledgeContent": "Upload documents into collections the assistant can draw on."
+    },
+    "Admin": {
+      "introTitle": "Admin console",
+      "introContent": "Everything for running the platform sits in this rail. A few highlights follow.",
+      "usersTitle": "Users",
+      "usersContent": "Manage accounts, roles and access.",
+      "teamsTitle": "Teams and model entitlements",
+      "teamsContent": "Organise people into teams and shape which models each team can use — org-wide defaults with per-team overrides.",
+      "mcpTitle": "MCP servers",
+      "mcpContent": "Connect and scope company tool servers, with live connection tests.",
+      "flagsTitle": "Feature flags",
+      "flagsContent": "Turn platform capabilities on or off without a deploy."
+    }
   }
 }

@@ -13,6 +13,9 @@ export type UserPreferences = {
   // "paused" keeps stored memories but neither reads nor writes, "off" is
   // set after a destructive reset (clear-all). Absent → "on".
   memoryMode?: "on" | "paused" | "off";
+  // Onboarding tours the user has finished or skipped ("welcome", "studio",
+  // "admin"). A tour auto-starts once and is recorded here on complete/skip.
+  completedTours?: string[];
 };
 
 // user without password
@@ -92,4 +95,5 @@ export const UserPreferencesZodSchema = z.object({
   responseStyleExample: z.string().optional(),
   botName: z.string().optional(),
   memoryMode: z.enum(["on", "paused", "off"]).optional(),
+  completedTours: z.array(z.string()).optional(),
 });

@@ -1,5 +1,6 @@
 import { UserInstructionsContent } from "@/components/chat-preferences-content";
 import { MemoryManager } from "@/components/memory/memory-manager";
+import { ReplayWelcomeTourButton } from "@/components/tour/replay-tour-button";
 
 // Settings › Personalization — display name, bot name, profession, response
 // styles. Split out of the retired Chat Preferences popup (pane 1).
@@ -15,6 +16,7 @@ export default function SettingsPersonalizationPage() {
       <section className="rounded-2xl border bg-card p-6 shadow-xs">
         <MemoryManager />
       </section>
+      <ReplayWelcomeTourButton />
     </div>
   );
 }

@@ -1081,5 +1081,49 @@
       "edit": "Rediger",
       "manage": "Administrer"
     }
+  },
+  "Tours": {
+    "back": "Tilbake",
+    "skip": "Hopp over",
+    "next": "Neste",
+    "done": "Ferdig",
+    "stepOf": "Steg {current} av {total}",
+    "replayWelcome": "Spill av velkomstomvisningen på nytt",
+    "Welcome": {
+      "introTitle": "Velkommen til A-SAFE AI",
+      "introContent": "En rask omvisning — seks stopp, under ett minutt. Bruk piltastene for å bla, Esc for å avslutte.",
+      "newChatTitle": "Start en ny chat",
+      "newChatContent": "Samtalene dine begynner her. Ett klikk, eller hurtigtasten som vises når du holder musepekeren over.",
+      "searchTitle": "Finn hva som helst",
+      "searchContent": "Søk i chatter, agenter og mer fra ett sted, når som helst, med kommandopaletten.",
+      "inboxTitle": "Innboksen din",
+      "inboxContent": "Godkjenninger, kjøringshistorikk og rutiner havner her. Et gult merke betyr at noe venter på deg.",
+      "composerTitle": "Skrivefeltet",
+      "composerContent": "Skriv til assistenten her. Legg ved filer, nevn agenter og arbeidsflyter, eller velg en annen modell.",
+      "profileTitle": "Profil og innstillinger",
+      "profileContent": "Tilpasning, tema og kontoinnstillinger ligger i denne menyen. Det var omvisningen — lykke til."
+    },
+    "Studio": {
+      "introTitle": "Dette er Studio",
+      "introContent": "Byggernes hjem: agenter, arbeidsflyter og kunnskap på ett sted, organisert i faner.",
+      "agentsTitle": "Agenter",
+      "agentsContent": "Opprett og administrer egne agenter med egne instruksjoner og verktøy.",
+      "workflowsTitle": "Arbeidsflyter",
+      "workflowsContent": "Koble sammen steg til gjenbrukbare arbeidsflyter du kan kalle fra enhver chat.",
+      "knowledgeTitle": "Kunnskap",
+      "knowledgeContent": "Last opp dokumenter i samlinger assistenten kan trekke på."
+    },
+    "Admin": {
+      "introTitle": "Administrasjonskonsoll",
+      "introContent": "Alt som trengs for å drifte plattformen ligger i denne menyen. Her er noen høydepunkter.",
+      "usersTitle": "Brukere",
+      "usersContent": "Administrer kontoer, roller og tilgang.",
+      "teamsTitle": "Team og modelltilganger",
+      "teamsContent": "Organiser folk i team og styr hvilke modeller hvert team kan bruke — standarder for organisasjonen med overstyringer per team.",
+      "mcpTitle": "MCP-servere",
+      "mcpContent": "Koble til og avgrens bedriftens verktøyservere, med live tilkoblingstester.",
+      "flagsTitle": "Funksjonsflagg",
+      "flagsContent": "Slå plattformfunksjoner av og på uten utrulling."
+    }
   }
 }

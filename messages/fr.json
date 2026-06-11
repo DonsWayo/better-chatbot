@@ -780,5 +780,49 @@
       "edit": "Modifier",
       "manage": "Gérer"
     }
+  },
+  "Tours": {
+    "back": "Retour",
+    "skip": "Passer",
+    "next": "Suivant",
+    "done": "Terminé",
+    "stepOf": "Étape {current} sur {total}",
+    "replayWelcome": "Revoir la visite de bienvenue",
+    "Welcome": {
+      "introTitle": "Bienvenue sur A-SAFE AI",
+      "introContent": "Un tour rapide — six étapes, moins d'une minute. Utilisez les flèches pour avancer, Échap pour quitter.",
+      "newChatTitle": "Démarrer une nouvelle discussion",
+      "newChatContent": "Vos conversations commencent ici. Un clic, ou le raccourci affiché au survol.",
+      "searchTitle": "Tout retrouver",
+      "searchContent": "Recherchez discussions, agents et plus encore depuis un seul endroit, à tout moment, avec la palette de commandes.",
+      "inboxTitle": "Votre boîte de réception",
+      "inboxContent": "Approbations, historique des exécutions et routines arrivent ici. Un badge jaune signifie que quelque chose vous attend.",
+      "composerTitle": "Le composeur",
+      "composerContent": "Écrivez à l'assistant ici. Joignez des fichiers, mentionnez des agents et des workflows, ou choisissez un autre modèle.",
+      "profileTitle": "Profil et réglages",
+      "profileContent": "La personnalisation, le thème et le compte se trouvent dans ce menu. La visite est terminée — bonne découverte."
+    },
+    "Studio": {
+      "introTitle": "Voici Studio",
+      "introContent": "Le foyer des créateurs : agents, workflows et connaissances au même endroit, organisés en onglets.",
+      "agentsTitle": "Agents",
+      "agentsContent": "Créez et gérez des agents personnalisés avec leurs propres instructions et outils.",
+      "workflowsTitle": "Workflows",
+      "workflowsContent": "Enchaînez des étapes en workflows réutilisables, appelables depuis n'importe quelle discussion.",
+      "knowledgeTitle": "Connaissances",
+      "knowledgeContent": "Téléversez des documents dans des collections que l'assistant peut exploiter."
+    },
+    "Admin": {
+      "introTitle": "Console d'administration",
+      "introContent": "Tout ce qu'il faut pour faire tourner la plateforme se trouve dans ce volet. Quelques points clés suivent.",
+      "usersTitle": "Utilisateurs",
+      "usersContent": "Gérez les comptes, les rôles et les accès.",
+      "teamsTitle": "Équipes et droits sur les modèles",
+      "teamsContent": "Organisez les personnes en équipes et définissez les modèles accessibles à chacune — valeurs par défaut de l'organisation avec exceptions par équipe.",
+      "mcpTitle": "Serveurs MCP",
+      "mcpContent": "Connectez et délimitez les serveurs d'outils de l'entreprise, avec tests de connexion en direct.",
+      "flagsTitle": "Feature flags",
+      "flagsContent": "Activez ou désactivez des capacités de la plateforme sans déploiement."
+    }
   }
 }

@@ -1136,5 +1136,49 @@
       "edit": "Editar",
       "manage": "Gestionar"
     }
+  },
+  "Tours": {
+    "back": "Atrás",
+    "skip": "Omitir",
+    "next": "Siguiente",
+    "done": "Listo",
+    "stepOf": "Paso {current} de {total}",
+    "replayWelcome": "Repetir el tour de bienvenida",
+    "Welcome": {
+      "introTitle": "Bienvenido a A-SAFE AI",
+      "introContent": "Un vistazo rápido — seis paradas, menos de un minuto. Usa las flechas para moverte y Esc para salir.",
+      "newChatTitle": "Iniciar un chat nuevo",
+      "newChatContent": "Tus conversaciones empiezan aquí. Un clic, o el atajo que aparece al pasar el cursor.",
+      "searchTitle": "Encuentra cualquier cosa",
+      "searchContent": "Busca chats, agentes y más desde un solo lugar, en cualquier momento, con la paleta de comandos.",
+      "inboxTitle": "Tu bandeja de entrada",
+      "inboxContent": "Aprobaciones, historial de ejecuciones y rutinas llegan aquí. Una insignia amarilla significa que algo te espera.",
+      "composerTitle": "El compositor",
+      "composerContent": "Escribe al asistente aquí. Adjunta archivos, menciona agentes y flujos de trabajo, o elige otro modelo.",
+      "profileTitle": "Perfil y ajustes",
+      "profileContent": "La personalización, el tema y la cuenta viven en este menú. Fin del tour — que lo disfrutes."
+    },
+    "Studio": {
+      "introTitle": "Esto es Studio",
+      "introContent": "El hogar del creador: agentes, flujos de trabajo y conocimiento en un solo lugar, organizados en pestañas.",
+      "agentsTitle": "Agentes",
+      "agentsContent": "Crea y gestiona agentes personalizados con sus propias instrucciones y herramientas.",
+      "workflowsTitle": "Flujos de trabajo",
+      "workflowsContent": "Encadena pasos en flujos repetibles que puedes invocar desde cualquier chat.",
+      "knowledgeTitle": "Conocimiento",
+      "knowledgeContent": "Sube documentos a colecciones que el asistente puede consultar."
+    },
+    "Admin": {
+      "introTitle": "Consola de administración",
+      "introContent": "Todo lo necesario para operar la plataforma está en esta barra. Aquí van algunos puntos clave.",
+      "usersTitle": "Usuarios",
+      "usersContent": "Gestiona cuentas, roles y accesos.",
+      "teamsTitle": "Equipos y permisos de modelos",
+      "teamsContent": "Organiza a las personas en equipos y define qué modelos puede usar cada equipo — valores por defecto de la organización con excepciones por equipo.",
+      "mcpTitle": "Servidores MCP",
+      "mcpContent": "Conecta y delimita los servidores de herramientas de la empresa, con pruebas de conexión en vivo.",
+      "flagsTitle": "Feature flags",
+      "flagsContent": "Activa o desactiva capacidades de la plataforma sin desplegar."
+    }
   }
 }

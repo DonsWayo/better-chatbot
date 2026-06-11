@@ -9,6 +9,7 @@ import { COOKIE_KEY_SIDEBAR_STATE } from "lib/const";
 import { SWRConfigProvider } from "./swr-config";
 
 import { AupModal } from "@/components/compliance/aup-modal";
+import { AppTours } from "@/components/tour/app-tours";
 import { redirect } from "next/navigation";
 export const experimental_ppr = true;
 
@@ -30,7 +31,11 @@ export default async function ChatLayout({
         <AupModal />
         <main className="relative bg-background  w-full flex flex-col h-screen">
           <AppHeader />
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="flex-1 overflow-y-auto">
+            {/* Onboarding tours — client boundary; children stay a server-
+                rendered slot (NextStep overlay renders via portal). */}
+            <AppTours userRole={session.user.role}>{children}</AppTours>
+          </div>
         </main>
       </SWRConfigProvider>
     </SidebarProvider>
