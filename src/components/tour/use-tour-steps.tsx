@@ -16,9 +16,9 @@ import { TOUR_ADMIN, TOUR_STUDIO, TOUR_WELCOME } from "./tour-logic";
 // - #tour-new-chat                                  sidebar New Chat button
 // - [data-testid="sidebar-search"]                  sidebar Search (⌘K)
 // - [data-testid="sidebar-inbox-link"]              sidebar Inbox
-// - fieldset:has([data-testid="model-selector-button"])  the composer wrapper
-//   (prompt-input.tsx is read-only for us; :has() reaches the wrapper from
-//   the model-selector testid inside it)
+// - fieldset:has([data-testid="composer-plus-button"])  the composer wrapper
+//   (:has() reaches the wrapper from the "+" trigger inside it — present for
+//   EVERY role; the model selector only exists for admin/editor)
 // - [data-testid="sidebar-user-button"]             profile/settings menu
 // - [data-testid="studio-tabs"] + studio-tab-*      Studio tabs
 // - [data-testid="admin-sidebar-link-*"]            admin rail items
@@ -74,7 +74,7 @@ export function useTourSteps(userRole?: string | null): Tour[] {
           step({
             title: t("Welcome.composerTitle"),
             content: t("Welcome.composerContent"),
-            selector: 'fieldset:has([data-testid="model-selector-button"])',
+            selector: 'fieldset:has([data-testid="composer-plus-button"])',
             side: "top",
           }),
           step({

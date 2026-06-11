@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -11,15 +11,27 @@ const selectWhereMock = vi.fn().mockReturnValue({ limit: selectLimitMock });
 const selectFromMock = vi.fn().mockReturnValue({ where: selectWhereMock });
 const selectMock = vi.fn().mockReturnValue({ from: selectFromMock });
 
-const insertValuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: insertOnConflictMock });
+const insertValuesMock = vi
+  .fn()
+  .mockReturnValue({ onConflictDoNothing: insertOnConflictMock });
 const insertMock = vi.fn().mockReturnValue({ values: insertValuesMock });
 
+// recordAupAcceptance also stamps user.accepted_aup_at (dual-store write).
+const updateWhereMock = vi.fn().mockResolvedValue(undefined);
+const updateSetMock = vi.fn().mockReturnValue({ where: updateWhereMock });
+const updateMock = vi.fn().mockReturnValue({ set: updateSetMock });
+
 vi.mock("lib/db/pg/db.pg", () => ({
-  pgDb: { select: selectMock, insert: insertMock },
+  pgDb: { select: selectMock, insert: insertMock, update: updateMock },
 }));
 
 vi.mock("@/lib/db/pg/schema.pg", () => ({
-  AsafeAupAcceptanceTable: { id: "id", userId: "user_id", aupVersion: "aup_version" },
+  AsafeAupAcceptanceTable: {
+    id: "id",
+    userId: "user_id",
+    aupVersion: "aup_version",
+  },
+  UserTable: { id: "id", acceptedAupAt: "accepted_aup_at" },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -72,7 +84,9 @@ describe("recordAupAcceptance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    insertValuesMock.mockReturnValue({ onConflictDoNothing: insertOnConflictMock });
+    insertValuesMock.mockReturnValue({
+      onConflictDoNothing: insertOnConflictMock,
+    });
     insertMock.mockReturnValue({ values: insertValuesMock });
     selectLimitMock.mockResolvedValue([]);
     selectWhereMock.mockReturnValue({ limit: selectLimitMock });
@@ -118,8 +132,8 @@ describe("hasAcceptedAup — additional cases", () => {
 
   it("different userIds are handled independently (no cross-user contamination)", async () => {
     selectLimitMock
-      .mockResolvedValueOnce([{ id: "r1" }])  // user-A: has accepted
-      .mockResolvedValueOnce([]);               // user-B: has not accepted
+      .mockResolvedValueOnce([{ id: "r1" }]) // user-A: has accepted
+      .mockResolvedValueOnce([]); // user-B: has not accepted
     const { hasAcceptedAup } = await import("./aup");
     const resultA = await hasAcceptedAup("user-A");
     const resultB = await hasAcceptedAup("user-B");
@@ -139,7 +153,9 @@ describe("recordAupAcceptance — additional", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    insertValuesMock.mockReturnValue({ onConflictDoNothing: insertOnConflictMock });
+    insertValuesMock.mockReturnValue({
+      onConflictDoNothing: insertOnConflictMock,
+    });
     insertMock.mockReturnValue({ values: insertValuesMock });
   });
 
@@ -204,7 +220,11 @@ describe("hasAcceptedAup — response type invariants", () => {
 });
 
 describe("hasAcceptedAup and recordAupAcceptance — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); selectLimitMock.mockResolvedValue([]); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    selectLimitMock.mockResolvedValue([]);
+  });
 
   it("selectMock called exactly once per hasAcceptedAup", async () => {
     const { hasAcceptedAup } = await import("./aup");

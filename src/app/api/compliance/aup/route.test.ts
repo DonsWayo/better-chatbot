@@ -1,14 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSessionMock, dbUpdateMock, dbSelectMock, writeAuditLogMock } = vi.hoisted(() => ({
+const {
+  getSessionMock,
+  dbUpdateMock,
+  dbSelectMock,
+  writeAuditLogMock,
+  recordAupAcceptanceMock,
+} = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   dbUpdateMock: vi.fn(),
   dbSelectMock: vi.fn(),
   writeAuditLogMock: vi.fn(),
+  recordAupAcceptanceMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/compliance/audit", () => ({ writeAuditLog: writeAuditLogMock }));
+// The POST delegates the dual-store write to the lib (covered by its own tests).
+vi.mock("lib/compliance/aup", () => ({
+  recordAupAcceptance: recordAupAcceptanceMock,
+}));
 
 // Update chain
 const dbUpdateWhereMock = vi.fn().mockResolvedValue([]);
@@ -32,7 +43,9 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 describe("POST /api/compliance/aup", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -49,7 +62,7 @@ describe("POST /api/compliance/aup", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.acceptedAt).toBeDefined();
-    expect(dbUpdateSetMock).toHaveBeenCalledOnce();
+    expect(recordAupAcceptanceMock).toHaveBeenCalledOnce();
   });
 
   it("fires audit log in the background (fire-and-forget)", async () => {
@@ -65,7 +78,9 @@ describe("POST /api/compliance/aup", () => {
 });
 
 describe("GET /api/compliance/aup", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -106,7 +121,9 @@ describe("GET /api/compliance/aup", () => {
 });
 
 describe("POST /api/compliance/aup — guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls dbUpdate when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -128,7 +145,7 @@ describe("POST /api/compliance/aup — guard chains", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     const { POST } = await import("./route");
     await POST();
-    expect(dbUpdateMock).toHaveBeenCalledTimes(1);
+    expect(recordAupAcceptanceMock).toHaveBeenCalledTimes(1);
   });
 
   it("401 body has error field for POST", async () => {
@@ -148,7 +165,9 @@ describe("POST /api/compliance/aup — guard chains", () => {
 });
 
 describe("GET /api/compliance/aup — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body has error field for GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -194,7 +213,9 @@ describe("GET /api/compliance/aup — additional", () => {
 });
 
 describe("POST /api/compliance/aup — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -228,7 +249,12 @@ describe("POST /api/compliance/aup — response shape", () => {
 });
 
 describe("POST and GET /api/compliance/aup — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock }); dbSelectMock.mockReturnValue({ from: dbSelectFromMock }); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);

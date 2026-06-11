@@ -26,11 +26,20 @@ const CURRENT_AUP_VERSION = "1.0";
  * Run from global setup so the whole suite starts from a compliant baseline.
  */
 export async function seedComplianceForTestUsers(): Promise<void> {
-  // 1. email_verified for every test-seed user.
+  // 1. email_verified + the fast AUP column (the modal/tour gates read
+  //    user.accepted_aup_at, NOT the versioned table) + completedTours in
+  //    preferences so onboarding tours never pop over unrelated specs.
   await pgDb
     .update(UserTable)
-    .set({ emailVerified: true })
+    .set({ emailVerified: true, acceptedAupAt: new Date() })
     .where(sql`${UserTable.email} LIKE ${"%" + TEST_EMAIL_DOMAIN}`);
+
+  await pgDb.execute(sql`
+    UPDATE "user"
+    SET preferences = COALESCE(preferences, '{}'::json)::jsonb ||
+      '{"completedTours":["welcome","studio","admin"]}'::jsonb
+    WHERE email LIKE ${"%" + TEST_EMAIL_DOMAIN}
+  `);
 
   // 2. Current-version AUP acceptance for every test-seed user.
   const users = await pgDb

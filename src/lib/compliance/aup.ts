@@ -1,8 +1,8 @@
 import "server-only";
 
+import { AsafeAupAcceptanceTable, UserTable } from "@/lib/db/pg/schema.pg";
+import { and, eq } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
-import { AsafeAupAcceptanceTable } from "@/lib/db/pg/schema.pg";
-import { eq, and } from "drizzle-orm";
 
 /** Current AUP version. Bump this string to force re-acceptance after policy updates. */
 export const CURRENT_AUP_VERSION = "1.0";
@@ -44,9 +44,17 @@ export async function hasAcceptedAup(userId: string): Promise<boolean> {
 
 /** Record AUP acceptance for a user and invalidate the cache. */
 export async function recordAupAcceptance(userId: string): Promise<void> {
+  // Two stores exist on purpose (versioned acceptance history + the fast
+  // user.accepted_aup_at column the modal/tour gates read) — every write
+  // path MUST fill both, or seeded/auxiliary acceptances don't suppress
+  // the modal (found by e2e review).
   await db
     .insert(AsafeAupAcceptanceTable)
     .values({ userId, aupVersion: CURRENT_AUP_VERSION })
     .onConflictDoNothing();
+  await db
+    .update(UserTable)
+    .set({ acceptedAupAt: new Date() })
+    .where(eq(UserTable.id, userId));
   _cache.delete(userId);
 }
