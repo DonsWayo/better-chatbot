@@ -8,6 +8,7 @@ import {
   buildToolCallUnsupportedModelSystemPrompt,
   buildUserSystemPrompt,
   generateExampleToolSchemaPrompt,
+  sanitizeTitle,
 } from "./prompts";
 
 describe("CREATE_THREAD_TITLE_PROMPT", () => {
@@ -18,6 +19,64 @@ describe("CREATE_THREAD_TITLE_PROMPT", () => {
 
   it("mentions 80 character limit", () => {
     expect(CREATE_THREAD_TITLE_PROMPT).toContain("80");
+  });
+
+  it("is refusal-proofed (instructs the model to never refuse or respond)", () => {
+    expect(CREATE_THREAD_TITLE_PROMPT).toMatch(/never refuse/i);
+    expect(CREATE_THREAD_TITLE_PROMPT).toMatch(/not responding/i);
+  });
+});
+
+describe("sanitizeTitle", () => {
+  const MESSAGE = "Remember that I am the Head of Software Development.";
+
+  it("passes a normal title through (trimmed)", () => {
+    expect(sanitizeTitle("  User Role Memory Request \n", MESSAGE)).toBe(
+      "User Role Memory Request",
+    );
+  });
+
+  it("replaces a refusal title with a truncation of the user's message", () => {
+    expect(
+      sanitizeTitle("I'm sorry, but I cannot assist with t", MESSAGE),
+    ).toBe(MESSAGE.slice(0, 80));
+  });
+
+  it.each([
+    "I'm sorry, I can't help with that",
+    "I cannot assist with this request",
+    "Sorry, that is not possible",
+    "I am unable to comply",
+    "I can't assist with that",
+    "I can’t assist with that", // curly apostrophe
+  ])("detects refusal phrasing: %s", (refusal) => {
+    expect(sanitizeTitle(refusal, MESSAGE)).toBe(MESSAGE);
+  });
+
+  it("replaces an empty/whitespace title with the fallback", () => {
+    expect(sanitizeTitle("", MESSAGE)).toBe(MESSAGE);
+    expect(sanitizeTitle("   \n", MESSAGE)).toBe(MESSAGE);
+  });
+
+  it("truncates the fallback to 80 chars and collapses whitespace", () => {
+    const long = `${"word ".repeat(40)}end`;
+    const result = sanitizeTitle("", `  ${long.replace(/ /g, "  ")}  `);
+    expect(result.length).toBeLessThanOrEqual(80);
+    expect(result).not.toMatch(/\s{2,}/);
+  });
+
+  it("clamps an over-long model title to 80 chars", () => {
+    expect(sanitizeTitle("x".repeat(120), MESSAGE)).toHaveLength(80);
+  });
+
+  it("falls back to 'New Chat' when both title and message are empty", () => {
+    expect(sanitizeTitle("", "   ")).toBe("New Chat");
+  });
+
+  it("does not flag legitimate titles containing benign words", () => {
+    expect(sanitizeTitle("Sorting algorithms compared", MESSAGE)).toBe(
+      "Sorting algorithms compared",
+    );
   });
 });
 

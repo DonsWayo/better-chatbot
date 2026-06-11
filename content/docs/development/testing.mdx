@@ -1,9 +1,17 @@
 ---
 title: Testing
-description: 5,500+ Vitest cases colocated with the code, the db-mock pattern, and Playwright e2e.
+description: 5,500+ Vitest cases colocated with the code, the db-mock pattern, Playwright e2e, and the opt-in real-LLM tier.
 ---
 
-Every wave shipped with tests; the suite currently counts **5,500+ unit test cases**
+Every wave shipped with tests across three tiers:
+
+| Tier | Command | Cost | When |
+| --- | --- | --- | --- |
+| Unit (Vitest) | `pnpm test` | free | every change, CI |
+| E2E (Playwright) | `pnpm test:e2e` | free | integrated flows, CI |
+| Real-LLM | `RUN_LLM_TESTS=1 pnpm test:llm` | ~$0.01/run | opt-in, never in CI by default |
+
+The unit suite currently counts **5,500+ test cases**
 (`*.test.ts` colocated next to their modules) plus Playwright e2e under `tests/`.
 
 ## Unit tests (Vitest)
@@ -45,6 +53,39 @@ path aliases inside tests.
 Pure modules (the [cron engine](/docs/agent-platform/routines#the-cron-engine), guardrail
 patterns, the entitlement resolvers) are deliberately dependency-free so they test
 without any mocking — prefer that shape when adding logic.
+
+## Real-LLM integration tier
+
+Unit tests mock every model call. The opt-in real-LLM tier (`*.llm.test.ts`,
+run by `vitest.llm.config.ts`) makes **real OpenRouter calls** to catch what
+mocks structurally cannot — stale model slugs, prompt regressions, structured
+output (`generateObject`) robustness on cheap models:
+
+```bash
+RUN_LLM_TESTS=1 pnpm test:llm   # needs OPENROUTER_API_KEY in .env
+```
+
+Rules of the tier:
+
+- **Opt-in twice.** Every file guards with
+  `describe.skipIf(!(process.env.OPENROUTER_API_KEY && process.env.RUN_LLM_TESTS === "1"))`
+  — without both, the suite **skips** (never fails). `pnpm test` excludes
+  `**/*.llm.test.ts` entirely.
+- **Costs real money** — roughly **$0.01 per run**. Assertions use only the
+  cheapest approved models (`gemini-3.1-flash-lite`, `deepseek-v4-flash`) with
+  tiny output caps; the registry smoke pings every approved model with
+  `max_tokens: 1`.
+- **Never in CI by default.** Run it locally after touching `src/lib/ai/models.ts`,
+  routing policy, extraction/title prompts, or workflow generation.
+- Serial by config (`fileParallelism: false`, 30s timeouts); `.env` is loaded
+  via `src/lib/load-env.ts` as the setup file.
+
+Current coverage: the model registry smoke (`models.llm.test.ts` — every
+approved slug must answer HTTP 200, so a stale slug can never ship silently),
+routing → real completion (`route-model.llm.test.ts`), memory extraction
+roundtrip (`extract.llm.test.ts`, store mocked), NL workflow generation against
+the real tool schema (`generate-workflow.llm.test.ts`), and the refusal-proofed
+thread-title prompt (`prompts.llm.test.ts`).
 
 ## E2E (Playwright)
 

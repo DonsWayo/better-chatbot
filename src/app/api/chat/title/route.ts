@@ -1,12 +1,12 @@
 import { smoothStream, streamText } from "ai";
 
-import { customModelProvider } from "lib/ai/models";
-import { CREATE_THREAD_TITLE_PROMPT } from "lib/ai/prompts";
-import globalLogger from "logger";
 import { ChatModel } from "app-types/chat";
-import { chatRepository } from "lib/db/repository";
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
+import { customModelProvider } from "lib/ai/models";
+import { CREATE_THREAD_TITLE_PROMPT, sanitizeTitle } from "lib/ai/prompts";
+import { chatRepository } from "lib/db/repository";
+import globalLogger from "logger";
 import { handleError } from "../shared.chat";
 
 const logger = globalLogger.withDefaults({
@@ -46,7 +46,9 @@ export async function POST(request: Request) {
         chatRepository
           .upsertThread({
             id: threadId,
-            title: ctx.text,
+            // Refusal-proofing: never persist "I'm sorry, but I cannot assist…"
+            // as a thread title — fall back to the user's message.
+            title: sanitizeTitle(ctx.text, message),
             userId: session.user.id,
           })
           .catch((err) => logger.error(err));

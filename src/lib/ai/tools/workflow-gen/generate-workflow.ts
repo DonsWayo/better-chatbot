@@ -355,7 +355,13 @@ function buildUINode(
       if (spec.method) data.method = spec.method;
       if (spec.headers) data.headers = spec.headers;
       if (spec.query) data.query = spec.query;
-      if (spec.body !== undefined) data.body = spec.body;
+      // Models routinely attach a body to GET/HEAD/DELETE requests; the builder's
+      // node-validate rejects that outright. Drop the body instead of failing the
+      // whole generation (same self-healing philosophy as slugifyWorkflowName).
+      const bodyAllowed = ["POST", "PUT", "PATCH"].includes(
+        spec.method ?? "GET",
+      );
+      if (spec.body !== undefined && bodyAllowed) data.body = spec.body;
       break;
     }
     case "template": {

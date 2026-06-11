@@ -313,6 +313,50 @@ describe("buildDraftGraph default merging", () => {
     }
   });
 
+  it("drops a model-provided body on GET requests instead of failing validation", () => {
+    const input = validInput();
+    input.nodes.splice(2, 0, {
+      kind: "http",
+      name: "FETCH",
+      url: "https://example.com/api",
+      method: "GET",
+      body: '{"junk": true}', // models routinely add this; node-validate rejects it
+    });
+    input.edges = [
+      { source: "INPUT", target: "SUMMARIZE" },
+      { source: "SUMMARIZE", target: "FETCH" },
+      { source: "FETCH", target: "OUTPUT" },
+    ];
+    const result = buildDraftGraph(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const http = result.nodes.find((n) => n.data.kind === NodeKind.Http)!;
+      expect((http.data as { body?: string }).body).toBeUndefined();
+    }
+  });
+
+  it("keeps the body for POST requests", () => {
+    const input = validInput();
+    input.nodes.splice(2, 0, {
+      kind: "http",
+      name: "SEND",
+      url: "https://example.com/api",
+      method: "POST",
+      body: '{"ok": true}',
+    });
+    input.edges = [
+      { source: "INPUT", target: "SUMMARIZE" },
+      { source: "SUMMARIZE", target: "SEND" },
+      { source: "SEND", target: "OUTPUT" },
+    ];
+    const result = buildDraftGraph(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const http = result.nodes.find((n) => n.data.kind === NodeKind.Http)!;
+      expect((http.data as { body?: string }).body).toBe('{"ok": true}');
+    }
+  });
+
   it("fills tool node defaults (app-tool type, default model, tiptap message)", () => {
     const input = validInput();
     input.nodes.splice(2, 0, {
