@@ -11,7 +11,7 @@
  * scales to match.
  */
 
-const CONEK_TEAL = "#35BFC6";
+const CONEK_TEAL = "#3ABFC6";
 
 /**
  * Mark-only variant: the white glyph drawn in `currentColor`, no background

@@ -116,7 +116,7 @@ const Particles: React.FC<ParticlesProps> = ({
   const getDefaultColors = (): [number, number, number][] => {
     if (theme === "dark") {
       return [
-        hexToRgb("#35BFC6"), // Conek brand teal
+        hexToRgb("#3ABFC6"), // Conek brand teal
         hexToRgb("#6FD9DE"), // light pellet
         hexToRgb("#2BA6AD"), // deep teal pellet
       ];
@@ -124,7 +124,7 @@ const Particles: React.FC<ParticlesProps> = ({
       return [
         hexToRgb("#2BA6AD"), // deep teal pellet (contrast on light bg)
         hexToRgb("#1B8A91"), // deepest teal
-        hexToRgb("#35BFC6"), // Conek brand teal
+        hexToRgb("#3ABFC6"), // Conek brand teal
       ];
     }
   };

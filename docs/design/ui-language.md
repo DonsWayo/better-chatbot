@@ -22,10 +22,10 @@ Conek teal (sampled from the Conek mark):
 
 | Role | Value | Rule |
 |---|---|---|
-| Accent | `#35BFC6` (`--primary`, oklch 0.737 0.113 200) | **One filled teal element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
+| Accent | `#3ABFC6` (`--primary`, hsl(183 55% 50%) — exact Conek Rails token) | **One filled teal element per view** — the primary action, the running-pulse dot, or the active badge. Never two. |
 | Accent hover | `#2BA6AD` | darker, never lighter |
-| Ink | `#0A3438` (`--primary-foreground`, oklch 0.299 0.045 204) | text on teal is always dark teal ink — white on `#35BFC6` is ~2.2:1 and fails WCAG; the ink hits 6.0:1 |
-| Teal as text (light mode) | `#0E7C83` | the readable teal for text on white (4.97:1); raw `#35BFC6` is decoration-only on light backgrounds |
+| Ink | `#0A3438` (`--primary-foreground`, oklch 0.299 0.045 204) | text on teal is always dark teal ink — white on `#3ABFC6` is ~2.2:1 and fails WCAG; the ink hits 6.0:1 |
+| Teal as text (light mode) | `#0E7C83` | the readable teal for text on white (4.97:1); raw `#3ABFC6` is decoration-only on light backgrounds |
 | Neutrals | warm gray scale (existing tokens) | everything else lives here; borders at 1px, low-alpha |
 | Status | green ok / amber waiting / red failed | only inside status pills, never as washes |
 
