@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSessionMock, selectExecuteAbilityMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -11,7 +11,9 @@ vi.mock("lib/db/repository", () => ({
 }));
 
 describe("selectExecuteAbilityWorkflowsAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns empty array when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -75,7 +77,9 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
 
   it("returns identity of what repository returns (no transformation)", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u5" } });
-    const REPO_RESULT = [{ id: "w-identity", name: "Identity Test", extra: true }];
+    const REPO_RESULT = [
+      { id: "w-identity", name: "Identity Test", extra: true },
+    ];
     selectExecuteAbilityMock.mockResolvedValueOnce(REPO_RESULT);
     const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
     const result = await selectExecuteAbilityWorkflowsAction();
@@ -94,7 +98,9 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u7" } });
     selectExecuteAbilityMock.mockRejectedValueOnce(new Error("db timeout"));
     const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
-    await expect(selectExecuteAbilityWorkflowsAction()).rejects.toThrow("db timeout");
+    await expect(selectExecuteAbilityWorkflowsAction()).rejects.toThrow(
+      "db timeout",
+    );
   });
 
   it("result is always an array (never null/undefined) when unauthenticated", async () => {
@@ -113,11 +119,19 @@ describe("selectExecuteAbilityWorkflowsAction", () => {
 });
 
 describe("selectExecuteAbilityWorkflowsAction — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("result preserves all fields from repository items", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const item = { id: "wf-full", name: "Full", description: "desc", enabled: true, createdAt: "2026-01-01" };
+    const item = {
+      id: "wf-full",
+      name: "Full",
+      description: "desc",
+      enabled: true,
+      createdAt: "2026-01-01",
+    };
     selectExecuteAbilityMock.mockResolvedValueOnce([item]);
     const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
     const result = await selectExecuteAbilityWorkflowsAction();
@@ -133,7 +147,9 @@ describe("selectExecuteAbilityWorkflowsAction — additional", () => {
 
   it("returns array with single item when repository returns one workflow", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    selectExecuteAbilityMock.mockResolvedValueOnce([{ id: "single-wf", name: "Solo" }]);
+    selectExecuteAbilityMock.mockResolvedValueOnce([
+      { id: "single-wf", name: "Solo" },
+    ]);
     const { selectExecuteAbilityWorkflowsAction } = await import("./actions");
     const result = await selectExecuteAbilityWorkflowsAction();
     expect(result).toHaveLength(1);

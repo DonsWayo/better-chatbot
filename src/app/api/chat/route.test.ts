@@ -126,6 +126,7 @@ vi.mock("./shared.chat", () => ({
   manualToolExecuteByLastMessage: vi.fn(),
   convertToSavePart: vi.fn(),
   excludeToolExecution: vi.fn((t: any) => t),
+  wrapToolsWithGuardrails: vi.fn((t: any) => t),
 }));
 vi.mock("logger", () => ({
   default: {

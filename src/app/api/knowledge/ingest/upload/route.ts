@@ -1,6 +1,7 @@
 import { AsafeKnowledgeCollectionTable } from "@/lib/db/pg/schema.pg";
 import { eq } from "drizzle-orm";
 import { ingestDocument } from "lib/ai/embeddings/ingest";
+import { scanIngestText } from "lib/ai/guardrails/ingest-scan";
 import { getSession } from "lib/auth/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import {
@@ -120,7 +121,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const chunks = await ingestDocument(text, { collectionId, sourceRef });
+  // W7 guardrails (ADR-0008): same ingest-time scan as the JSON route —
+  // injection patterns stripped, secrets/PII redacted per org policy,
+  // warnings surfaced instead of blocking (see docs/governance/guardrails).
+  const scanned = scanIngestText(text);
+
+  const chunks = await ingestDocument(scanned.text, {
+    collectionId,
+    sourceRef,
+  });
 
   return NextResponse.json({
     ok: true,
@@ -129,5 +138,6 @@ export async function POST(req: Request) {
     chunks,
     pageCount,
     characters: text.length,
+    warnings: scanned.warnings,
   });
 }

@@ -36,6 +36,8 @@ import {
   VercelAIWorkflowToolStreamingResultTag,
   VercelAIWorkflowToolTag,
 } from "app-types/workflow";
+import { resolvePolicy } from "lib/ai/guardrails/policies";
+import { scanToolOutput } from "lib/ai/guardrails/tool-output";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { AppDefaultToolkit, GenerateWorkflowToolName } from "lib/ai/tools";
 import { APP_DEFAULT_TOOL_KIT } from "lib/ai/tools/tool-kit";
@@ -104,6 +106,92 @@ export function excludeToolExecution(
   });
 }
 
+/**
+ * W7 GA gate (ADR-0008): tool-output injection shielding.
+ *
+ * Tool / MCP / web-search / HTTP results are untrusted data. Before a result
+ * re-enters the model context, every string inside it is scanned for
+ * prompt-injection patterns. When a pattern fires:
+ *
+ * - policy `injection: "block"` → the result is replaced with a guardrail
+ *   error (the model sees the tool failed, not the poisoned payload);
+ * - otherwise → the offending strings are "spotlighted": wrapped in clearly
+ *   delimited UNTRUSTED_TOOL_OUTPUT markers plus an instruction note, so the
+ *   data still flows but the model is told not to obey it.
+ *
+ * Firings are audit-logged through the same pipeline as the chat-route
+ * middleware (asafe_guardrail_event + Prometheus), fire-and-forget.
+ */
+export interface ToolGuardrailContext {
+  userId: string;
+  /** Team guardrail posture string; omitted ⇒ org default ("standard"). */
+  policy?: string | null;
+}
+
+function sanitizeToolResult(
+  result: unknown,
+  toolName: string,
+  ctx: ToolGuardrailContext,
+): unknown {
+  const policy = resolvePolicy(ctx.policy);
+  const scan = scanToolOutput(result, policy);
+  if (scan.firings.length > 0) {
+    logger.warn(
+      `guardrail: injection pattern in "${toolName}" tool output (${scan.firings
+        .map((f) => f.patternId)
+        .join(", ")}) — ${scan.blocked ? "blocked" : "spotlighted"}`,
+    );
+    // Audit through the shared guardrail event pipeline; lazy import keeps the
+    // DB/metrics dependency out of this module's static graph.
+    import("lib/ai/guardrails")
+      .then((g) =>
+        g.recordGuardrailFirings(
+          ctx.userId,
+          scan.firings,
+          scan.blocked,
+          policy.posture,
+        ),
+      )
+      .catch(() => {});
+  }
+  if (scan.blocked) {
+    return {
+      isError: true,
+      error: {
+        name: "GuardrailViolation",
+        message:
+          scan.blockReason ??
+          "Tool output blocked by guardrails (prompt-injection pattern).",
+      },
+    };
+  }
+  return scan.value;
+}
+
+export function wrapToolsWithGuardrails<
+  T extends Record<string, Tool | VercelAIMcpTool | VercelAIWorkflowTool>,
+>(tools: T, ctx: ToolGuardrailContext): T {
+  if (process.env.ASAFE_GUARDRAILS_ENABLED === "false") return tools;
+  return Object.fromEntries(
+    Object.entries(tools).map(([name, tool]) => {
+      const originalExecute = tool.execute;
+      if (typeof originalExecute !== "function") return [name, tool];
+      return [
+        name,
+        {
+          ...tool,
+          execute: async (
+            ...args: Parameters<NonNullable<Tool["execute"]>>
+          ) => {
+            const result = await originalExecute.apply(tool, args);
+            return sanitizeToolResult(result, name, ctx);
+          },
+        },
+      ];
+    }),
+  ) as T;
+}
+
 export function mergeSystemPrompt(
   ...prompts: (string | undefined | false)[]
 ): string {
@@ -117,6 +205,9 @@ export function manualToolExecuteByLastMessage(
   part: ToolUIPart,
   tools: Record<string, VercelAIMcpTool | VercelAIWorkflowTool | Tool>,
   abortSignal?: AbortSignal,
+  // W7: manual MCP execution bypasses tool.execute (direct mcpClientsManager
+  // call), so output shielding must happen here too when a context is given.
+  guardrailCtx?: ToolGuardrailContext,
 ) {
   const { input } = part;
 
@@ -150,6 +241,11 @@ export function manualToolExecuteByLastMessage(
         messages: [],
       });
     })
+    .map((result) =>
+      guardrailCtx && process.env.ASAFE_GUARDRAILS_ENABLED !== "false"
+        ? sanitizeToolResult(result, toolName, guardrailCtx)
+        : result,
+    )
     .ifFail((error) => ({
       isError: true,
       statusMessage: `tool call fail: ${toolName}`,
@@ -226,12 +322,15 @@ export const workflowToVercelAITool = ({
   schema,
   dataStream,
   name,
+  guardrailCtx,
 }: {
   id: string;
   name: string;
   description?: string;
   schema: ObjectJsonSchema7;
   dataStream: UIMessageStreamWriter;
+  /** W7: invoking user + team posture, forwarded to workflow LLM nodes. */
+  guardrailCtx?: ToolGuardrailContext;
 }): VercelAIWorkflowTool => {
   const toolName = name
     .replace(/[^a-zA-Z0-9\s]/g, "")
@@ -265,6 +364,10 @@ export const workflowToVercelAITool = ({
           const executor = createWorkflowExecutor({
             nodes: workflow.nodes,
             edges: workflow.edges,
+            // W7: LLM nodes inside chat-invoked workflows scan with the
+            // invoking user's team posture (org default when absent)
+            userId: guardrailCtx?.userId,
+            guardrailPolicy: guardrailCtx?.policy ?? undefined,
           });
           toolResult.workflowIcon = workflow.icon;
 
@@ -377,12 +480,14 @@ export const workflowToVercelAITools = (
     schema: ObjectJsonSchema7;
   }[],
   dataStream: UIMessageStreamWriter,
+  guardrailCtx?: ToolGuardrailContext,
 ) => {
   return workflows
     .map((v) =>
       workflowToVercelAITool({
         ...v,
         dataStream,
+        guardrailCtx,
       }),
     )
     .reduce(
@@ -410,6 +515,7 @@ export const loadMcpTools = (opt?: {
 export const loadWorkFlowTools = (opt: {
   mentions?: ChatMention[];
   dataStream: UIMessageStreamWriter;
+  guardrailCtx?: ToolGuardrailContext;
 }) =>
   safe(() =>
     opt?.mentions?.length
@@ -423,7 +529,9 @@ export const loadWorkFlowTools = (opt: {
         )
       : [],
   )
-    .map((tools) => workflowToVercelAITools(tools, opt.dataStream))
+    .map((tools) =>
+      workflowToVercelAITools(tools, opt.dataStream, opt.guardrailCtx),
+    )
     .orElse({} as Record<string, VercelAIWorkflowTool>);
 
 export const loadAppDefaultTools = (opt?: {

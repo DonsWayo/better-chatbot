@@ -76,12 +76,21 @@ export const createWorkflowExecutor = (workflow: {
    * Required for Approval nodes (they park this session); optional otherwise.
    */
   agentSessionId?: string;
+  /**
+   * W7 guardrails (ADR-0008): invoking user + team guardrail posture. LLM
+   * nodes scan resolved prompts/outputs with this policy (org default when
+   * absent) and audit-log firings against the user id.
+   */
+  userId?: string;
+  guardrailPolicy?: string;
 }) => {
   // Create runtime state store for the workflow
   const store = createGraphStore({
     nodes: workflow.nodes,
     edges: workflow.edges,
     agentSessionId: workflow.agentSessionId,
+    userId: workflow.userId,
+    guardrailPolicy: workflow.guardrailPolicy,
   });
 
   const logger =

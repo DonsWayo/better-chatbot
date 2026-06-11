@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -26,12 +26,16 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("GET /api/workflow/[id]/structure", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -39,7 +43,9 @@ describe("GET /api/workflow/[id]/structure", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(false);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -49,7 +55,9 @@ describe("GET /api/workflow/[id]/structure", () => {
     const STRUCTURE = { nodes: [{ id: "n-1" }], edges: [] };
     selectStructureByIdMock.mockResolvedValueOnce(STRUCTURE);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.nodes).toHaveLength(1);
@@ -57,14 +65,19 @@ describe("GET /api/workflow/[id]/structure", () => {
 });
 
 describe("POST /api/workflow/[id]/structure", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(res.status).toBe(401);
   });
 
@@ -74,7 +87,12 @@ describe("POST /api/workflow/[id]/structure", () => {
     saveStructureMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
     const res = await POST(
-      makeRequest({ nodes: [{ id: "n-1" }], edges: [], deleteNodes: [], deleteEdges: [] }),
+      makeRequest({
+        nodes: [{ id: "n-1" }],
+        edges: [],
+        deleteNodes: [],
+        deleteEdges: [],
+      }),
       { params: Promise.resolve({ id: "wf-1" }) },
     );
     expect(res.status).toBe(200);
@@ -87,18 +105,24 @@ describe("POST /api/workflow/[id]/structure", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(false);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(res.status).toBe(401);
   });
 
   it("never calls saveStructure when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(saveStructureMock).not.toHaveBeenCalled();
   });
 
@@ -106,15 +130,20 @@ describe("POST /api/workflow/[id]/structure", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(false);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(saveStructureMock).not.toHaveBeenCalled();
   });
 });
 
 describe("GET /api/workflow/[id]/structure — guard chains", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("never calls selectStructureById when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -134,10 +163,15 @@ describe("GET /api/workflow/[id]/structure — guard chains", () => {
   it("returns structure with edges when present", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(true);
-    const STRUCTURE = { nodes: [{ id: "n-1" }, { id: "n-2" }], edges: [{ id: "e-1" }] };
+    const STRUCTURE = {
+      nodes: [{ id: "n-1" }, { id: "n-2" }],
+      edges: [{ id: "e-1" }],
+    };
     selectStructureByIdMock.mockResolvedValueOnce(STRUCTURE);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.edges).toHaveLength(1);
@@ -145,12 +179,16 @@ describe("GET /api/workflow/[id]/structure — guard chains", () => {
 });
 
 describe("GET /api/workflow/[id]/structure — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body is plain text Unauthorized", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(await res.text()).toBe("Unauthorized");
   });
 
@@ -173,9 +211,15 @@ describe("GET /api/workflow/[id]/structure — additional", () => {
   it("200 body has both nodes and edges properties", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(true);
-    selectStructureByIdMock.mockResolvedValueOnce({ nodes: [], edges: [], id: "wf-1" });
+    selectStructureByIdMock.mockResolvedValueOnce({
+      nodes: [],
+      edges: [],
+      id: "wf-1",
+    });
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("nodes");
     expect(body).toHaveProperty("edges");
@@ -190,14 +234,19 @@ describe("GET /api/workflow/[id]/structure — additional", () => {
 });
 
 describe("POST /api/workflow/[id]/structure — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("401 body is plain text Unauthorized", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(await res.text()).toBe("Unauthorized");
   });
 
@@ -207,7 +256,12 @@ describe("POST /api/workflow/[id]/structure — additional", () => {
     saveStructureMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
     await POST(
-      makeRequest({ nodes: [{ id: "n-1" }], edges: [], deleteNodes: [], deleteEdges: [] }),
+      makeRequest({
+        nodes: [{ id: "n-1" }],
+        edges: [],
+        deleteNodes: [],
+        deleteEdges: [],
+      }),
       { params: Promise.resolve({ id: "wf-1" }) },
     );
     expect(saveStructureMock).toHaveBeenCalledTimes(1);
@@ -216,18 +270,24 @@ describe("POST /api/workflow/[id]/structure — additional", () => {
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
   it("never calls checkAccess when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), {
-      params: Promise.resolve({ id: "wf-1" }),
-    });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      {
+        params: Promise.resolve({ id: "wf-1" }),
+      },
+    );
     expect(checkAccessMock).not.toHaveBeenCalled();
   });
 
@@ -246,12 +306,17 @@ describe("POST /api/workflow/[id]/structure — additional", () => {
 });
 
 describe("POST /api/workflow/[id]/structure — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for 401 (unauthenticated)", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -259,7 +324,10 @@ describe("POST /api/workflow/[id]/structure — response shape", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(false);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -268,7 +336,10 @@ describe("POST /api/workflow/[id]/structure — response shape", () => {
     checkAccessMock.mockResolvedValueOnce(true);
     saveStructureMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(saveStructureMock).toHaveBeenCalledTimes(1);
   });
 
@@ -277,25 +348,37 @@ describe("POST /api/workflow/[id]/structure — response shape", () => {
     checkAccessMock.mockResolvedValueOnce(true);
     saveStructureMock.mockResolvedValueOnce(undefined);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(checkAccessMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("POST and GET /api/workflow/[id]/structure — guard invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per POST", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(getSessionMock).toHaveBeenCalledTimes(1);
   });
 
   it("saveStructure not called when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(saveStructureMock).not.toHaveBeenCalled();
   });
 
@@ -309,7 +392,10 @@ describe("POST and GET /api/workflow/[id]/structure — guard invariants", () =>
   it("POST returns 401 Response when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await POST(
+      makeRequest({ nodes: [], edges: [], deleteNodes: [], deleteEdges: [] }),
+      { params: Promise.resolve({ id: "wf-1" }) },
+    );
     expect(res).toBeInstanceOf(Response);
     expect(res.status).toBe(401);
   });

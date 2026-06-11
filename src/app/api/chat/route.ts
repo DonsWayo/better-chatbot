@@ -72,6 +72,7 @@ import {
   loadWorkFlowTools,
   manualToolExecuteByLastMessage,
   mergeSystemPrompt,
+  wrapToolsWithGuardrails,
 } from "./shared.chat";
 
 const logger = globalLogger.withDefaults({
@@ -429,6 +430,11 @@ export async function POST(request: Request) {
             loadWorkFlowTools({
               mentions,
               dataStream,
+              // W7: workflow LLM nodes scan with the invoking team's posture
+              guardrailCtx: {
+                userId: session.user.id,
+                policy: teamPolicy?.guardrailPolicy,
+              },
             }),
           )
           .orElse({});
@@ -451,6 +457,11 @@ export async function POST(request: Request) {
                 part,
                 { ...MCP_TOOLS, ...WORKFLOW_TOOLS, ...APP_DEFAULT_TOOLS },
                 request.signal,
+                // W7: shield manually-confirmed tool outputs too
+                {
+                  userId: session.user.id,
+                  policy: teamPolicy?.guardrailPolicy,
+                },
               );
               part.output = output;
 
@@ -600,6 +611,14 @@ export async function POST(request: Request) {
               ...IMAGE_TOOL,
             };
           })
+          // W7 GA gate (ADR-0008): tool outputs are untrusted — scan every
+          // execute result for prompt-injection and spotlight/block per policy.
+          .map((t) =>
+            wrapToolsWithGuardrails(t, {
+              userId: session.user.id,
+              policy: teamPolicy?.guardrailPolicy,
+            }),
+          )
           .unwrap();
         metadata.toolCount = Object.keys(vercelAITooles).length;
 

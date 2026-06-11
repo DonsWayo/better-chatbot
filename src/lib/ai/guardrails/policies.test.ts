@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { resolvePolicy } from "./policies";
 
 describe("resolvePolicy", () => {
@@ -88,7 +88,12 @@ describe("resolvePolicy", () => {
 
 describe("resolvePolicy — return type shape", () => {
   it("always returns an object with posture, pii, secrets, injection, maxInputChars, outputLeakProtection", () => {
-    const policies = [resolvePolicy("strict"), resolvePolicy("standard"), resolvePolicy("permissive"), resolvePolicy()];
+    const policies = [
+      resolvePolicy("strict"),
+      resolvePolicy("standard"),
+      resolvePolicy("permissive"),
+      resolvePolicy(),
+    ];
     for (const p of policies) {
       expect(p).toHaveProperty("posture");
       expect(p).toHaveProperty("pii");
@@ -111,7 +116,9 @@ describe("resolvePolicy — return type shape", () => {
   it("outputLeakProtection is always a boolean", () => {
     const postures = ["strict", "standard", "permissive", null];
     for (const p of postures) {
-      expect(typeof resolvePolicy(p as any).outputLeakProtection).toBe("boolean");
+      expect(typeof resolvePolicy(p as any).outputLeakProtection).toBe(
+        "boolean",
+      );
     }
   });
 

@@ -1,17 +1,29 @@
-import type { LanguageModel, LanguageModelMiddleware } from "ai";
-import { wrapLanguageModel } from "ai";
 import { pgDb } from "@/lib/db/pg/db.pg";
 import { AsafeGuardrailEventTable } from "@/lib/db/pg/schema.pg";
-import { guardrailFiringsTotal, guardrailBlocksTotal } from "lib/observability/metrics";
-import { scanInput, scanOutput, type GuardrailFiring } from "./scan";
-import { resolvePolicy, type GuardrailPolicy } from "./policies";
+import type { LanguageModel, LanguageModelMiddleware } from "ai";
+import { wrapLanguageModel } from "ai";
+import {
+  guardrailBlocksTotal,
+  guardrailFiringsTotal,
+} from "lib/observability/metrics";
+import { type GuardrailPolicy, resolvePolicy } from "./policies";
+import { type GuardrailFiring, scanInput, scanOutput } from "./scan";
 
 export { scanInput, scanOutput } from "./scan";
 export { resolvePolicy } from "./policies";
+export { scanToolOutput, spotlight } from "./tool-output";
+export type { ToolOutputScanResult } from "./tool-output";
+export { scanIngestText } from "./ingest-scan";
+export type { IngestScanResult } from "./ingest-scan";
 export type { GuardrailFiring, ScanResult } from "./scan";
-export type { GuardrailPolicy, GuardrailAction, GuardrailPosture } from "./policies";
+export type {
+  GuardrailPolicy,
+  GuardrailAction,
+  GuardrailPosture,
+} from "./policies";
 
-export const GUARDRAILS_ENABLED = process.env.ASAFE_GUARDRAILS_ENABLED !== "false";
+export const GUARDRAILS_ENABLED =
+  process.env.ASAFE_GUARDRAILS_ENABLED !== "false";
 
 async function logGuardrailEvent(
   userId: string,
@@ -23,7 +35,11 @@ async function logGuardrailEvent(
   try {
     // Prometheus counters
     for (const f of firings) {
-      guardrailFiringsTotal.inc({ category: f.category, action: f.action, posture });
+      guardrailFiringsTotal.inc({
+        category: f.category,
+        action: f.action,
+        posture,
+      });
     }
     if (blocked) guardrailBlocksTotal.inc({ posture });
 
@@ -37,6 +53,21 @@ async function logGuardrailEvent(
   } catch {
     // Fail open — never crash a chat request because of logging
   }
+}
+
+/**
+ * Record guardrail firings from seams OUTSIDE the model middleware (tool-output
+ * shielding, workflow LLM nodes). Same Prometheus counters + asafe_guardrail_event
+ * rows the chat-route middleware writes — the admin Guardrails page shows both.
+ * Fire-and-forget; never throws.
+ */
+export function recordGuardrailFirings(
+  userId: string,
+  firings: GuardrailFiring[],
+  blocked: boolean,
+  posture: string,
+): void {
+  void logGuardrailEvent(userId, firings, blocked, posture);
 }
 
 /**
@@ -66,7 +97,9 @@ function buildGuardrailMiddleware(
             blocked = true;
             blockReason = result.blockReason;
           }
-          return result.text !== part.text ? { ...part, text: result.text } : part;
+          return result.text !== part.text
+            ? { ...part, text: result.text }
+            : part;
         });
 
         return { ...msg, content: processedContent };
@@ -85,7 +118,6 @@ function buildGuardrailMiddleware(
       const result = await doGenerate();
 
       if (!policy.outputLeakProtection) return result;
-
 
       // Scan text parts in the content array
       const processedContent = result.content.map((part) => {

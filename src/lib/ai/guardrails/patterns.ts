@@ -54,7 +54,8 @@ export const PII_PATTERNS: Pattern[] = [
   {
     id: "ip_v4",
     label: "IPv4 address",
-    regex: /\b(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?:\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)){3}\b/g,
+    regex:
+      /\b(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?:\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)){3}\b/g,
     mask: "[IP]",
   },
   {
@@ -90,7 +91,8 @@ export const SECRET_PATTERNS: Pattern[] = [
   {
     id: "aws_secret",
     label: "AWS secret key",
-    regex: /(?:aws_secret_access_key|AWS_SECRET)[^=\n]*=\s*([A-Za-z0-9+/]{40})/gi,
+    regex:
+      /(?:aws_secret_access_key|AWS_SECRET)[^=\n]*=\s*([A-Za-z0-9+/]{40})/gi,
     mask: "[SECRET:AWS_SECRET]",
   },
   {
@@ -103,13 +105,15 @@ export const SECRET_PATTERNS: Pattern[] = [
     id: "env_password",
     label: "password in env-var style",
     // Negative lookbehind prevents matching inside previously-inserted [SECRET:...] markers
-    regex: /(?<!\[)(?:password|passwd|secret|token|api_key|apikey)\s*[:=]\s*\S+/gi,
+    regex:
+      /(?<!\[)(?:password|passwd|secret|token|api_key|apikey)\s*[:=]\s*\S+/gi,
     mask: "[SECRET:CREDENTIAL]",
   },
   {
     id: "jwt_token",
     label: "JWT token",
-    regex: /\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b/g,
+    regex:
+      /\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b/g,
     mask: "[SECRET:JWT]",
   },
   {
@@ -128,19 +132,22 @@ export const EMPLOYMENT_DECISION_PATTERNS: Pattern[] = [
   {
     id: "hiring_decision",
     label: "automated hiring decision",
-    regex: /(?:should|must|will|decide|recommend)\s+(?:we\s+)?(?:hire|not\s+hire|reject|shortlist|select)\s+(?:this\s+)?(?:candidate|applicant|person)/gi,
+    regex:
+      /(?:should|must|will|decide|recommend)\s+(?:we\s+)?(?:hire|not\s+hire|reject|shortlist|select)\s+(?:this\s+)?(?:candidate|applicant|person)/gi,
     mask: "[BLOCKED:EMPLOYMENT_DECISION]",
   },
   {
     id: "performance_grade",
     label: "automated performance grading",
-    regex: /(?:rate|grade|score|rank|evaluate|assess)\s+(?:this\s+)?(?:employee|worker|staff)\s+(?:and\s+)?(?:decide|determine|give|assign)\s+(?:their\s+)?(?:performance|rating|grade|score|review)/gi,
+    regex:
+      /(?:rate|grade|score|rank|evaluate|assess)\s+(?:this\s+)?(?:employee|worker|staff)\s+(?:and\s+)?(?:decide|determine|give|assign)\s+(?:their\s+)?(?:performance|rating|grade|score|review)/gi,
     mask: "[BLOCKED:EMPLOYMENT_DECISION]",
   },
   {
     id: "disciplinary_decision",
     label: "automated disciplinary decision",
-    regex: /(?:should|must|decide|recommend)\s+(?:we\s+)?(?:fire|dismiss|terminate|discipline|warn|sanction)\s+(?:this\s+)?(?:employee|worker|staff|person)/gi,
+    regex:
+      /(?:should|must|decide|recommend)\s+(?:we\s+)?(?:fire|dismiss|terminate|discipline|warn|sanction)\s+(?:this\s+)?(?:employee|worker|staff|person)/gi,
     mask: "[BLOCKED:EMPLOYMENT_DECISION]",
   },
 ];
@@ -151,19 +158,22 @@ export const INJECTION_PATTERNS: Pattern[] = [
   {
     id: "ignore_instructions",
     label: "ignore instructions injection",
-    regex: /ignore\s+(?:all\s+)?(?:previous|prior|above|preceding)\s+instructions?/gi,
+    regex:
+      /ignore\s+(?:all\s+)?(?:previous|prior|above|preceding)\s+instructions?/gi,
     mask: "[BLOCKED:INJECTION]",
   },
   {
     id: "you_are_now",
     label: "role override injection",
-    regex: /you\s+are\s+(?:now|a|an)\s+(?:unrestricted|jailbroken|evil|dan|worm|virus|hacker|attacker)/gi,
+    regex:
+      /you\s+are\s+(?:now|a|an)\s+(?:unrestricted|jailbroken|evil|dan|worm|virus|hacker|attacker)/gi,
     mask: "[BLOCKED:INJECTION]",
   },
   {
     id: "system_prompt_leak",
     label: "system prompt extraction attempt",
-    regex: /(?:reveal|repeat|show|print|output|display|tell me|give me|what(?:'s|\s+is))\s+(?:your\s+)?(?:system\s+prompt|instructions?|rules?|guidelines?|initial prompt)/gi,
+    regex:
+      /(?:reveal|repeat|show|print|output|display|tell me|give me|what(?:'s|\s+is))\s+(?:your\s+)?(?:system\s+prompt|instructions?|rules?|guidelines?|initial prompt)/gi,
     mask: "[BLOCKED:SYS_LEAK]",
   },
   {
@@ -172,5 +182,42 @@ export const INJECTION_PATTERNS: Pattern[] = [
     // Suspiciously long base64 strings in prompts (possible encoded instructions)
     regex: /(?:[A-Za-z0-9+/]{50,}={0,2})\s*(?:decode|base64|atob)/gi,
     mask: "[BLOCKED:OBFUSCATION]",
+  },
+  {
+    id: "disregard_instructions",
+    label: "disregard/forget instructions injection",
+    regex:
+      /(?:disregard|forget|override)\s+(?:all\s+)?(?:previous|prior|above|preceding|your|earlier)\s+(?:instructions?|rules?|guidelines?|directives?)/gi,
+    mask: "[BLOCKED:INJECTION]",
+  },
+  {
+    id: "fake_system_tag",
+    label: "fake system/instruction tag",
+    // Injected pseudo-markup pretending to open a system / instruction scope
+    regex:
+      /<\/?system[^>]*>|\[\/?(?:SYSTEM|INST)\]|\bnew\s+system\s+(?:prompt|instructions?|message)\s*:/gi,
+    mask: "[BLOCKED:FAKE_SYSTEM]",
+  },
+  {
+    id: "tool_redirection",
+    label: "tool redirection injection",
+    // Instructions that try to steer the model's tool use toward exfiltration
+    regex:
+      /(?:use|call|invoke|run)\s+(?:the\s+)?[\w.\-]+\s+tool\s+(?:to|and)\s+(?:send|post|forward|upload|email|exfiltrate|transmit)/gi,
+    mask: "[BLOCKED:TOOL_REDIRECT]",
+  },
+  {
+    id: "data_exfiltration",
+    label: "data exfiltration instruction",
+    regex:
+      /(?:send|forward|post|upload|email|exfiltrate|transmit)\s+(?:all\s+|the\s+)?(?:conversation|chat\s+history|messages?|credentials?|secrets?|api\s+keys?|system\s+prompt|user\s+data)\s+to\b/gi,
+    mask: "[BLOCKED:EXFIL]",
+  },
+  {
+    id: "covert_instruction",
+    label: "covert instruction (hide from user)",
+    regex:
+      /do\s+not\s+(?:tell|inform|alert|notify|mention\s+(?:this\s+)?to|reveal\s+(?:this\s+)?to)\s+the\s+user/gi,
+    mask: "[BLOCKED:COVERT]",
   },
 ];

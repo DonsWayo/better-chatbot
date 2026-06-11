@@ -128,12 +128,30 @@ export async function runClaimedSession(
     return "failed";
   }
 
+  // W7 guardrails (ADR-0008): detached runs scan LLM-node prompts with the
+  // session owner's team posture; failures fall back to the org default.
+  let guardrailPolicy: string | undefined;
+  if (session.userId) {
+    try {
+      const { getTeamPolicy, getUserPrimaryTeamId } = await import(
+        "lib/admin/teams"
+      );
+      const teamId = await getUserPrimaryTeamId(session.userId);
+      if (teamId)
+        guardrailPolicy = (await getTeamPolicy(teamId)).guardrailPolicy;
+    } catch {
+      // org default applies
+    }
+  }
+
   const executor = createWorkflowExecutor({
     nodes: workflow.nodes,
     edges: workflow.edges,
     logger: globalLogger.withDefaults({
       message: colorize("cyan", `WORKFLOW(detached) '${workflow.name}' `),
     }),
+    userId: session.userId ?? undefined,
+    guardrailPolicy,
   });
   const detach = attachSessionPersistence(
     executor as unknown as SubscribableExecutor,

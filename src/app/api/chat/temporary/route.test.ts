@@ -7,6 +7,7 @@ const {
   getUserPreferencesMock,
   convertToModelMessagesMock,
   streamTextMock,
+  wrapWithGuardrailsMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   getModelMock: vi.fn(() => ({})),
@@ -16,9 +17,16 @@ const {
   streamTextMock: vi.fn((_opts?: unknown) => ({
     toUIMessageStreamResponse: vi.fn(() => new Response("stream")),
   })),
+  wrapWithGuardrailsMock: vi.fn((model: unknown, _userId: string) => ({
+    __guarded: true,
+    inner: model,
+  })),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/ai/guardrails", () => ({
+  wrapWithGuardrails: wrapWithGuardrailsMock,
+}));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: getModelMock },
 }));
@@ -145,6 +153,57 @@ describe("POST /api/chat/temporary", () => {
     const { POST } = await import("./route");
     await POST(makeRequest({ messages: [] }));
     expect(streamTextMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST /api/chat/temporary — guardrails (W7)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    streamTextMock.mockReturnValue({
+      toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
+    });
+  });
+
+  it("wraps the model with guardrails using the session userId (org default policy)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u-guard" } });
+    const rawModel = { raw: true };
+    getModelMock.mockReturnValueOnce(rawModel);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(wrapWithGuardrailsMock).toHaveBeenCalledTimes(1);
+    expect(wrapWithGuardrailsMock).toHaveBeenCalledWith(rawModel, "u-guard");
+  });
+
+  it("passes the GUARDED model (not the raw one) to streamText", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    const rawModel = { raw: true };
+    getModelMock.mockReturnValueOnce(rawModel);
+    let capturedModel: unknown;
+    streamTextMock.mockImplementationOnce((opts: any) => {
+      capturedModel = opts.model;
+      return { toUIMessageStreamResponse: vi.fn(() => new Response("ok")) };
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(capturedModel).toEqual({ __guarded: true, inner: rawModel });
+  });
+
+  it("never wraps with guardrails when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messages: [] }));
+    expect(wrapWithGuardrailsMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the guardrail-wrapped model pipeline throws (blocked input surfaces as error)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    streamTextMock.mockImplementationOnce(() => {
+      throw new Error("Guardrail blocked: secret detected in input.");
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ messages: [] }));
+    expect(res.status).toBe(500);
+    expect(await res.text()).toMatch(/Guardrail blocked/);
   });
 });
 

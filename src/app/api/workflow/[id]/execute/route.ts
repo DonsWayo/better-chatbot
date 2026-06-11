@@ -89,11 +89,26 @@ export async function POST(
     logger.error("Failed to create agent session:", error);
   }
 
+  // W7 guardrails (ADR-0008): resolve the invoking user's team posture so LLM
+  // nodes scan with the team policy; failures fall back to the org default.
+  let guardrailPolicy: string | undefined;
+  try {
+    const { getTeamPolicy, getUserPrimaryTeamId } = await import(
+      "lib/admin/teams"
+    );
+    const teamId = await getUserPrimaryTeamId(session.user.id);
+    if (teamId) guardrailPolicy = (await getTeamPolicy(teamId)).guardrailPolicy;
+  } catch {
+    // org default applies
+  }
+
   const app = createWorkflowExecutor({
     edges,
     nodes,
     logger: wfLogger,
     agentSessionId,
+    userId: session.user.id,
+    guardrailPolicy,
   });
 
   if (agentSessionId) {

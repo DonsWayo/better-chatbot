@@ -1,4 +1,10 @@
-import { PII_PATTERNS, SECRET_PATTERNS, INJECTION_PATTERNS, EMPLOYMENT_DECISION_PATTERNS, type Pattern } from "./patterns";
+import {
+  EMPLOYMENT_DECISION_PATTERNS,
+  INJECTION_PATTERNS,
+  PII_PATTERNS,
+  type Pattern,
+  SECRET_PATTERNS,
+} from "./patterns";
 import { type GuardrailAction, type GuardrailPolicy } from "./policies";
 
 export type GuardrailCategory = "pii" | "secret" | "injection";
@@ -81,35 +87,73 @@ export function scanInput(text: string, policy: GuardrailPolicy): ScanResult {
 
   // 2. EU AI Act: employment decisions — always block regardless of policy
   {
-    const r = applyPatterns(current, EMPLOYMENT_DECISION_PATTERNS, "injection", "block", firings);
-    current = r.text;
-    if (r.blocked) return {
-      text: current,
-      blocked: true,
-      blockReason: "This tool cannot be used for automated employment decisions (EU AI Act compliance).",
+    const r = applyPatterns(
+      current,
+      EMPLOYMENT_DECISION_PATTERNS,
+      "injection",
+      "block",
       firings,
-    };
+    );
+    current = r.text;
+    if (r.blocked)
+      return {
+        text: current,
+        blocked: true,
+        blockReason:
+          "This tool cannot be used for automated employment decisions (EU AI Act compliance).",
+        firings,
+      };
   }
 
   // 3. Prompt injection (check before PII, injection takes priority)
   {
-    const r = applyPatterns(current, INJECTION_PATTERNS, "injection", policy.injection, firings);
+    const r = applyPatterns(
+      current,
+      INJECTION_PATTERNS,
+      "injection",
+      policy.injection,
+      firings,
+    );
     current = r.text;
-    if (r.blocked) return { text: current, blocked: true, blockReason: r.blockReason, firings };
+    if (r.blocked)
+      return {
+        text: current,
+        blocked: true,
+        blockReason: r.blockReason,
+        firings,
+      };
   }
 
   // 3. Secrets (block/redact before sending to provider)
   {
-    const r = applyPatterns(current, SECRET_PATTERNS, "secret", policy.secrets, firings);
+    const r = applyPatterns(
+      current,
+      SECRET_PATTERNS,
+      "secret",
+      policy.secrets,
+      firings,
+    );
     current = r.text;
-    if (r.blocked) return { text: current, blocked: true, blockReason: r.blockReason, firings };
+    if (r.blocked)
+      return {
+        text: current,
+        blocked: true,
+        blockReason: r.blockReason,
+        firings,
+      };
   }
 
   // 4. PII
   {
     const r = applyPatterns(current, PII_PATTERNS, "pii", policy.pii, firings);
     current = r.text;
-    if (r.blocked) return { text: current, blocked: true, blockReason: r.blockReason, firings };
+    if (r.blocked)
+      return {
+        text: current,
+        blocked: true,
+        blockReason: r.blockReason,
+        firings,
+      };
   }
 
   return { text: current, blocked: false, firings };

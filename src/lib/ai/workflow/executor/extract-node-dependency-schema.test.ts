@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { extractNodeDependencySchema } from "./extract-node-dependency-schema";
+import { describe, expect, it } from "vitest";
 import { NodeKind } from "../workflow.interface";
+import { extractNodeDependencySchema } from "./extract-node-dependency-schema";
 
 const makeBase = (overrides: any = {}) => ({
   id: "n1",
@@ -16,7 +16,10 @@ const makeBase = (overrides: any = {}) => ({
 
 describe("extractNodeDependencySchema", () => {
   it("returns empty schema when target node not found", () => {
-    const result = extractNodeDependencySchema({ targetId: "missing", nodes: [] });
+    const result = extractNodeDependencySchema({
+      targetId: "missing",
+      nodes: [],
+    });
     expect(result.type).toBe("object");
     expect(result.properties).toBeDefined();
   });
@@ -24,7 +27,10 @@ describe("extractNodeDependencySchema", () => {
   it("returns outputSchema for Input node", () => {
     const inputSchema = {
       type: "object" as const,
-      properties: { name: { type: "string" as const }, age: { type: "number" as const } },
+      properties: {
+        name: { type: "string" as const },
+        age: { type: "number" as const },
+      },
       required: ["name"],
     };
     const nodes = [
@@ -104,7 +110,10 @@ describe("extractNodeDependencySchema", () => {
       kind: NodeKind.LLM,
       outputSchema: {
         type: "object" as const,
-        properties: { text: { type: "string" as const }, score: { type: "number" as const } },
+        properties: {
+          text: { type: "string" as const },
+          score: { type: "number" as const },
+        },
         required: [],
       },
     });
@@ -126,7 +135,10 @@ describe("extractNodeDependencySchema", () => {
   });
 
   it("result always has a properties object", () => {
-    const result = extractNodeDependencySchema({ targetId: "missing", nodes: [] });
+    const result = extractNodeDependencySchema({
+      targetId: "missing",
+      nodes: [],
+    });
     expect(result.properties).toBeDefined();
     expect(typeof result.properties).toBe("object");
   });

@@ -1,14 +1,14 @@
-import { getSession } from "auth/server";
 import {
   UIMessage,
   convertToModelMessages,
   smoothStream,
   streamText,
 } from "ai";
+import { getSession } from "auth/server";
 import { customModelProvider } from "lib/ai/models";
-import globalLogger from "logger";
 import { buildUserSystemPrompt } from "lib/ai/prompts";
 import { getUserPreferences } from "lib/user/server";
+import globalLogger from "logger";
 
 import { colorize } from "consola/utils";
 
@@ -34,7 +34,14 @@ export async function POST(request: Request) {
       instructions?: string;
     };
     logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
-    const model = customModelProvider.getModel(chatModel);
+    // W7 GA gate (ADR-0008): same guardrail posture as the main chat route.
+    // Temporary chats have no thread/team context, so the org default policy
+    // applies (resolvePolicy(undefined) → "standard").
+    const { wrapWithGuardrails } = await import("lib/ai/guardrails");
+    const model = wrapWithGuardrails(
+      customModelProvider.getModel(chatModel),
+      session.user.id,
+    );
     const userPreferences =
       (await getUserPreferences(session.user.id)) || undefined;
 

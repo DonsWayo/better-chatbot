@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { addEdgeBranchLabel } from "./add-edge-branch-label";
+import { describe, expect, it } from "vitest";
 import { NodeKind } from "../workflow.interface";
+import { addEdgeBranchLabel } from "./add-edge-branch-label";
 
 function makeNode(id: string, kind: string): any {
   return {
@@ -34,10 +34,7 @@ describe("addEdgeBranchLabel", () => {
       makeNode("llm", NodeKind.LLM),
       makeNode("output", NodeKind.Output),
     ];
-    const edges = [
-      makeEdge("input", "llm"),
-      makeEdge("llm", "output"),
-    ];
+    const edges = [makeEdge("input", "llm"), makeEdge("llm", "output")];
     addEdgeBranchLabel(nodes, edges);
     expect(edges[0].uiConfig.label).toBe("B0");
     expect(edges[1].uiConfig.label).toBe("B0");
@@ -49,10 +46,7 @@ describe("addEdgeBranchLabel", () => {
       makeNode("a", NodeKind.LLM),
       makeNode("b", NodeKind.LLM),
     ];
-    const edges = [
-      makeEdge("input", "a"),
-      makeEdge("input", "b"),
-    ];
+    const edges = [makeEdge("input", "a"), makeEdge("input", "b")];
     addEdgeBranchLabel(nodes, edges);
     const labels = edges.map((e) => e.uiConfig.label).sort();
     expect(labels).toContain("B0.0");
@@ -101,7 +95,10 @@ describe("addEdgeBranchLabel", () => {
   });
 
   it("does not throw for empty edges with nodes", () => {
-    const nodes = [makeNode("input", NodeKind.Input), makeNode("output", NodeKind.Output)];
+    const nodes = [
+      makeNode("input", NodeKind.Input),
+      makeNode("output", NodeKind.Output),
+    ];
     expect(() => addEdgeBranchLabel(nodes, [])).not.toThrow();
   });
 
@@ -131,7 +128,10 @@ describe("addEdgeBranchLabel", () => {
   });
 
   it("function returns void (mutates in-place)", () => {
-    const nodes = [makeNode("start", NodeKind.Input), makeNode("end", NodeKind.Output)];
+    const nodes = [
+      makeNode("start", NodeKind.Input),
+      makeNode("end", NodeKind.Output),
+    ];
     const edges = [makeEdge("start", "end")];
     const result = addEdgeBranchLabel(nodes, edges);
     expect(result).toBeUndefined();

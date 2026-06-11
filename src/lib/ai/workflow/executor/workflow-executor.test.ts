@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { GraphEvent } from "ts-edge";
 import { DBEdge, DBNode } from "app-types/workflow";
-import { NodeKind } from "../workflow.interface";
+import type { GraphEvent } from "ts-edge";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  StringConditionOperator,
   BooleanConditionOperator,
+  StringConditionOperator,
 } from "../condition";
+import { NodeKind } from "../workflow.interface";
 
 // Mock MCP modules to avoid server-only imports
 vi.mock("lib/ai/mcp/mcp-manager", () => ({
@@ -177,7 +177,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule) {
-      (nodeExecutorModule as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputData);
+      (
+        nodeExecutorModule as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputData);
     }
 
     const result = await executor.run(inputData);
@@ -247,7 +251,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule1 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule1) {
-      (nodeExecutorModule1 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataTrue);
+      (
+        nodeExecutorModule1 as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputDataTrue);
     }
 
     const result1 = await executor1.run(inputDataTrue);
@@ -273,7 +281,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule2 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule2) {
-      (nodeExecutorModule2 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataFalse);
+      (
+        nodeExecutorModule2 as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputDataFalse);
     }
 
     const result2 = await executor2.run(inputDataFalse);
@@ -338,7 +350,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule1 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule1) {
-      (nodeExecutorModule1 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataAdmin);
+      (
+        nodeExecutorModule1 as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputDataAdmin);
     }
 
     const result1 = await executor1.run(inputDataAdmin);
@@ -364,7 +380,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule2 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule2) {
-      (nodeExecutorModule2 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataUser);
+      (
+        nodeExecutorModule2 as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputDataUser);
     }
 
     const result2 = await executor2.run(inputDataUser);
@@ -423,7 +443,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule) {
-      (nodeExecutorModule as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputData);
+      (
+        nodeExecutorModule as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputData);
     }
 
     const result = await executor.run(inputData);
@@ -520,7 +544,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule1 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule1) {
-      (nodeExecutorModule1 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataParallel);
+      (
+        nodeExecutorModule1 as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputDataParallel);
     }
 
     const result1 = await executor1.run(inputDataParallel);
@@ -546,7 +574,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule2 = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule2) {
-      (nodeExecutorModule2 as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputDataSingle);
+      (
+        nodeExecutorModule2 as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputDataSingle);
     }
 
     const result2 = await executor2.run(inputDataSingle);
@@ -587,7 +619,11 @@ describe("createWorkflowExecutor", () => {
     // Set test input data via mock
     const nodeExecutorModule = await import("./node-executor");
     if ("__setTestInputData" in nodeExecutorModule) {
-      (nodeExecutorModule as unknown as { __setTestInputData: (d: Record<string, unknown>) => void }).__setTestInputData(inputData);
+      (
+        nodeExecutorModule as unknown as {
+          __setTestInputData: (d: Record<string, unknown>) => void;
+        }
+      ).__setTestInputData(inputData);
     }
 
     const result = await executor.run(inputData);

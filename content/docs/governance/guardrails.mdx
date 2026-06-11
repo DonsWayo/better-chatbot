@@ -1,59 +1,148 @@
 ---
 title: Guardrails & DLP
-description: Runtime input/output scanning at the model-middleware seam — PII, secrets, prompt-injection posture.
+description: Runtime input/output scanning across every LLM seam — PII, secrets, prompt-injection, tool-output spotlighting, ingest scanning.
 ---
 
-Guardrails (Wave 7, ADR-0008) sit between users and models as **in-app middleware at the
-`wrapLanguageModel` seam** — for an internal tool 800 people paste real company data into,
-this is a regulatory requirement, not a nice-to-have. Target risks are the OWASP LLM Top
-10: prompt injection (LLM01), sensitive-data leakage (LLM02), excessive agency (LLM06),
-system-prompt leakage (LLM07).
+Guardrails (Wave 7, ADR-0008) sit between users and models — for an internal tool 800
+people paste real company data into, this is a regulatory requirement, not a
+nice-to-have. Target risks are the OWASP LLM Top 10: prompt injection (LLM01),
+sensitive-data leakage (LLM02), excessive agency (LLM06), system-prompt leakage (LLM07).
+
+## Coverage: the seam matrix
+
+Every path where text crosses an LLM boundary is classified and either guarded or
+explicitly documented as not-applicable. This is the Wave 7 GA-gate inventory:
+
+| Seam | Path | Status | Mechanism |
+|------|------|--------|-----------|
+| Main chat | `POST /api/chat` (`streamText`) | **Guarded** | `wrapWithGuardrails` middleware at the `wrapLanguageModel` seam, team policy |
+| Temporary chat | `POST /api/chat/temporary` | **Guarded** | Same `wrapWithGuardrails`; no team context → **org default policy** |
+| Tool outputs (MCP / web search / HTTP / workflows-as-tools) | tool `execute` results re-entering the context | **Guarded** | `wrapToolsWithGuardrails` — injection scan + spotlighting (see below) |
+| Manually-confirmed tools | manual tool-mode execution (bypasses `execute`) | **Guarded** | Same scan inside `manualToolExecuteByLastMessage` |
+| Workflow LLM nodes | `llmNodeExecutor` (`generateText` / `generateObject`) | **Guarded** | `scanInput` on resolved prompts, `scanOutput` on text answers, invoking team's policy |
+| Workflow tool-node param generation | `toolNodeExecutor` prompt → `generateText` | **Guarded** | `scanInput` on the resolved prompt |
+| Detached agent runs | agent-platform worker → workflow executor | **Guarded** | Same node-level scanning; policy resolved from the session owner's team |
+| Knowledge ingestion | `POST /api/knowledge/ingest` (+ `/upload`) | **Guarded** | `scanIngestText` at ingest time (warn-don't-block, see below) |
+| Thread title generation | `/api/chat/title`, `generateTitleFromUserMessageAction` | N/A | Internal, low-risk: output is a short label shown back to the same user; never executes tools, never re-enters another user's context |
+| Memory extractor | `lib/memory/extract.ts` (`generateObject`) | N/A | Internal post-turn summarization of the user's OWN already-guarded conversation; output is structured facts stored per-user |
+| Tool-schema example generator | `generateExampleToolSchemaAction` | N/A | Admin/dev utility generating example params from a tool's own schema |
+| Image tool | `lib/ai/tools/image` (`generateText` with image models) | N/A | Prompt is model-generated inside an already-guarded chat turn; output is an image, not text re-entering context |
+
+The workflow executor is shared by all three workflow surfaces (synchronous execute
+route, chat-invoked workflow tools, detached worker), so node-level guards cover all of
+them; each caller injects the invoking user's id and team posture into the runtime
+state, falling back to the org default when unavailable.
 
 ## Placement
 
 ```
-request → compression → guardrails → raw model
+request → compression → guardrails → fallback → raw model
 ```
 
 Compression (ADR-0011, `src/lib/ai/compression`) runs **outside** guardrails so the
 scanner sees the reduced context. Both are AI SDK `LanguageModelMiddleware`s applied at
-the `streamText` seam in the chat route.
+the `streamText` seam in the chat route. Workflow LLM nodes call providers directly, so
+they invoke `scanInput`/`scanOutput` explicitly instead of via middleware — same
+detectors, same policies, same audit trail.
 
 ## Two stages
 
 The implementation lives in `src/lib/ai/guardrails`:
 
 - **Input stage** (`scanInput`) — before any provider egress: PII detection (emails,
-  phones, national IDs including Spanish DNI/NIE, card numbers), secret/credential
-  detection, proprietary-code/keyword blocking. The action is policy-driven:
-  **redact | mask | block | warn**.
-- **Output stage** (`scanOutput`) — before returning to the user: content-safety
-  filtering and system-prompt-leakage prevention.
+  phones, national IDs including Spanish DNI/NIE, card numbers, IBANs),
+  secret/credential detection, prompt-injection heuristics, EU AI Act
+  employment-decision blocking. The action is policy-driven:
+  **redact | block | warn | off**.
+- **Output stage** (`scanOutput`) — before returning to the user: system-prompt-leakage
+  markers are stripped when the policy enables `outputLeakProtection`.
 
-Patterns live in `patterns.ts`; per-team postures resolve via `resolvePolicy` in
-`policies.ts` (strictness is configuration, not code). The team's guardrail posture also
-selects the [compression level](/docs/decisions) (strict teams compress aggressively).
+Patterns live in `patterns.ts`. Injection heuristics cover ignore/disregard-previous-
+instructions, role overrides, system-prompt exfiltration, fake `<system>` tags,
+tool-redirection ("use the X tool to send …"), data-exfiltration ("forward the chat
+history to …"), covert instructions ("do not tell the user"), and base64 obfuscation.
 
-## Untrusted tool output
+## Untrusted tool output: spotlighting
 
-Tool/MCP/RAG outputs are treated as **untrusted** (prompt-injection defense): they are
-isolated/labelled, and high-agency tool actions go through a confirmation gate — the same
-excessive-agency control that backs
-[per-action consent on the desktop bridge](/docs/desktop#local-mcp-bridge-roadmap).
+Tool, MCP, web-search, and HTTP results are **untrusted data** — a poisoned web page or
+a malicious MCP server can embed instructions that the model would otherwise obey when
+the result re-enters the context window. Every tool `execute` result is deep-scanned
+(strings at any nesting depth) for injection patterns before the model sees it:
+
+- **Default (spotlighting):** the offending string is wrapped in clearly delimited
+  `UNTRUSTED_TOOL_OUTPUT` markers plus a security note telling the model the content is
+  data, not instructions. The data still flows — search results stay useful — but the
+  injection is neutralized. Already-wrapped content is never re-wrapped.
+- **`injection: "block"` policy (strict/standard):** the result is replaced with a
+  `GuardrailViolation` tool error; the poisoned payload never reaches the model.
+- **`injection: "off"`:** scanning is skipped entirely.
+
+This implements ADR-0008's "treat tool/MCP/RAG outputs as untrusted" alongside the
+existing confirmation gate for high-agency tool actions.
+
+## Workflow LLM nodes
+
+Workflows run **user-authored prompts against company data** (upstream node outputs are
+substituted into the prompt before egress), so the scan runs on the *resolved* content:
+
+- blocked pattern (per the invoking team's policy) → the node fails with
+  `Guardrail blocked LLM node input: …` — visible in the run history;
+- redact-mode patterns → redacted content flows on to the provider;
+- text answers are scrubbed for system-prompt-leak markers on the way out.
+
+## Knowledge ingestion: warn, don't block
+
+Documents ingested into the RAG knowledge base are injected into system prompts as
+`<knowledge_base>` context on **every retrieval** — a poisoned document is a persistent
+injection vector. `scanIngestText` runs once at ingest (both the JSON and file-upload
+routes) and the response carries a `warnings: []` array:
+
+- **injection patterns are always stripped** (a stored injection re-fires forever, so
+  warn-only is not enough);
+- **secrets are always redacted** — a credential in the KB would be served to every
+  user who triggers retrieval;
+- **PII follows the org policy action** (standard ⇒ redact, permissive ⇒ warn-only).
+
+Ingestion **never hard-blocks**: it is an admin-curated batch path, and failing a
+200-page PDF for one bad paragraph would silently break document onboarding. Admins see
+exactly what was neutralized in the response warnings and can re-ingest a cleaned
+source if needed.
+
+## Per-team policy
+
+Postures resolve via `resolvePolicy` in `policies.ts` (strictness is configuration, not
+code) from the team's `guardrailPolicy` column, editable on the **admin team detail
+page**:
+
+| Posture | PII | Secrets | Injection | Output leak scrub |
+|---------|-----|---------|-----------|-------------------|
+| strict | block | block | block | yes |
+| standard (default) | redact | block | block | yes |
+| permissive | warn | redact | warn (spotlight) | no |
+
+The same posture string drives every seam: chat middleware, tool-output shielding,
+workflow nodes. Surfaces without a team context (temporary chat, ingestion) use the org
+default (`standard`). The team's posture also selects the
+[compression level](/docs/decisions) (strict teams compress aggressively).
 
 ## Telemetry & audit
 
-Every firing is recorded twice:
+Every firing — from any seam — is recorded twice through the shared
+`recordGuardrailFirings` pipeline:
 
 1. **Prometheus** — `guardrail_firings_total{category, action, posture}` and
    `guardrail_blocks_total{posture}` counters
    ([/api/metrics](/docs/operations/observability)).
-2. **Postgres** — an `asafe_guardrail_event` row (user, blocked flag, firings JSON) that
-   feeds the admin Guardrails page and the [audit story](/docs/governance/audit-and-compliance).
+2. **Postgres** — an `asafe_guardrail_event` row (user, blocked flag, firings JSON —
+   never the raw sensitive value) that feeds the **admin Guardrails page**
+   (`/admin/guardrails`) and the [audit story](/docs/governance/audit-and-compliance).
+
+Logging is fire-and-forget: a failed audit write never breaks a chat request, tool
+call, or workflow run.
 
 ## Kill switch & flag
 
-- `ASAFE_GUARDRAILS_ENABLED` — guardrails are **on by default**; set to `"false"` to
-  disable (dev only — never in production).
+- `ASAFE_GUARDRAILS_ENABLED` — guardrails are **on by default** across all seams; set
+  to `"false"` to disable (dev only — never in production).
 - The org-wide [kill switch](/docs/operations/observability#kill-switch) remains the
   blunt instrument above guardrails: it stops all inference outright.

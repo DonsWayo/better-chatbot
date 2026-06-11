@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   getSessionMock,
@@ -32,19 +32,28 @@ vi.mock("lib/auth/permissions", () => ({
   canDeleteWorkflow: canDeleteWorkflowMock,
 }));
 
-const WORKFLOW = { id: "wf-1", name: "My Workflow", visibility: "private", isPublished: false };
+const WORKFLOW = {
+  id: "wf-1",
+  name: "My Workflow",
+  visibility: "private",
+  isPublished: false,
+};
 
 function makeRequest(body?: unknown): Request {
   return { json: () => Promise.resolve(body) } as unknown as Request;
 }
 
 describe("GET /api/workflow/[id]", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -52,7 +61,9 @@ describe("GET /api/workflow/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkAccessMock.mockResolvedValueOnce(false);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -61,7 +72,9 @@ describe("GET /api/workflow/[id]", () => {
     checkAccessMock.mockResolvedValueOnce(true);
     selectByIdMock.mockResolvedValueOnce(WORKFLOW);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe("wf-1");
@@ -70,7 +83,9 @@ describe("GET /api/workflow/[id]", () => {
   it("401 body is plain text Unauthorized when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(await res.text()).toBe("Unauthorized");
   });
 
@@ -97,12 +112,16 @@ describe("GET /api/workflow/[id]", () => {
 });
 
 describe("PUT /api/workflow/[id]", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({ isPublished: true }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({ isPublished: true }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -110,7 +129,9 @@ describe("PUT /api/workflow/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canEditWorkflowMock.mockResolvedValueOnce(false);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({ isPublished: true }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({ isPublished: true }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(403);
   });
 
@@ -122,7 +143,9 @@ describe("PUT /api/workflow/[id]", () => {
     const UPDATED = { ...WORKFLOW, isPublished: true };
     saveMock.mockResolvedValueOnce(UPDATED);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({ isPublished: true }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({ isPublished: true }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.isPublished).toBe(true);
@@ -131,7 +154,9 @@ describe("PUT /api/workflow/[id]", () => {
   it("401 body is plain text Unauthorized", async () => {
     getSessionMock.mockResolvedValue(null);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({}), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(await res.text()).toBe("Unauthorized");
   });
 
@@ -139,7 +164,9 @@ describe("PUT /api/workflow/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canEditWorkflowMock.mockResolvedValueOnce(false);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({}), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -153,12 +180,16 @@ describe("PUT /api/workflow/[id]", () => {
 });
 
 describe("DELETE /api/workflow/[id]", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
@@ -166,7 +197,9 @@ describe("DELETE /api/workflow/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canDeleteWorkflowMock.mockResolvedValueOnce(false);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(403);
   });
 
@@ -176,7 +209,9 @@ describe("DELETE /api/workflow/[id]", () => {
     checkAccessMock.mockResolvedValueOnce(true);
     deleteMock.mockResolvedValueOnce(undefined);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.message).toContain("deleted");
@@ -186,7 +221,9 @@ describe("DELETE /api/workflow/[id]", () => {
   it("401 body is plain text Unauthorized", async () => {
     getSessionMock.mockResolvedValue(null);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(await res.text()).toBe("Unauthorized");
   });
 
@@ -194,7 +231,9 @@ describe("DELETE /api/workflow/[id]", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canDeleteWorkflowMock.mockResolvedValueOnce(false);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     const body = await res.json();
     expect(body).toHaveProperty("error");
   });
@@ -226,12 +265,16 @@ describe("DELETE /api/workflow/[id]", () => {
 });
 
 describe("GET /api/workflow/[id] — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("response is always a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -240,32 +283,42 @@ describe("GET /api/workflow/[id] — response shape", () => {
     checkAccessMock.mockResolvedValueOnce(true);
     selectByIdMock.mockResolvedValueOnce(WORKFLOW);
     const { GET } = await import("./route");
-    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await GET(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
   it("PUT response is always a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({}), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
   it("DELETE response is always a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest(), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest(), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 });
 
 describe("PUT /api/workflow/[id] — response shape", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("returns a Response instance for 401", async () => {
     getSessionMock.mockResolvedValue(null);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({}), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -273,7 +326,9 @@ describe("PUT /api/workflow/[id] — response shape", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     canEditWorkflowMock.mockResolvedValueOnce(false);
     const { PUT } = await import("./route");
-    const res = await PUT(makeRequest({ name: "X" }), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await PUT(makeRequest({ name: "X" }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
   });
 
@@ -291,13 +346,18 @@ describe("PUT /api/workflow/[id] — response shape", () => {
     selectByIdMock.mockResolvedValueOnce(WORKFLOW);
     saveMock.mockResolvedValueOnce(WORKFLOW);
     const { PUT } = await import("./route");
-    await PUT(makeRequest({ name: "Updated" }), { params: Promise.resolve({ id: "wf-1" }) });
+    await PUT(makeRequest({ name: "Updated" }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(saveMock).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("GET, PUT, DELETE /api/workflow/[id] — call count invariants", () => {
-  beforeEach(() => { vi.clearAllMocks(); vi.resetModules(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
 
   it("getSession called exactly once per GET", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -323,7 +383,9 @@ describe("GET, PUT, DELETE /api/workflow/[id] — call count invariants", () => 
   it("DELETE returns 401 Response when session is null", async () => {
     getSessionMock.mockResolvedValue(null);
     const { DELETE } = await import("./route");
-    const res = await DELETE(makeRequest({}), { params: Promise.resolve({ id: "wf-1" }) });
+    const res = await DELETE(makeRequest({}), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
     expect(res).toBeInstanceOf(Response);
     expect(res.status).toBe(401);
   });

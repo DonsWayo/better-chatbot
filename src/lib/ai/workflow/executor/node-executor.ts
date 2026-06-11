@@ -5,6 +5,12 @@ import {
   generateText,
 } from "ai";
 import { ApprovalPendingError } from "lib/agent-platform/approval-error";
+import { resolvePolicy } from "lib/ai/guardrails/policies";
+import {
+  type GuardrailFiring,
+  scanInput,
+  scanOutput,
+} from "lib/ai/guardrails/scan";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { customModelProvider } from "lib/ai/models";
 import { DefaultToolName } from "lib/ai/tools";
@@ -82,6 +88,73 @@ export const outputNodeExecutor: NodeExecutor<OutputNodeData> = ({
   };
 };
 
+// ── W7 guardrails at the workflow LLM seam (ADR-0008) ────────────────────────
+// Workflow LLM nodes run user-authored prompts against company data, OUTSIDE
+// the chat route's wrapLanguageModel middleware — so the same input/output
+// scanning is applied here. Policy comes from the invoking team's posture
+// (state.guardrailPolicy, injected by the caller) or the org default.
+
+const guardrailsEnabled = () =>
+  process.env.ASAFE_GUARDRAILS_ENABLED !== "false";
+
+function recordWorkflowFirings(
+  state: WorkflowRuntimeState,
+  firings: GuardrailFiring[],
+  blocked: boolean,
+  posture: string,
+): void {
+  if (firings.length === 0 || !state.userId) return;
+  // Lazy import keeps the DB/metrics dependency out of this module's static graph.
+  import("lib/ai/guardrails")
+    .then((g) =>
+      g.recordGuardrailFirings(state.userId!, firings, blocked, posture),
+    )
+    .catch(() => {});
+}
+
+/**
+ * scanInput over the RESOLVED prompt content (mentions already substituted
+ * with upstream node data). Blocked → node error with a clear message;
+ * redact → redacted content flows on to the provider.
+ */
+function applyInputGuardrails(
+  messages: Omit<UIMessage, "id">[],
+  state: WorkflowRuntimeState,
+): Omit<UIMessage, "id">[] {
+  if (!guardrailsEnabled()) return messages;
+  const policy = resolvePolicy(state.guardrailPolicy);
+  const firings: GuardrailFiring[] = [];
+  let blockReason: string | undefined;
+
+  const processed = messages.map((message) => ({
+    ...message,
+    parts: message.parts.map((part) => {
+      if (part.type !== "text") return part;
+      const r = scanInput(part.text, policy);
+      firings.push(...r.firings);
+      if (r.blocked && !blockReason) blockReason = r.blockReason;
+      return r.text !== part.text ? { ...part, text: r.text } : part;
+    }),
+  }));
+
+  recordWorkflowFirings(state, firings, Boolean(blockReason), policy.posture);
+  if (blockReason) {
+    throw new Error(`Guardrail blocked LLM node input: ${blockReason}`);
+  }
+  return processed;
+}
+
+/** Output-stage leak scrub, honoring the policy's outputLeakProtection flag. */
+function applyOutputGuardrails(
+  text: string,
+  state: WorkflowRuntimeState,
+): string {
+  if (!guardrailsEnabled()) return text;
+  const policy = resolvePolicy(state.guardrailPolicy);
+  if (!policy.outputLeakProtection) return text;
+  return scanOutput(text).text;
+}
+
 /**
  * LLM Node Executor
  * Executes Large Language Model interactions with support for:
@@ -96,12 +169,16 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
   const model = customModelProvider.getModel(node.model);
 
   // Convert TipTap JSON messages to AI SDK format, resolving mentions to actual data
-  const messages: Omit<UIMessage, "id">[] = node.messages.map((message) =>
-    convertTiptapJsonToAiMessage({
-      role: message.role,
-      getOutput: state.getOutput, // Provides access to previous node outputs
-      json: message.content,
-    }),
+  // W7: then run the resolved content through the input guardrail stage.
+  const messages: Omit<UIMessage, "id">[] = applyInputGuardrails(
+    node.messages.map((message) =>
+      convertTiptapJsonToAiMessage({
+        role: message.role,
+        getOutput: state.getOutput, // Provides access to previous node outputs
+        json: message.content,
+      }),
+    ),
+    state,
   );
 
   const isTextResponse =
@@ -121,7 +198,8 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     return {
       output: {
         totalTokens: response.usage.totalTokens,
-        answer: response.text,
+        // W7: output-stage scrub (system-prompt-leak markers) per policy
+        answer: applyOutputGuardrails(response.text, state),
       },
     };
   }
@@ -205,7 +283,7 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
     };
   } else {
     // Use LLM to generate tool parameters from the provided message
-    const prompt: string | undefined = node.message
+    let prompt: string | undefined = node.message
       ? toAny(
           convertTiptapJsonToAiMessage({
             role: "user",
@@ -214,6 +292,18 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
           }),
         ).parts[0]?.text
       : undefined;
+
+    // W7: this prompt is user-authored + resolved upstream data and goes to a
+    // provider — same input guardrail stage as the LLM node.
+    if (prompt && guardrailsEnabled()) {
+      const policy = resolvePolicy(state.guardrailPolicy);
+      const r = scanInput(prompt, policy);
+      recordWorkflowFirings(state, r.firings, r.blocked, policy.posture);
+      if (r.blocked) {
+        throw new Error(`Guardrail blocked tool node prompt: ${r.blockReason}`);
+      }
+      prompt = r.text;
+    }
 
     const response = await generateText({
       model: customModelProvider.getModel(node.model),

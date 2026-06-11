@@ -13,6 +13,14 @@ export interface WorkflowRuntimeState {
    * it to park the session; absent for ungoverned runs.
    */
   agentSessionId?: string;
+  /**
+   * W7 guardrails (ADR-0008): identity + posture of the invoking principal,
+   * injected by the caller (execute route / chat tool binding / worker).
+   * LLM nodes scan their resolved prompts/outputs with `guardrailPolicy`
+   * (org default when absent) and audit firings against `userId`.
+   */
+  userId?: string;
+  guardrailPolicy?: string;
   inputs: {
     [nodeId: string]: any;
   };
@@ -31,11 +39,15 @@ export const createGraphStore = (params: {
   nodes: DBNode[];
   edges: DBEdge[];
   agentSessionId?: string;
+  userId?: string;
+  guardrailPolicy?: string;
 }) => {
   return graphStore<WorkflowRuntimeState>((set, get) => {
     return {
       query: {},
       agentSessionId: params.agentSessionId,
+      userId: params.userId,
+      guardrailPolicy: params.guardrailPolicy,
       outputs: {},
       inputs: {},
       nodes: params.nodes,

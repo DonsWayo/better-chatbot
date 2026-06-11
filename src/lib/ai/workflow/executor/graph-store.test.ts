@@ -1,6 +1,6 @@
+import { DBNode } from "app-types/workflow";
 import { describe, expect, it } from "vitest";
 import { createGraphStore } from "./graph-store";
-import { DBNode } from "app-types/workflow";
 
 describe("workflow-store", () => {
   it("source", () => {
@@ -180,7 +180,9 @@ describe("createGraphStore — input/output invariants", () => {
     const store = createGraphStore({ nodes: [], edges: [] });
     const ctx = store();
     ctx.setOutput({ nodeId: "n1", path: ["meta"] }, { title: "hello" });
-    expect(ctx.getOutput({ nodeId: "n1", path: ["meta", "title"] })).toBe("hello");
+    expect(ctx.getOutput({ nodeId: "n1", path: ["meta", "title"] })).toBe(
+      "hello",
+    );
   });
 
   it("getOutput returns undefined for unknown nodeId with empty path", () => {
