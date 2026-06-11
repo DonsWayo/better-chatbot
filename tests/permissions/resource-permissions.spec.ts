@@ -58,10 +58,18 @@ test.describe("Resource Permissions - Regular User", () => {
       .click();
     await adminPage.waitForURL(/\/agent\/[^\/]+$/);
 
-    // Select org-wide ("company") visibility, then save.
-    await adminPage.getByTestId("visibility-level-company").click();
-    await adminPage.getByTestId("agent-save-button").click();
-    await adminPage.waitForURL("**/studio");
+    // Select org-wide ("company") visibility via the popover picker. Selecting
+    // a level on a saved agent persists immediately (PUT) — no extra save.
+    await adminPage.getByTestId("agent-visibility-button").click();
+    await Promise.all([
+      adminPage.waitForResponse(
+        (res) =>
+          res.url().includes("/api/agent/") &&
+          res.request().method() === "PUT" &&
+          res.ok(),
+      ),
+      adminPage.getByTestId("visibility-level-company").click(),
+    ]);
     await adminContext.close();
 
     // Now test as regular user

@@ -81,6 +81,8 @@ test.describe("Agent visibility and sharing between users", () => {
         const page = await context.newPage();
         await page.goto(`/agent/${sharedAgentId}`);
         await page.waitForLoadState("networkidle");
+        // The picker lives in a popover behind the owner-only visibility button.
+        await page.getByTestId("agent-visibility-button").click();
         const sharedPanel = page.getByTestId("visibility-shared-panel");
         await expect(sharedPanel).toBeVisible({ timeout: 15000 });
         await page
@@ -172,6 +174,7 @@ test.describe("Agent visibility and sharing between users", () => {
       const page = await context.newPage();
       await page.goto(`/agent/${sharedAgentId}`);
       await page.waitForLoadState("networkidle");
+      await page.getByTestId("agent-visibility-button").click();
       await expect(page.getByTestId("visibility-level-company")).toBeDisabled();
     } finally {
       await context.close();
