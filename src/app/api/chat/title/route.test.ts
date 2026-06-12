@@ -74,15 +74,24 @@ describe("POST /api/chat/title", () => {
     expect(res.status).toBe(200);
   });
 
-  it("passes chatModel to getModel", async () => {
+  it("pins title generation to the cheap model and IGNORES a client-chosen premium model", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
-    const chatModel = { provider: "openai", model: "gpt-4o" };
+    // Basic user tries to generate a title on a premium model.
+    const premium = { provider: "openRouter", model: "claude-opus-4.8" };
     streamTextMock.mockReturnValueOnce({
       toUIMessageStreamResponse: vi.fn(() => new Response("ok")),
     });
     const { POST } = await import("./route");
-    await POST(makeRequest({ message: "hello", threadId: "t1", chatModel }));
-    expect(getModelMock).toHaveBeenCalledWith(chatModel);
+    await POST(
+      makeRequest({ message: "hello", threadId: "t1", chatModel: premium }),
+    );
+    // The client's premium pick must NOT reach getModel.
+    expect(getModelMock).not.toHaveBeenCalledWith(premium);
+    // It is pinned to the cheap fast-tier model regardless of client input.
+    expect(getModelMock).toHaveBeenCalledWith({
+      provider: "openRouter",
+      model: "deepseek-v4-flash",
+    });
   });
 
   it("returns 500 when streamText throws", async () => {

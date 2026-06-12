@@ -9,6 +9,7 @@ const {
   listSchedulesForUserMock,
   setScheduleEnabledMock,
   estimateCostUsdMock,
+  checkAccessMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   getUserPrimaryTeamIdMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   listSchedulesForUserMock: vi.fn(),
   setScheduleEnabledMock: vi.fn(),
   estimateCostUsdMock: vi.fn(),
+  checkAccessMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
@@ -32,6 +34,9 @@ vi.mock("lib/agent-platform/scheduler", () => ({
   setScheduleEnabled: setScheduleEnabledMock,
 }));
 vi.mock("lib/ai/budget", () => ({ estimateCostUsd: estimateCostUsdMock }));
+vi.mock("lib/db/repository", () => ({
+  workflowRepository: { checkAccess: checkAccessMock },
+}));
 
 const USER = { user: { id: "u-1", role: "user" } };
 const SCHEDULE = {
@@ -48,6 +53,7 @@ describe("createScheduleAction", () => {
     vi.clearAllMocks();
     getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
     createScheduleMock.mockResolvedValue(SCHEDULE);
+    checkAccessMock.mockResolvedValue(true);
   });
 
   it("throws Unauthorized when unauthenticated and never creates", async () => {
@@ -56,6 +62,17 @@ describe("createScheduleAction", () => {
     await expect(
       createScheduleAction({ workflowId: "wf-1", cronExpr: "0 9 * * *" }),
     ).rejects.toThrow("Unauthorized");
+    expect(createScheduleMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects (and never creates) a workflow the caller cannot access (IDOR fix)", async () => {
+    getSessionMock.mockResolvedValue(USER);
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { createScheduleAction } = await import("./schedule-actions");
+    await expect(
+      createScheduleAction({ workflowId: "wf-not-mine", cronExpr: "0 9 * * *" }),
+    ).rejects.toThrow(/access/i);
+    expect(checkAccessMock).toHaveBeenCalledWith("wf-not-mine", "u-1", true);
     expect(createScheduleMock).not.toHaveBeenCalled();
   });
 

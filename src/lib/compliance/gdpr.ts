@@ -94,58 +94,78 @@ export async function eraseUserData(
 ): Promise<{ tablesCleared: string[] }> {
   const cleared: string[] = [];
 
-  // 1. Anonymise the user profile (replace name + email with a tombstone)
-  await db
-    .update(UserTable)
-    .set({
-      name: "[erased]",
-      email: `erased-${userId}@deleted.invalid`,
-      image: null,
-      acceptedAupAt: null,
-    })
-    .where(eq(UserTable.id, userId));
-  cleared.push("user");
+  // Run the whole erasure as a single transaction: if any step (including the
+  // audit-record INSERT) fails, the deletions roll back rather than leaving a
+  // half-deleted user with no audit trail.
+  await db.transaction(async (tx) => {
+    // 1. Anonymise the user profile (replace name + email with a tombstone)
+    await tx
+      .update(UserTable)
+      .set({
+        name: "[erased]",
+        email: `erased-${userId}@deleted.invalid`,
+        image: null,
+        acceptedAupAt: null,
+      })
+      .where(eq(UserTable.id, userId));
+    cleared.push("user");
 
-  // 2. Delete chat threads + messages (ON DELETE CASCADE handles messages)
-  await db.delete(ChatThreadTable).where(eq(ChatThreadTable.userId, userId));
-  cleared.push("chat_thread");
+    // 2. Delete chat threads + messages (ON DELETE CASCADE handles messages)
+    await tx.delete(ChatThreadTable).where(eq(ChatThreadTable.userId, userId));
+    cleared.push("chat_thread");
 
-  // 3. Delete usage events
-  await db
-    .delete(AsafeUsageEventTable)
-    .where(eq(AsafeUsageEventTable.userId, userId));
-  cleared.push("asafe_usage_event");
+    // 3. Delete usage events
+    await tx
+      .delete(AsafeUsageEventTable)
+      .where(eq(AsafeUsageEventTable.userId, userId));
+    cleared.push("asafe_usage_event");
 
-  // 4. Delete model grants
-  await db
-    .delete(AsafeUserModelGrantTable)
-    .where(eq(AsafeUserModelGrantTable.userId, userId));
-  cleared.push("asafe_user_model_grant");
+    // 4. Delete model grants
+    await tx
+      .delete(AsafeUserModelGrantTable)
+      .where(eq(AsafeUserModelGrantTable.userId, userId));
+    cleared.push("asafe_user_model_grant");
 
-  // 5. Delete AUP acceptances
-  await db
-    .delete(AsafeAupAcceptanceTable)
-    .where(eq(AsafeAupAcceptanceTable.userId, userId));
-  cleared.push("asafe_aup_acceptance");
+    // 5. Delete AUP acceptances
+    await tx
+      .delete(AsafeAupAcceptanceTable)
+      .where(eq(AsafeAupAcceptanceTable.userId, userId));
+    cleared.push("asafe_aup_acceptance");
 
-  // 6. Remove team memberships
-  await db
-    .delete(AsafeTeamMemberTable)
-    .where(eq(AsafeTeamMemberTable.userId, userId));
-  cleared.push("asafe_team_member");
+    // 6. Remove team memberships
+    await tx
+      .delete(AsafeTeamMemberTable)
+      .where(eq(AsafeTeamMemberTable.userId, userId));
+    cleared.push("asafe_team_member");
 
-  // 6b. Delete user memories (docs/design/user-memory.md) — the user row is
-  // anonymised, not deleted, so the FK cascade never fires here; memories
-  // hold personal facts and must be erased explicitly.
-  await db.delete(UserMemoryTable).where(eq(UserMemoryTable.userId, userId));
-  cleared.push("user_memory");
+    // 6b. Delete user memories (docs/design/user-memory.md) — the user row is
+    // anonymised, not deleted, so the FK cascade never fires here; memories
+    // hold personal facts and must be erased explicitly.
+    await tx.delete(UserMemoryTable).where(eq(UserMemoryTable.userId, userId));
+    cleared.push("user_memory");
 
-  // 7. Append erasure audit record (anonymised — no personal data)
-  await db.execute(
-    sql`INSERT INTO asafe_audit_log (event_type, user_id, detail)
-        VALUES ('user_erasure', ${userId}, '{"gdpr_erasure":true}')`,
-  );
-  cleared.push("asafe_audit_log (erasure record)");
+    // TODO(gdpr): the walk above leaves PII in other tables. Erase these too
+    // once their schema/FK behaviour is confirmed safe to delete inside this
+    // transaction:
+    //   - session            (active sessions / IP / UA)
+    //   - account            (OAuth access/refresh tokens)
+    //   - chat_export*        (full conversation content + comments)
+    //   - message_feedback.comment
+    //   - guardrail_event     (may embed flagged content)
+    //   - agent_session.input_payload
+    //   - presence, bookmarks/archives/prompts/mcp (user-scoped rows)
+
+    // 7. Append erasure audit record (anonymised — no personal data). The live
+    // column is `details` (jsonb, NOT NULL); shape matches lib/compliance/audit
+    // (JSON object stored as jsonb). Cast the param so Postgres binds jsonb.
+    await tx.execute(
+      sql`INSERT INTO asafe_audit_log (event_type, user_id, details)
+          VALUES ('user_erasure', ${userId}, ${JSON.stringify({
+            gdpr_erasure: true,
+          })}::jsonb)`,
+    );
+    cleared.push("asafe_audit_log (erasure record)");
+  });
 
   return { tablesCleared: cleared };
 }

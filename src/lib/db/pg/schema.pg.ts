@@ -42,7 +42,13 @@ export const ChatThreadTable = pgTable("chat_thread", {
     .notNull()
     .default("private"),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  // Sidebar thread list: WHERE user_id ORDER BY latest message time.
+  index("chat_thread_user_id_created_at_idx").on(
+    table.userId,
+    table.createdAt,
+  ),
+]);
 
 export const ChatMessageTable = pgTable("chat_message", {
   id: text("id").primaryKey().notNull(),
@@ -53,7 +59,13 @@ export const ChatMessageTable = pgTable("chat_message", {
   parts: json("parts").notNull().array().$type<UIMessage["parts"]>(),
   metadata: json("metadata").$type<ChatMetadata>(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  // selectMessagesByThreadId: WHERE thread_id ORDER BY created_at.
+  index("chat_message_thread_id_created_at_idx").on(
+    table.threadId,
+    table.createdAt,
+  ),
+]);
 
 export const AgentTable = pgTable("agent", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

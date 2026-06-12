@@ -117,4 +117,55 @@ describe("estimateCostUsd", () => {
     expect(Number.isFinite(result)).toBe(true);
     expect(result).toBeGreaterThan(0);
   });
+
+  // ── Cost-stack routing models (must be priced, not billed at DEFAULT) ──────
+  it("prices kimi-k2.6 at $0.68/M in + $3.41/M out (frontier tier)", () => {
+    const T = 1_000_000;
+    expect(estimateCostUsd("kimi-k2.6", T, 0)).toBeCloseTo(0.68, 6);
+    expect(estimateCostUsd("kimi-k2.6", 0, T)).toBeCloseTo(3.41, 6);
+  });
+
+  it("prices deepseek-v4-pro at $0.43/M in + $0.87/M out (balanced tier)", () => {
+    const T = 1_000_000;
+    expect(estimateCostUsd("deepseek-v4-pro", T, 0)).toBeCloseTo(0.43, 6);
+    expect(estimateCostUsd("deepseek-v4-pro", 0, T)).toBeCloseTo(0.87, 6);
+  });
+
+  it("prices deepseek-v4-flash at $0.10/M in + $0.20/M out (fast/cheap tier)", () => {
+    const T = 1_000_000;
+    expect(estimateCostUsd("deepseek-v4-flash", T, 0)).toBeCloseTo(0.1, 6);
+    expect(estimateCostUsd("deepseek-v4-flash", 0, T)).toBeCloseTo(0.2, 6);
+  });
+
+  it("every routing-tier model is priced, not falling back to DEFAULT_PRICING", () => {
+    // DEFAULT_PRICING = {1, 4}/M → a 1M+1M call would cost $5. Each known
+    // cost-stack model must be cheaper than that, proving it has a real entry.
+    const T = 1_000_000;
+    const defaultCost = estimateCostUsd("__unknown__", T, T); // 5
+    for (const model of ["kimi-k2.6", "deepseek-v4-pro", "deepseek-v4-flash"]) {
+      expect(estimateCostUsd(model, T, T)).toBeLessThan(defaultCost);
+    }
+  });
+
+  it("covers all 7 registry models with explicit (non-default) pricing", () => {
+    const T = 1_000_000;
+    const defaultCost = estimateCostUsd("__definitely-unknown__", T, T);
+    const registryModels = [
+      "gpt-5.5",
+      "claude-opus-4.8",
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite",
+      "kimi-k2.6",
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
+    ];
+    for (const model of registryModels) {
+      // claude-opus is more expensive than default; the rest cheaper — either
+      // way it must NOT equal the default cost (i.e. it has its own entry).
+      expect(
+        estimateCostUsd(model, T, T),
+        `${model} is billed at DEFAULT_PRICING`,
+      ).not.toBeCloseTo(defaultCost, 6);
+    }
+  });
 });

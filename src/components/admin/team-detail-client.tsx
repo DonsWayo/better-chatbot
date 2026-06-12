@@ -176,7 +176,8 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setIsDeleting(true);
     try {
       await deleteTeamAction(team.id);
-    } catch {
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete team");
       setIsDeleting(false);
     }
   };
@@ -203,6 +204,10 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
       startTransition(() => {
         router.refresh();
       });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update member role",
+      );
     } finally {
       setUpdatingRoleId(null);
     }
@@ -392,6 +397,10 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
       startTransition(() => {
         router.refresh();
       });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove member",
+      );
     } finally {
       setRemovingId(null);
     }

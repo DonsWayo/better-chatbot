@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock server-only modules required by node-executor
 vi.mock("server-only", () => ({}));
@@ -7,6 +7,28 @@ vi.mock("lib/ai/mcp/mcp-manager", () => ({
 }));
 vi.mock("lib/ai/models", () => ({
   customModelProvider: { getModel: vi.fn() },
+}));
+
+// W3 budget/attribution + ADR-0009 model confinement
+const { recordUsageMock, estimateCostUsdMock, routeModelMock } = vi.hoisted(
+  () => ({
+    recordUsageMock: vi.fn().mockResolvedValue(undefined),
+    estimateCostUsdMock: vi.fn().mockReturnValue(0.0123),
+    routeModelMock: vi.fn().mockReturnValue({
+      model: { provider: "openRouter", model: "deepseek-v4-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "substituted",
+      candidates: [],
+    }),
+  }),
+);
+vi.mock("lib/ai/budget", () => ({
+  recordUsage: recordUsageMock,
+  estimateCostUsd: estimateCostUsdMock,
+}));
+vi.mock("lib/ai/routing/route-model", () => ({
+  routeModel: routeModelMock,
 }));
 vi.mock("ai", async () => ({
   ...(await vi.importActual<typeof import("ai")>("ai")),
@@ -355,5 +377,204 @@ describe("llmNodeExecutor — guardrails (W7)", () => {
         state,
       }),
     ).rejects.toThrow(/Guardrail blocked/i);
+  });
+});
+
+// ── W3 budget attribution + ADR-0009 model confinement at the workflow seam ──
+
+import { generateObject } from "ai";
+
+const makeObjectLLMNode = (text: string): LLMNodeData =>
+  ({
+    id: "llm-obj-1",
+    name: "AskObject",
+    kind: NodeKind.LLM,
+    model: { provider: "openai", model: "gpt-test" },
+    messages: [{ role: "user", content: tiptapDoc(text) }],
+    outputSchema: {
+      type: "object",
+      properties: { answer: { type: "object", properties: {} } },
+    },
+  }) as unknown as LLMNodeData;
+
+type AttributedState = WorkflowRuntimeState & {
+  userId?: string;
+  teamId?: string | null;
+  effectiveModelAllowList?: string[] | null;
+};
+
+const makeAttributedState = (over: Partial<AttributedState>): AttributedState =>
+  ({
+    ...makeState(),
+    userId: "user-1",
+    teamId: "team-1",
+    guardrailPolicy: "permissive",
+    ...over,
+  }) as AttributedState;
+
+describe("llmNodeExecutor — budget attribution (W3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeModelMock.mockReturnValue({
+      model: { provider: "openRouter", model: "deepseek-v4-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "substituted",
+      candidates: [],
+    });
+    estimateCostUsdMock.mockReturnValue(0.0123);
+  });
+
+  it("records usage against the executing user + team after a text call", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+      text: "hello",
+    } as never);
+    const state = makeAttributedState({ effectiveModelAllowList: null });
+    await llmNodeExecutor({ node: makeLLMNode("hi"), state });
+
+    expect(recordUsageMock).toHaveBeenCalledTimes(1);
+    expect(recordUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        teamId: "team-1",
+        model: "gpt-test",
+        promptTokens: 100,
+        completionTokens: 50,
+        costUsd: 0.0123,
+      }),
+    );
+    expect(estimateCostUsdMock).toHaveBeenCalledWith("gpt-test", 100, 50);
+  });
+
+  it("records usage after a generateObject (object-branch) call", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      usage: { inputTokens: 20, outputTokens: 10, totalTokens: 30 },
+      object: { foo: "bar" },
+    } as never);
+    const state = makeAttributedState({ effectiveModelAllowList: null });
+    await llmNodeExecutor({ node: makeObjectLLMNode("hi"), state });
+    expect(recordUsageMock).toHaveBeenCalledTimes(1);
+    expect(recordUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ promptTokens: 20, completionTokens: 10 }),
+    );
+  });
+
+  it("does not record usage when there is no executing user", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      text: "x",
+    } as never);
+    const state = makeAttributedState({
+      userId: undefined,
+      effectiveModelAllowList: null,
+    });
+    await llmNodeExecutor({ node: makeLLMNode("hi"), state });
+    expect(recordUsageMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("llmNodeExecutor — model confinement (ADR-0009)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeModelMock.mockReturnValue({
+      model: { provider: "openRouter", model: "deepseek-v4-flash" },
+      taskClass: "general",
+      tier: "fast",
+      reason: "substituted",
+      candidates: [],
+    });
+    estimateCostUsdMock.mockReturnValue(0.0123);
+  });
+
+  it("substitutes the routed model when node.model is outside the allow-list", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { inputTokens: 5, outputTokens: 5, totalTokens: 10 },
+      text: "ok",
+    } as never);
+    // A basic executor whose allow-list excludes the node's premium model.
+    const state = makeAttributedState({
+      effectiveModelAllowList: ["deepseek-v4-flash"],
+    });
+    await llmNodeExecutor({
+      node: {
+        ...makeLLMNode("hi"),
+        model: { provider: "openai", model: "claude-opus-4.8" },
+      } as LLMNodeData,
+      state,
+    });
+
+    // Routed substitution happened…
+    expect(routeModelMock).toHaveBeenCalledWith(
+      expect.objectContaining({ allowedModels: ["deepseek-v4-flash"] }),
+    );
+    // …and usage is recorded under the SUBSTITUTED model, never the premium one.
+    expect(recordUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "deepseek-v4-flash" }),
+    );
+    expect(estimateCostUsdMock).toHaveBeenCalledWith("deepseek-v4-flash", 5, 5);
+  });
+
+  it("keeps the node's model when it is inside the allow-list (no substitution)", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      text: "ok",
+    } as never);
+    const state = makeAttributedState({
+      effectiveModelAllowList: ["gpt-test"],
+    });
+    await llmNodeExecutor({ node: makeLLMNode("hi"), state });
+    expect(routeModelMock).not.toHaveBeenCalled();
+    expect(recordUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "gpt-test" }),
+    );
+  });
+
+  it("is unrestricted when no allow-list is present (null)", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      text: "ok",
+    } as never);
+    const state = makeAttributedState({ effectiveModelAllowList: null });
+    await llmNodeExecutor({
+      node: {
+        ...makeLLMNode("hi"),
+        model: { provider: "openai", model: "claude-opus-4.8" },
+      } as LLMNodeData,
+      state,
+    });
+    expect(routeModelMock).not.toHaveBeenCalled();
+    expect(recordUsageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "claude-opus-4.8" }),
+    );
+  });
+});
+
+describe("llmNodeExecutor — object-branch output scrub (W7 parity)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    estimateCostUsdMock.mockReturnValue(0.0123);
+  });
+
+  it("scrubs system-prompt leakage from string fields of the object output", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      object: {
+        summary: "You are a helpful assistant. The answer is 42.",
+        nested: { note: "fine" },
+      },
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "standard",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeObjectLLMNode("What is the answer?"),
+      state,
+    });
+    const answer = (result.output as { answer: any }).answer;
+    expect(answer.summary).toContain("[REDACTED]");
+    expect(answer.summary).not.toContain("You are a helpful assistant");
+    expect(answer.nested.note).toBe("fine");
   });
 });

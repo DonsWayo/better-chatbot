@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextRequest } from "next/server";
 
-const { getSessionMock, dbSelectMock } = vi.hoisted(() => ({
+const { getSessionMock, dbSelectMock, canAccessMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   dbSelectMock: vi.fn(),
+  canAccessMock: vi.fn(),
 }));
 
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/visibility", () => ({ canAccess: canAccessMock }));
 
 // First select returns collection check; second returns grouped documents
 const dbSelectWhereMock = vi.fn().mockResolvedValue([]);
@@ -34,7 +36,19 @@ function makeRequest(): NextRequest {
 }
 
 describe("GET /api/knowledge/collections/[id]/documents", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Re-establish the select chain cleared by clearAllMocks.
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock, select: vi.fn() });
+    dbSelectFromMock.mockReturnValue({
+      where: dbSelectWhereMock,
+      groupBy: dbSelectGroupByMock,
+    });
+    dbSelectWhereMock.mockResolvedValue([]);
+    dbSelectGroupByMock.mockReturnValue({ orderBy: vi.fn().mockResolvedValue([]) });
+    // Default: viewer can access the collection. Override per-test for IDOR.
+    canAccessMock.mockResolvedValue(true);
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -88,6 +102,23 @@ describe("GET /api/knowledge/collections/[id]/documents", () => {
     const { GET } = await import("./route");
     await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
     expect(dbSelectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 (IDOR) when caller lacks view access to a private collection", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "attacker", role: "user" } });
+    // Collection exists...
+    dbSelectWhereMock.mockResolvedValueOnce([{ id: "col-1" }]);
+    // ...but the visibility resolver denies the viewer.
+    canAccessMock.mockResolvedValueOnce(false);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "col-1" }) });
+    expect(res.status).toBe(404);
+    expect(canAccessMock).toHaveBeenCalledWith(
+      "knowledge_collection",
+      "col-1",
+      "attacker",
+      "view",
+    );
   });
 
   it("returns 200 with empty documents array when collection has no documents", async () => {

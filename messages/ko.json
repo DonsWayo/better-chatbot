@@ -42,7 +42,8 @@
     "generateWithAI": "AI로 생성",
     "resultsFound": "{count}개의 결과 찾음",
     "youAreAnExpertIn": "당신은 {role} 전문가입니다",
-    "sharedBy": "{userName}님이 공유함"
+    "sharedBy": "{userName}님이 공유함",
+    "error": "문제가 발생했습니다"
   },
   "Auth": {
     "SignIn": {
@@ -151,7 +152,8 @@
       "manual": "수동",
       "none": "없음",
       "mentionOnly": "@멘션만",
-      "noToolsAvailable": "사용 가능한 도구가 없습니다"
+      "noToolsAvailable": "사용 가능한 도구가 없습니다",
+      "webSearchError": "웹 검색에 실패했습니다. 다시 시도해 주세요."
     },
     "VoiceChat": {
       "title": "음성 채팅 모드",

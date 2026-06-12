@@ -4,6 +4,9 @@ import { eq } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { AsafeOrgSettingsTable, AsafeTeamTable } from "lib/db/pg/schema.pg";
 import type { TeamModelPolicy } from "lib/db/pg/schema.pg";
+import globalLogger from "logger";
+
+const logger = globalLogger.withDefaults({ message: "model-policy: " });
 
 export type { TeamModelPolicy };
 
@@ -51,8 +54,10 @@ export async function getOrgBaseModelAllowList(): Promise<string[] | null> {
       return dedupe(value.filter((v): v is string => typeof v === "string"));
     }
     return null;
-  } catch {
-    // Fail open: an unreadable settings store must not lock everyone out.
+  } catch (e) {
+    // Fail open: an unreadable settings store must not lock everyone out, but
+    // a broken entitlement layer must be observable.
+    logger.error("org base model allow-list resolution failed", e);
     return null;
   }
 }
@@ -152,7 +157,10 @@ export async function resolveTeamModelAllowList(
           .where(eq(AsafeTeamTable.id, teamId))
           .limit(1);
         return r ?? null;
-      } catch {
+      } catch (e) {
+        // Fail open per layer (the org base still applies), but log so a
+        // broken team-policy read isn't silent.
+        logger.error("team model policy row resolution failed", e);
         return null;
       }
     })(),

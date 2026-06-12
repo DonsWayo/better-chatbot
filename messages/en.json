@@ -42,7 +42,8 @@
     "createWithExample": "Create With Example",
     "resultsFound": "{count} results found",
     "youAreAnExpertIn": "You are an expert in {role}",
-    "sharedBy": "Shared by {userName}"
+    "sharedBy": "Shared by {userName}",
+    "error": "Something went wrong"
   },
   "Error": {},
   "Info": {
@@ -273,7 +274,8 @@
       "manual": "Manual",
       "none": "None",
       "mentionOnly": "@mention only",
-      "noToolsAvailable": "No tools available"
+      "noToolsAvailable": "No tools available",
+      "webSearchError": "Web search failed. Please try again."
     },
     "VoiceChat": {
       "title": "Voice Chat Mode",

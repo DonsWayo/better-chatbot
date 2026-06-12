@@ -1,19 +1,20 @@
 "use client";
 
+import { deleteMessagesByChatIdAfterTimestampAction } from "@/app/api/chat/actions";
+import type { UseChatHelpers } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
-import { Button } from "./ui/button";
+import { Loader } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   type Dispatch,
   type SetStateAction,
-  useState,
-  useMemo,
   useEffect,
+  useMemo,
+  useState,
 } from "react";
+import { toast } from "sonner";
+import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { deleteMessagesByChatIdAfterTimestampAction } from "@/app/api/chat/actions";
-import type { UseChatHelpers } from "@ai-sdk/react";
-import { useTranslations } from "next-intl";
-import { Loader } from "lucide-react";
 
 export type MessageEditorProps = {
   message: UIMessage;
@@ -54,36 +55,45 @@ export function MessageEditor({
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
-    await deleteMessagesByChatIdAfterTimestampAction(message.id);
+    try {
+      await deleteMessagesByChatIdAfterTimestampAction(message.id);
 
-    setMessages((messages) => {
-      const index = messages.findIndex((m) => m.id === message.id);
+      setMessages((messages) => {
+        const index = messages.findIndex((m) => m.id === message.id);
 
-      if (index !== -1) {
-        const updatedParts = [...message.parts];
-        const lastPartIndex = updatedParts.length - 1;
-        const lastPart = updatedParts[lastPartIndex];
+        if (index !== -1) {
+          const updatedParts = [...message.parts];
+          const lastPartIndex = updatedParts.length - 1;
+          const lastPart = updatedParts[lastPartIndex];
 
-        if (lastPart && lastPart.type === "text") {
-          updatedParts[lastPartIndex] = {
-            ...lastPart,
-            text: draftText,
+          if (lastPart && lastPart.type === "text") {
+            updatedParts[lastPartIndex] = {
+              ...lastPart,
+              text: draftText,
+            };
+          }
+
+          const updatedMessage: UIMessage = {
+            ...message,
+            parts: updatedParts,
           };
+
+          return [...messages.slice(0, index), updatedMessage];
         }
 
-        const updatedMessage: UIMessage = {
-          ...message,
-          parts: updatedParts,
-        };
+        return messages;
+      });
 
-        return [...messages.slice(0, index), updatedMessage];
-      }
-
-      return messages;
-    });
-
-    setMode("view");
-    sendMessage();
+      setMode("view");
+      sendMessage();
+    } catch (error) {
+      // If the server-side truncation fails we must NOT mutate local state —
+      // the edit didn't save. Surface the error and re-enable the button.
+      console.error("Failed to save edited message", error);
+      toast.error(t("Common.error"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   useEffect(() => {
     if (!canEdit) {

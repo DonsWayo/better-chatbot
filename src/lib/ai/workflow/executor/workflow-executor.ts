@@ -83,6 +83,15 @@ export const createWorkflowExecutor = (workflow: {
    */
   userId?: string;
   guardrailPolicy?: string;
+  /**
+   * Budget/entitlement attribution (ADR-0003/ADR-0009): the executing user's
+   * team + resolved effective model allow-list, injected by the caller
+   * (execute route / detached worker). LLM/tool nodes confine `node.model` to
+   * this list and record usage against userId+teamId. Absent → unrestricted /
+   * no attribution.
+   */
+  teamId?: string | null;
+  effectiveModelAllowList?: string[] | null;
 }) => {
   // Create runtime state store for the workflow
   const store = createGraphStore({
@@ -91,6 +100,8 @@ export const createWorkflowExecutor = (workflow: {
     agentSessionId: workflow.agentSessionId,
     userId: workflow.userId,
     guardrailPolicy: workflow.guardrailPolicy,
+    teamId: workflow.teamId,
+    effectiveModelAllowList: workflow.effectiveModelAllowList,
   });
 
   const logger =

@@ -10,7 +10,16 @@ const get = <T>(
   defaultValue?: T,
 ): T | undefined => {
   const value = storage.getItem(`${PRE_FIX}-${key}`);
-  if (value) return JSON.parse(value).value;
+  if (value) {
+    try {
+      return JSON.parse(value).value;
+    } catch {
+      // A corrupt entry must not brick the whole app on hydration. Drop the
+      // bad key and fall back to the default value.
+      storage.removeItem(`${PRE_FIX}-${key}`);
+      return defaultValue;
+    }
+  }
   return defaultValue;
 };
 

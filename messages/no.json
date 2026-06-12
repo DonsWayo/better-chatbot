@@ -42,7 +42,8 @@
     "createWithExample": "Opprett med eksempel",
     "resultsFound": "{count} resultater funnet",
     "youAreAnExpertIn": "Du er en ekspert på {role}",
-    "sharedBy": "Delt av {userName}"
+    "sharedBy": "Delt av {userName}",
+    "error": "Noe gikk galt"
   },
   "Error": {},
   "Info": {
@@ -273,7 +274,8 @@
       "manual": "Manuell",
       "none": "Ingen",
       "mentionOnly": "kun @nevning",
-      "noToolsAvailable": "Ingen verktøy tilgjengelig"
+      "noToolsAvailable": "Ingen verktøy tilgjengelig",
+      "webSearchError": "Nettsøket mislyktes. Vennligst prøv igjen."
     },
     "VoiceChat": {
       "title": "Talechat-modus",

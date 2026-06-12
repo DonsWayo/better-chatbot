@@ -91,15 +91,40 @@ export async function POST(
 
   // W7 guardrails (ADR-0008): resolve the invoking user's team posture so LLM
   // nodes scan with the team policy; failures fall back to the org default.
+  // W3/ADR-0009: also resolve the executing user's team + effective model
+  // allow-list so LLM/tool nodes are budget-attributed and model-confined.
   let guardrailPolicy: string | undefined;
+  let teamId: string | null = null;
+  let effectiveModelAllowList: string[] | null = null;
   try {
     const { getTeamPolicy, getUserPrimaryTeamId } = await import(
       "lib/admin/teams"
     );
-    const teamId = await getUserPrimaryTeamId(session.user.id);
+    teamId = await getUserPrimaryTeamId(session.user.id);
     if (teamId) guardrailPolicy = (await getTeamPolicy(teamId)).guardrailPolicy;
   } catch {
     // org default applies
+  }
+  try {
+    const { resolveEffectiveModelAllowList } = await import(
+      "lib/admin/effective-models"
+    );
+    effectiveModelAllowList = await resolveEffectiveModelAllowList(
+      session.user.id,
+      teamId,
+    );
+  } catch {
+    // unrestricted on resolver failure (fail open, matching the chat seam)
+  }
+
+  // W3 (ADR-0003): enforce the team budget before a synchronous run executes.
+  const { checkBudget } = await import("lib/ai/budget");
+  const budgetCheck = await checkBudget(session.user.id, teamId);
+  if (!budgetCheck.allowed) {
+    return Response.json(
+      { message: budgetCheck.reason ?? "Team budget exhausted" },
+      { status: 402 },
+    );
   }
 
   const app = createWorkflowExecutor({
@@ -109,6 +134,8 @@ export async function POST(
     agentSessionId,
     userId: session.user.id,
     guardrailPolicy,
+    teamId,
+    effectiveModelAllowList,
   });
 
   if (agentSessionId) {

@@ -82,6 +82,18 @@ vi.mock("drizzle-orm", () => ({
 
 vi.mock("server-only", () => ({}));
 
+const loggerErrorMock = vi.hoisted(() => vi.fn());
+vi.mock("logger", () => ({
+  default: {
+    withDefaults: () => ({
+      error: loggerErrorMock,
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+    }),
+  },
+}));
+
 import {
   ORG_BASE_MODEL_ALLOW_LIST_KEY,
   getOrgBaseModelAllowList,
@@ -213,6 +225,13 @@ describe("getOrgBaseModelAllowList", () => {
   it("fails open (null) when the settings table is unreachable", async () => {
     state.orgSelectThrows = true;
     await expect(getOrgBaseModelAllowList()).resolves.toBeNull();
+  });
+
+  it("logs an error when the settings store is unreachable (observable fail-open)", async () => {
+    loggerErrorMock.mockClear();
+    state.orgSelectThrows = true;
+    await getOrgBaseModelAllowList();
+    expect(loggerErrorMock).toHaveBeenCalled();
   });
 });
 

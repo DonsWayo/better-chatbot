@@ -12,6 +12,7 @@ const {
   deleteThreadMock,
   deleteChatMessageMock,
   deleteMessagesByTimestampMock,
+  selectMessageByIdMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   selectThreadMock: vi.fn(),
@@ -24,6 +25,7 @@ const {
   deleteThreadMock: vi.fn(),
   deleteChatMessageMock: vi.fn(),
   deleteMessagesByTimestampMock: vi.fn(),
+  selectMessageByIdMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
@@ -38,6 +40,7 @@ vi.mock("lib/db/repository", () => ({
     deleteThread: deleteThreadMock,
     deleteChatMessage: deleteChatMessageMock,
     deleteMessagesByChatIdAfterTimestamp: deleteMessagesByTimestampMock,
+    selectMessageById: selectMessageByIdMock,
   },
   chatExportRepository: { exportChat: exportChatMock },
   agentRepository: { selectAgentById: vi.fn() },
@@ -139,11 +142,31 @@ describe("deleteMessageAction", () => {
     vi.clearAllMocks();
   });
 
-  it("calls deleteChatMessage with messageId", async () => {
+  it("throws when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { deleteMessageAction } = await import("./actions");
+    await expect(deleteMessageAction("m1")).rejects.toThrow(/Unauthorized/i);
+    expect(deleteChatMessageMock).not.toHaveBeenCalled();
+  });
+
+  it("deletes when caller owns the message's thread", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectMessageByIdMock.mockResolvedValue({ id: "m1", threadId: "t1" });
+    checkAccessMock.mockResolvedValue(true);
     deleteChatMessageMock.mockResolvedValue(undefined);
     const { deleteMessageAction } = await import("./actions");
     await deleteMessageAction("m1");
+    expect(checkAccessMock).toHaveBeenCalledWith("t1", "u1");
     expect(deleteChatMessageMock).toHaveBeenCalledWith("m1");
+  });
+
+  it("throws Forbidden and does not delete another user's message", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "attacker" } });
+    selectMessageByIdMock.mockResolvedValue({ id: "m1", threadId: "t1" });
+    checkAccessMock.mockResolvedValue(false);
+    const { deleteMessageAction } = await import("./actions");
+    await expect(deleteMessageAction("m1")).rejects.toThrow(/Forbidden/i);
+    expect(deleteChatMessageMock).not.toHaveBeenCalled();
   });
 });
 
@@ -167,13 +190,41 @@ describe("deleteMessagesByChatIdAfterTimestampAction", () => {
     vi.clearAllMocks();
   });
 
-  it("calls deleteMessagesByChatIdAfterTimestamp with messageId", async () => {
+  it("throws when unauthenticated", async () => {
+    getSessionMock.mockResolvedValue(null);
+    const { deleteMessagesByChatIdAfterTimestampAction } = await import(
+      "./actions"
+    );
+    await expect(
+      deleteMessagesByChatIdAfterTimestampAction("m1"),
+    ).rejects.toThrow(/Unauthorized/i);
+    expect(deleteMessagesByTimestampMock).not.toHaveBeenCalled();
+  });
+
+  it("truncates when caller owns the pivot message's thread", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    selectMessageByIdMock.mockResolvedValue({ id: "m1", threadId: "t1" });
+    checkAccessMock.mockResolvedValue(true);
     deleteMessagesByTimestampMock.mockResolvedValue(undefined);
     const { deleteMessagesByChatIdAfterTimestampAction } = await import(
       "./actions"
     );
     await deleteMessagesByChatIdAfterTimestampAction("m1");
+    expect(checkAccessMock).toHaveBeenCalledWith("t1", "u1");
     expect(deleteMessagesByTimestampMock).toHaveBeenCalledWith("m1");
+  });
+
+  it("throws Forbidden and does not truncate another user's thread", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "attacker" } });
+    selectMessageByIdMock.mockResolvedValue({ id: "m1", threadId: "t1" });
+    checkAccessMock.mockResolvedValue(false);
+    const { deleteMessagesByChatIdAfterTimestampAction } = await import(
+      "./actions"
+    );
+    await expect(
+      deleteMessagesByChatIdAfterTimestampAction("m1"),
+    ).rejects.toThrow(/Forbidden/i);
+    expect(deleteMessagesByTimestampMock).not.toHaveBeenCalled();
   });
 });
 
@@ -188,15 +239,27 @@ describe("updateThreadAction", () => {
     await expect(updateThreadAction("t1", { title: "New" })).rejects.toThrow();
   });
 
-  it("calls updateThread with userId merged", async () => {
+  it("calls updateThread with userId merged when caller owns the thread", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValue(true);
     updateThreadMock.mockResolvedValue(undefined);
     const { updateThreadAction } = await import("./actions");
     await updateThreadAction("t1", { title: "New" });
+    expect(checkAccessMock).toHaveBeenCalledWith("t1", "u1");
     expect(updateThreadMock).toHaveBeenCalledWith("t1", {
       title: "New",
       userId: "u1",
     });
+  });
+
+  it("throws Forbidden and does not rename another user's thread", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "attacker" } });
+    checkAccessMock.mockResolvedValue(false);
+    const { updateThreadAction } = await import("./actions");
+    await expect(updateThreadAction("t1", { title: "New" })).rejects.toThrow(
+      /Forbidden/i,
+    );
+    expect(updateThreadMock).not.toHaveBeenCalled();
   });
 });
 

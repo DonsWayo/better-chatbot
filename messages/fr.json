@@ -41,7 +41,8 @@
     "createWithExample": "Créer avec Exemple",
     "resultsFound": "{count} résultats trouvés",
     "youAreAnExpertIn": "Vous êtes un expert en {role}",
-    "sharedBy": "Partagé par {userName}"
+    "sharedBy": "Partagé par {userName}",
+    "error": "Une erreur est survenue"
   },
   "Auth": {
     "SignIn": {
@@ -150,7 +151,8 @@
       "manual": "Manuel",
       "none": "Aucun",
       "mentionOnly": "@mention uniquement",
-      "noToolsAvailable": "Aucun outil disponible"
+      "noToolsAvailable": "Aucun outil disponible",
+      "webSearchError": "La recherche web a échoué. Veuillez réessayer."
     },
     "VoiceChat": {
       "title": "Mode Chat Vocal",

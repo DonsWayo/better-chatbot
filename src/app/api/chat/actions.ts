@@ -82,6 +82,24 @@ export async function selectThreadWithMessagesAction(threadId: string) {
 }
 
 export async function deleteMessageAction(messageId: string) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+  // A message id alone carries no owner. Resolve its thread and verify the
+  // caller owns that thread before deleting — otherwise any logged-in user
+  // could delete anyone's message by guessing/enumerating ids.
+  const message = await chatRepository.selectMessageById(messageId);
+  if (!message) {
+    return;
+  }
+  const hasAccess = await chatRepository.checkAccess(
+    message.threadId,
+    session.user.id,
+  );
+  if (!hasAccess) {
+    throw new Error("Forbidden");
+  }
   await chatRepository.deleteChatMessage(messageId);
 }
 
@@ -104,6 +122,23 @@ export async function deleteMessagesByChatIdAfterTimestampAction(
   messageId: string,
 ) {
   "use server";
+  const session = await getSession();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+  // Truncating a thread from a pivot message: verify the caller owns the
+  // thread the pivot message belongs to before deleting the tail.
+  const message = await chatRepository.selectMessageById(messageId);
+  if (!message) {
+    return;
+  }
+  const hasAccess = await chatRepository.checkAccess(
+    message.threadId,
+    session.user.id,
+  );
+  if (!hasAccess) {
+    throw new Error("Forbidden");
+  }
   await chatRepository.deleteMessagesByChatIdAfterTimestamp(messageId);
 }
 
@@ -112,6 +147,12 @@ export async function updateThreadAction(
   thread: Partial<Omit<ChatThread, "createdAt" | "updatedAt" | "userId">>,
 ) {
   const userId = await getUserId();
+  // updateThread filters by thread id only; scope by owner so a user can't
+  // rename a thread they don't own.
+  const hasAccess = await chatRepository.checkAccess(id, userId);
+  if (!hasAccess) {
+    throw new Error("Forbidden");
+  }
   await chatRepository.updateThread(id, { ...thread, userId });
 }
 

@@ -171,6 +171,8 @@ export type ChatRepository = {
 
   selectMessagesByThreadId(threadId: string): Promise<ChatMessage[]>;
 
+  selectMessageById(messageId: string): Promise<ChatMessage | null>;
+
   selectThreadsByUserId(userId: string): Promise<
     (ChatThread & {
       lastMessageAt: number;

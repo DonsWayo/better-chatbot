@@ -31,6 +31,12 @@ const MODEL_PRICING: Record<string, ModelPricing> = {
   "gpt-5.5": { promptPerM: 2.5, completionPerM: 10 },
   "gemini-3.5-flash": { promptPerM: 0.15, completionPerM: 0.6 },
   "gemini-3.1-flash-lite": { promptPerM: 0.1, completionPerM: 0.4 },
+  // Cost stack — the Auto routing tiers (frontier/balanced/fast/cheap). Prices
+  // per src/lib/ai/routing/policy.ts; keys match the registry ids in
+  // src/lib/ai/models.ts (bare ids, not OpenRouter slugs).
+  "kimi-k2.6": { promptPerM: 0.68, completionPerM: 3.41 }, // frontier tier
+  "deepseek-v4-pro": { promptPerM: 0.43, completionPerM: 0.87 }, // balanced tier
+  "deepseek-v4-flash": { promptPerM: 0.1, completionPerM: 0.2 }, // fast/cheap tier
   // Embeddings (input-only). Verified against OpenRouter /api/v1/embeddings/models
   // on 2026-06-11: prompt $0.00000002/token = $0.02 per 1M tokens, completion $0.
   "openai/text-embedding-3-small": { promptPerM: 0.02, completionPerM: 0 },

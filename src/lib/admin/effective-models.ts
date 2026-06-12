@@ -1,10 +1,13 @@
 import "server-only";
 
+import globalLogger from "logger";
 import {
   getOrgBaseModelAllowList,
   resolveTeamModelAllowList,
 } from "./model-policy";
 import { getUserModelGrants } from "./user-grants";
+
+const logger = globalLogger.withDefaults({ message: "effective-models: " });
 
 // ---------------------------------------------------------------------------
 // Request-time entitlement resolution (ADR-0009), ERP price-list style.
@@ -46,6 +49,11 @@ export async function resolveEffectiveModelAllowList(
   // Unrestricted (or legacy "empty = unrestricted") — grants cannot narrow it.
   if (base === null || base.length === 0) return null;
 
-  const grants = await getUserModelGrants(userId).catch(() => []);
+  const grants = await getUserModelGrants(userId).catch((e) => {
+    // Fail open per layer: an unreadable grants table contributes no extra
+    // models (the base list still applies). Log so it isn't silent.
+    logger.error("user model grants resolution failed", e);
+    return [] as string[];
+  });
   return Array.from(new Set([...base, ...grants]));
 }

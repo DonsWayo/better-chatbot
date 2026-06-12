@@ -258,7 +258,16 @@ export const getSession = async () => {
     const session = await auth.api.getSession({
       headers: reqHeaders,
     });
-    return session ?? null;
+    if (!session) return null;
+    // Banned-user backstop: better-auth's admin plugin sets user.banned, but no
+    // app code consumed it — a banned user kept a fully valid session. Treat a
+    // banned user as having no session so every getSession-gated handler/action
+    // rejects them. Minimal and fail-safe: anything that isn't strictly `true`
+    // (incl. expired temporary bans) stays signed in.
+    if ((session.user as { banned?: boolean | null })?.banned === true) {
+      return null;
+    }
+    return session;
   } catch (error) {
     logger.error("Error getting session:", error);
     return null;

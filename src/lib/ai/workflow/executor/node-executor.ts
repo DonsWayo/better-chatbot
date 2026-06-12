@@ -11,8 +11,11 @@ import {
   scanInput,
   scanOutput,
 } from "lib/ai/guardrails/scan";
+import type { ChatModel } from "app-types/chat";
+import { estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { customModelProvider } from "lib/ai/models";
+import { routeModel } from "lib/ai/routing/route-model";
 import { DefaultToolName } from "lib/ai/tools";
 import {
   exaContentsToolForWorkflow,
@@ -155,6 +158,89 @@ function applyOutputGuardrails(
   return scanOutput(text).text;
 }
 
+// ── W3 budget enforcement + usage attribution at the workflow LLM seam ──────
+// (ADR-0003/ADR-0009). Workflow LLM/tool nodes burn provider tokens OUTSIDE
+// the chat route, so the same controls apply here against the EXECUTING user
+// (state.userId/teamId), not the workflow author:
+//   - node.model is confined to the executing user's effective allow-list;
+//     a node naming a model outside the list is SUBSTITUTED with the routed
+//     allow-list-respecting model (keeps the workflow running) and logged;
+//   - every call records a usage event + increments the team budget.
+
+/**
+ * Confine `node.model` to the executing user's effective allow-list.
+ * - No allow-list (null/empty) → unrestricted: use the node's model as-is.
+ * - In the list → use it.
+ * - Outside the list → SUBSTITUTE with routeModel constrained to the same list
+ *   (so we never silently run a premium model the user can't use), logging the
+ *   downgrade. routeModel always returns a model, so the node keeps running.
+ */
+function resolveAllowedModel(
+  requested: ChatModel,
+  state: WorkflowRuntimeState,
+): ChatModel {
+  const allow = state.effectiveModelAllowList;
+  if (!allow || allow.length === 0) return requested;
+  if (requested?.model && allow.includes(requested.model)) return requested;
+
+  const routed = routeModel({
+    text: "",
+    totalChars: 0,
+    allowedModels: allow,
+  });
+  // Lazy import keeps the logger/metrics out of this module's static graph.
+  import("logger")
+    .then((m) =>
+      m.default
+        .withDefaults({ message: "workflow-model-guard: " })
+        .warn(
+          `node model "${requested?.model ?? "(none)"}" not in allow-list; substituting "${routed.model.model}"`,
+        ),
+    )
+    .catch(() => {});
+  return routed.model;
+}
+
+/** Token usage shape returned by generateText/generateObject. */
+interface CallUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+}
+
+/**
+ * Record a usage event for one workflow provider call against the EXECUTING
+ * user (state.userId/teamId), priced via estimateCostUsd. Fire-and-forget:
+ * recordUsage swallows its own errors, but we also guard the attribution so a
+ * missing userId never throws inside a node.
+ */
+function recordNodeUsage(
+  state: WorkflowRuntimeState,
+  model: ChatModel,
+  usage: CallUsage | undefined,
+): void {
+  if (!state.userId) return;
+  const promptTokens = usage?.inputTokens ?? 0;
+  const completionTokens = usage?.outputTokens ?? 0;
+  const costUsd = estimateCostUsd(
+    model?.model ?? "",
+    promptTokens,
+    completionTokens,
+  );
+  recordUsage({
+    userId: state.userId,
+    teamId: state.teamId ?? null,
+    sessionId: state.agentSessionId ?? null,
+    model: model?.model ?? "",
+    provider: model?.provider ?? "",
+    taskClass: null,
+    tier: null,
+    promptTokens,
+    completionTokens,
+    costUsd,
+  }).catch(() => {});
+}
+
 /**
  * LLM Node Executor
  * Executes Large Language Model interactions with support for:
@@ -166,7 +252,10 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
   node,
   state,
 }) => {
-  const model = customModelProvider.getModel(node.model);
+  // W3/ADR-0009: confine the node's model to the executing user's effective
+  // allow-list before any provider call (substitution keeps the run alive).
+  const chatModel = resolveAllowedModel(node.model, state);
+  const model = customModelProvider.getModel(chatModel);
 
   // Convert TipTap JSON messages to AI SDK format, resolving mentions to actual data
   // W7: then run the resolved content through the input guardrail stage.
@@ -185,7 +274,7 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     node.outputSchema.properties?.answer?.type === "string";
 
   state.setInput(node.id, {
-    chatModel: node.model,
+    chatModel,
     messages,
     responseFormat: isTextResponse ? "text" : "object",
   });
@@ -195,6 +284,8 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
       model,
       messages: convertToModelMessages(messages),
     });
+    // W3: attribute this provider call to the executing user + team budget.
+    recordNodeUsage(state, chatModel, response.usage);
     return {
       output: {
         totalTokens: response.usage.totalTokens,
@@ -211,13 +302,36 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     maxRetries: 3,
   });
 
+  // W3: attribute this provider call to the executing user + team budget.
+  recordNodeUsage(state, chatModel, response.usage);
+
   return {
     output: {
       totalTokens: response.usage.totalTokens,
-      answer: response.object,
+      // W7: object-branch output scrub (parity with the text branch) — the
+      // object is serialized so leak markers in string fields are scrubbed too.
+      answer: scrubObjectOutput(response.object, state),
     },
   };
 };
+
+/**
+ * Apply the output-leak scrub to a structured (generateObject) result. The
+ * text branch scrubs its string; here we walk JSON string leaves so the same
+ * system-prompt-leak protection covers the object branch. A no-op when the
+ * policy disables outputLeakProtection (applyOutputGuardrails handles that).
+ */
+function scrubObjectOutput(value: unknown, state: WorkflowRuntimeState): any {
+  if (typeof value === "string") return applyOutputGuardrails(value, state);
+  if (Array.isArray(value))
+    return value.map((v) => scrubObjectOutput(v, state));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, scrubObjectOutput(v, state)]),
+    );
+  }
+  return value;
+}
 
 /**
  * Condition Node Executor
@@ -305,8 +419,11 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
       prompt = r.text;
     }
 
+    // W3/ADR-0009: confine the param-gen model to the executing user's
+    // allow-list and attribute the call to their team budget.
+    const chatModel = resolveAllowedModel(node.model, state);
     const response = await generateText({
-      model: customModelProvider.getModel(node.model),
+      model: customModelProvider.getModel(chatModel),
       toolChoice: "required", // Force the model to call the tool
       prompt: prompt || "",
       tools: {
@@ -316,6 +433,7 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
         },
       },
     });
+    recordNodeUsage(state, chatModel, response.usage);
 
     result.input = {
       parameter: response.toolCalls.find((call) => call.input)?.input,

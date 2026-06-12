@@ -21,6 +21,17 @@ export interface WorkflowRuntimeState {
    */
   userId?: string;
   guardrailPolicy?: string;
+  /**
+   * Budget/entitlement attribution (ADR-0003/ADR-0009): the executing user's
+   * team and resolved effective model allow-list, injected by the caller
+   * (execute route / worker). LLM and tool nodes:
+   *   - confine `node.model` to `effectiveModelAllowList` (substitute the
+   *     routed/fallback model when a node names a model the user can't use);
+   *   - record usage against `userId`+`teamId` after every provider call.
+   * `effectiveModelAllowList === null/undefined` means unrestricted.
+   */
+  teamId?: string | null;
+  effectiveModelAllowList?: string[] | null;
   inputs: {
     [nodeId: string]: any;
   };
@@ -41,6 +52,8 @@ export const createGraphStore = (params: {
   agentSessionId?: string;
   userId?: string;
   guardrailPolicy?: string;
+  teamId?: string | null;
+  effectiveModelAllowList?: string[] | null;
 }) => {
   return graphStore<WorkflowRuntimeState>((set, get) => {
     return {
@@ -48,6 +61,8 @@ export const createGraphStore = (params: {
       agentSessionId: params.agentSessionId,
       userId: params.userId,
       guardrailPolicy: params.guardrailPolicy,
+      teamId: params.teamId,
+      effectiveModelAllowList: params.effectiveModelAllowList,
       outputs: {},
       inputs: {},
       nodes: params.nodes,

@@ -31,12 +31,26 @@ const dbDeleteMock = vi.fn().mockReturnValue({ where: dbDeleteWhereMock });
 
 const dbExecuteMock = vi.fn().mockResolvedValue([]);
 
+// eraseUserData now runs inside db.transaction(async (tx) => {...}). The tx
+// handle exposes the same chainable methods as the top-level db, so we hand the
+// callback an object backed by the same mocks and let assertions inspect them.
+const txHandle = {
+  select: dbSelectMock,
+  update: dbUpdateMock,
+  delete: dbDeleteMock,
+  execute: dbExecuteMock,
+};
+const dbTransactionMock = vi.fn(
+  async (cb: (tx: typeof txHandle) => Promise<unknown>) => cb(txHandle),
+);
+
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: {
     select: dbSelectMock,
     update: dbUpdateMock,
     delete: dbDeleteMock,
     execute: dbExecuteMock,
+    transaction: dbTransactionMock,
   },
 }));
 vi.mock("@/lib/db/pg/schema.pg", () => ({
@@ -136,6 +150,62 @@ describe("eraseUserData", () => {
     const { eraseUserData } = await import("./gdpr");
     await eraseUserData("u1");
     expect(dbDeleteMock).toHaveBeenCalledTimes(6);
+  });
+});
+
+describe("eraseUserData — audit record & transaction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbUpdateMock.mockReturnValue({ set: dbUpdateSetMock });
+    dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
+    dbTransactionMock.mockImplementation(async (cb) => cb(txHandle));
+  });
+
+  it("runs the whole erasure inside a single db.transaction", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u-tx");
+    expect(dbTransactionMock).toHaveBeenCalledOnce();
+  });
+
+  it("writes the audit INSERT to the `details` column (not `detail`)", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u-col");
+    const arg = dbExecuteMock.mock.calls[0][0] as {
+      query: string;
+      values: unknown[];
+    };
+    // sql mock joins the template literal with "?" placeholders.
+    expect(arg.query).toContain("details");
+    expect(arg.query).toContain("asafe_audit_log");
+    // must NOT reference the non-existent singular column as a bare identifier
+    expect(arg.query).not.toMatch(/\(\s*event_type,\s*user_id,\s*detail\s*\)/);
+  });
+
+  it("binds valid jsonb for the audit details payload", async () => {
+    dbExecuteMock.mockResolvedValueOnce([]);
+    const { eraseUserData } = await import("./gdpr");
+    await eraseUserData("u-json");
+    const arg = dbExecuteMock.mock.calls[0][0] as {
+      query: string;
+      values: unknown[];
+    };
+    // the details value is interpolated as a param and cast ::jsonb
+    expect(arg.query).toContain("::jsonb");
+    const jsonParam = arg.values.find(
+      (v) => typeof v === "string" && v.includes("gdpr_erasure"),
+    ) as string;
+    expect(jsonParam).toBeTruthy();
+    expect(() => JSON.parse(jsonParam)).not.toThrow();
+    expect(JSON.parse(jsonParam)).toEqual({ gdpr_erasure: true });
+  });
+
+  it("rolls back (propagates) when the audit INSERT fails — no swallow", async () => {
+    dbTransactionMock.mockImplementationOnce(async (cb) => cb(txHandle));
+    dbExecuteMock.mockRejectedValueOnce(new Error("column detail does not exist"));
+    const { eraseUserData } = await import("./gdpr");
+    await expect(eraseUserData("u-fail")).rejects.toThrow();
   });
 });
 

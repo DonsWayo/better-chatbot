@@ -42,7 +42,8 @@
     "generateWithAI": "用 AI 生成",
     "resultsFound": "找到 {count} 个结果",
     "youAreAnExpertIn": "您是{role}专家",
-    "sharedBy": "{userName} 分享"
+    "sharedBy": "{userName} 分享",
+    "error": "出错了"
   },
   "Auth": {
     "SignIn": {
@@ -151,7 +152,8 @@
       "manual": "手动",
       "none": "无",
       "mentionOnly": "仅@提及",
-      "noToolsAvailable": "无可用工具"
+      "noToolsAvailable": "无可用工具",
+      "webSearchError": "网络搜索失败，请重试。"
     },
     "VoiceChat": {
       "title": "语音聊天模式",

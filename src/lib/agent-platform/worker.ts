@@ -120,6 +120,23 @@ export async function runClaimedSession(
     return "requeued";
   }
 
+  // Defense in depth (ADR-0009): re-verify the session owner can still access
+  // this workflow at execution time, even though createScheduleAction gated it
+  // at schedule time — grants/visibility may have been revoked since. A
+  // sessionless or inaccessible run is failed, never executed.
+  if (session.userId) {
+    const stillHasAccess = await workflowRepository
+      .checkAccess(session.definitionId, session.userId, true)
+      .catch(() => false);
+    if (!stillHasAccess) {
+      await failSession(
+        session.id,
+        `User ${session.userId} no longer has access to workflow ${session.definitionId}`,
+      );
+      return "failed";
+    }
+  }
+
   const workflow = await workflowRepository.selectStructureById(
     session.definitionId,
   );
@@ -130,17 +147,46 @@ export async function runClaimedSession(
 
   // W7 guardrails (ADR-0008): detached runs scan LLM-node prompts with the
   // session owner's team posture; failures fall back to the org default.
+  // W3/ADR-0009: resolve the owner's team + effective model allow-list so
+  // LLM/tool nodes are budget-attributed and model-confined out-of-band.
   let guardrailPolicy: string | undefined;
+  let teamId: string | null = session.teamId ?? null;
+  let effectiveModelAllowList: string[] | null = null;
   if (session.userId) {
     try {
       const { getTeamPolicy, getUserPrimaryTeamId } = await import(
         "lib/admin/teams"
       );
-      const teamId = await getUserPrimaryTeamId(session.userId);
+      teamId = teamId ?? (await getUserPrimaryTeamId(session.userId));
       if (teamId)
         guardrailPolicy = (await getTeamPolicy(teamId)).guardrailPolicy;
     } catch {
       // org default applies
+    }
+    try {
+      const { resolveEffectiveModelAllowList } = await import(
+        "lib/admin/effective-models"
+      );
+      effectiveModelAllowList = await resolveEffectiveModelAllowList(
+        session.userId,
+        teamId,
+      );
+    } catch {
+      // unrestricted on resolver failure (fail open, matching the chat seam)
+    }
+  }
+
+  // W3 (ADR-0003): enforce the owner's team budget before a scheduled run.
+  // A budget-exhausted routine is failed (not silently billed to nothing).
+  if (session.userId) {
+    const { checkBudget } = await import("lib/ai/budget");
+    const budgetCheck = await checkBudget(session.userId, teamId);
+    if (!budgetCheck.allowed) {
+      await failSession(
+        session.id,
+        budgetCheck.reason ?? "Team budget exhausted",
+      );
+      return "failed";
     }
   }
 
@@ -152,6 +198,8 @@ export async function runClaimedSession(
     }),
     userId: session.userId ?? undefined,
     guardrailPolicy,
+    teamId,
+    effectiveModelAllowList,
   });
   const detach = attachSessionPersistence(
     executor as unknown as SubscribableExecutor,

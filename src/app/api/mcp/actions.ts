@@ -215,7 +215,50 @@ export async function removeMcpClientAction(id: string) {
   await mcpClientsManager.removeClient(id);
 }
 
+/**
+ * Gate for actions that RECONNECT / re-authorize / inspect OAuth state of a
+ * specific connector. These mutate server-side connection state, so they need
+ * the same owner/admin gate used for editing or deleting the server
+ * (canManageMCPServer). Throws on missing session, unknown server, or denial.
+ */
+async function assertCanManageServerById(id: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    throw new Error("You must be logged in");
+  }
+  const mcpServer = await mcpRepository.selectById(id);
+  if (!mcpServer) {
+    throw new Error("MCP server not found");
+  }
+  const canManage = await canManageMCPServer(
+    mcpServer.userId,
+    mcpServer.visibility,
+  );
+  if (!canManage) {
+    throw new Error("You don't have permission to manage this MCP connection");
+  }
+  return mcpServer;
+}
+
+/**
+ * Gate for actions that INVOKE a tool. The caller must be able to access the
+ * server (own it, be a member of a team it's shared with, it's public/featured,
+ * or be an admin) — the same visibility set selectMcpClientsAction filters by.
+ */
+async function assertCanUseServerById(id: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    throw new Error("You must be logged in");
+  }
+  if (currentUser.role === "admin") return;
+  const accessible = await mcpRepository.selectAllForUser(currentUser.id);
+  if (!accessible.some((s) => s.id === id)) {
+    throw new Error("You don't have access to this MCP connection");
+  }
+}
+
 export async function refreshMcpClientAction(id: string) {
+  await assertCanManageServerById(id);
   await mcpClientsManager.refreshClient(id);
 }
 
@@ -229,6 +272,7 @@ export async function authorizeMcpClientAction(id: string) {
 }
 
 export async function checkTokenMcpClientAction(id: string) {
+  await assertCanManageServerById(id);
   const session = await mcpOAuthRepository.getAuthenticatedSession(id);
 
   // for wait connect to mcp server
@@ -242,6 +286,7 @@ export async function callMcpToolAction(
   toolName: string,
   input: unknown,
 ) {
+  await assertCanUseServerById(id);
   return mcpClientsManager.toolCall(id, toolName, input);
 }
 
@@ -250,6 +295,11 @@ export async function callMcpToolByServerNameAction(
   toolName: string,
   input: unknown,
 ) {
+  const server = await mcpRepository.selectByServerName(serverName);
+  if (!server) {
+    throw new Error("MCP server not found");
+  }
+  await assertCanUseServerById(server.id);
   return mcpClientsManager.toolCallByServerName(serverName, toolName, input);
 }
 

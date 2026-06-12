@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 /**
  * Acceptable-Use Policy modal (EU AI Act Article 50 transparency + GDPR).
@@ -35,11 +36,17 @@ export function AupModal() {
   const handleAccept = async () => {
     setAccepting(true);
     try {
-      await fetch("/api/compliance/aup", { method: "POST" });
+      const res = await fetch("/api/compliance/aup", { method: "POST" });
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
       setOpen(false);
     } catch {
-      // Non-fatal — let the user through anyway (fail open)
-      setOpen(false);
+      // Compliance record must be written before the user proceeds. On
+      // failure keep the modal open and surface the error so they can retry.
+      toast.error(
+        "Could not record your acceptance. Please try again or contact your administrator.",
+      );
     } finally {
       setAccepting(false);
     }

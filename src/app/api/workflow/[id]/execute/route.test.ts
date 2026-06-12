@@ -8,6 +8,10 @@ const {
   createAgentSessionMock,
   attachSessionPersistenceMock,
   markSessionAwaitingApprovalMock,
+  checkBudgetMock,
+  getUserPrimaryTeamIdMock,
+  getTeamPolicyMock,
+  resolveAllowListMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   checkAccessMock: vi.fn(),
@@ -19,6 +23,10 @@ const {
   createAgentSessionMock: vi.fn().mockResolvedValue({ id: "agent-session-1" }),
   attachSessionPersistenceMock: vi.fn(() => () => {}),
   markSessionAwaitingApprovalMock: vi.fn().mockResolvedValue(undefined),
+  checkBudgetMock: vi.fn().mockResolvedValue({ allowed: true }),
+  getUserPrimaryTeamIdMock: vi.fn().mockResolvedValue("team-1"),
+  getTeamPolicyMock: vi.fn().mockResolvedValue({ guardrailPolicy: "standard" }),
+  resolveAllowListMock: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
@@ -42,6 +50,14 @@ vi.mock("lib/agent-platform/persistent-executor", () => ({
 }));
 vi.mock("lib/agent-platform/approvals", () => ({
   markSessionAwaitingApproval: markSessionAwaitingApprovalMock,
+}));
+vi.mock("lib/ai/budget", () => ({ checkBudget: checkBudgetMock }));
+vi.mock("lib/admin/teams", () => ({
+  getUserPrimaryTeamId: getUserPrimaryTeamIdMock,
+  getTeamPolicy: getTeamPolicyMock,
+}));
+vi.mock("lib/admin/effective-models", () => ({
+  resolveEffectiveModelAllowList: resolveAllowListMock,
 }));
 vi.mock("logger", () => ({
   default: {
@@ -461,5 +477,64 @@ describe("POST /api/workflow/[id]/execute — approval gate (#24)", () => {
       expect.objectContaining({ agentSessionId: undefined }),
     );
     expect(attachSessionPersistenceMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── W3/ADR-0003 budget gate + ADR-0009 attribution at the execute route ──────
+
+describe("POST /api/workflow/[id]/execute — budget gate (W3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    checkBudgetMock.mockResolvedValue({ allowed: true });
+    getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
+    getTeamPolicyMock.mockResolvedValue({ guardrailPolicy: "standard" });
+    resolveAllowListMock.mockResolvedValue(null);
+  });
+
+  function setupAuthedWorkflow() {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkAccessMock.mockResolvedValue(true);
+    selectStructureByIdMock.mockResolvedValue({
+      name: "wf",
+      nodes: [],
+      edges: [],
+    });
+  }
+
+  it("returns 402 and never builds the executor when the team budget is exhausted", async () => {
+    setupAuthedWorkflow();
+    checkBudgetMock.mockResolvedValueOnce({
+      allowed: false,
+      reason: "Team budget exhausted",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ query: {} }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(res.status).toBe(402);
+    const body = await res.json();
+    expect(body.message).toMatch(/budget/i);
+    expect(createWorkflowExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the executing user's team + effective allow-list into the executor", async () => {
+    setupAuthedWorkflow();
+    resolveAllowListMock.mockResolvedValueOnce(["deepseek-v4-flash"]);
+    createWorkflowExecutorMock.mockReturnValueOnce({
+      subscribe: vi.fn(),
+      run: vi.fn().mockResolvedValue({ isOk: true }),
+    });
+    const { POST } = await import("./route");
+    await POST(makeRequest({ query: {} }), {
+      params: Promise.resolve({ id: "wf-1" }),
+    });
+    expect(checkBudgetMock).toHaveBeenCalledWith("u1", "team-1");
+    expect(createWorkflowExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        teamId: "team-1",
+        effectiveModelAllowList: ["deepseek-v4-flash"],
+      }),
+    );
   });
 });

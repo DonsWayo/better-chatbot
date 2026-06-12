@@ -8,6 +8,7 @@ import {
 import type { MCPRemoteConfig } from "app-types/mcp";
 import { format } from "date-fns";
 import type { McpServerEntity } from "lib/db/pg/schema.pg";
+import { notify } from "lib/notify";
 import { cn } from "lib/utils";
 import {
   AlertTriangle,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
 import { Checkbox } from "ui/checkbox";
@@ -168,18 +170,34 @@ export function CompanyMcpTable({
         enabled: !server.enabled,
       });
       setServers((prev) => prev.map((s) => (s.id === server.id ? updated : s)));
-    } catch {
-      // silently fail — optimistic would be overkill for admin page
+    } catch (err) {
+      setRegisterError(
+        err instanceof Error
+          ? err.message
+          : `Failed to ${server.enabled ? "disable" : "enable"} server`,
+      );
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : `Failed to ${server.enabled ? "disable" : "enable"} server`,
+      );
     }
   };
 
   const handleDelete = async (serverId: string) => {
-    if (!confirm("Remove this MCP server from the registry?")) return;
+    const ok = await notify.confirm({
+      title: "Remove MCP server",
+      description: "Remove this MCP server from the registry?",
+      okText: "Remove",
+    });
+    if (!ok) return;
     try {
       await deleteCompanyMcpServerAction(serverId);
       setServers((prev) => prev.filter((s) => s.id !== serverId));
-    } catch {
-      // silently fail
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove server",
+      );
     }
   };
 

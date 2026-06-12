@@ -5,6 +5,7 @@ import { Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "ui/button";
 import {
   Dialog,
@@ -51,6 +52,8 @@ export function TeamsTable({ teams }: TeamsTableProps) {
       startTransition(() => {
         router.refresh();
       });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create team");
     } finally {
       setIsSubmitting(false);
     }

@@ -41,7 +41,8 @@
     "createWithExample": "例で作成",
     "resultsFound": "{count}件の結果が見つかりました",
     "youAreAnExpertIn": "あなたは{role}の専門家です",
-    "sharedBy": "{userName}さんが共有"
+    "sharedBy": "{userName}さんが共有",
+    "error": "問題が発生しました"
   },
   "Auth": {
     "SignIn": {
@@ -150,7 +151,8 @@
       "manual": "手動",
       "none": "なし",
       "mentionOnly": "@メンションのみ",
-      "noToolsAvailable": "利用可能なツールがありません"
+      "noToolsAvailable": "利用可能なツールがありません",
+      "webSearchError": "ウェブ検索に失敗しました。もう一度お試しください。"
     },
     "VoiceChat": {
       "title": "音声チャットモード",

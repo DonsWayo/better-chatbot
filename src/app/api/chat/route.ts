@@ -552,7 +552,10 @@ export async function POST(request: Request) {
               session.user.id,
               undefined,
               userTeamId,
-            ).catch(() => null);
+            ).catch((e) => {
+              logger.error("RAG retrieval failed", e);
+              return null;
+            });
             if (ragPayload) {
               ragContext = ragPayload.context;
               metadata.ragSources = ragPayload.sources;
@@ -595,22 +598,22 @@ export async function POST(request: Request) {
           MCP_TOOLS && Object.keys(MCP_TOOLS).length > 0
             ? Object.fromEntries(
                 Object.entries(MCP_TOOLS).map(([name, tool]) => {
-                  const originalExecute = (tool as any).execute;
+                  const originalExecute = (tool as Tool).execute;
                   if (typeof originalExecute !== "function")
                     return [name, tool];
                   return [
                     name,
                     {
                       ...tool,
-                      execute: async (...args: unknown[]) => {
+                      execute: async (
+                        ...args: Parameters<NonNullable<Tool["execute"]>>
+                      ) => {
                         const start = Date.now();
                         try {
-                          const result = await (originalExecute as any)(
-                            ...args,
-                          );
+                          const result = await originalExecute(...args);
                           auditMcpInvocation({
                             userId: session.user.id,
-                            teamId: null, // TODO: wire teamId in Wave 4 follow-up
+                            teamId: userTeamId,
                             toolName: name,
                             outcome: "success",
                             durationMs: Date.now() - start,
@@ -619,7 +622,7 @@ export async function POST(request: Request) {
                         } catch (err) {
                           auditMcpInvocation({
                             userId: session.user.id,
-                            teamId: null,
+                            teamId: userTeamId,
                             toolName: name,
                             outcome: "error",
                             durationMs: Date.now() - start,
@@ -760,9 +763,13 @@ export async function POST(request: Request) {
         }
 
         if (agent) {
-          agentRepository.updateAgent(agent.id, session.user.id, {
-            updatedAt: new Date(),
-          } as any);
+          agentRepository
+            .updateAgent(agent.id, session.user.id, {
+              updatedAt: new Date(),
+            } as unknown as Parameters<
+              typeof agentRepository.updateAgent
+            >[2])
+            .catch((e) => logger.error("touchAgent failed", e));
         }
 
         // asafe-ai Wave 3 (ADR-0003): record usage event after inference

@@ -27,9 +27,12 @@ const {
   attachMock,
   detachMock,
   selectStructureByIdMock,
+  checkAccessMock,
   createExecutorMock,
   executorRunMock,
   isKillSwitchActiveMock,
+  checkBudgetMock,
+  resolveAllowListMock,
 } = vi.hoisted(() => ({
   claimDueSchedulesMock: vi.fn(),
   createSessionMock: vi.fn(),
@@ -37,9 +40,12 @@ const {
   attachMock: vi.fn(),
   detachMock: vi.fn(),
   selectStructureByIdMock: vi.fn(),
+  checkAccessMock: vi.fn(),
   createExecutorMock: vi.fn(),
   executorRunMock: vi.fn(),
   isKillSwitchActiveMock: vi.fn(),
+  checkBudgetMock: vi.fn(),
+  resolveAllowListMock: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -67,7 +73,20 @@ vi.mock("./persistent-executor", () => ({
   attachSessionPersistence: attachMock,
 }));
 vi.mock("lib/db/repository", () => ({
-  workflowRepository: { selectStructureById: selectStructureByIdMock },
+  workflowRepository: {
+    selectStructureById: selectStructureByIdMock,
+    checkAccess: checkAccessMock,
+  },
+}));
+vi.mock("lib/ai/budget", () => ({
+  checkBudget: checkBudgetMock,
+}));
+vi.mock("lib/admin/teams", () => ({
+  getTeamPolicy: vi.fn().mockResolvedValue({ guardrailPolicy: "standard" }),
+  getUserPrimaryTeamId: vi.fn().mockResolvedValue("team-1"),
+}));
+vi.mock("lib/admin/effective-models", () => ({
+  resolveEffectiveModelAllowList: resolveAllowListMock,
 }));
 vi.mock("lib/ai/workflow/executor/workflow-executor", () => ({
   createWorkflowExecutor: createExecutorMock,
@@ -155,6 +174,9 @@ beforeEach(() => {
   failSessionMock.mockResolvedValue({ id: "sess-1" });
   attachMock.mockReturnValue(detachMock);
   selectStructureByIdMock.mockResolvedValue(WORKFLOW_STRUCTURE);
+  checkAccessMock.mockResolvedValue(true);
+  checkBudgetMock.mockResolvedValue({ allowed: true });
+  resolveAllowListMock.mockResolvedValue(null);
   executorRunMock.mockResolvedValue({ isOk: true });
   createExecutorMock.mockReturnValue({
     run: executorRunMock,
@@ -312,6 +334,54 @@ describe("runClaimedSession", () => {
       expect.stringContaining("wf-1"),
     );
     expect(createExecutorMock).not.toHaveBeenCalled();
+  });
+
+  // ── W3/ADR-0009: budget gate + access re-verification (defense in depth) ──
+
+  it("re-verifies workflow access at execution time (IDOR defense)", async () => {
+    const { runClaimedSession } = await import("./worker");
+    await runClaimedSession(SESSION);
+    expect(checkAccessMock).toHaveBeenCalledWith("wf-1", "user-1", true);
+  });
+
+  it("owner who lost access → failSession, executor never built", async () => {
+    checkAccessMock.mockResolvedValue(false);
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(SESSION);
+    expect(outcome).toBe("failed");
+    expect(failSessionMock).toHaveBeenCalledWith(
+      "sess-1",
+      expect.stringContaining("no longer has access"),
+    );
+    expect(createExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("budget exhausted → failSession with the budget reason, executor never built", async () => {
+    checkBudgetMock.mockResolvedValue({
+      allowed: false,
+      reason: "Team budget exhausted",
+    });
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(SESSION);
+    expect(outcome).toBe("failed");
+    expect(failSessionMock).toHaveBeenCalledWith(
+      "sess-1",
+      "Team budget exhausted",
+    );
+    expect(createExecutorMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the owner's team + effective allow-list into the executor", async () => {
+    resolveAllowListMock.mockResolvedValue(["deepseek-v4-flash"]);
+    const { runClaimedSession } = await import("./worker");
+    await runClaimedSession(SESSION);
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        teamId: "team-1",
+        effectiveModelAllowList: ["deepseek-v4-flash"],
+      }),
+    );
   });
 });
 

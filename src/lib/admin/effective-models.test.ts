@@ -21,6 +21,18 @@ vi.mock("./user-grants", () => ({
   getUserModelGrants: h.getUserModelGrantsMock,
 }));
 
+const loggerErrorMock = vi.hoisted(() => vi.fn());
+vi.mock("logger", () => ({
+  default: {
+    withDefaults: () => ({
+      error: loggerErrorMock,
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+    }),
+  },
+}));
+
 import { resolveEffectiveModelAllowList } from "./effective-models";
 
 const {
@@ -104,5 +116,13 @@ describe("resolveEffectiveModelAllowList", () => {
     await expect(
       resolveEffectiveModelAllowList("u1", "team-1"),
     ).resolves.toEqual(["gpt-5.5"]);
+  });
+
+  it("logs an error when the grants table read fails (observable fail-open)", async () => {
+    loggerErrorMock.mockClear();
+    resolveTeamModelAllowListMock.mockResolvedValue(["gpt-5.5"]);
+    getUserModelGrantsMock.mockRejectedValue(new Error("db down"));
+    await resolveEffectiveModelAllowList("u1", "team-1");
+    expect(loggerErrorMock).toHaveBeenCalled();
   });
 });

@@ -19,6 +19,9 @@ const {
   writeAuditLogMock,
   findOpenLocalMcpArmRequestMock,
   resolveOpenLocalMcpArmRequestsMock,
+  selectByServerNameMock,
+  toolCallMock,
+  toolCallByServerNameMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
   canCreateMCPMock: vi.fn(),
@@ -38,6 +41,9 @@ const {
   writeAuditLogMock: vi.fn().mockResolvedValue(undefined),
   findOpenLocalMcpArmRequestMock: vi.fn().mockResolvedValue(null),
   resolveOpenLocalMcpArmRequestsMock: vi.fn().mockResolvedValue([]),
+  selectByServerNameMock: vi.fn(),
+  toolCallMock: vi.fn(),
+  toolCallByServerNameMock: vi.fn(),
 }));
 
 vi.mock("lib/auth/permissions", () => ({
@@ -51,6 +57,7 @@ vi.mock("lib/db/repository", () => ({
     insertMcpServer: insertMcpServerMock,
     selectAllForUser: selectAllForUserMock,
     selectById: selectByIdMock,
+    selectByServerName: selectByServerNameMock,
     updateDisabledTools: updateDisabledToolsMock,
   },
   mcpOAuthRepository: {},
@@ -64,6 +71,8 @@ vi.mock("lib/ai/mcp/mcp-manager", () => ({
     persistClient: persistClientMock,
     armLocalServer: armLocalServerMock,
     localServerArmedUntil: localServerArmedUntilMock,
+    toolCall: toolCallMock,
+    toolCallByServerName: toolCallByServerNameMock,
   },
 }));
 vi.mock("lib/admin/teams", () => ({
@@ -828,5 +837,154 @@ describe("getLocalMcpStatusAction", () => {
       "owner-1",
     );
     expect(status.pendingApprovalId).toBe("req-9");
+  });
+});
+
+describe("callMcpToolAction — ownership/visibility gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws when unauthenticated and never invokes the tool", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { callMcpToolAction } = await import("./actions");
+    await expect(callMcpToolAction("srv-1", "do", {})).rejects.toThrow(
+      /logged in/i,
+    );
+    expect(toolCallMock).not.toHaveBeenCalled();
+  });
+
+  it("throws Forbidden when the server is not accessible to the caller", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "attacker", role: "user" });
+    // selectAllForUser returns only servers the caller can reach; srv-1 absent.
+    selectAllForUserMock.mockResolvedValue([{ id: "other" }]);
+    const { callMcpToolAction } = await import("./actions");
+    await expect(callMcpToolAction("srv-1", "do", {})).rejects.toThrow(
+      /don't have access/i,
+    );
+    expect(toolCallMock).not.toHaveBeenCalled();
+  });
+
+  it("invokes the tool when the caller can access the server", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectAllForUserMock.mockResolvedValue([{ id: "srv-1" }]);
+    toolCallMock.mockResolvedValue({ ok: true });
+    const { callMcpToolAction } = await import("./actions");
+    await callMcpToolAction("srv-1", "do", { a: 1 });
+    expect(toolCallMock).toHaveBeenCalledWith("srv-1", "do", { a: 1 });
+  });
+
+  it("admins bypass the accessible-server list", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "admin", role: "admin" });
+    toolCallMock.mockResolvedValue({ ok: true });
+    const { callMcpToolAction } = await import("./actions");
+    await callMcpToolAction("srv-anything", "do", {});
+    expect(selectAllForUserMock).not.toHaveBeenCalled();
+    expect(toolCallMock).toHaveBeenCalledWith("srv-anything", "do", {});
+  });
+});
+
+describe("callMcpToolByServerNameAction — ownership/visibility gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws when the named server does not exist", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectByServerNameMock.mockResolvedValue(undefined);
+    const { callMcpToolByServerNameAction } = await import("./actions");
+    await expect(
+      callMcpToolByServerNameAction("ghost", "do", {}),
+    ).rejects.toThrow(/not found/i);
+    expect(toolCallByServerNameMock).not.toHaveBeenCalled();
+  });
+
+  it("throws Forbidden when the named server is not accessible", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "attacker", role: "user" });
+    selectByServerNameMock.mockResolvedValue({ id: "srv-1", name: "victim" });
+    selectAllForUserMock.mockResolvedValue([]);
+    const { callMcpToolByServerNameAction } = await import("./actions");
+    await expect(
+      callMcpToolByServerNameAction("victim", "do", {}),
+    ).rejects.toThrow(/don't have access/i);
+    expect(toolCallByServerNameMock).not.toHaveBeenCalled();
+  });
+
+  it("invokes by name when accessible", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectByServerNameMock.mockResolvedValue({ id: "srv-1", name: "mine" });
+    selectAllForUserMock.mockResolvedValue([{ id: "srv-1" }]);
+    toolCallByServerNameMock.mockResolvedValue({ ok: true });
+    const { callMcpToolByServerNameAction } = await import("./actions");
+    await callMcpToolByServerNameAction("mine", "do", { x: 1 });
+    expect(toolCallByServerNameMock).toHaveBeenCalledWith("mine", "do", { x: 1 });
+  });
+});
+
+describe("refreshMcpClientAction / checkTokenMcpClientAction — manage gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("refresh throws when unauthenticated and never reconnects", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    const { refreshMcpClientAction } = await import("./actions");
+    await expect(refreshMcpClientAction("srv-1")).rejects.toThrow(
+      /logged in/i,
+    );
+    expect(refreshClientMock).not.toHaveBeenCalled();
+  });
+
+  it("refresh throws when the server is unknown", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    selectByIdMock.mockResolvedValue(undefined);
+    const { refreshMcpClientAction } = await import("./actions");
+    await expect(refreshMcpClientAction("ghost")).rejects.toThrow(
+      /not found/i,
+    );
+    expect(refreshClientMock).not.toHaveBeenCalled();
+  });
+
+  it("refresh throws Forbidden when caller can't manage the server", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "attacker", role: "user" });
+    selectByIdMock.mockResolvedValue({
+      id: "srv-1",
+      userId: "owner",
+      visibility: "private",
+    });
+    canManageMCPServerMock.mockResolvedValue(false);
+    const { refreshMcpClientAction } = await import("./actions");
+    await expect(refreshMcpClientAction("srv-1")).rejects.toThrow(
+      /permission/i,
+    );
+    expect(refreshClientMock).not.toHaveBeenCalled();
+  });
+
+  it("refresh reconnects when caller can manage the server", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "owner", role: "user" });
+    selectByIdMock.mockResolvedValue({
+      id: "srv-1",
+      userId: "owner",
+      visibility: "private",
+    });
+    canManageMCPServerMock.mockResolvedValue(true);
+    refreshClientMock.mockResolvedValue(undefined);
+    const { refreshMcpClientAction } = await import("./actions");
+    await refreshMcpClientAction("srv-1");
+    expect(refreshClientMock).toHaveBeenCalledWith("srv-1");
+  });
+
+  it("checkToken throws Forbidden for a non-manager", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "attacker", role: "user" });
+    selectByIdMock.mockResolvedValue({
+      id: "srv-1",
+      userId: "owner",
+      visibility: "private",
+    });
+    canManageMCPServerMock.mockResolvedValue(false);
+    const { checkTokenMcpClientAction } = await import("./actions");
+    await expect(checkTokenMcpClientAction("srv-1")).rejects.toThrow(
+      /permission/i,
+    );
   });
 });

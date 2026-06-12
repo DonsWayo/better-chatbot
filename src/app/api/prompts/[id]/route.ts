@@ -1,6 +1,7 @@
 import { getSession } from "lib/auth/server";
 import { pgDb as db } from "@/lib/db/pg/db.pg";
 import { AsafePromptTemplateTable } from "@/lib/db/pg/schema.pg";
+import { listUserTeams } from "lib/teamspaces/folders";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -12,6 +13,8 @@ export async function GET(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const userId = session.user.id;
+  const isAdmin = session.user.role === "admin";
 
   const [prompt] = await db
     .select()
@@ -19,6 +22,21 @@ export async function GET(
     .where(eq(AsafePromptTemplateTable.id, id));
 
   if (!prompt) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // GET previously returned ANY prompt by id, including other users' private
+  // prompts (live-proven IDOR). Apply the same visibility gate the rest of the
+  // app uses: author or admin always; "org" visible to everyone; "team"
+  // visible only to members of the prompt's team. Otherwise 404 (don't leak
+  // existence of private prompts).
+  const isAuthor = prompt.authorId === userId;
+  let canView = isAuthor || isAdmin || prompt.visibility === "org";
+  if (!canView && prompt.visibility === "team" && prompt.teamId) {
+    const teams = await listUserTeams(userId);
+    canView = teams.some((t) => t.id === prompt.teamId);
+  }
+  if (!canView) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json(prompt);
 }

@@ -3,6 +3,7 @@
 import { acceptAupAction } from "@/app/(chat)/aup/actions";
 import { ShieldCheck } from "lucide-react";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "ui/card";
 import { ScrollArea } from "ui/scroll-area";
@@ -17,7 +18,21 @@ export function AupClient({ version }: AupClientProps) {
 
   const handleAccept = () => {
     startTransition(async () => {
-      await acceptAupAction();
+      try {
+        await acceptAupAction();
+      } catch (err) {
+        // acceptAupAction ends in redirect(), which throws a NEXT_REDIRECT
+        // control-flow error — let that propagate so navigation still happens.
+        const digest =
+          err && typeof err === "object" && "digest" in err
+            ? String((err as { digest?: unknown }).digest)
+            : "";
+        if (digest.startsWith("NEXT_REDIRECT")) throw err;
+        // A genuine failure: re-enable the button and tell the user.
+        toast.error(
+          "Could not record your acceptance. Please try again or contact your administrator.",
+        );
+      }
     });
   };
 

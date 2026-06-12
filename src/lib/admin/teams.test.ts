@@ -46,6 +46,18 @@ vi.mock("drizzle-orm", () => ({
 
 vi.mock("server-only", () => ({}));
 
+const loggerErrorMock = vi.hoisted(() => vi.fn());
+vi.mock("logger", () => ({
+  default: {
+    withDefaults: () => ({
+      error: loggerErrorMock,
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+    }),
+  },
+}));
+
 describe("getUserPrimaryTeamId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,12 +96,31 @@ describe("getUserPrimaryTeamId", () => {
     expect(result).toBeNull();
   });
 
-  it("returns null on DB error (fail-open — catch swallows the error)", async () => {
+  it("returns null on DB error with no cache (fail-open) and logs", async () => {
+    loggerErrorMock.mockClear();
     limitMock.mockRejectedValue(new Error("DB is down"));
 
     const { getUserPrimaryTeamId } = await import("./teams");
     const result = await getUserPrimaryTeamId("user-err");
     expect(result).toBeNull();
+    // a null teamId silently drops budget/governance attribution — must be logged
+    expect(loggerErrorMock).toHaveBeenCalled();
+  });
+
+  it("serves last-known-good cached teamId on DB error (attribution preserved)", async () => {
+    vi.useFakeTimers();
+    const t0 = new Date("2026-01-01T00:00:00.000Z").getTime();
+    vi.setSystemTime(t0);
+    _selectRows = [{ teamId: "team-lkg" }];
+    limitMock.mockResolvedValue(_selectRows);
+
+    const { getUserPrimaryTeamId } = await import("./teams");
+    expect(await getUserPrimaryTeamId("user-lkg")).toBe("team-lkg");
+
+    // Expire the TTL, then make the re-query fail.
+    vi.setSystemTime(t0 + 61_000);
+    limitMock.mockRejectedValue(new Error("DB is down"));
+    expect(await getUserPrimaryTeamId("user-lkg")).toBe("team-lkg");
   });
 
   it("second call within 60s returns cached value (DB called only once)", async () => {
@@ -188,15 +219,61 @@ describe("getTeamPolicy", () => {
     expect(policy.modelAllowList).toEqual([]);
   });
 
-  it("returns safe defaults on DB error (fail-open)", async () => {
+  it("fails CLOSED on DB error with no cache (guardrails → strict, not standard)", async () => {
     limitMock.mockRejectedValue(new Error("Connection refused"));
 
     const { getTeamPolicy } = await import("./teams");
     const policy = await getTeamPolicy("team-error");
 
-    expect(policy.guardrailPolicy).toBe("standard");
+    // Security-sensitive: a broken entitlement layer must NOT silently
+    // downgrade a strict team to "standard" guardrails. With no last-known-good
+    // value cached, assume the strictest posture.
+    expect(policy.guardrailPolicy).toBe("strict");
+    expect(policy.allowImageGen).toBe(false);
     expect(policy.allowVision).toBe(false);
+    expect(policy.allowSpeech).toBe(false);
+    // model gating stays "unrestricted" ([]) to avoid locking out all chat on a
+    // total DB outage — a softer control than guardrails.
     expect(policy.modelAllowList).toEqual([]);
+  });
+
+  it("serves last-known-good cached policy on DB error (not a fabricated default)", async () => {
+    // Prime the cache with a real strict-team policy.
+    _selectRows = [
+      {
+        guardrailPolicy: "permissive",
+        allowImageGen: true,
+        allowVision: true,
+        allowSpeech: true,
+        modelAllowList: ["gpt-5.5"],
+      },
+    ];
+    limitMock.mockResolvedValueOnce(_selectRows);
+
+    const { getTeamPolicy } = await import("./teams");
+    const first = await getTeamPolicy("team-lkg");
+    expect(first.guardrailPolicy).toBe("permissive");
+
+    // Force the cache to expire so the next call re-queries and fails.
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 61_000);
+    limitMock.mockRejectedValue(new Error("Connection refused"));
+
+    const second = await getTeamPolicy("team-lkg");
+    // Last-known-good served verbatim, not the fail-closed default.
+    expect(second.guardrailPolicy).toBe("permissive");
+    expect(second.modelAllowList).toEqual(["gpt-5.5"]);
+    vi.useRealTimers();
+  });
+
+  it("logs an error when getTeamPolicy resolution fails", async () => {
+    loggerErrorMock.mockClear();
+    limitMock.mockRejectedValue(new Error("Connection refused"));
+
+    const { getTeamPolicy } = await import("./teams");
+    await getTeamPolicy("team-log");
+
+    expect(loggerErrorMock).toHaveBeenCalled();
   });
 
   it("caches policy for TTL duration (DB called once)", async () => {

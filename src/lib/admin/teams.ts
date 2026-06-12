@@ -9,6 +9,9 @@ import {
 } from "@/lib/db/pg/schema.pg";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
+import globalLogger from "logger";
+
+const logger = globalLogger.withDefaults({ message: "teams: " });
 
 export interface AdminTeamListItem {
   id: string;
@@ -519,9 +522,13 @@ export async function getUserPrimaryTeamId(
     const teamId = row?.teamId ?? null;
     _teamIdCache.set(userId, { teamId, expiresAt: now + TEAM_ID_CACHE_TTL_MS });
     return teamId;
-  } catch {
-    // Fail open: if the DB is unavailable, fall back to no team rather than
-    // blocking the chat request.
+  } catch (e) {
+    // Serve the last-known-good cached teamId on error (even if stale) so we
+    // don't drop budget/governance attribution; only fall back to null when we
+    // have no cached value. Either way, log — a null teamId silently disables
+    // budget enforcement and audit team-scoping.
+    logger.error("getUserPrimaryTeamId resolution failed", e);
+    if (cached) return cached.teamId;
     return null;
   }
 }
@@ -602,9 +609,24 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
       expiresAt: now + TEAM_ID_CACHE_TTL_MS,
     });
     return policy;
-  } catch {
+  } catch (e) {
+    logger.error("getTeamPolicy resolution failed", e);
+
+    // Last-known-good: serve the cached policy (even if expired) rather than
+    // fabricating a permissive default that could silently downgrade a strict
+    // team. This is the correct posture under a partial/transient DB failure.
+    if (cached) return cached.policy;
+
+    // No cached value to fall back on → fail CLOSED. Never silently downgrade
+    // guardrails to "standard"; assume the strictest posture so a broken
+    // entitlement layer can't weaken safety controls. Capabilities (image
+    // gen / vision / speech) default off. modelAllowList stays [] (the
+    // "unrestricted" sentinel) deliberately: with the DB down we can't
+    // enumerate a safe list, and locking every model out would take down all
+    // chat — model gating is a softer control than guardrails, so we keep the
+    // don't-lock-everyone-out intent there while failing closed on guardrails.
     return {
-      guardrailPolicy: "standard",
+      guardrailPolicy: "strict",
       allowImageGen: false,
       allowVision: false,
       allowSpeech: false,

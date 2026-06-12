@@ -42,7 +42,8 @@
     "createWithExample": "Crear con Ejemplo",
     "resultsFound": "{count} resultados encontrados",
     "youAreAnExpertIn": "Eres un experto en {role}",
-    "sharedBy": "Compartido por {userName}"
+    "sharedBy": "Compartido por {userName}",
+    "error": "Algo salió mal"
   },
   "Error": {},
   "Info": {
@@ -273,7 +274,8 @@
       "manual": "Manual",
       "none": "Ninguno",
       "mentionOnly": "solo @mención",
-      "noToolsAvailable": "No hay herramientas disponibles"
+      "noToolsAvailable": "No hay herramientas disponibles",
+      "webSearchError": "La búsqueda web falló. Inténtalo de nuevo."
     },
     "VoiceChat": {
       "title": "Modo de Chat por Voz",

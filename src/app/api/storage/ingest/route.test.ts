@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { downloadMock, storageKeyFromUrlMock, parseCsvPreviewMock, formatCsvPreviewTextMock } = vi.hoisted(() => ({
+const { downloadMock, storageKeyFromUrlMock, parseCsvPreviewMock, formatCsvPreviewTextMock, getSessionMock } = vi.hoisted(() => ({
   downloadMock: vi.fn(),
   storageKeyFromUrlMock: vi.fn(),
   parseCsvPreviewMock: vi.fn(),
   formatCsvPreviewTextMock: vi.fn(),
+  getSessionMock: vi.fn(),
 }));
 
+vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/file-storage", () => ({
   serverFileStorage: { download: downloadMock },
 }));
 vi.mock("lib/file-storage/storage-utils", () => ({
   storageKeyFromUrl: storageKeyFromUrlMock,
+  // Default upload namespace; existing fixtures use "uploads/..." keys.
+  resolveStoragePrefix: () => "uploads",
 }));
 vi.mock("lib/file-ingest/csv", () => ({
   parseCsvPreview: parseCsvPreviewMock,
@@ -23,7 +27,33 @@ function makeRequest(body?: unknown): Request {
 }
 
 describe("POST /api/storage/ingest", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: authenticated. Override per-test for the unauth case.
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+  });
+
+  it("returns 401 when unauthenticated and never downloads", async () => {
+    getSessionMock.mockResolvedValueOnce(null);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/data.csv" }));
+    expect(res.status).toBe(401);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a key with path traversal", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/../../etc/passwd" }));
+    expect(res.status).toBe(403);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a key outside the upload namespace", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "secrets/private.csv" }));
+    expect(res.status).toBe(403);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
 
   it("returns 400 when neither key nor url provided", async () => {
     const { POST } = await import("./route");

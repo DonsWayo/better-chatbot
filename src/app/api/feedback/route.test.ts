@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { getSessionMock, dbInsertMock, dbDeleteMock } = vi.hoisted(() => ({
+const { getSessionMock, dbInsertMock, dbDeleteMock, dbSelectMock, checkAccessMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   dbInsertMock: vi.fn(),
   dbDeleteMock: vi.fn(),
+  dbSelectMock: vi.fn(),
+  checkAccessMock: vi.fn(),
 }));
 
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/db/repository", () => ({
+  chatRepository: { checkAccess: checkAccessMock },
+}));
 
 // Insert chain with onConflictDoUpdate
 const dbInsertOnConflictMock = vi.fn().mockResolvedValue([]);
@@ -17,11 +22,18 @@ dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
 const dbDeleteWhereMock = vi.fn().mockResolvedValue([]);
 dbDeleteMock.mockReturnValue({ where: dbDeleteWhereMock });
 
+// Select chain for the message → thread lookup. Default: message exists in
+// thread "t-1". Override dbSelectWhereMock per-test for the not-found case.
+const dbSelectWhereMock = vi.fn().mockResolvedValue([{ threadId: "t-1" }]);
+const dbSelectFromMock = vi.fn().mockReturnValue({ where: dbSelectWhereMock });
+dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+
 vi.mock("lib/db/pg/db.pg", () => ({
-  pgDb: { insert: dbInsertMock, delete: dbDeleteMock },
+  pgDb: { insert: dbInsertMock, delete: dbDeleteMock, select: dbSelectMock },
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({
   AsafeMessageFeedbackTable: { id: "id", userId: "userId", messageId: "messageId", rating: "rating", comment: "comment", updatedAt: "updatedAt" },
+  ChatMessageTable: { id: "id", threadId: "threadId" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((_a: unknown, _b: unknown) => ({})),
@@ -36,7 +48,18 @@ function makeRequest(body?: unknown, url = "http://localhost/api/feedback"): Req
 }
 
 describe("POST /api/feedback", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Re-establish chain return values cleared by clearAllMocks.
+    dbInsertMock.mockReturnValue({ values: dbInsertValuesMock });
+    dbInsertValuesMock.mockReturnValue({ onConflictDoUpdate: dbInsertOnConflictMock });
+    dbInsertOnConflictMock.mockResolvedValue([]);
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbSelectFromMock.mockReturnValue({ where: dbSelectWhereMock });
+    dbSelectWhereMock.mockResolvedValue([{ threadId: "t-1" }]);
+    // Default: caller owns the thread.
+    checkAccessMock.mockResolvedValue(true);
+  });
 
   it("returns 401 when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
@@ -103,6 +126,40 @@ describe("POST /api/feedback", () => {
     const { POST } = await import("./route");
     await POST(makeRequest({ rating: "up" })); // missing messageId
     expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 and does not insert when the message does not exist", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([]); // no such message
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ messageId: "00000000-0000-0000-0000-000000000000", threadId: "t-x", rating: "up" }),
+    );
+    expect(res.status).toBe(404);
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 and does not insert feedback for another user's thread", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "attacker" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ threadId: "victim-thread" }]);
+    checkAccessMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ messageId: "m-1", threadId: "victim-thread", rating: "down" }),
+    );
+    expect(res.status).toBe(403);
+    expect(checkAccessMock).toHaveBeenCalledWith("victim-thread", "attacker");
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("pins threadId to the resolved message thread, not the body value", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    dbSelectWhereMock.mockResolvedValueOnce([{ threadId: "real-thread" }]);
+    const { POST } = await import("./route");
+    await POST(makeRequest({ messageId: "m-1", threadId: "spoofed-thread", rating: "up" }));
+    expect(dbInsertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: "real-thread" }),
+    );
   });
 });
 

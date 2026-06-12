@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
 import {
@@ -141,10 +142,15 @@ export function KnowledgeCollectionDetail({
         `/api/knowledge/collections/${collection.id}/documents/${doc.id}`,
         { method: "DELETE" },
       );
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Delete failed");
+      }
       setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-    } catch {
-      // silent — table stays consistent on retry
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete document",
+      );
     }
   };
 

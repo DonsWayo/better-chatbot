@@ -6,6 +6,7 @@ import {
   AsafeKnowledgeCollectionTable,
 } from "@/lib/db/pg/schema.pg";
 import { eq, sql } from "drizzle-orm";
+import { canAccess } from "lib/visibility";
 
 /**
  * GET /api/knowledge/collections/[id]/documents
@@ -27,6 +28,20 @@ export async function GET(
     .where(eq(AsafeKnowledgeCollectionTable.id, params.id));
 
   if (!collection) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Previously this route only checked the collection EXISTED — any
+  // authenticated user could list a private collection's documents (live-proven
+  // IDOR). Mirror the sibling collection GET: require "view" access under the
+  // unified visibility model.
+  const allowed = await canAccess(
+    "knowledge_collection",
+    params.id,
+    session.user.id,
+    "view",
+  );
+  if (!allowed) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   // Group chunks by sourceRef to surface one entry per document
   const rows = await db

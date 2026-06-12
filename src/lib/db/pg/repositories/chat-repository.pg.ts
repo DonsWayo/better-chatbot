@@ -73,6 +73,16 @@ export const pgChatRepository: ChatRepository = {
     return result as ChatMessage[];
   },
 
+  selectMessageById: async (
+    messageId: string,
+  ): Promise<ChatMessage | null> => {
+    const [result] = await db
+      .select()
+      .from(ChatMessageTable)
+      .where(eq(ChatMessageTable.id, messageId));
+    return (result as ChatMessage) ?? null;
+  },
+
   selectThreadsByUserId: async (
     userId: string,
   ): Promise<

@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { getSessionMock, dbSelectMock, dbUpdateMock, dbDeleteMock } = vi.hoisted(() => ({
+const { getSessionMock, dbSelectMock, dbUpdateMock, dbDeleteMock, listUserTeamsMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   dbSelectMock: vi.fn(),
   dbUpdateMock: vi.fn(),
   dbDeleteMock: vi.fn(),
+  listUserTeamsMock: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/teamspaces/folders", () => ({ listUserTeams: listUserTeamsMock }));
 
 const PROMPT = { id: "p-1", title: "Original", content: "Do X", authorId: "u1", visibility: "private" };
 
@@ -30,7 +32,7 @@ vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: { select: dbSelectMock, update: dbUpdateMock, delete: dbDeleteMock },
 }));
 vi.mock("lib/db/pg/schema.pg", () => ({
-  AsafePromptTemplateTable: { id: "id", authorId: "authorId", updatedAt: "updatedAt" },
+  AsafePromptTemplateTable: { id: "id", authorId: "authorId", visibility: "visibility", teamId: "teamId", updatedAt: "updatedAt" },
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((_a: unknown, _b: unknown) => ({})),
@@ -67,6 +69,67 @@ describe("GET /api/prompts/[id]", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe("p-1");
+  });
+});
+
+describe("GET /api/prompts/[id] — visibility gate (IDOR)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbSelectMock.mockReturnValue({ from: dbSelectFromMock });
+    dbSelectFromMock.mockReturnValue({ where: dbSelectWhereMock });
+    listUserTeamsMock.mockResolvedValue([]);
+  });
+
+  it("returns 404 when another user reads an author's PRIVATE prompt", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "attacker", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { id: "p-1", authorId: "victim", visibility: "private", content: "secret" },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns org-visible prompts to any authenticated user", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "someone", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { id: "p-1", authorId: "victim", visibility: "org" },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(200);
+  });
+
+  it("returns team-visible prompts only to members of the team", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "member", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { id: "p-1", authorId: "victim", visibility: "team", teamId: "team-A" },
+    ]);
+    listUserTeamsMock.mockResolvedValue([{ id: "team-A" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 for a team-visible prompt when caller is not a member", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "outsider", role: "user" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { id: "p-1", authorId: "victim", visibility: "team", teamId: "team-A" },
+    ]);
+    listUserTeamsMock.mockResolvedValue([{ id: "team-B" }]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("admin can read any private prompt", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "admin", role: "admin" } });
+    dbSelectWhereMock.mockResolvedValueOnce([
+      { id: "p-1", authorId: "victim", visibility: "private" },
+    ]);
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest(), { params: Promise.resolve({ id: "p-1" }) });
+    expect(res.status).toBe(200);
   });
 });
 

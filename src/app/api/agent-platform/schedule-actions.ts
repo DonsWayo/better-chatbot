@@ -9,6 +9,7 @@ import {
   setScheduleEnabled,
 } from "lib/agent-platform/scheduler";
 import { estimateCostUsd } from "lib/ai/budget";
+import { workflowRepository } from "lib/db/repository";
 import type { WorkflowScheduleEntity } from "lib/db/pg/schema.pg";
 
 // Agent Platform #22/#26 — routine (workflow_schedule) mutations from the
@@ -50,6 +51,19 @@ export async function createScheduleAction(
   input: CreateScheduleActionInput,
 ): Promise<WorkflowScheduleEntity> {
   const userId = await requireUserId();
+
+  // ADR-0009 IDOR fix: a schedule runs this workflow nightly as `userId`, so
+  // the caller must be able to access it. Without this, any user could
+  // schedule (and thus execute, via the worker) an admin-authored workflow.
+  const hasAccess = await workflowRepository.checkAccess(
+    input.workflowId,
+    userId,
+    true,
+  );
+  if (!hasAccess) {
+    throw new Error("You do not have access to this workflow");
+  }
+
   const teamId = await getUserPrimaryTeamId(userId);
 
   // Throws CronError on an invalid expression/timezone — the dialog
