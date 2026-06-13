@@ -7,6 +7,9 @@ const { getSessionMock, checkStorageActionMock } = vi.hoisted(() => ({
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("../actions", () => ({ checkStorageAction: checkStorageActionMock }));
+vi.mock("lib/db/repository", () => ({
+  storageObjectRepository: { recordStorageObject: vi.fn() },
+}));
 
 const createUploadUrlMock = vi.fn();
 const getSourceUrlMock = vi.fn();

@@ -1,14 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { downloadMock, storageKeyFromUrlMock, parseCsvPreviewMock, formatCsvPreviewTextMock, getSessionMock } = vi.hoisted(() => ({
+const { downloadMock, storageKeyFromUrlMock, parseCsvPreviewMock, formatCsvPreviewTextMock, getSessionMock, canAccessStorageKeyMock } = vi.hoisted(() => ({
   downloadMock: vi.fn(),
   storageKeyFromUrlMock: vi.fn(),
   parseCsvPreviewMock: vi.fn(),
   formatCsvPreviewTextMock: vi.fn(),
   getSessionMock: vi.fn(),
+  canAccessStorageKeyMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/db/repository", () => ({
+  storageObjectRepository: { canAccessStorageKey: canAccessStorageKeyMock },
+}));
 vi.mock("lib/file-storage", () => ({
   serverFileStorage: { download: downloadMock },
 }));
@@ -31,6 +35,10 @@ describe("POST /api/storage/ingest", () => {
     vi.clearAllMocks();
     // Default: authenticated. Override per-test for the unauth case.
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    // Default: the session user owns the key. Override per-test for non-owner.
+    // (mockResolvedValue persists across describes — clearAllMocks only clears
+    // call history, not implementations.)
+    canAccessStorageKeyMock.mockResolvedValue(true);
   });
 
   it("returns 401 when unauthenticated and never downloads", async () => {
@@ -39,6 +47,43 @@ describe("POST /api/storage/ingest", () => {
     const res = await POST(makeRequest({ key: "uploads/data.csv" }));
     expect(res.status).toBe(401);
     expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("owner gets 200 and the download proceeds", async () => {
+    canAccessStorageKeyMock.mockResolvedValueOnce(true);
+    downloadMock.mockResolvedValueOnce(Buffer.from("a,b\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["a", "b"], rows: [["1", "2"]] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("Preview text");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/owned.csv" }));
+    expect(res.status).toBe(200);
+    expect(canAccessStorageKeyMock).toHaveBeenCalledWith("uploads/owned.csv", "u1");
+    expect(downloadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("non-owner authenticated user gets 403 and never downloads", async () => {
+    canAccessStorageKeyMock.mockResolvedValueOnce(false);
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/someone-else.csv" }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/do not have access/i);
+    expect(downloadMock).not.toHaveBeenCalled();
+  });
+
+  it("admin bypasses the owner check and gets 200", async () => {
+    getSessionMock.mockResolvedValueOnce({ user: { id: "admin1", role: "admin" } });
+    // Even though the admin does not own the key, access is granted and the
+    // ownership repo is never consulted.
+    canAccessStorageKeyMock.mockResolvedValue(false);
+    downloadMock.mockResolvedValueOnce(Buffer.from("a,b\n1,2"));
+    parseCsvPreviewMock.mockReturnValueOnce({ headers: ["a", "b"], rows: [] });
+    formatCsvPreviewTextMock.mockReturnValueOnce("Preview");
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ key: "uploads/any.csv" }));
+    expect(res.status).toBe(200);
+    expect(canAccessStorageKeyMock).not.toHaveBeenCalled();
+    expect(downloadMock).toHaveBeenCalledTimes(1);
   });
 
   it("returns 403 for a key with path traversal", async () => {

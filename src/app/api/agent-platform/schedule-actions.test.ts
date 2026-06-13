@@ -56,12 +56,12 @@ describe("createScheduleAction", () => {
     checkAccessMock.mockResolvedValue(true);
   });
 
-  it("throws Unauthorized when unauthenticated and never creates", async () => {
+  it("returns a structured Unauthorized failure when unauthenticated and never creates", async () => {
     getSessionMock.mockResolvedValue(null);
     const { createScheduleAction } = await import("./schedule-actions");
     await expect(
       createScheduleAction({ workflowId: "wf-1", cronExpr: "0 9 * * *" }),
-    ).rejects.toThrow("Unauthorized");
+    ).resolves.toEqual({ success: false, error: "Unauthorized" });
     expect(createScheduleMock).not.toHaveBeenCalled();
   });
 
@@ -69,9 +69,12 @@ describe("createScheduleAction", () => {
     getSessionMock.mockResolvedValue(USER);
     checkAccessMock.mockResolvedValueOnce(false);
     const { createScheduleAction } = await import("./schedule-actions");
-    await expect(
-      createScheduleAction({ workflowId: "wf-not-mine", cronExpr: "0 9 * * *" }),
-    ).rejects.toThrow(/access/i);
+    const result = await createScheduleAction({
+      workflowId: "wf-not-mine",
+      cronExpr: "0 9 * * *",
+    });
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toMatch(/access/i);
     expect(checkAccessMock).toHaveBeenCalledWith("wf-not-mine", "u-1", true);
     expect(createScheduleMock).not.toHaveBeenCalled();
   });
@@ -79,7 +82,11 @@ describe("createScheduleAction", () => {
   it("creates with the caller's userId and primary teamId", async () => {
     getSessionMock.mockResolvedValue(USER);
     const { createScheduleAction } = await import("./schedule-actions");
-    await createScheduleAction({ workflowId: "wf-1", cronExpr: "0 9 * * *" });
+    const result = await createScheduleAction({
+      workflowId: "wf-1",
+      cronExpr: "0 9 * * *",
+    });
+    expect(result).toEqual({ success: true, data: SCHEDULE });
     expect(getUserPrimaryTeamIdMock).toHaveBeenCalledWith("u-1");
     expect(createScheduleMock).toHaveBeenCalledWith({
       workflowId: "wf-1",
@@ -122,7 +129,8 @@ describe("createScheduleAction", () => {
       enabled: false,
     });
     expect(setScheduleEnabledMock).toHaveBeenCalledWith("sched-1", false);
-    expect(result.enabled).toBe(false);
+    expect(result.success).toBe(true);
+    expect((result as { data: { enabled: boolean } }).data.enabled).toBe(false);
   });
 
   it("does not touch enabled state by default", async () => {
@@ -132,7 +140,7 @@ describe("createScheduleAction", () => {
     expect(setScheduleEnabledMock).not.toHaveBeenCalled();
   });
 
-  it("propagates CronError from the scheduler (dialog validation path)", async () => {
+  it("surfaces the CronError reason as a structured failure (dialog inline validation path)", async () => {
     getSessionMock.mockResolvedValue(USER);
     createScheduleMock.mockRejectedValueOnce(
       new Error("Invalid cron expression"),
@@ -140,7 +148,7 @@ describe("createScheduleAction", () => {
     const { createScheduleAction } = await import("./schedule-actions");
     await expect(
       createScheduleAction({ workflowId: "wf-1", cronExpr: "not-a-cron" }),
-    ).rejects.toThrow("Invalid cron expression");
+    ).resolves.toEqual({ success: false, error: "Invalid cron expression" });
   });
 });
 
@@ -149,12 +157,13 @@ describe("toggleScheduleAction", () => {
     vi.clearAllMocks();
   });
 
-  it("throws Unauthorized when unauthenticated", async () => {
+  it("returns a structured Unauthorized failure when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { toggleScheduleAction } = await import("./schedule-actions");
-    await expect(toggleScheduleAction("sched-1", false)).rejects.toThrow(
-      "Unauthorized",
-    );
+    await expect(toggleScheduleAction("sched-1", false)).resolves.toEqual({
+      success: false,
+      error: "Unauthorized",
+    });
     expect(setScheduleEnabledMock).not.toHaveBeenCalled();
   });
 
@@ -165,9 +174,10 @@ describe("toggleScheduleAction", () => {
       { ...SCHEDULE, id: "someone-elses" },
     ]);
     const { toggleScheduleAction } = await import("./schedule-actions");
-    await expect(toggleScheduleAction("sched-1", false)).rejects.toThrow(
-      "Schedule not found",
-    );
+    await expect(toggleScheduleAction("sched-1", false)).resolves.toEqual({
+      success: false,
+      error: "Schedule not found",
+    });
     expect(listSchedulesForUserMock).toHaveBeenCalledWith("u-1");
     expect(setScheduleEnabledMock).not.toHaveBeenCalled();
   });
@@ -182,7 +192,10 @@ describe("toggleScheduleAction", () => {
     const { toggleScheduleAction } = await import("./schedule-actions");
     const result = await toggleScheduleAction("sched-1", false);
     expect(setScheduleEnabledMock).toHaveBeenCalledWith("sched-1", false);
-    expect(result?.enabled).toBe(false);
+    expect(result.success).toBe(true);
+    expect(
+      (result as { data: { enabled: boolean } | null }).data?.enabled,
+    ).toBe(false);
   });
 });
 
@@ -191,12 +204,13 @@ describe("deleteScheduleAction", () => {
     vi.clearAllMocks();
   });
 
-  it("throws Unauthorized when unauthenticated", async () => {
+  it("returns a structured Unauthorized failure when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { deleteScheduleAction } = await import("./schedule-actions");
-    await expect(deleteScheduleAction("sched-1")).rejects.toThrow(
-      "Unauthorized",
-    );
+    await expect(deleteScheduleAction("sched-1")).resolves.toEqual({
+      success: false,
+      error: "Unauthorized",
+    });
     expect(deleteScheduleMock).not.toHaveBeenCalled();
   });
 
@@ -204,9 +218,10 @@ describe("deleteScheduleAction", () => {
     getSessionMock.mockResolvedValue(USER);
     listSchedulesForUserMock.mockResolvedValueOnce([]);
     const { deleteScheduleAction } = await import("./schedule-actions");
-    await expect(deleteScheduleAction("sched-1")).rejects.toThrow(
-      "Schedule not found",
-    );
+    await expect(deleteScheduleAction("sched-1")).resolves.toEqual({
+      success: false,
+      error: "Schedule not found",
+    });
     expect(deleteScheduleMock).not.toHaveBeenCalled();
   });
 
@@ -214,7 +229,10 @@ describe("deleteScheduleAction", () => {
     getSessionMock.mockResolvedValue(USER);
     listSchedulesForUserMock.mockResolvedValueOnce([SCHEDULE]);
     const { deleteScheduleAction } = await import("./schedule-actions");
-    await deleteScheduleAction("sched-1");
+    await expect(deleteScheduleAction("sched-1")).resolves.toEqual({
+      success: true,
+      data: undefined,
+    });
     expect(deleteScheduleMock).toHaveBeenCalledWith("sched-1");
   });
 });

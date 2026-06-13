@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
       return new Response("Unauthorized", { status: 401 });
     }
 
+    // AUP hard gate (EU AI Act Art. 50): voice chat runs inference, so a user
+    // who never accepted the AUP is blocked before any provider session opens.
+    const { aupGateResponse } = await import("lib/compliance/aup");
+    const aupGate = await aupGateResponse(session.user.id);
+    if (aupGate) return aupGate;
+
     // W9 feature toggle, enforced server-side like allowVision (default-deny,
     // enabled per team in /admin). Found unenforced by the wave audit.
     const { getTeamPolicy, getUserPrimaryTeamId } = await import(

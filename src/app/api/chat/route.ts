@@ -53,6 +53,7 @@ import {
   rateLimitActivations,
   ttftMs,
 } from "lib/observability/slo";
+import { aupGateResponse } from "lib/compliance/aup";
 import { checkRateLimit } from "lib/rate-limit";
 import { isThreadShared } from "lib/teamspaces/folders";
 import { getUserPreferences } from "lib/user/server";
@@ -67,6 +68,7 @@ import {
   convertToSavePart,
   excludeToolExecution,
   extractInProgressToolPart,
+  filterAppDefaultToolsByTeamPolicy,
   filterMcpServerCustomizations,
   handleError,
   loadAppDefaultTools,
@@ -95,6 +97,12 @@ export async function POST(request: Request) {
     if (!session?.user.id) {
       return new Response("Unauthorized", { status: 401 });
     }
+
+    // AUP hard gate (EU AI Act Art. 50): a user who never accepted the
+    // Acceptable Use Policy cannot run inference. Returns a machine-readable
+    // 403 {error:"aup_required"} the client maps to surfacing the AUP modal.
+    const aupGate = await aupGateResponse(session.user.id);
+    if (aupGate) return aupGate;
 
     const userTeamId = await getUserPrimaryTeamId(session.user.id);
     const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
@@ -491,6 +499,12 @@ export async function POST(request: Request) {
               allowedAppDefaultToolkit,
               userId: session.user.id,
             }),
+          )
+          // Per-tool team policy (Feature B): strip web-search / code-exec /
+          // http tools the team has disabled — applied AFTER canUseTools so it
+          // further-restricts WITHIN the allowed set, even for elevated users.
+          .map((tools) =>
+            filterAppDefaultToolsByTeamPolicy(tools, teamPolicy),
           )
           .orElse({});
         const inProgressToolParts = extractInProgressToolPart(message);

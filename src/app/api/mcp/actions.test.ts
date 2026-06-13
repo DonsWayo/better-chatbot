@@ -658,7 +658,10 @@ describe("armLocalMcpServerAction — per-session consent", () => {
   it("arms the server and writes an audit event", async () => {
     const { armLocalMcpServerAction } = await import("./actions");
     const result = await armLocalMcpServerAction("srv-local");
-    expect(result).toEqual({ armedUntil: 1234567890 });
+    expect(result).toEqual({
+      success: true,
+      data: { armedUntil: 1234567890 },
+    });
     expect(armLocalServerMock).toHaveBeenCalledWith("srv-local", {
       grantedBy: "owner-1",
     });
@@ -701,53 +704,59 @@ describe("armLocalMcpServerAction — per-session consent", () => {
     );
     const { armLocalMcpServerAction } = await import("./actions");
     await expect(armLocalMcpServerAction("srv-local")).resolves.toEqual({
-      armedUntil: 1234567890,
+      success: true,
+      data: { armedUntil: 1234567890 },
     });
   });
 
-  it("rejects when unauthenticated", async () => {
+  it("returns a structured failure when unauthenticated", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { armLocalMcpServerAction } = await import("./actions");
-    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
-      /logged in/i,
-    );
+    const result = await armLocalMcpServerAction("srv-local");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toMatch(/logged in/i);
     expect(armLocalServerMock).not.toHaveBeenCalled();
   });
 
-  it("rejects when the server does not exist", async () => {
+  it("returns a structured failure when the server does not exist", async () => {
     selectByIdMock.mockResolvedValue(null);
     const { armLocalMcpServerAction } = await import("./actions");
-    await expect(armLocalMcpServerAction("missing")).rejects.toThrow(
-      /not found/i,
-    );
+    const result = await armLocalMcpServerAction("missing");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toMatch(/not found/i);
   });
 
-  it("rejects non-stdio servers", async () => {
+  it("returns a structured failure for non-stdio servers", async () => {
     selectByIdMock.mockResolvedValue({
       ...stdioServer,
       config: { url: "https://mcp.example.com" },
     });
     const { armLocalMcpServerAction } = await import("./actions");
-    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
-      /stdio/i,
-    );
+    const result = await armLocalMcpServerAction("srv-local");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toMatch(/stdio/i);
     expect(armLocalServerMock).not.toHaveBeenCalled();
   });
 
-  it("rejects users who cannot manage the server", async () => {
+  it("returns a structured failure for users who cannot manage the server", async () => {
     canManageMCPServerMock.mockResolvedValue(false);
     const { armLocalMcpServerAction } = await import("./actions");
-    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
-      /permission/i,
-    );
+    const result = await armLocalMcpServerAction("srv-local");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toMatch(/permission/i);
     expect(armLocalServerMock).not.toHaveBeenCalled();
   });
 
-  it("rejects when the org/team policy denies local MCP", async () => {
+  it("returns the admin-facing instruction when the org/team policy denies local MCP", async () => {
     resolveLocalMcpPolicyMock.mockResolvedValue(false);
     const { armLocalMcpServerAction } = await import("./actions");
-    await expect(armLocalMcpServerAction("srv-local")).rejects.toThrow(
+    const result = await armLocalMcpServerAction("srv-local");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toMatch(
       /organization's policy/i,
+    );
+    expect((result as { error: string }).error).toContain(
+      'Ask an administrator to enable "Local MCP (desktop)"',
     );
     expect(armLocalServerMock).not.toHaveBeenCalled();
     expect(writeAuditLogMock).not.toHaveBeenCalled();
@@ -917,7 +926,9 @@ describe("callMcpToolByServerNameAction — ownership/visibility gate", () => {
     toolCallByServerNameMock.mockResolvedValue({ ok: true });
     const { callMcpToolByServerNameAction } = await import("./actions");
     await callMcpToolByServerNameAction("mine", "do", { x: 1 });
-    expect(toolCallByServerNameMock).toHaveBeenCalledWith("mine", "do", { x: 1 });
+    expect(toolCallByServerNameMock).toHaveBeenCalledWith("mine", "do", {
+      x: 1,
+    });
   });
 });
 
@@ -929,9 +940,7 @@ describe("refreshMcpClientAction / checkTokenMcpClientAction — manage gate", (
   it("refresh throws when unauthenticated and never reconnects", async () => {
     getCurrentUserMock.mockResolvedValue(null);
     const { refreshMcpClientAction } = await import("./actions");
-    await expect(refreshMcpClientAction("srv-1")).rejects.toThrow(
-      /logged in/i,
-    );
+    await expect(refreshMcpClientAction("srv-1")).rejects.toThrow(/logged in/i);
     expect(refreshClientMock).not.toHaveBeenCalled();
   });
 
@@ -939,9 +948,7 @@ describe("refreshMcpClientAction / checkTokenMcpClientAction — manage gate", (
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     selectByIdMock.mockResolvedValue(undefined);
     const { refreshMcpClientAction } = await import("./actions");
-    await expect(refreshMcpClientAction("ghost")).rejects.toThrow(
-      /not found/i,
-    );
+    await expect(refreshMcpClientAction("ghost")).rejects.toThrow(/not found/i);
     expect(refreshClientMock).not.toHaveBeenCalled();
   });
 

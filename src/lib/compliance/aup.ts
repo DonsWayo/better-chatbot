@@ -3,9 +3,11 @@ import "server-only";
 import { AsafeAupAcceptanceTable, UserTable } from "@/lib/db/pg/schema.pg";
 import { and, eq } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
+// Re-exported from a server-only-free module so non-Next contexts (seed/tests)
+// can import the version without dragging in this server-only file.
+import { CURRENT_AUP_VERSION } from "./aup-version";
 
-/** Current AUP version. Bump this string to force re-acceptance after policy updates. */
-export const CURRENT_AUP_VERSION = "1.0";
+export { CURRENT_AUP_VERSION };
 
 interface AupCacheEntry {
   accepted: boolean;
@@ -40,6 +42,34 @@ export async function hasAcceptedAup(userId: string): Promise<boolean> {
     // Fail open — never block access because of an AUP DB error
     return true;
   }
+}
+
+/**
+ * Hard-gate helper for expensive/action API surfaces (chat, temporary chat,
+ * workflow execution, realtime voice). Returns a clean machine-readable 403
+ * when the caller has NOT accepted the current AUP version, else `null` (proceed).
+ *
+ * Mirrors the central, fail-safe style of the banned-user backstop in
+ * auth-instance.getSession: enforcement lives in one place and every gated
+ * handler calls it. `hasAcceptedAup` fails OPEN on a DB error (never blocks
+ * access because of an AUP store outage), so this gate inherits that posture.
+ *
+ * The body uses the `aup_required` code the client maps to surfacing the AUP
+ * flow (see components/chat-bot onError → AupModal). Read-only/settings/auth
+ * routes and the AUP-accept route itself must NOT call this.
+ */
+export async function aupGateResponse(
+  userId: string,
+): Promise<Response | null> {
+  const accepted = await hasAcceptedAup(userId);
+  if (accepted) return null;
+  return Response.json(
+    {
+      error: "aup_required",
+      message: "Please accept the Acceptable Use Policy to continue.",
+    },
+    { status: 403 },
+  );
 }
 
 /** Record AUP acceptance for a user and invalidate the cache. */

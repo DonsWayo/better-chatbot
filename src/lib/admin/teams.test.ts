@@ -28,7 +28,7 @@ vi.mock("lib/db/pg/db.pg", () => ({
 }));
 
 vi.mock("@/lib/db/pg/schema.pg", () => ({
-  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech", modelAllowList: "modelAllowList", allowedEmailDomains: "allowedEmailDomains" },
+  AsafeTeamTable: { id: "id", name: "name", slug: "slug", description: "description", createdAt: "createdAt", guardrailPolicy: "guardrailPolicy", allowImageGen: "allowImageGen", allowVision: "allowVision", allowSpeech: "allowSpeech", allowWebSearch: "allowWebSearch", allowCodeExec: "allowCodeExec", allowHttp: "allowHttp", modelAllowList: "modelAllowList", allowedEmailDomains: "allowedEmailDomains" },
   AsafeTeamMemberTable: { id: "id", teamId: "teamId", userId: "userId", role: "role", createdAt: "createdAt" },
   AsafeTeamBudgetTable: { teamId: "teamId", budgetUsd: "budgetUsd", usedUsd: "usedUsd" },
   AsafeUsageEventTable: { model: "model", provider: "provider", promptTokens: "promptTokens", completionTokens: "completionTokens", costUsd: "costUsd", taskClass: "taskClass", createdAt: "createdAt" },
@@ -589,5 +589,51 @@ describe("getTeamPolicy — return type invariants", () => {
     const policy = await getTeamPolicy("missing");
     expect(policy).not.toBeNull();
     expect(typeof policy).toBe("object");
+  });
+});
+
+// ── getTeamPolicy — per-tool flags (Feature B) ────────────────────────────────
+
+describe("getTeamPolicy per-tool flags", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _selectRows = [];
+    limitMock.mockImplementation(() => Promise.resolve(_selectRows));
+    whereMock.mockReturnValue({ limit: limitMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
+    vi.resetModules();
+  });
+  afterEach(() => { vi.resetModules(); });
+
+  it("reflects per-tool flags from the row", async () => {
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, allowWebSearch: true, allowCodeExec: false, allowHttp: true, modelAllowList: [], allowedEmailDomains: [] }];
+    limitMock.mockResolvedValue(_selectRows);
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-tools");
+    expect(policy.allowWebSearch).toBe(true);
+    expect(policy.allowCodeExec).toBe(false);
+    expect(policy.allowHttp).toBe(true);
+  });
+
+  it("defaults per-tool flags to TRUE when absent from the row (pre-migration)", async () => {
+    // Row exists but omits the new columns (null/undefined) → default-ON.
+    _selectRows = [{ guardrailPolicy: "standard", allowImageGen: false, allowVision: false, allowSpeech: false, modelAllowList: [], allowedEmailDomains: [] }];
+    limitMock.mockResolvedValue(_selectRows);
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-defaults");
+    expect(policy.allowWebSearch).toBe(true);
+    expect(policy.allowCodeExec).toBe(true);
+    expect(policy.allowHttp).toBe(true);
+  });
+
+  it("defaults per-tool flags to TRUE when the team has no row", async () => {
+    _selectRows = [];
+    limitMock.mockResolvedValue(_selectRows);
+    const { getTeamPolicy } = await import("./teams");
+    const policy = await getTeamPolicy("team-none");
+    expect(policy.allowWebSearch).toBe(true);
+    expect(policy.allowCodeExec).toBe(true);
+    expect(policy.allowHttp).toBe(true);
   });
 });

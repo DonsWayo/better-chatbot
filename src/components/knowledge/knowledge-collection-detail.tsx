@@ -100,7 +100,10 @@ export function KnowledgeCollectionDetail({ id }: { id: string }) {
     });
     if (!ok) return;
     setDeleting(true);
-    await safe(() => deleteKnowledgeCollectionAction(id))
+    await safe(async () => {
+      const result = await deleteKnowledgeCollectionAction(id);
+      if (!result.success) throw new Error(result.error);
+    })
       .ifOk(() => {
         toast.success(t("Knowledge.collectionDeleted"));
         router.push("/studio?tab=knowledge");
@@ -117,12 +120,13 @@ export function KnowledgeCollectionDetail({ id }: { id: string }) {
       });
       if (!ok) return;
       setDeletingDocId(doc.id);
-      await safe(() =>
-        deleteKnowledgeDocumentAction({
+      await safe(async () => {
+        const result = await deleteKnowledgeDocumentAction({
           collectionId: id,
           sourceRef: doc.sourceRef,
-        }),
-      )
+        });
+        if (!result.success) throw new Error(result.error);
+      })
         .ifOk(() => {
           toast.success(t("Knowledge.documentDeleted"));
           void mutateDocuments();
@@ -367,15 +371,17 @@ function IngestPanel({
     const trimmed = text.trim();
     if (!trimmed || ingesting) return;
     setIngesting(true);
-    await safe(() =>
-      ingestKnowledgeTextAction({
+    await safe(async () => {
+      const result = await ingestKnowledgeTextAction({
         collectionId,
         text: trimmed,
         sourceRef: sourceRef.trim() || undefined,
-      }),
-    )
-      .ifOk((result) => {
-        toast.success(t("Knowledge.ingestSuccess", { count: result.chunks }));
+      });
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    })
+      .ifOk((data) => {
+        toast.success(t("Knowledge.ingestSuccess", { count: data.chunks }));
         setText("");
         setSourceRef("");
         onIngested();

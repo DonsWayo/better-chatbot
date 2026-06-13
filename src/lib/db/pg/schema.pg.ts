@@ -9,6 +9,7 @@ import { relations, sql } from "drizzle-orm";
 import { isNotNull } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   customType,
   index,
@@ -463,6 +464,12 @@ export const AsafeTeamTable = pgTable("asafe_team", {
   allowImageGen: boolean("allow_image_gen").notNull().default(false),
   allowVision: boolean("allow_vision").notNull().default(false),
   allowSpeech: boolean("allow_speech").notNull().default(false),
+  // Per-tool team policy flags — DEFAULT TRUE so existing teams are unchanged
+  // (absence/true = the tool is allowed). Enforced server-side in the chat
+  // tool-loading WITHIN the canUseTools (admin/editor) gate.
+  allowWebSearch: boolean("allow_web_search").notNull().default(true),
+  allowCodeExec: boolean("allow_code_exec").notNull().default(true),
+  allowHttp: boolean("allow_http").notNull().default(true),
   // W4: model allow-list — empty array = all approved models allowed
   modelAllowList: jsonb("model_allow_list")
     .$type<string[]>()
@@ -1059,6 +1066,36 @@ export const AsafeAupAcceptanceTable = pgTable(
 
 export type AsafeAupAcceptanceEntity =
   typeof AsafeAupAcceptanceTable.$inferSelect;
+
+// ── Storage object ownership ─────────────────────────────────────────────────
+// Per-key owner binding for uploaded files. Without this, any authenticated
+// user could read any uploaded file by guessing the key UUID (storage keys
+// carry no per-user binding). Written at upload time; enforced at ingest time.
+// userId is TEXT (the modern asafe convention) and intentionally has NO FK to
+// user.id — that column is uuid, so any join must cast (asafe_text vs core_uuid
+// audit-log lesson). Access is owner-only today; extensible to grants/team.
+
+export const AsafeStorageObjectTable = pgTable(
+  "asafe_storage_object",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storageKey: text("storage_key").notNull().unique(),
+    uploaderUserId: text("uploader_user_id").notNull(),
+    teamId: uuid("team_id"),
+    contentType: text("content_type"),
+    sizeBytes: bigint("size_bytes", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // storage_key already has a unique index (covers lookups by key).
+    index("idx_storage_object_uploader_user_id").on(t.uploaderUserId),
+  ],
+);
+
+export type AsafeStorageObjectEntity =
+  typeof AsafeStorageObjectTable.$inferSelect;
 
 // ── Agent Platform #21: sessions + steps (docs/design/agent-platform.md) ─────
 // One governed execution of an agent/workflow revision. `definitionId` is

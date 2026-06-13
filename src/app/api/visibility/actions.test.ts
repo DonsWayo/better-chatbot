@@ -48,28 +48,30 @@ describe("visibility server actions", () => {
       getSessionMock.mockResolvedValue(null);
     });
 
-    it("grantAccessAction throws Unauthorized", async () => {
+    it("grantAccessAction returns a structured Unauthorized failure", async () => {
       const { grantAccessAction } = await import("./actions");
-      await expect(grantAccessAction(grantInput)).rejects.toThrow(
-        "Unauthorized",
-      );
+      await expect(grantAccessAction(grantInput)).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
       expect(grantAccessMock).not.toHaveBeenCalled();
       expect(canAccessMock).not.toHaveBeenCalled();
     });
 
-    it("revokeAccessAction throws Unauthorized", async () => {
+    it("revokeAccessAction returns a structured Unauthorized failure", async () => {
       const { revokeAccessAction } = await import("./actions");
-      await expect(revokeAccessAction(grantInput)).rejects.toThrow(
-        "Unauthorized",
-      );
+      await expect(revokeAccessAction(grantInput)).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
       expect(revokeAccessMock).not.toHaveBeenCalled();
     });
 
-    it("listGrantsAction throws Unauthorized", async () => {
+    it("listGrantsAction returns a structured Unauthorized failure", async () => {
       const { listGrantsAction } = await import("./actions");
       await expect(
         listGrantsAction({ entityType: "agent", entityId: ENTITY }),
-      ).rejects.toThrow("Unauthorized");
+      ).resolves.toEqual({ success: false, error: "Unauthorized" });
       expect(listGrantsMock).not.toHaveBeenCalled();
     });
   });
@@ -80,9 +82,13 @@ describe("visibility server actions", () => {
       canAccessMock.mockResolvedValue(false);
     });
 
-    it("grantAccessAction is rejected", async () => {
+    it("grantAccessAction returns a structured permission failure", async () => {
       const { grantAccessAction } = await import("./actions");
-      await expect(grantAccessAction(grantInput)).rejects.toThrow("permission");
+      const result = await grantAccessAction(grantInput);
+      expect(result).toEqual({
+        success: false,
+        error: "You do not have permission to manage sharing for this item",
+      });
       expect(canAccessMock).toHaveBeenCalledWith(
         "workflow",
         ENTITY,
@@ -92,19 +98,22 @@ describe("visibility server actions", () => {
       expect(grantAccessMock).not.toHaveBeenCalled();
     });
 
-    it("revokeAccessAction is rejected", async () => {
+    it("revokeAccessAction returns a structured permission failure", async () => {
       const { revokeAccessAction } = await import("./actions");
-      await expect(revokeAccessAction(grantInput)).rejects.toThrow(
-        "permission",
-      );
+      const result = await revokeAccessAction(grantInput);
+      expect(result.success).toBe(false);
+      expect((result as { error: string }).error).toContain("permission");
       expect(revokeAccessMock).not.toHaveBeenCalled();
     });
 
-    it("listGrantsAction is rejected", async () => {
+    it("listGrantsAction returns a structured permission failure", async () => {
       const { listGrantsAction } = await import("./actions");
-      await expect(
-        listGrantsAction({ entityType: "workflow", entityId: ENTITY }),
-      ).rejects.toThrow("permission");
+      const result = await listGrantsAction({
+        entityType: "workflow",
+        entityId: ENTITY,
+      });
+      expect(result.success).toBe(false);
+      expect((result as { error: string }).error).toContain("permission");
       expect(listGrantsMock).not.toHaveBeenCalled();
     });
   });
@@ -117,7 +126,10 @@ describe("visibility server actions", () => {
 
     it("grantAccessAction records the caller as grantedBy and defaults capability to 'use'", async () => {
       const { grantAccessAction } = await import("./actions");
-      await grantAccessAction(grantInput);
+      await expect(grantAccessAction(grantInput)).resolves.toEqual({
+        success: true,
+        data: undefined,
+      });
       expect(grantAccessMock).toHaveBeenCalledWith({
         entityType: "workflow",
         entityId: ENTITY,
@@ -129,7 +141,11 @@ describe("visibility server actions", () => {
 
     it("grantAccessAction forwards an explicit capability", async () => {
       const { grantAccessAction } = await import("./actions");
-      await grantAccessAction({ ...grantInput, capability: "edit" });
+      const result = await grantAccessAction({
+        ...grantInput,
+        capability: "edit",
+      });
+      expect(result.success).toBe(true);
       expect(grantAccessMock).toHaveBeenCalledWith(
         expect.objectContaining({ capability: "edit", grantedBy: CALLER }),
       );
@@ -137,7 +153,11 @@ describe("visibility server actions", () => {
 
     it("revokeAccessAction forwards the revocation", async () => {
       const { revokeAccessAction } = await import("./actions");
-      await revokeAccessAction({ ...grantInput, capability: "use" });
+      const result = await revokeAccessAction({
+        ...grantInput,
+        capability: "use",
+      });
+      expect(result.success).toBe(true);
       expect(revokeAccessMock).toHaveBeenCalledWith({
         ...grantInput,
         capability: "use",
@@ -153,15 +173,18 @@ describe("visibility server actions", () => {
       const { listGrantsAction } = await import("./actions");
       await expect(
         listGrantsAction({ entityType: "agent", entityId: ENTITY }),
-      ).resolves.toEqual([
-        {
-          id: "g1",
-          granteeUserId: GRANTEE,
-          capability: "use",
-          granteeName: "Ada",
-          granteeEmail: "ada@example.com",
-        },
-      ]);
+      ).resolves.toEqual({
+        success: true,
+        data: [
+          {
+            id: "g1",
+            granteeUserId: GRANTEE,
+            capability: "use",
+            granteeName: "Ada",
+            granteeEmail: "ada@example.com",
+          },
+        ],
+      });
       expect(listGrantsMock).toHaveBeenCalledWith("agent", ENTITY);
       expect(resolveGranteeNamesMock).toHaveBeenCalledWith([GRANTEE]);
     });
@@ -176,7 +199,8 @@ describe("visibility server actions", () => {
         entityType: "agent",
         entityId: ENTITY,
       });
-      expect(result[0]).toMatchObject({
+      expect(result.success).toBe(true);
+      expect((result as { data: unknown[] }).data[0]).toMatchObject({
         granteeName: null,
         granteeEmail: null,
       });
@@ -196,7 +220,7 @@ describe("visibility server actions", () => {
           entityId: ENTITY,
           email: "ada@example.com",
         }),
-      ).resolves.toEqual(user);
+      ).resolves.toEqual({ success: true, data: user });
       expect(resolveGranteeByEmailMock).toHaveBeenCalledWith("ada@example.com");
     });
 
@@ -209,7 +233,7 @@ describe("visibility server actions", () => {
           entityId: ENTITY,
           email: "nobody@example.com",
         }),
-      ).resolves.toBeNull();
+      ).resolves.toEqual({ success: true, data: null });
     });
   });
 
@@ -223,7 +247,7 @@ describe("visibility server actions", () => {
           entityId: ENTITY,
           email: "ada@example.com",
         }),
-      ).rejects.toThrow("Unauthorized");
+      ).resolves.toEqual({ success: false, error: "Unauthorized" });
       expect(resolveGranteeByEmailMock).not.toHaveBeenCalled();
     });
 
@@ -231,13 +255,13 @@ describe("visibility server actions", () => {
       getSessionMock.mockResolvedValue({ user: { id: CALLER } });
       canAccessMock.mockResolvedValue(false);
       const { resolveGranteeByEmailAction } = await import("./actions");
-      await expect(
-        resolveGranteeByEmailAction({
-          entityType: "workflow",
-          entityId: ENTITY,
-          email: "ada@example.com",
-        }),
-      ).rejects.toThrow("permission");
+      const result = await resolveGranteeByEmailAction({
+        entityType: "workflow",
+        entityId: ENTITY,
+        email: "ada@example.com",
+      });
+      expect(result.success).toBe(false);
+      expect((result as { error: string }).error).toContain("permission");
       expect(resolveGranteeByEmailMock).not.toHaveBeenCalled();
     });
   });

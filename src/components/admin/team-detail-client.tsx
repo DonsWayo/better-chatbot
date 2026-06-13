@@ -129,6 +129,9 @@ interface Team {
   allowImageGen: boolean;
   allowVision: boolean;
   allowSpeech: boolean;
+  allowWebSearch: boolean;
+  allowCodeExec: boolean;
+  allowHttp: boolean;
 }
 
 interface TeamDetailClientProps {
@@ -151,11 +154,15 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setIsSavingRename(true);
     setRenameError(null);
     try {
-      await renameTeamAction(
+      const result = await renameTeamAction(
         team.id,
         newName.trim(),
         newDescription.trim() || null,
       );
+      if (!result.success) {
+        setRenameError(result.error);
+        return;
+      }
       setIsRenaming(false);
       startTransition(() => {
         router.refresh();
@@ -175,7 +182,13 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteTeamAction(team.id);
+      // On success the action redirects (throws NEXT_REDIRECT, caught by the
+      // framework). A permission failure comes back as a structured result.
+      const result = await deleteTeamAction(team.id);
+      if (result && !result.success) {
+        toast.error(result.error);
+        setIsDeleting(false);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete team");
       setIsDeleting(false);
@@ -200,7 +213,11 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   ) => {
     setUpdatingRoleId(memberId);
     try {
-      await updateMemberRoleAction(memberId, team.id, newRole);
+      const result = await updateMemberRoleAction(memberId, team.id, newRole);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       startTransition(() => {
         router.refresh();
       });
@@ -241,6 +258,14 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   );
   const [allowVision, setAllowVision] = useState(team.allowVision ?? false);
   const [allowSpeech, setAllowSpeech] = useState(team.allowSpeech ?? false);
+  // Per-tool flags — default-ON (absence = allowed).
+  const [allowWebSearch, setAllowWebSearch] = useState(
+    team.allowWebSearch ?? true,
+  );
+  const [allowCodeExec, setAllowCodeExec] = useState(
+    team.allowCodeExec ?? true,
+  );
+  const [allowHttp, setAllowHttp] = useState(team.allowHttp ?? true);
   const [isSavingPolicy, setIsSavingPolicy] = useState(false);
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [policySuccess, setPolicySuccess] = useState(false);
@@ -250,7 +275,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setPolicyError(null);
     setPolicySuccess(false);
     try {
-      await setPolicyAction(team.id, {
+      const result = await setPolicyAction(team.id, {
         guardrailPolicy: guardrailPolicy as
           | "strict"
           | "standard"
@@ -258,8 +283,19 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
         allowImageGen,
         allowVision,
         allowSpeech,
+        allowWebSearch,
+        allowCodeExec,
+        allowHttp,
       });
+      if (!result.success) {
+        setPolicyError(result.error);
+        toast.error(result.error);
+        return;
+      }
       setPolicySuccess(true);
+      // router.refresh() wipes the inline success state before anyone reads it
+      // (same pattern as the model-save toast) — the toast survives the refresh.
+      toast.success("Team policy saved.");
       startTransition(() => {
         router.refresh();
       });
@@ -297,7 +333,11 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setDomainsError(null);
     setDomainsSuccess(false);
     try {
-      await setEmailDomainsAction(team.id, emailDomains);
+      const result = await setEmailDomainsAction(team.id, emailDomains);
+      if (!result.success) {
+        setDomainsError(result.error);
+        return;
+      }
       setDomainsSuccess(true);
       startTransition(() => {
         router.refresh();
@@ -332,7 +372,12 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setModelsError(null);
     setModelsSuccess(false);
     try {
-      await setModelAllowListAction(team.id, selectedModels);
+      const result = await setModelAllowListAction(team.id, selectedModels);
+      if (!result.success) {
+        setModelsError(result.error);
+        toast.error(result.error);
+        return;
+      }
       setModelsSuccess(true);
       // router.refresh() re-renders this component with fresh server props and
       // wipes the inline success state before anyone reads it — the toast is
@@ -377,7 +422,11 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setIsAdding(true);
     setAddError(null);
     try {
-      await addTeamMemberAction(team.id, email.trim(), role);
+      const result = await addTeamMemberAction(team.id, email.trim(), role);
+      if (!result.success) {
+        setAddError(result.error);
+        return;
+      }
       setEmail("");
       setRole("member");
       startTransition(() => {
@@ -393,7 +442,11 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
   const handleRemove = async (memberId: string) => {
     setRemovingId(memberId);
     try {
-      await removeTeamMemberAction(memberId, team.id);
+      const result = await removeTeamMemberAction(memberId, team.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       startTransition(() => {
         router.refresh();
       });
@@ -412,7 +465,16 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     setBudgetError(null);
     setBudgetSuccess(false);
     try {
-      await setBudgetAction(team.id, budgetUsd.trim(), periodStart, periodEnd);
+      const result = await setBudgetAction(
+        team.id,
+        budgetUsd.trim(),
+        periodStart,
+        periodEnd,
+      );
+      if (!result.success) {
+        setBudgetError(result.error);
+        return;
+      }
       setBudgetSuccess(true);
       startTransition(() => {
         router.refresh();
@@ -874,6 +936,53 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
                   label: "Speech / audio",
                   value: allowSpeech,
                   set: setAllowSpeech,
+                },
+              ] as const
+            ).map(({ key, label, value, set }) => (
+              <label
+                key={key}
+                className="flex items-center gap-3 cursor-pointer rounded-md border px-3 py-2 hover:bg-muted/40 transition-colors"
+                data-testid={`toggle-${key}`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={value}
+                  onChange={(e) => set(e.target.checked)}
+                  disabled={isSavingPolicy}
+                />
+                <span className="text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Tool Access
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Enabled by default. Disabling a tool removes it for everyone on
+              this team — including admins and editors.
+            </p>
+            {(
+              [
+                {
+                  key: "allowWebSearch",
+                  label: "Web search",
+                  value: allowWebSearch,
+                  set: setAllowWebSearch,
+                },
+                {
+                  key: "allowCodeExec",
+                  label: "Code execution",
+                  value: allowCodeExec,
+                  set: setAllowCodeExec,
+                },
+                {
+                  key: "allowHttp",
+                  label: "HTTP requests",
+                  value: allowHttp,
+                  set: setAllowHttp,
                 },
               ] as const
             ).map(({ key, label, value, set }) => (

@@ -101,7 +101,13 @@ export function McpServerCustomizationContent({
   const handleArmLocalServer = async () => {
     setIsArming(true);
     try {
-      await armLocalMcpServerAction(id);
+      const result = await armLocalMcpServerAction(id);
+      if (!result.success) {
+        // The admin-facing "Ask an administrator to enable Local MCP …"
+        // instruction is returned (not thrown) so prod doesn't mask it.
+        handleErrorWithToast(new Error(result.error));
+        return;
+      }
       await refreshLocalMcpStatus();
     } catch (e) {
       handleErrorWithToast(e as Error);

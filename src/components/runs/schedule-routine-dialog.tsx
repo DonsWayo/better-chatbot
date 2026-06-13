@@ -109,15 +109,26 @@ export function ScheduleRoutineDialog() {
     setSubmitting(true);
     setCronError(null);
     try {
-      await createScheduleAction({ workflowId, cronExpr, timezone, enabled });
+      const result = await createScheduleAction({
+        workflowId,
+        cronExpr,
+        timezone,
+        enabled,
+      });
+      if (!result.success) {
+        // CronError (invalid expression/timezone) and friends land here —
+        // shown inline so the user can fix the custom cron and retry. In prod
+        // the action returns the reason instead of throwing an opaque 500.
+        setCronError(result.error);
+        return;
+      }
       toast.success(t("routineCreated"));
       setOpen(false);
       setWorkflowId("");
       setPreset("daily");
       setCustomCron("");
     } catch (error) {
-      // CronError (invalid expression/timezone) and friends land here —
-      // shown inline so the user can fix the custom cron and retry.
+      // Network/serialization failures (not action-level errors) still throw.
       setCronError(error instanceof Error ? error.message : String(error));
     } finally {
       setSubmitting(false);

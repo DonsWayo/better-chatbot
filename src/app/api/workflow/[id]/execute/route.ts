@@ -13,6 +13,7 @@ import {
 import { createSession as createAgentSession } from "lib/agent-platform/sessions";
 import { createWorkflowExecutor } from "lib/ai/workflow/executor/workflow-executor";
 import { encodeWorkflowEvent } from "lib/ai/workflow/shared.workflow";
+import { aupGateResponse } from "lib/compliance/aup";
 import { workflowRepository } from "lib/db/repository";
 import { safeJSONParse, toAny } from "lib/utils";
 import logger from "logger";
@@ -27,6 +28,12 @@ export async function POST(
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  // AUP hard gate (EU AI Act Art. 50): executing a workflow runs inference, so
+  // a user who never accepted the AUP is blocked here too.
+  const aupGate = await aupGateResponse(session.user.id);
+  if (aupGate) return aupGate;
+
   const hasAccess = await workflowRepository.checkAccess(id, session.user.id);
   if (!hasAccess) {
     return new Response("Unauthorized", { status: 401 });

@@ -539,6 +539,15 @@ export interface TeamPolicy {
   allowVision: boolean;
   allowSpeech: boolean;
   /**
+   * Per-tool flags. DEFAULT TRUE: absence (or a pre-migration null) means the
+   * tool is allowed, so existing teams are unchanged. These further restrict
+   * WITHIN the canUseTools (admin/editor) gate — a disabled tool is never bound
+   * even for an elevated user whose team disallows it.
+   */
+  allowWebSearch: boolean;
+  allowCodeExec: boolean;
+  allowHttp: boolean;
+  /**
    * EFFECTIVE model allow-list: org base layered with the team's
    * model_policy override (see lib/admin/model-policy.ts).
    * Empty array = all approved models allowed; non-empty = restricted to listed model IDs
@@ -565,6 +574,9 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
         allowImageGen: AsafeTeamTable.allowImageGen,
         allowVision: AsafeTeamTable.allowVision,
         allowSpeech: AsafeTeamTable.allowSpeech,
+        allowWebSearch: AsafeTeamTable.allowWebSearch,
+        allowCodeExec: AsafeTeamTable.allowCodeExec,
+        allowHttp: AsafeTeamTable.allowHttp,
         modelAllowList: AsafeTeamTable.modelAllowList,
         modelPolicy: AsafeTeamTable.modelPolicy,
         allowedEmailDomains: AsafeTeamTable.allowedEmailDomains,
@@ -593,6 +605,10 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
           allowImageGen: row.allowImageGen,
           allowVision: row.allowVision,
           allowSpeech: row.allowSpeech,
+          // Per-tool flags default-ON: treat null (pre-migration) as allowed.
+          allowWebSearch: row.allowWebSearch ?? true,
+          allowCodeExec: row.allowCodeExec ?? true,
+          allowHttp: row.allowHttp ?? true,
           modelAllowList: effectiveAllowList,
           allowedEmailDomains: row.allowedEmailDomains,
         }
@@ -601,6 +617,10 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
           allowImageGen: false,
           allowVision: false,
           allowSpeech: false,
+          // No team → no per-tool restriction (default-ON).
+          allowWebSearch: true,
+          allowCodeExec: true,
+          allowHttp: true,
           modelAllowList: effectiveAllowList,
           allowedEmailDomains: [],
         };
@@ -630,6 +650,13 @@ export async function getTeamPolicy(teamId: string): Promise<TeamPolicy> {
       allowImageGen: false,
       allowVision: false,
       allowSpeech: false,
+      // Per-tool flags are default-ON and only ever further-restrict an already
+      // elevated user; keeping them ON under a transient DB failure follows the
+      // same "don't lock everyone out" intent as modelAllowList above (the hard
+      // safety controls — guardrails/capabilities — are the ones that fail closed).
+      allowWebSearch: true,
+      allowCodeExec: true,
+      allowHttp: true,
       modelAllowList: [],
       allowedEmailDomains: [],
     };

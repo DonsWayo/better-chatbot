@@ -2,6 +2,8 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getSession } from "auth/server";
 import { serverFileStorage, storageDriver } from "lib/file-storage";
+import { storageKeyFromUrl } from "lib/file-storage/storage-utils";
+import { storageObjectRepository } from "lib/db/repository";
 import globalLogger from "lib/logger";
 import { colorize } from "consola/utils";
 import { checkStorageAction } from "../actions";
@@ -73,9 +75,32 @@ async function handleVercelBlobUpload(
       });
 
       try {
-        // TODO: Add custom logic here (save to database, send notification, etc.)
-        // const { userId } = JSON.parse(tokenPayload);
-        // await db.files.create({ url: blob.url, userId });
+        // Bind the uploaded blob to its owner so ingest can enforce ownership.
+        // The uploader identity was threaded through the token payload at the
+        // onBeforeGenerateToken step (this webhook is invoked server-to-server
+        // by Vercel Blob and carries no session). Record the key in the SAME
+        // shape ingest will look it up: storageKeyFromUrl(blob.url) ===
+        // pathname without a leading slash.
+        const payload = tokenPayload
+          ? (JSON.parse(tokenPayload) as { userId?: string })
+          : {};
+        const uploaderUserId = payload.userId;
+        const storageKey =
+          storageKeyFromUrl(blob.url) ?? blob.pathname.replace(/^\/+/, "");
+
+        if (!uploaderUserId) {
+          logger.error(
+            "onUploadCompleted: missing userId in tokenPayload; ownership not recorded",
+            { pathname: blob.pathname },
+          );
+          return;
+        }
+
+        await storageObjectRepository.recordStorageObject({
+          storageKey,
+          uploaderUserId,
+          contentType: blob.contentType ?? null,
+        });
       } catch (error) {
         logger.error("Error in onUploadCompleted callback", error);
       }

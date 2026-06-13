@@ -1,5 +1,6 @@
 "use server";
 
+import { type ActionResult, toActionResult } from "app-types/util";
 import { getSession } from "auth/server";
 import { getTeamWithMembers, getUserPrimaryTeamId } from "lib/admin/teams";
 import {
@@ -9,8 +10,8 @@ import {
   setScheduleEnabled,
 } from "lib/agent-platform/scheduler";
 import { estimateCostUsd } from "lib/ai/budget";
-import { workflowRepository } from "lib/db/repository";
 import type { WorkflowScheduleEntity } from "lib/db/pg/schema.pg";
+import { workflowRepository } from "lib/db/repository";
 
 // Agent Platform #22/#26 — routine (workflow_schedule) mutations from the
 // /schedule dialog and the Triage "Routines" tab. Internal-UI mutations →
@@ -47,7 +48,7 @@ async function requireOwnSchedule(
   return schedule;
 }
 
-export async function createScheduleAction(
+async function createScheduleOrThrow(
   input: CreateScheduleActionInput,
 ): Promise<WorkflowScheduleEntity> {
   const userId = await requireUserId();
@@ -83,7 +84,19 @@ export async function createScheduleAction(
   return schedule;
 }
 
-export async function toggleScheduleAction(
+/**
+ * Returns a structured {@link ActionResult} rather than throwing: the CronError
+ * reason for an invalid custom cron is meant to be shown INLINE in the dialog
+ * so the user can fix it. In production Next.js masks a thrown error into an
+ * opaque 500 ("digest"), so the precise message would otherwise be lost.
+ */
+export async function createScheduleAction(
+  input: CreateScheduleActionInput,
+): Promise<ActionResult<WorkflowScheduleEntity>> {
+  return toActionResult(() => createScheduleOrThrow(input));
+}
+
+async function toggleScheduleOrThrow(
   id: string,
   enabled: boolean,
 ): Promise<WorkflowScheduleEntity | null> {
@@ -92,10 +105,21 @@ export async function toggleScheduleAction(
   return setScheduleEnabled(id, enabled);
 }
 
-export async function deleteScheduleAction(id: string): Promise<void> {
+export async function toggleScheduleAction(
+  id: string,
+  enabled: boolean,
+): Promise<ActionResult<WorkflowScheduleEntity | null>> {
+  return toActionResult(() => toggleScheduleOrThrow(id, enabled));
+}
+
+async function deleteScheduleOrThrow(id: string): Promise<void> {
   const userId = await requireUserId();
   await requireOwnSchedule(userId, id);
   await deleteSchedule(id);
+}
+
+export async function deleteScheduleAction(id: string): Promise<ActionResult> {
+  return toActionResult(() => deleteScheduleOrThrow(id));
 }
 
 export interface RoutineCostEstimate {

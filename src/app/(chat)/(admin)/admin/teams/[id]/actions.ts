@@ -1,6 +1,7 @@
 "use server";
 
 import { AsafeTeamBudgetTable, UserTable } from "@/lib/db/pg/schema.pg";
+import { type ActionResult, toActionResult } from "app-types/util";
 import { eq } from "drizzle-orm";
 import {
   addTeamMember,
@@ -46,11 +47,18 @@ async function requireTeamManagePermission(teamId: string): Promise<void> {
   }
 }
 
-export async function addTeamMemberAction(
+// The exported actions return a structured {@link ActionResult} rather than
+// throwing: production Next.js masks errors thrown from a Server Action into an
+// opaque 500 ("digest"), so the user-instructional messages ("User not found",
+// "Period end must be after period start", the permission denials) would never
+// reach the client toast / inline error. Internal `*OrThrow` helpers keep the
+// throwing logic. (deleteTeamAction is the exception — see its note.)
+
+async function addTeamMemberOrThrow(
   teamId: string,
   email: string,
   role: "admin" | "editor" | "member",
-) {
+): Promise<void> {
   await requireTeamManagePermission(teamId);
   const [user] = await db
     .select()
@@ -62,7 +70,18 @@ export async function addTeamMemberAction(
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
-export async function removeTeamMemberAction(memberId: string, teamId: string) {
+export async function addTeamMemberAction(
+  teamId: string,
+  email: string,
+  role: "admin" | "editor" | "member",
+): Promise<ActionResult> {
+  return toActionResult(() => addTeamMemberOrThrow(teamId, email, role));
+}
+
+async function removeTeamMemberOrThrow(
+  memberId: string,
+  teamId: string,
+): Promise<void> {
   await requireTeamManagePermission(teamId);
   // Scope the delete to teamId so a team admin cannot remove members of
   // other teams by passing a foreign memberId.
@@ -70,35 +89,82 @@ export async function removeTeamMemberAction(memberId: string, teamId: string) {
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
+export async function removeTeamMemberAction(
+  memberId: string,
+  teamId: string,
+): Promise<ActionResult> {
+  return toActionResult(() => removeTeamMemberOrThrow(memberId, teamId));
+}
+
+async function setModelAllowListOrThrow(
+  teamId: string,
+  modelAllowList: string[],
+): Promise<void> {
+  await requireAdminPermission();
+  await updateTeamPolicy(teamId, { modelAllowList });
+  revalidatePath(`/admin/teams/${teamId}`);
+}
+
 export async function setModelAllowListAction(
   teamId: string,
   modelAllowList: string[],
-) {
+): Promise<ActionResult> {
+  return toActionResult(() => setModelAllowListOrThrow(teamId, modelAllowList));
+}
+
+async function setEmailDomainsOrThrow(
+  teamId: string,
+  allowedEmailDomains: string[],
+): Promise<void> {
   await requireAdminPermission();
-  await updateTeamPolicy(teamId, { modelAllowList });
+  await updateTeamPolicy(teamId, { allowedEmailDomains });
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
 export async function setEmailDomainsAction(
   teamId: string,
   allowedEmailDomains: string[],
-) {
+): Promise<ActionResult> {
+  return toActionResult(() =>
+    setEmailDomainsOrThrow(teamId, allowedEmailDomains),
+  );
+}
+
+type TeamPolicyPatch = {
+  guardrailPolicy?: "strict" | "standard" | "permissive";
+  allowImageGen?: boolean;
+  allowVision?: boolean;
+  allowSpeech?: boolean;
+  // Per-tool flags (Feature B) — default-ON, enforced server-side in chat.
+  allowWebSearch?: boolean;
+  allowCodeExec?: boolean;
+  allowHttp?: boolean;
+};
+
+async function setPolicyOrThrow(
+  teamId: string,
+  patch: TeamPolicyPatch,
+): Promise<void> {
   await requireAdminPermission();
-  await updateTeamPolicy(teamId, { allowedEmailDomains });
+  await updateTeamPolicy(teamId, patch);
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
 export async function setPolicyAction(
   teamId: string,
-  patch: {
-    guardrailPolicy?: "strict" | "standard" | "permissive";
-    allowImageGen?: boolean;
-    allowVision?: boolean;
-    allowSpeech?: boolean;
-  },
-) {
-  await requireAdminPermission();
-  await updateTeamPolicy(teamId, patch);
+  patch: TeamPolicyPatch,
+): Promise<ActionResult> {
+  return toActionResult(() => setPolicyOrThrow(teamId, patch));
+}
+
+async function updateMemberRoleOrThrow(
+  memberId: string,
+  teamId: string,
+  role: "admin" | "editor" | "member",
+): Promise<void> {
+  await requireTeamManagePermission(teamId);
+  // Scoped to teamId — same defense-in-depth as removeTeamMemberAction.
+  await updateTeamMemberRole(memberId, role, teamId);
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
@@ -106,10 +172,17 @@ export async function updateMemberRoleAction(
   memberId: string,
   teamId: string,
   role: "admin" | "editor" | "member",
-) {
+): Promise<ActionResult> {
+  return toActionResult(() => updateMemberRoleOrThrow(memberId, teamId, role));
+}
+
+async function renameTeamOrThrow(
+  teamId: string,
+  name: string,
+  description?: string | null,
+): Promise<void> {
   await requireTeamManagePermission(teamId);
-  // Scoped to teamId — same defense-in-depth as removeTeamMemberAction.
-  await updateTeamMemberRole(memberId, role, teamId);
+  await updateTeam(teamId, { name, description: description ?? null });
   revalidatePath(`/admin/teams/${teamId}`);
 }
 
@@ -117,25 +190,33 @@ export async function renameTeamAction(
   teamId: string,
   name: string,
   description?: string | null,
-) {
-  await requireTeamManagePermission(teamId);
-  await updateTeam(teamId, { name, description: description ?? null });
-  revalidatePath(`/admin/teams/${teamId}`);
+): Promise<ActionResult> {
+  return toActionResult(() => renameTeamOrThrow(teamId, name, description));
 }
 
-export async function deleteTeamAction(teamId: string) {
-  await requireAdminPermission();
-  await deleteTeam(teamId);
-  revalidatePath("/admin/teams");
+/**
+ * Unlike its siblings this does NOT wrap the whole body in toActionResult:
+ * `redirect()` works by throwing a NEXT_REDIRECT control-flow signal that MUST
+ * propagate to Next.js. We run only the gated mutation through toActionResult
+ * and, on success, redirect (whose throw propagates normally); a permission
+ * failure comes back as { success:false } so the client can toast it.
+ */
+export async function deleteTeamAction(teamId: string): Promise<ActionResult> {
+  const result = await toActionResult(async () => {
+    await requireAdminPermission();
+    await deleteTeam(teamId);
+    revalidatePath("/admin/teams");
+  });
+  if (!result.success) return result;
   redirect("/admin/teams");
 }
 
-export async function setBudgetAction(
+async function setBudgetOrThrow(
   teamId: string,
   budgetUsd: string,
   periodStart: string,
   periodEnd: string,
-) {
+): Promise<void> {
   await requireAdminPermission("manage team budgets");
 
   const start = new Date(periodStart);
@@ -164,4 +245,15 @@ export async function setBudgetAction(
     });
 
   revalidatePath(`/admin/teams/${teamId}`);
+}
+
+export async function setBudgetAction(
+  teamId: string,
+  budgetUsd: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<ActionResult> {
+  return toActionResult(() =>
+    setBudgetOrThrow(teamId, budgetUsd, periodStart, periodEnd),
+  );
 }

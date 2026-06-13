@@ -2,6 +2,7 @@
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { z } from "zod";
 
+import { type ActionResult, toActionResult } from "app-types/util";
 import { getUserPrimaryTeamId } from "lib/admin/teams";
 import {
   findOpenLocalMcpArmRequest,
@@ -400,8 +401,19 @@ export async function getLocalMcpStatusAction(serverId: string) {
  * until the arming window (8h) expires. Session-gated — only users who can
  * manage the server (owner / admin) and whose org/team policy allows local
  * MCP may arm. Arming is written to the compliance audit log.
+ *
+ * Returns a structured {@link ActionResult} rather than throwing: the
+ * admin-facing instruction ('Ask an administrator to enable "Local MCP
+ * (desktop)" …') is precisely what the user needs to act on, and production
+ * Next.js would otherwise mask the thrown error into an opaque 500.
  */
-export async function armLocalMcpServerAction(serverId: string) {
+export async function armLocalMcpServerAction(
+  serverId: string,
+): Promise<ActionResult<{ armedUntil: number }>> {
+  return toActionResult(() => armLocalMcpServerOrThrow(serverId));
+}
+
+async function armLocalMcpServerOrThrow(serverId: string) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
     throw new Error("You must be logged in to enable local tools");

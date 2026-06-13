@@ -280,6 +280,17 @@ export default function ChatBot({
     if (isLoading) stopTyping();
   }, [isLoading, stopTyping]);
 
+  // AUP hard gate (EU AI Act Art. 50): the chat API returns a 403 with the
+  // machine-readable {error:"aup_required"} code when the user never accepted
+  // the Acceptable Use Policy. Surface the AUP modal so they can accept and
+  // retry (the modal mounted in the chat layout listens for this event).
+  useEffect(() => {
+    if (!error) return;
+    if (/aup_required/i.test(error.message)) {
+      window.dispatchEvent(new CustomEvent("asafe:aup-required"));
+    }
+  }, [error]);
+
   const emptyMessage = useMemo(
     () => messages.length === 0 && !error,
     [messages.length, error],

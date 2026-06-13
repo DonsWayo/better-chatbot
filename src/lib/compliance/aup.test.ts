@@ -80,6 +80,42 @@ describe("hasAcceptedAup", () => {
   });
 });
 
+describe("aupGateResponse", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    selectLimitMock.mockResolvedValue([]);
+    selectWhereMock.mockReturnValue({ limit: selectLimitMock });
+    selectFromMock.mockReturnValue({ where: selectWhereMock });
+    selectMock.mockReturnValue({ from: selectFromMock });
+  });
+
+  it("returns null (proceed) when the user has accepted the AUP", async () => {
+    selectLimitMock.mockResolvedValue([{ id: "accepted" }]);
+    const { aupGateResponse } = await import("./aup");
+    const res = await aupGateResponse("user-accepted");
+    expect(res).toBeNull();
+  });
+
+  it("returns a 403 aup_required response when the user has NOT accepted", async () => {
+    selectLimitMock.mockResolvedValue([]);
+    const { aupGateResponse } = await import("./aup");
+    const res = await aupGateResponse("user-not-accepted");
+    expect(res).not.toBeNull();
+    expect(res!.status).toBe(403);
+    const body = await res!.json();
+    expect(body.error).toBe("aup_required");
+    expect(typeof body.message).toBe("string");
+  });
+
+  it("fails OPEN (returns null) on a DB error, matching hasAcceptedAup", async () => {
+    selectLimitMock.mockRejectedValue(new Error("DB down"));
+    const { aupGateResponse } = await import("./aup");
+    const res = await aupGateResponse("user-dberr");
+    expect(res).toBeNull();
+  });
+});
+
 describe("recordAupAcceptance", () => {
   beforeEach(() => {
     vi.clearAllMocks();

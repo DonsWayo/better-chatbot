@@ -39,7 +39,11 @@ import {
 import { resolvePolicy } from "lib/ai/guardrails/policies";
 import { scanToolOutput } from "lib/ai/guardrails/tool-output";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
-import { AppDefaultToolkit, GenerateWorkflowToolName } from "lib/ai/tools";
+import {
+  AppDefaultToolkit,
+  DefaultToolName,
+  GenerateWorkflowToolName,
+} from "lib/ai/tools";
 import { APP_DEFAULT_TOOL_KIT } from "lib/ai/tools/tool-kit";
 import { createGenerateWorkflowTool } from "lib/ai/tools/workflow-gen/generate-workflow";
 import { createWorkflowExecutor } from "lib/ai/workflow/executor/workflow-executor";
@@ -596,6 +600,43 @@ export const loadAppDefaultTools = (opt?: {
       throw e;
     })
     .orElse({} as Record<string, Tool>);
+
+/**
+ * Per-tool team policy enforcement (Feature B). The team policy can disable
+ * web search / code execution / HTTP fetch tools independently of the
+ * collective canUseTools (admin/editor) gate. This strips the disabled tools
+ * from a loaded tool map by their DefaultToolName, so a disabled tool is never
+ * bound even for an elevated user whose team disallows it — and it works
+ * regardless of whether the tools were loaded via the toolkit list or via
+ * explicit @defaultTool mentions.
+ *
+ * Flags are default-ON: a `null`/`undefined` policy (no team) removes nothing.
+ */
+export function filterAppDefaultToolsByTeamPolicy(
+  tools: Record<string, Tool>,
+  policy:
+    | { allowWebSearch?: boolean; allowCodeExec?: boolean; allowHttp?: boolean }
+    | null
+    | undefined,
+): Record<string, Tool> {
+  if (!policy) return tools;
+  const disabled = new Set<string>();
+  if (policy.allowWebSearch === false) {
+    disabled.add(DefaultToolName.WebSearch);
+    disabled.add(DefaultToolName.WebContent);
+  }
+  if (policy.allowCodeExec === false) {
+    disabled.add(DefaultToolName.JavascriptExecution);
+    disabled.add(DefaultToolName.PythonExecution);
+  }
+  if (policy.allowHttp === false) {
+    disabled.add(DefaultToolName.Http);
+  }
+  if (disabled.size === 0) return tools;
+  return Object.fromEntries(
+    Object.entries(tools).filter(([name]) => !disabled.has(name)),
+  );
+}
 
 export const convertToSavePart = <T extends UIMessagePart<any, any>>(
   part: T,

@@ -20,6 +20,8 @@ if (process.env.CI) {
 
 import { auth } from "auth/auth-instance";
 import { USER_ROLES } from "app-types/roles";
+import { CURRENT_AUP_VERSION } from "lib/compliance/aup-version";
+import { AsafeAupAcceptanceTable } from "lib/db/pg/schema.pg";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -201,6 +203,25 @@ async function createUserWithBetterAuth(userData: {
           `  Role already correct (${currentUser.role}) for ${userData.email}`,
         );
       }
+    }
+
+    // AUP hard gate: the chat/temporary/workflow/voice APIs now reject users
+    // who never accepted the Acceptable Use Policy (403 aup_required). Seeded
+    // e2e users must therefore have AUP acceptance recorded, or the whole suite
+    // would fail at the first chat. Write BOTH stores recordAupAcceptance does
+    // — the versioned acceptance row (read by hasAcceptedAup/the API gate) AND
+    // the user.accepted_aup_at column (read by the modal/tour) — so they agree.
+    try {
+      await db
+        .insert(AsafeAupAcceptanceTable)
+        .values({ userId: user.id, aupVersion: CURRENT_AUP_VERSION })
+        .onConflictDoNothing();
+      await db
+        .update(UserTable)
+        .set({ acceptedAupAt: new Date() })
+        .where(sql`id = ${user.id}`);
+    } catch (error) {
+      console.warn(`Could not record AUP acceptance for ${userData.email}:`, error);
     }
 
     // Ban user if needed - do this via direct database update since we don't have admin auth

@@ -6,6 +6,8 @@ import {
   resolveStoragePrefix,
   storageKeyFromUrl,
 } from "lib/file-storage/storage-utils";
+import { storageObjectRepository } from "lib/db/repository";
+import { getIsUserAdmin } from "lib/user/utils";
 
 type Body = {
   key?: string; // storage key (preferred)
@@ -39,14 +41,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // There is no per-key owner record in the schema (uploads generate keys of
-  // the form `${prefix}/${uuid}-${name}` with no user binding — see
-  // s3-file-storage buildKey / local-disk-storage). Until a per-key ownership
-  // table exists (schema change — see report), the best available containment
-  // is: reject path traversal and only allow keys inside the configured upload
-  // namespace, so a caller can't read arbitrary server paths or other buckets.
-  // NOTE: this still lets one authenticated user read another user's uploaded
-  // key if they can guess the UUID; a true owner binding needs the schema work.
+  // Defense-in-depth #1: reject path traversal and only allow keys inside the
+  // configured upload namespace, so a caller can't read arbitrary server paths
+  // or other buckets. (Kept even though we now have per-key ownership below.)
   const normalizedKey = key.replace(/^\/+/, "");
   const prefix = resolveStoragePrefix();
   const hasTraversal =
@@ -59,6 +56,26 @@ export async function POST(req: Request) {
       { error: "Forbidden: key outside the allowed upload namespace" },
       { status: 403 },
     );
+  }
+
+  // Defense-in-depth #2 (the real fix): per-key owner binding. Uploads now
+  // record an asafe_storage_object row keyed by storage key + uploader. Only
+  // the owner may read it back. Admins bypass — they already have full-tenant
+  // read powers elsewhere (auth-instance impersonation, audit access) and the
+  // ingest preview is needed for support/moderation; a missing owner record
+  // therefore still 403s for a non-admin (fail-closed).
+  const isAdmin = getIsUserAdmin(session.user);
+  if (!isAdmin) {
+    const canAccess = await storageObjectRepository.canAccessStorageKey(
+      normalizedKey,
+      session.user.id,
+    );
+    if (!canAccess) {
+      return NextResponse.json(
+        { error: "Forbidden: you do not have access to this file" },
+        { status: 403 },
+      );
+    }
   }
 
   // Infer type from extension when auto

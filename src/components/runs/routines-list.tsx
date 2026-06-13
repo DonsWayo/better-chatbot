@@ -60,7 +60,12 @@ export function RoutinesList({ routines }: { routines: RoutineItem[] }) {
     setEnabledOverride((prev) => ({ ...prev, [id]: enabled }));
     startTransition(async () => {
       try {
-        await toggleScheduleAction(id, enabled);
+        const result = await toggleScheduleAction(id, enabled);
+        if (!result.success) {
+          setEnabledOverride((prev) => ({ ...prev, [id]: !enabled }));
+          handleErrorWithToast(new Error(result.error));
+          return;
+        }
         router.refresh();
       } catch (error) {
         setEnabledOverride((prev) => ({ ...prev, [id]: !enabled }));
@@ -73,7 +78,12 @@ export function RoutinesList({ routines }: { routines: RoutineItem[] }) {
     setDeleted((prev) => ({ ...prev, [id]: true }));
     startTransition(async () => {
       try {
-        await deleteScheduleAction(id);
+        const result = await deleteScheduleAction(id);
+        if (!result.success) {
+          setDeleted((prev) => ({ ...prev, [id]: false }));
+          handleErrorWithToast(new Error(result.error));
+          return;
+        }
         toast.success(t("routineDeleted"));
         router.refresh();
       } catch (error) {

@@ -119,13 +119,14 @@ describe("setModelAllowListAction", () => {
     });
   });
 
-  it("throws if requireAdminPermission rejects — TEAM admin is NOT enough", async () => {
+  it("returns a structured failure if requireAdminPermission rejects — TEAM admin is NOT enough", async () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
     canManageTeamMock.mockResolvedValue(true); // team admin
     const { setModelAllowListAction } = await import("./actions");
-    await expect(setModelAllowListAction("team-1", [])).rejects.toThrow(
-      "Forbidden",
-    );
+    await expect(setModelAllowListAction("team-1", [])).resolves.toEqual({
+      success: false,
+      error: "Forbidden",
+    });
     expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 });
@@ -148,9 +149,10 @@ describe("setEmailDomainsAction", () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
     canManageTeamMock.mockResolvedValue(true);
     const { setEmailDomainsAction } = await import("./actions");
-    await expect(setEmailDomainsAction("team-4", [])).rejects.toThrow(
-      "Forbidden",
-    );
+    await expect(setEmailDomainsAction("team-4", [])).resolves.toEqual({
+      success: false,
+      error: "Forbidden",
+    });
     expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 });
@@ -183,16 +185,16 @@ describe("setPolicyAction", () => {
     const { setPolicyAction } = await import("./actions");
     await expect(
       setPolicyAction("team-6", { guardrailPolicy: "permissive" }),
-    ).rejects.toThrow("Forbidden");
+    ).resolves.toEqual({ success: false, error: "Forbidden" });
     expect(updateTeamPolicyMock).not.toHaveBeenCalled();
   });
 
-  it("propagates errors from updateTeamPolicy", async () => {
+  it("surfaces errors from updateTeamPolicy as a structured failure", async () => {
     updateTeamPolicyMock.mockRejectedValueOnce(new Error("DB write failed"));
     const { setPolicyAction } = await import("./actions");
     await expect(
       setPolicyAction("team-7", { allowSpeech: true }),
-    ).rejects.toThrow("DB write failed");
+    ).resolves.toEqual({ success: false, error: "DB write failed" });
   });
 });
 
@@ -211,8 +213,14 @@ describe("deleteTeamAction", () => {
     requireAdminPermissionMock.mockRejectedValueOnce(new Error("Forbidden"));
     canManageTeamMock.mockResolvedValue(true);
     const { deleteTeamAction } = await import("./actions");
-    await expect(deleteTeamAction("team-del")).rejects.toThrow("Forbidden");
+    // On a permission failure the action returns a structured result and never
+    // reaches redirect().
+    await expect(deleteTeamAction("team-del")).resolves.toEqual({
+      success: false,
+      error: "Forbidden",
+    });
     expect(deleteTeamMock).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
   });
 });
 
@@ -225,7 +233,27 @@ describe("setBudgetAction", () => {
     const { setBudgetAction } = await import("./actions");
     await expect(
       setBudgetAction("team-b", "100", "2026-01-01", "2026-02-01"),
-    ).rejects.toThrow("Forbidden");
+    ).resolves.toEqual({ success: false, error: "Forbidden" });
+  });
+
+  it("returns the 'Period end must be after period start' message inline", async () => {
+    const { setBudgetAction } = await import("./actions");
+    await expect(
+      setBudgetAction("team-b", "100", "2026-02-01", "2026-01-01"),
+    ).resolves.toEqual({
+      success: false,
+      error: "Period end must be after period start",
+    });
+    expect(dbInsertOnConflictMock).not.toHaveBeenCalled();
+  });
+
+  it("persists a valid budget and returns success", async () => {
+    const { setBudgetAction } = await import("./actions");
+    await expect(
+      setBudgetAction("team-b", "100", "2026-01-01", "2026-02-01"),
+    ).resolves.toEqual({ success: true, data: undefined });
+    expect(dbInsertOnConflictMock).toHaveBeenCalled();
+    expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-b");
   });
 });
 
@@ -254,31 +282,39 @@ describe("addTeamMemberAction", () => {
     expect(requireAdminPermissionMock).not.toHaveBeenCalled();
   });
 
-  it("throws when canManageTeam is false (plain member / outsider)", async () => {
+  it("returns a structured Unauthorized failure when canManageTeam is false (plain member / outsider)", async () => {
     canManageTeamMock.mockResolvedValue(false);
     const { addTeamMemberAction } = await import("./actions");
-    await expect(
-      addTeamMemberAction("team-8", "alice@asafe.ai", "member"),
-    ).rejects.toThrow("Unauthorized");
+    const result = await addTeamMemberAction(
+      "team-8",
+      "alice@asafe.ai",
+      "member",
+    );
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toContain("Unauthorized");
     expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
 
-  it("throws when unauthenticated", async () => {
+  it("returns a structured Unauthorized failure when unauthenticated", async () => {
     getSessionMock.mockResolvedValueOnce(null);
     const { addTeamMemberAction } = await import("./actions");
-    await expect(
-      addTeamMemberAction("team-8", "alice@asafe.ai", "member"),
-    ).rejects.toThrow("Unauthorized");
+    const result = await addTeamMemberAction(
+      "team-8",
+      "alice@asafe.ai",
+      "member",
+    );
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toContain("Unauthorized");
     expect(canManageTeamMock).not.toHaveBeenCalled();
     expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
 
-  it("throws 'User not found' when email has no matching DB record", async () => {
+  it("returns 'User not found' when email has no matching DB record", async () => {
     dbSelectLimitMock.mockResolvedValueOnce([]);
     const { addTeamMemberAction } = await import("./actions");
     await expect(
       addTeamMemberAction("team-8", "unknown@ghost.io", "member"),
-    ).rejects.toThrow("User not found");
+    ).resolves.toEqual({ success: false, error: "User not found" });
     expect(addTeamMemberMock).not.toHaveBeenCalled();
   });
 
@@ -311,12 +347,12 @@ describe("removeTeamMemberAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-9");
   });
 
-  it("throws and does not remove when canManageTeam is false", async () => {
+  it("returns a structured failure and does not remove when canManageTeam is false", async () => {
     canManageTeamMock.mockResolvedValue(false);
     const { removeTeamMemberAction } = await import("./actions");
-    await expect(removeTeamMemberAction("m1", "t1")).rejects.toThrow(
-      "Unauthorized",
-    );
+    const result = await removeTeamMemberAction("m1", "t1");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toContain("Unauthorized");
     expect(removeTeamMemberMock).not.toHaveBeenCalled();
   });
 
@@ -343,12 +379,12 @@ describe("updateMemberRoleAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-12");
   });
 
-  it("throws when canManageTeam is false", async () => {
+  it("returns a structured failure when canManageTeam is false", async () => {
     canManageTeamMock.mockResolvedValue(false);
     const { updateMemberRoleAction } = await import("./actions");
-    await expect(
-      updateMemberRoleAction("member-5", "team-12", "admin"),
-    ).rejects.toThrow("Unauthorized");
+    const result = await updateMemberRoleAction("member-5", "team-12", "admin");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toContain("Unauthorized");
     expect(updateTeamMemberRoleMock).not.toHaveBeenCalled();
   });
 });
@@ -368,12 +404,12 @@ describe("renameTeamAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams/team-13");
   });
 
-  it("throws when canManageTeam is false", async () => {
+  it("returns a structured failure when canManageTeam is false", async () => {
     canManageTeamMock.mockResolvedValue(false);
     const { renameTeamAction } = await import("./actions");
-    await expect(renameTeamAction("team-13", "New Name")).rejects.toThrow(
-      "Unauthorized",
-    );
+    const result = await renameTeamAction("team-13", "New Name");
+    expect(result.success).toBe(false);
+    expect((result as { error: string }).error).toContain("Unauthorized");
     expect(updateTeamMock).not.toHaveBeenCalled();
   });
 });

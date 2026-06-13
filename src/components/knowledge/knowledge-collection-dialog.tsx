@@ -80,14 +80,20 @@ export function KnowledgeCollectionDialog({
       teamIds:
         visibilityValue.visibility === "team" ? visibilityValue.teamIds : null,
     };
-    await safe(() =>
-      collection
-        ? updateKnowledgeCollectionAction(collection.id, payload)
-        : createKnowledgeCollectionAction(payload),
-    )
+    await safe(async () => {
+      const result = collection
+        ? await updateKnowledgeCollectionAction(collection.id, payload)
+        : await createKnowledgeCollectionAction(payload);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    })
       .ifOk(() => {
         toast.success(
-          t(isEdit ? "Knowledge.collectionUpdated" : "Knowledge.collectionCreated"),
+          t(
+            isEdit
+              ? "Knowledge.collectionUpdated"
+              : "Knowledge.collectionCreated",
+          ),
         );
         onOpenChange(false);
         onSaved();

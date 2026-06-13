@@ -23,7 +23,7 @@ gates that consume them.
 | Capability | user | editor | admin |
 | --- | :-: | :-: | :-: |
 | Chat & temporary chat (full) | ✅ | ✅ | ✅ |
-| Use tools in chat (MCP tools, app tools) | ✅ | ✅ | ✅ |
+| Use tools in chat (MCP tools, app tools) | ✅† | ✅† | ✅† |
 | View / use / list agents & workflows | ✅ | ✅ | ✅ |
 | Create / edit / delete agents & workflows (builders) | ❌ | ✅ | ✅ |
 | Share agents & workflows | ❌ | ✅ | ✅ |
@@ -37,13 +37,22 @@ gates that consume them.
 | Teams: create / delete teams | ❌ | ❌ | ✅ |
 | Teams: manage members & rename | ❌* | ❌* | ✅ |
 | Team budgets (set / change periods) | ❌ | ❌ | ✅ |
-| Team policy: guardrails, image/vision/speech, model allow-list, email domains | ❌ | ❌ | ✅ |
+| Team policy: guardrails, image/vision/speech, per-tool access (web search / code exec / HTTP), model allow-list, email domains | ❌ | ❌ | ✅ |
 | Org policy: model entitlements base list, user grants | ❌ | ❌ | ✅ |
 | Org policy: memory, feature flags, Entra mappings | ❌ | ❌ | ✅ |
 | User management (roles, ban, erasure, rate-limit reset) | ❌ | ❌ | ✅ |
 | Audit log, usage & compliance exports | ❌ | ❌ | ✅ |
 
 \* unless the user holds the **team admin** role in that team — see below.
+
+† A team's policy can disable specific app tools — **web search**, **code
+execution**, and **HTTP requests** — independently of the role gate. These
+per-tool flags default to **on** (existing teams are unchanged) and are
+enforced server-side in chat tool-loading: a disabled tool is never bound, even
+for an editor or admin whose team disallows it. The role gate is still the outer
+control (basic `user` role gets no app tools at all); the per-tool flags
+further restrict *within* the allowed set. Configured per team in
+`/admin/teams/[id]` → Team Policy → Tool Access.
 
 Sources, by row: chat/tools/builders — role statements in
 `src/lib/auth/roles.ts` (`user` gets `view/use/list` on `workflow`, `agent`,
@@ -71,7 +80,7 @@ Team roles live on `asafe_team_member.role` and apply only inside that team.
 | Delete the team | ❌ | ❌ | ❌ |
 | Set budget | ❌ | ❌ | ❌ |
 | Model allow-list / model policy | ❌ | ❌ | ❌ |
-| Guardrail & capability policy (image gen, vision, speech) | ❌ | ❌ | ❌ |
+| Guardrail & capability policy (image gen, vision, speech, per-tool access) | ❌ | ❌ | ❌ |
 | Email-domain allow-list | ❌ | ❌ | ❌ |
 
 The split is deliberate (`src/lib/admin/teams.ts`,

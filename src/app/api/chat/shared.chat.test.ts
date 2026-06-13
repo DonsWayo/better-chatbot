@@ -52,7 +52,97 @@ vi.mock("ai", () => ({
   tool: vi.fn((opts: any) => ({ ...opts, execute: undefined })),
 }));
 
-import { mergeSystemPrompt, wrapToolsWithGuardrails } from "./shared.chat";
+import {
+  filterAppDefaultToolsByTeamPolicy,
+  mergeSystemPrompt,
+  wrapToolsWithGuardrails,
+} from "./shared.chat";
+import { DefaultToolName } from "lib/ai/tools";
+
+describe("filterAppDefaultToolsByTeamPolicy", () => {
+  // A representative app-default tool map keyed by the real DefaultToolName
+  // values (web search/content, JS/Python exec, HTTP, plus a chart that must
+  // never be removed).
+  const makeTools = () => ({
+    [DefaultToolName.WebSearch]: { description: "web search" } as any,
+    [DefaultToolName.WebContent]: { description: "web content" } as any,
+    [DefaultToolName.JavascriptExecution]: { description: "js" } as any,
+    [DefaultToolName.PythonExecution]: { description: "py" } as any,
+    [DefaultToolName.Http]: { description: "http" } as any,
+    [DefaultToolName.CreateBarChart]: { description: "chart" } as any,
+  });
+
+  it("returns tools unchanged when policy is null/undefined (no team)", () => {
+    const tools = makeTools();
+    expect(filterAppDefaultToolsByTeamPolicy(tools, null)).toEqual(tools);
+    expect(filterAppDefaultToolsByTeamPolicy(tools, undefined)).toEqual(tools);
+  });
+
+  it("binds all tools when every flag is on (default)", () => {
+    const result = filterAppDefaultToolsByTeamPolicy(makeTools(), {
+      allowWebSearch: true,
+      allowCodeExec: true,
+      allowHttp: true,
+    });
+    expect(Object.keys(result).sort()).toEqual(
+      Object.keys(makeTools()).sort(),
+    );
+  });
+
+  it("does NOT bind code-exec tools when allowCodeExec=false", () => {
+    const result = filterAppDefaultToolsByTeamPolicy(makeTools(), {
+      allowWebSearch: true,
+      allowCodeExec: false,
+      allowHttp: true,
+    });
+    expect(result[DefaultToolName.JavascriptExecution]).toBeUndefined();
+    expect(result[DefaultToolName.PythonExecution]).toBeUndefined();
+    // Other tools survive.
+    expect(result[DefaultToolName.WebSearch]).toBeDefined();
+    expect(result[DefaultToolName.Http]).toBeDefined();
+    expect(result[DefaultToolName.CreateBarChart]).toBeDefined();
+  });
+
+  it("does NOT bind web-search tools when allowWebSearch=false", () => {
+    const result = filterAppDefaultToolsByTeamPolicy(makeTools(), {
+      allowWebSearch: false,
+      allowCodeExec: true,
+      allowHttp: true,
+    });
+    expect(result[DefaultToolName.WebSearch]).toBeUndefined();
+    expect(result[DefaultToolName.WebContent]).toBeUndefined();
+    expect(result[DefaultToolName.JavascriptExecution]).toBeDefined();
+    expect(result[DefaultToolName.Http]).toBeDefined();
+  });
+
+  it("does NOT bind the http tool when allowHttp=false", () => {
+    const result = filterAppDefaultToolsByTeamPolicy(makeTools(), {
+      allowWebSearch: true,
+      allowCodeExec: true,
+      allowHttp: false,
+    });
+    expect(result[DefaultToolName.Http]).toBeUndefined();
+    expect(result[DefaultToolName.WebSearch]).toBeDefined();
+    expect(result[DefaultToolName.JavascriptExecution]).toBeDefined();
+  });
+
+  it("binds web/code/http when flags are absent (default-ON)", () => {
+    // An empty policy object means no flag is explicitly false → nothing removed.
+    const result = filterAppDefaultToolsByTeamPolicy(makeTools(), {});
+    expect(Object.keys(result).sort()).toEqual(
+      Object.keys(makeTools()).sort(),
+    );
+  });
+
+  it("can disable several tool families at once", () => {
+    const result = filterAppDefaultToolsByTeamPolicy(makeTools(), {
+      allowWebSearch: false,
+      allowCodeExec: false,
+      allowHttp: false,
+    });
+    expect(Object.keys(result)).toEqual([DefaultToolName.CreateBarChart]);
+  });
+});
 
 describe("mergeSystemPrompt", () => {
   it("joins multiple prompts with double newline", () => {

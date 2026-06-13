@@ -309,6 +309,20 @@
       "when": 1771595119815,
       "tag": "0043_chat_hot_path_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1771595120815,
+      "tag": "0044_asafe_storage_object",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1771595121815,
+      "tag": "0045_team_per_tool_flags",
+      "breakpoints": true
     }
   ]
 }

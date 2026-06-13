@@ -31,6 +31,15 @@ export function AupModal() {
         if (!data.accepted) setOpen(true);
       })
       .catch(() => {}); // Fail open — don't block the UI if check fails
+
+    // Backstop for the API hard gate: if any gated request (chat, temporary
+    // chat, workflow run, voice) returns 403 {error:"aup_required"}, the
+    // chat client dispatches this event and we force the modal open so the
+    // user can accept and retry — even if the on-login check raced/failed.
+    const onAupRequired = () => setOpen(true);
+    window.addEventListener("asafe:aup-required", onAupRequired);
+    return () =>
+      window.removeEventListener("asafe:aup-required", onAupRequired);
   }, []);
 
   const handleAccept = async () => {

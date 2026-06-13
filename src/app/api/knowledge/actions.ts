@@ -6,6 +6,7 @@ import {
   AsafeDocumentChunkTable,
   AsafeKnowledgeCollectionTable,
 } from "@/lib/db/pg/schema.pg";
+import { type ActionResult, toActionResult } from "app-types/util";
 import { ingestDocument } from "lib/ai/embeddings/ingest";
 import { getSession } from "lib/auth/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
@@ -21,6 +22,12 @@ import { canAccess } from "lib/visibility";
  * through the REST endpoints via SWR). Authorization mirrors the REST routes:
  * create / delete / ingest are admin-only, update requires "manage" on the
  * unified visibility model (owner or org admin).
+ *
+ * The exported actions return a structured {@link ActionResult} rather than
+ * throwing: production Next.js masks errors thrown from a Server Action into an
+ * opaque 500 ("digest"), so the user-instructional validation messages
+ * ("Name is required", "Invalid visibility", "Forbidden", ...) would never
+ * reach the client toast. Internal `*OrThrow` helpers keep the throwing logic.
  */
 
 export type KnowledgeCollectionRow =
@@ -72,6 +79,12 @@ async function loadCollectionOrThrow(
 
 export async function createKnowledgeCollectionAction(
   input: KnowledgeCollectionWriteInput,
+): Promise<ActionResult<KnowledgeCollectionRow>> {
+  return toActionResult(() => createKnowledgeCollectionOrThrow(input));
+}
+
+async function createKnowledgeCollectionOrThrow(
+  input: KnowledgeCollectionWriteInput,
 ): Promise<KnowledgeCollectionRow> {
   const user = await requireAdmin();
 
@@ -99,6 +112,13 @@ export async function createKnowledgeCollectionAction(
 }
 
 export async function updateKnowledgeCollectionAction(
+  id: string,
+  input: Partial<KnowledgeCollectionWriteInput>,
+): Promise<ActionResult<KnowledgeCollectionRow>> {
+  return toActionResult(() => updateKnowledgeCollectionOrThrow(id, input));
+}
+
+async function updateKnowledgeCollectionOrThrow(
   id: string,
   input: Partial<KnowledgeCollectionWriteInput>,
 ): Promise<KnowledgeCollectionRow> {
@@ -147,7 +167,11 @@ export async function updateKnowledgeCollectionAction(
 
 export async function deleteKnowledgeCollectionAction(
   id: string,
-): Promise<void> {
+): Promise<ActionResult> {
+  return toActionResult(() => deleteKnowledgeCollectionOrThrow(id));
+}
+
+async function deleteKnowledgeCollectionOrThrow(id: string): Promise<void> {
   await requireAdmin();
   await loadCollectionOrThrow(id);
 
@@ -167,6 +191,14 @@ export interface IngestKnowledgeTextResult {
 }
 
 export async function ingestKnowledgeTextAction(input: {
+  collectionId: string;
+  text: string;
+  sourceRef?: string;
+}): Promise<ActionResult<IngestKnowledgeTextResult>> {
+  return toActionResult(() => ingestKnowledgeTextOrThrow(input));
+}
+
+async function ingestKnowledgeTextOrThrow(input: {
   collectionId: string;
   text: string;
   sourceRef?: string;
@@ -190,6 +222,13 @@ export async function ingestKnowledgeTextAction(input: {
 }
 
 export async function deleteKnowledgeDocumentAction(input: {
+  collectionId: string;
+  sourceRef: string;
+}): Promise<ActionResult<{ deletedChunks: number }>> {
+  return toActionResult(() => deleteKnowledgeDocumentOrThrow(input));
+}
+
+async function deleteKnowledgeDocumentOrThrow(input: {
   collectionId: string;
   sourceRef: string;
 }): Promise<{ deletedChunks: number }> {

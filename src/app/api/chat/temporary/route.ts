@@ -12,6 +12,7 @@ import { getUserPreferences } from "lib/user/server";
 import { resolveEffectiveModelAllowList } from "lib/admin/effective-models";
 import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { aupGateResponse } from "lib/compliance/aup";
 import { checkKillSwitch } from "lib/observability/kill-switch";
 import { checkRateLimit } from "lib/rate-limit";
 import globalLogger from "logger";
@@ -35,6 +36,10 @@ export async function POST(request: Request) {
     if (!session?.user.id) {
       return new Response("Unauthorized", { status: 401 });
     }
+
+    // AUP hard gate (EU AI Act Art. 50) — same backstop as the main chat route.
+    const aupGate = await aupGateResponse(session.user.id);
+    if (aupGate) return aupGate;
 
     const { messages, chatModel, instructions } = json as {
       messages: UIMessage[];

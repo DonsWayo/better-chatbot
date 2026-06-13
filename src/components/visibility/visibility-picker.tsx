@@ -351,9 +351,14 @@ function GrantManager({ entity, disabled = false }: GrantManagerProps) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    await safe(() =>
-      listGrantsAction({ entityType: entity.type, entityId: entity.id }),
-    )
+    await safe(async () => {
+      const result = await listGrantsAction({
+        entityType: entity.type,
+        entityId: entity.id,
+      });
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    })
       .ifOk((rows) => setGrants(rows))
       .ifFail(handleErrorWithToast)
       .watch(() => setLoading(false));
@@ -368,20 +373,23 @@ function GrantManager({ entity, disabled = false }: GrantManagerProps) {
     if (!trimmed) return;
     setAdding(true);
     await safe(async () => {
-      const grantee = await resolveGranteeByEmailAction({
+      const resolved = await resolveGranteeByEmailAction({
         entityType: entity.type,
         entityId: entity.id,
         email: trimmed,
       });
+      if (!resolved.success) throw new Error(resolved.error);
+      const grantee = resolved.data;
       if (!grantee) {
         throw new Error(t("Visibility.userNotFound", { email: trimmed }));
       }
-      await grantAccessAction({
+      const granted = await grantAccessAction({
         entityType: entity.type,
         entityId: entity.id,
         granteeUserId: grantee.id,
         capability,
       });
+      if (!granted.success) throw new Error(granted.error);
       return grantee;
     })
       .ifOk((grantee) => {
@@ -395,14 +403,15 @@ function GrantManager({ entity, disabled = false }: GrantManagerProps) {
 
   const removeGrant = useCallback(
     async (grant: GrantWithGrantee) => {
-      await safe(() =>
-        revokeAccessAction({
+      await safe(async () => {
+        const result = await revokeAccessAction({
           entityType: entity.type,
           entityId: entity.id,
           granteeUserId: grant.granteeUserId,
           capability: grant.capability,
-        }),
-      )
+        });
+        if (!result.success) throw new Error(result.error);
+      })
         .ifOk(() => {
           toast.success(t("Visibility.grantRemoved"));
           void refresh();
