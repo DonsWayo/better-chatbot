@@ -838,6 +838,72 @@
       "cannotUpdateOwnRole": "Du kan ikke oppdatere din egen rolle",
       "roleUpdatedSuccessfullyTo": "Brukerrolle oppdatert til {role}"
     },
+    "Teams": {
+      "title": "Team",
+      "allTeams": "Alle team",
+      "viewAndManageTeams": "Vis og administrer team",
+      "noTeamsFound": "Ingen team funnet",
+      "createTeam": "Nytt team",
+      "teamName": "Teamnavn",
+      "teamDescription": "Beskrivelse (valgfritt)",
+      "slug": "Slug",
+      "members": "Medlemmer",
+      "budgetUsed": "Brukt budsjett",
+      "budgetTotal": "Budsjett",
+      "createTeamSuccess": "Teamet ble opprettet",
+      "createTeamError": "Kunne ikke opprette teamet",
+      "addMember": "Legg til medlem",
+      "removeMember": "Fjern",
+      "memberEmail": "Medlemmets e-post",
+      "memberRole": "Rolle",
+      "addMemberSuccess": "Medlemmet ble lagt til",
+      "addMemberError": "Kunne ikke legge til medlemmet",
+      "backToTeams": "Tilbake til team"
+    },
+    "Knowledge": {
+      "title": "Kunnskapsbase",
+      "collections": "Samlinger",
+      "noCollections": "Ingen kunnskapssamlinger ennå",
+      "createCollection": "Ny samling",
+      "collectionName": "Samlingsnavn",
+      "visibility": "Synlighet",
+      "visibilityOrg": "Hele organisasjonen",
+      "visibilityTeam": "Kun team",
+      "ingestDocument": "Importer dokument",
+      "chunksIngested": "segmenter importert",
+      "backToKnowledge": "Tilbake til kunnskap",
+      "ingestSuccess": "{count} biter ble lastet inn",
+      "uploadUnsupported": "Filtypen støttes ikke. Bruk .pdf, .docx, .txt eller .md",
+      "uploadTooLarge": "Filen er for stor (maks {max} MB)",
+      "uploadSuccess": "{name} lastet inn — {chunks} biter",
+      "uploadSuccessPages": "{name} lastet inn — {pages} sider, {chunks} biter"
+    },
+    "Usage": {
+      "title": "Bruk",
+      "costDashboard": "Kostnadsoversikt",
+      "last30Days": "Siste 30 dager",
+      "last7Days": "Siste 7 dager",
+      "totalRequests": "Totalt antall forespørsler",
+      "totalCost": "Total kostnad",
+      "byModel": "Kostnad per modell",
+      "byTaskClass": "Kostnad per oppgave",
+      "model": "Modell",
+      "provider": "Leverandør",
+      "requests": "Forespørsler",
+      "promptTokens": "Prompt-tokens",
+      "completionTokens": "Fullføringstokens",
+      "costUsd": "Kostnad (USD)",
+      "taskClass": "Oppgaveklasse"
+    },
+    "MCP": {
+      "adminTitle": "MCP-katalog",
+      "companyScopedServers": "Selskapets MCP-servere",
+      "registerServer": "Registrer server",
+      "noServersRegistered": "Ingen selskapets MCP-servere er registrert ennå",
+      "scope": "Omfang",
+      "scopeOrg": "Hele organisasjonen",
+      "scopeTeam": "Team"
+    },
     "RolePacks": {
       "title": "Rollepakker",
       "subtitle": "Installerbart startinnhold for en avdeling: ferdige agenter, en arbeidsflyt og en planlagt rutine.",
@@ -870,17 +936,6 @@
     },
     "Quality": {
       "title": "Kvalitet"
-    },
-    "Teams": {
-      "backToTeams": "Tilbake til team"
-    },
-    "Knowledge": {
-      "backToKnowledge": "Tilbake til kunnskap",
-      "ingestSuccess": "{count} biter ble lastet inn",
-      "uploadUnsupported": "Filtypen støttes ikke. Bruk .pdf, .docx, .txt eller .md",
-      "uploadTooLarge": "Filen er for stor (maks {max} MB)",
-      "uploadSuccess": "{name} lastet inn — {chunks} biter",
-      "uploadSuccessPages": "{name} lastet inn — {pages} sider, {chunks} biter"
     }
   },
   "MCP": {
@@ -927,6 +982,7 @@
     "mcpServerCustomizationDescription": "MCP-servertilpasningsinstruksjoner vil bli lagt til systemledeteksten når MCP-serveren er tilgjengelig.",
     "toolCustomizationInstructionsPlaceholder": "Verktøytilpasningsinstruksjoner er ikke tilgjengelig.",
     "mcpServerCustomizationPlaceholder": "f.eks. hvis inndataverdien er e-post, skriv alltid inn e-posten i formatet eksempel@eksempel.com.",
+    "noInstructions": "Ingen",
     "private": "Privat",
     "privateDescription": "Bare du kan bruke denne MCP-serveren",
     "readonly": "Skrivebeskyttet",
@@ -935,7 +991,6 @@
     "publicDescription": "Offentlig for alle brukere",
     "featured": "Fremhevet",
     "featuredDescription": "Fremhevet for alle brukere",
-    "noInstructions": "Ingen",
     "localServersNotAvailableTitle": "Lokale MCP-servere er ikke tilgjengelige",
     "localServersNotAvailableOnThisDeployment": "Lokale (stdio) MCP-servere støttes ikke i denne distribusjonen. Koble til en ekstern MCP-server-URL i stedet — lokale servere er kun tilgjengelige i skrivebordsappen.",
     "localToolsSessionTitle": "Lokale verktøy",
