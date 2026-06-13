@@ -18,6 +18,11 @@ const PatchTeamSchema = z.object({
   allowImageGen: z.boolean().optional(),
   allowVision: z.boolean().optional(),
   allowSpeech: z.boolean().optional(),
+  // Per-tool team policy (default-on); kept in sync with setPolicyAction so the
+  // REST API and the admin UI server-action write the same fields.
+  allowWebSearch: z.boolean().optional(),
+  allowCodeExec: z.boolean().optional(),
+  allowHttp: z.boolean().optional(),
   modelAllowList: z.array(z.enum(APPROVED_MODEL_IDS)).optional(),
   allowedEmailDomains: z
     .array(z.string().regex(/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/, "Invalid domain"))
