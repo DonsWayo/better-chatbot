@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import {
   type AgentSessionEntity,
@@ -201,6 +201,42 @@ export async function recordStep(
     })
     .returning();
   return row;
+}
+
+/**
+ * #2 — sweep any still-'running' steps of a session to 'completed' (stamping
+ * endedAt). The output node's NODE_END can race WORKFLOW_END, leaving the
+ * final step stuck 'running'; on a successful workflow end we mark them done.
+ * Returns the number of rows flipped.
+ */
+export async function completeRunningSteps(sessionId: string): Promise<number> {
+  const now = new Date();
+  const rows = await db
+    .update(AgentStepTable)
+    .set({ status: "completed", endedAt: now })
+    .where(
+      and(
+        eq(AgentStepTable.sessionId, sessionId),
+        eq(AgentStepTable.status, "running"),
+      ),
+    )
+    .returning({ id: AgentStepTable.id });
+  return rows.length;
+}
+
+/**
+ * #3 — SUM(agent_step.cost_usd) for a session, rolled into
+ * agent_session.cost_so_far at WORKFLOW_END. Returns 0 when no steps cost
+ * anything (or none exist yet).
+ */
+export async function sumStepCost(sessionId: string): Promise<number> {
+  const [row] = await db
+    .select({
+      total: sql<number>`COALESCE(SUM(${AgentStepTable.costUsd}), 0)`,
+    })
+    .from(AgentStepTable)
+    .where(eq(AgentStepTable.sessionId, sessionId));
+  return Number(row?.total ?? 0);
 }
 
 export async function listSessionsForUser(

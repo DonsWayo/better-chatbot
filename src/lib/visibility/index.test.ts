@@ -138,6 +138,7 @@ import {
   loadViewerContext,
   resolveAccess,
   revokeAccess,
+  revokeAllGrants,
 } from "./index";
 
 const OWNER = "00000000-0000-0000-0000-00000000aaaa";
@@ -716,6 +717,12 @@ describe("revokeAccess / listGrants", () => {
       entityId: ENTITY_ID,
       granteeUserId: STRANGER,
     });
+    expect(deleteWhereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("revokeAllGrants deletes every grant for the entity (revoke-on-private)", async () => {
+    await revokeAllGrants("agent", ENTITY_ID);
+    expect(deleteMock).toHaveBeenCalledTimes(1);
     expect(deleteWhereMock).toHaveBeenCalledTimes(1);
   });
 

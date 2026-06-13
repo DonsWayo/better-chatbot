@@ -13,6 +13,7 @@ import {
   defaultObjectJsonSchema,
 } from "lib/ai/workflow/shared.workflow";
 import { NodeKind } from "lib/ai/workflow/workflow.interface";
+import { revokeAllGrants } from "lib/visibility";
 import { pgDb } from "../db.pg";
 import {
   UserTable,
@@ -229,6 +230,13 @@ export const pgWorkflowRepository: WorkflowRepository = {
         ...convertUINodeToDBNode(row.id, startNode),
         name: "INPUT",
       });
+    }
+
+    // Reverting to "private" means owner-only: drop every entity_grant so a
+    // formerly-shared workflow stops leaking to its old grantees via the
+    // hasGrant() EXISTS in selectAll / selectExecuteAbility.
+    if (workflow.visibility === "private") {
+      await revokeAllGrants("workflow", row.id);
     }
 
     return row as DBWorkflow;

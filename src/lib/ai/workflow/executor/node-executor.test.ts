@@ -59,10 +59,12 @@ const makeState = (
   edges: [],
   inputs: {},
   outputs: {},
+  costByNode: {},
   nodes: [],
   getInput: vi.fn(),
   setOutput: vi.fn(),
   setInput: vi.fn(),
+  addCost: vi.fn(),
   getOutput: vi.fn((key: OutputSchemaSourceKey) => {
     if (!key) return undefined;
     const path = [key.nodeId, ...(key.path || [])];

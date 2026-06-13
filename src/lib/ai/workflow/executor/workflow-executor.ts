@@ -7,6 +7,10 @@ import { StateGraphRegistry, createStateGraph, graphNode } from "ts-edge";
 import { convertDBNodeToUINode } from "../shared.workflow";
 import { NodeKind } from "../workflow.interface";
 import { addEdgeBranchLabel } from "./add-edge-branch-label";
+import {
+  WORKFLOW_CONTEXT_KEY,
+  type WorkflowExecutorContext,
+} from "./executor-context";
 import { WorkflowRuntimeState, createGraphStore } from "./graph-store";
 import {
   NodeExecutor,
@@ -92,6 +96,12 @@ export const createWorkflowExecutor = (workflow: {
    */
   teamId?: string | null;
   effectiveModelAllowList?: string[] | null;
+  /**
+   * Agent Platform #24 — resume seed. On an approval resume the worker passes
+   * the already-completed nodes' outputs so they are NOT re-executed
+   * (graph-store seeds `outputs`, the execute wrapper skips seeded nodes).
+   */
+  initialOutputs?: { [nodeId: string]: any };
 }) => {
   // Create runtime state store for the workflow
   const store = createGraphStore({
@@ -102,7 +112,14 @@ export const createWorkflowExecutor = (workflow: {
     guardrailPolicy: workflow.guardrailPolicy,
     teamId: workflow.teamId,
     effectiveModelAllowList: workflow.effectiveModelAllowList,
+    initialOutputs: workflow.initialOutputs,
   });
+
+  // Node ids whose output is seeded from a prior run (#24 resume): these are
+  // already-completed and must be SKIPPED, not re-executed (no duplicate LLM
+  // cost / side effects). A pure pass-through still lets downstream nodes read
+  // the seeded `outputs[nodeId]`.
+  const seededNodeIds = new Set(Object.keys(workflow.initialOutputs ?? {}));
 
   const logger =
     workflow.logger ??
@@ -150,6 +167,15 @@ export const createWorkflowExecutor = (workflow: {
         kind: node.kind,
       },
       async execute(state) {
+        // #24 resume: a node whose output was seeded from a prior run is
+        // already done — skip re-execution (avoids duplicate LLM cost / side
+        // effects). Its `outputs[nodeId]` is already in the store for
+        // downstream nodes to read.
+        if (seededNodeIds.has(node.id)) {
+          logger.debug(`[RESUME] skipping already-completed node ${node.name}`);
+          return;
+        }
+
         // Get the appropriate executor for this node type
         const executor = getExecutorByKind(node.kind as NodeKind);
 
@@ -246,7 +272,31 @@ export const createWorkflowExecutor = (workflow: {
     }
   });
 
-  return app;
+  // Agent Platform #21: expose the live runtime context so the persistence
+  // seam (attachSessionPersistence) can read each node's OWN input/output/cost
+  // and kind from the store — the ts-edge NODE_END event's `node.output` is the
+  // WHOLE graph state (a quirk of createStateGraph wrapping execute with
+  // `.map(() => store.get())`), never the per-node slice. The map is keyed by
+  // node id, which is also the ts-edge graph node `name`.
+  const nodeKindById = new Map<string, NodeKind>(
+    workflow.nodes.map((node) => [node.id, node.kind as NodeKind]),
+  );
+  const context: WorkflowExecutorContext = {
+    getNodeOutput: (nodeId) => store.get().outputs[nodeId],
+    getNodeInput: (nodeId) => store.get().inputs[nodeId],
+    getNodeCost: (nodeId) => store.get().costByNode[nodeId],
+    getNodeKind: (nodeId) => nodeKindById.get(nodeId),
+    getAllOutputs: () => store.get().outputs,
+  };
+  Object.defineProperty(app, WORKFLOW_CONTEXT_KEY, {
+    value: context,
+    enumerable: false,
+    configurable: true,
+  });
+
+  return app as typeof app & {
+    [WORKFLOW_CONTEXT_KEY]: WorkflowExecutorContext;
+  };
 };
 
 /**

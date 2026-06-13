@@ -4,15 +4,15 @@ import {
   generateObject,
   generateText,
 } from "ai";
+import type { ChatModel } from "app-types/chat";
 import { ApprovalPendingError } from "lib/agent-platform/approval-error";
+import { estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { resolvePolicy } from "lib/ai/guardrails/policies";
 import {
   type GuardrailFiring,
   scanInput,
   scanOutput,
 } from "lib/ai/guardrails/scan";
-import type { ChatModel } from "app-types/chat";
-import { estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { customModelProvider } from "lib/ai/models";
 import { routeModel } from "lib/ai/routing/route-model";
@@ -218,8 +218,8 @@ function recordNodeUsage(
   state: WorkflowRuntimeState,
   model: ChatModel,
   usage: CallUsage | undefined,
+  nodeId?: string,
 ): void {
-  if (!state.userId) return;
   const promptTokens = usage?.inputTokens ?? 0;
   const completionTokens = usage?.outputTokens ?? 0;
   const costUsd = estimateCostUsd(
@@ -227,6 +227,12 @@ function recordNodeUsage(
     promptTokens,
     completionTokens,
   );
+  // Agent Platform #21: accumulate this call's cost on the node so the
+  // persistence layer can stamp agent_step.cost_usd and roll up the session
+  // total — independent of usage-event attribution (which needs a userId).
+  if (nodeId) state.addCost(nodeId, costUsd);
+  // Budget/usage attribution needs an executing principal; skip when absent.
+  if (!state.userId) return;
   recordUsage({
     userId: state.userId,
     teamId: state.teamId ?? null,
@@ -285,7 +291,7 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
       messages: convertToModelMessages(messages),
     });
     // W3: attribute this provider call to the executing user + team budget.
-    recordNodeUsage(state, chatModel, response.usage);
+    recordNodeUsage(state, chatModel, response.usage, node.id);
     return {
       output: {
         totalTokens: response.usage.totalTokens,
@@ -303,7 +309,7 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
   });
 
   // W3: attribute this provider call to the executing user + team budget.
-  recordNodeUsage(state, chatModel, response.usage);
+  recordNodeUsage(state, chatModel, response.usage, node.id);
 
   return {
     output: {
@@ -433,7 +439,7 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
         },
       },
     });
-    recordNodeUsage(state, chatModel, response.usage);
+    recordNodeUsage(state, chatModel, response.usage, node.id);
 
     result.input = {
       parameter: response.toolCalls.find((call) => call.input)?.input,

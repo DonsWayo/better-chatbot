@@ -12,13 +12,15 @@ import { workflowRepository } from "lib/db/repository";
 import { isKillSwitchActive } from "lib/observability/kill-switch";
 import { toAny } from "lib/utils";
 import globalLogger from "logger";
+import { isApprovalPending } from "./approval-error";
+import { markSessionAwaitingApproval } from "./approvals";
 import {
   type SubscribableExecutor,
   attachSessionPersistence,
 } from "./persistent-executor";
 import { extractRows, toDate } from "./pg-rows";
 import { claimDueSchedules } from "./scheduler";
-import { createSession, failSession } from "./sessions";
+import { createSession, failSession, getSessionWithSteps } from "./sessions";
 
 // Agent Platform #22 — the detached run executor
 // (docs/design/agent-platform.md). Claims due workflow_schedule rows into
@@ -99,7 +101,11 @@ async function requeueSession(id: string): Promise<void> {
     .where(eq(AgentSessionTable.id, id));
 }
 
-export type RunOutcome = "completed" | "failed" | "requeued";
+export type RunOutcome =
+  | "completed"
+  | "failed"
+  | "requeued"
+  | "awaiting_approval";
 
 /**
  * Executes one claimed workflow session: loads the workflow structure (same
@@ -190,18 +196,33 @@ export async function runClaimedSession(
     }
   }
 
+  // #24 resume: an approved session re-queued after parking already has
+  // completed agent_step rows. Seed their outputs so the executor SKIPS those
+  // nodes instead of re-running the whole graph from an empty state (which
+  // burns duplicate LLM cost + repeats side effects). A fresh run seeds {}.
+  const initialOutputs = await loadCompletedStepOutputs(session.id);
+  if (Object.keys(initialOutputs).length > 0) {
+    logger.info(
+      `resuming session ${session.id} with ${Object.keys(initialOutputs).length} already-completed node(s) seeded`,
+    );
+  }
+
   const executor = createWorkflowExecutor({
     nodes: workflow.nodes,
     edges: workflow.edges,
     logger: globalLogger.withDefaults({
       message: colorize("cyan", `WORKFLOW(detached) '${workflow.name}' `),
     }),
+    // #4: detached/scheduled runs must carry the governing session id, else
+    // Approval nodes throw "Approval node requires a governed agent session".
+    agentSessionId: session.id,
     userId: session.userId ?? undefined,
     guardrailPolicy,
     teamId,
     effectiveModelAllowList,
+    initialOutputs,
   });
-  const detach = attachSessionPersistence(
+  const persistence = attachSessionPersistence(
     executor as unknown as SubscribableExecutor,
     session.id,
   );
@@ -213,6 +234,20 @@ export async function runClaimedSession(
       timeout: RUN_TIMEOUT_MS,
     });
     if (!result.isOk) {
+      // #5: an ApprovalPendingError is a PAUSE, not a failure. The approvals
+      // lib already flipped the session to awaiting_approval; re-assert it
+      // (the generic WORKFLOW_END path may have raced) and do NOT failSession,
+      // exactly like the synchronous execute route.
+      if (isApprovalPending(result.error)) {
+        await markSessionAwaitingApproval(session.id).catch((err) => {
+          logger.error(
+            `markSessionAwaitingApproval(${session.id}) failed:`,
+            err,
+          );
+        });
+        logger.info(`session ${session.id} parked awaiting approval`);
+        return "awaiting_approval";
+      }
       // persistent-executor's WORKFLOW_END handler also fails the session,
       // but fire-and-forget — this await makes the terminal state durable.
       await failSession(session.id, errorMessage(result.error));
@@ -220,10 +255,54 @@ export async function runClaimedSession(
     }
     return "completed";
   } catch (error) {
+    // A thrown ApprovalPendingError is also a pause, not a failure.
+    if (isApprovalPending(error)) {
+      await markSessionAwaitingApproval(session.id).catch(() => {});
+      logger.info(`session ${session.id} parked awaiting approval`);
+      return "awaiting_approval";
+    }
     await failSession(session.id, errorMessage(error));
     return "failed";
   } finally {
-    detach();
+    // Drain all fire-and-forget step/session writes BEFORE detaching — the
+    // detached worker exits right after this returns, so without the flush the
+    // per-node agent_step rows race the process teardown and are lost.
+    await persistence.flush().catch((err) => {
+      logger.error(`persistence flush(${session.id}) failed:`, err);
+    });
+    persistence();
+  }
+}
+
+/**
+ * #24 resume seed — map of nodeId → output for every already-'completed' step
+ * of a session. Used to skip re-execution of prior nodes on an approval
+ * resume. Empty for a first run (no completed steps yet). Best-effort: any
+ * load failure yields {} (full re-run, the prior behavior).
+ */
+async function loadCompletedStepOutputs(
+  sessionId: string,
+): Promise<{ [nodeId: string]: unknown }> {
+  try {
+    const withSteps = await getSessionWithSteps(sessionId);
+    if (!withSteps) return {};
+    const seed: { [nodeId: string]: unknown } = {};
+    for (const step of withSteps.steps) {
+      // A node that produced an output already ran to completion — seed it so
+      // the resume skips it. We key on output presence (not just
+      // status='completed') so a node whose terminal write raced an approval
+      // abort is still treated as done and not re-executed.
+      if (step.output != null && step.nodeKind !== "approval") {
+        seed[step.nodeId] = step.output;
+      }
+    }
+    return seed;
+  } catch (error) {
+    logger.error(
+      `loadCompletedStepOutputs(${sessionId}) failed; full re-run:`,
+      error,
+    );
+    return {};
   }
 }
 
@@ -300,6 +379,9 @@ export async function tickOnce(opts?: TickOptions): Promise<TickResult> {
       const outcome = await runClaimedSession(session);
       if (outcome === "completed") counts.executed++;
       else if (outcome === "failed") counts.failed++;
+      // awaiting_approval parked the run cleanly — not failed, not executed;
+      // keep claiming further sessions this tick.
+      else if (outcome === "awaiting_approval") continue;
       // Kill switch re-queued the session — stop claiming this tick or we
       // would claim/re-queue the same row in a tight loop.
       else break;

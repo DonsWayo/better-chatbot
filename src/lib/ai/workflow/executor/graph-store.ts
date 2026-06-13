@@ -40,10 +40,21 @@ export interface WorkflowRuntimeState {
   outputs: {
     [nodeId: string]: any;
   };
+  /**
+   * Agent Platform #21/#24 — per-node USD cost accumulator. LLM/tool nodes
+   * add the priced cost of each provider call here (keyed by node id) so the
+   * persistence layer can stamp agent_step.cost_usd per node and roll the sum
+   * into agent_session.cost_so_far. Empty for nodes that burn no tokens.
+   */
+  costByNode: {
+    [nodeId: string]: number;
+  };
   setInput(nodeId: string, value: any): void;
   getInput(nodeId: string): any;
   setOutput(key: OutputSchemaSourceKey, value: any): void;
   getOutput<T>(key: OutputSchemaSourceKey): undefined | T;
+  /** Accumulate USD cost for `nodeId` (summed across calls within the node). */
+  addCost(nodeId: string, costUsd: number): void;
 }
 
 export const createGraphStore = (params: {
@@ -54,6 +65,13 @@ export const createGraphStore = (params: {
   guardrailPolicy?: string;
   teamId?: string | null;
   effectiveModelAllowList?: string[] | null;
+  /**
+   * Agent Platform #24 — resume seed. On an approval resume the worker reloads
+   * the outputs of already-completed nodes here so downstream nodes see prior
+   * results without re-executing the upstream graph (idempotent re-run). Empty
+   * for a fresh run.
+   */
+  initialOutputs?: { [nodeId: string]: any };
 }) => {
   return graphStore<WorkflowRuntimeState>((set, get) => {
     return {
@@ -63,10 +81,20 @@ export const createGraphStore = (params: {
       guardrailPolicy: params.guardrailPolicy,
       teamId: params.teamId,
       effectiveModelAllowList: params.effectiveModelAllowList,
-      outputs: {},
+      outputs: { ...(params.initialOutputs ?? {}) },
       inputs: {},
+      costByNode: {},
       nodes: params.nodes,
       edges: params.edges,
+      addCost(nodeId, costUsd) {
+        if (!costUsd) return;
+        set((prev) => ({
+          costByNode: {
+            ...prev.costByNode,
+            [nodeId]: (prev.costByNode[nodeId] ?? 0) + costUsd,
+          },
+        }));
+      },
       setInput(nodeId, value) {
         set((prev) => {
           return { inputs: { ...prev.inputs, [nodeId]: value } };

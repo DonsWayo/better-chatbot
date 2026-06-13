@@ -426,6 +426,28 @@ export async function revokeAccess(input: {
 }
 
 /**
+ * Revoke EVERY grant on an entity, for all grantees. Called whenever an
+ * entity's visibility is reset to "private": private means owner-only, so any
+ * lingering entity_grant rows would otherwise keep leaking the entity to its
+ * former grantees (e.g. a now-private agent still LISTING for editor2 because
+ * the list query's hasGrant() EXISTS still matched a stale row). Idempotent:
+ * a no-op when the entity has no grants.
+ */
+export async function revokeAllGrants(
+  entityType: GrantableEntityType,
+  entityId: string,
+): Promise<void> {
+  await db
+    .delete(EntityGrantTable)
+    .where(
+      and(
+        eq(EntityGrantTable.entityType, entityType),
+        eq(EntityGrantTable.entityId, entityId),
+      ),
+    );
+}
+
+/**
  * Resolve a user by email for the "shared" grant manager UI. Returns the
  * minimal identity the picker needs (id + display name) or null when no user
  * owns that email. Case-insensitive on the local convention that emails are

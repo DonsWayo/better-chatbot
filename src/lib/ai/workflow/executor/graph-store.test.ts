@@ -227,3 +227,41 @@ describe("createGraphStore — state shape invariants", () => {
     expect(ctx.inputs).toEqual({});
   });
 });
+
+describe("createGraphStore — cost accumulation (#21)", () => {
+  it("costByNode starts empty and accumulates per node", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    const ctx = store();
+    expect(ctx.costByNode).toEqual({});
+    ctx.addCost("n1", 0.001);
+    ctx.addCost("n1", 0.002);
+    ctx.addCost("n2", 0.005);
+    expect(store().costByNode).toEqual({ n1: 0.003, n2: 0.005 });
+  });
+
+  it("addCost ignores zero/falsy cost", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    store().addCost("n1", 0);
+    expect(store().costByNode).toEqual({});
+  });
+});
+
+describe("createGraphStore — resume seed (#24)", () => {
+  it("seeds outputs from initialOutputs so prior nodes are readable", () => {
+    const store = createGraphStore({
+      nodes: [],
+      edges: [],
+      initialOutputs: { upstream: { answer: "prior" } },
+    });
+    const ctx = store();
+    expect(ctx.outputs.upstream).toEqual({ answer: "prior" });
+    expect(ctx.getOutput({ nodeId: "upstream", path: ["answer"] })).toBe(
+      "prior",
+    );
+  });
+
+  it("initialOutputs defaults to an empty map (fresh run)", () => {
+    const store = createGraphStore({ nodes: [], edges: [] });
+    expect(store().outputs).toEqual({});
+  });
+});

@@ -91,6 +91,8 @@ vi.mock("lib/db/pg/schema.pg", () => ({
     id: "agent_step.id",
     sessionId: "agent_step.session_id",
     stepIndex: "agent_step.step_index",
+    status: "agent_step.status",
+    costUsd: "agent_step.cost_usd",
   },
 }));
 
@@ -100,6 +102,12 @@ vi.mock("drizzle-orm", () => ({
   inArray: vi.fn((col: unknown, vals: unknown) => ({ _inArray: [col, vals] })),
   asc: vi.fn((col: unknown) => ({ _asc: col })),
   desc: vi.fn((col: unknown) => ({ _desc: col })),
+  sql: Object.assign(
+    vi.fn((strings: TemplateStringsArray, ...vals: unknown[]) => ({
+      _sql: [strings, vals],
+    })),
+    { raw: vi.fn() },
+  ),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -420,5 +428,45 @@ describe("list / get", () => {
     const { getSessionWithSteps } = await import("./sessions");
     const result = await getSessionWithSteps("missing");
     expect(result).toBeNull();
+  });
+});
+
+describe("completeRunningSteps (#2 — unstick the final step)", () => {
+  it("flips only still-running steps of the session to completed with endedAt", async () => {
+    updateReturningMock.mockResolvedValueOnce([{ id: "s1" }, { id: "s2" }]);
+    const { completeRunningSteps } = await import("./sessions");
+    const n = await completeRunningSteps("sess-1");
+    expect(n).toBe(2);
+    const set = lastUpdateSet();
+    expect(set.status).toBe("completed");
+    expect(set.endedAt).toBeInstanceOf(Date);
+    // The WHERE confines to (sessionId, status='running').
+    const where = updateWhereMock.mock.calls.at(-1)?.[0] as {
+      _and: unknown[];
+    };
+    expect(where._and).toEqual([
+      { _eq: ["agent_step.session_id", "sess-1"] },
+      { _eq: ["agent_step.status", "running"] },
+    ]);
+  });
+
+  it("returns 0 when no running steps remain", async () => {
+    updateReturningMock.mockResolvedValueOnce([]);
+    const { completeRunningSteps } = await import("./sessions");
+    expect(await completeRunningSteps("sess-1")).toBe(0);
+  });
+});
+
+describe("sumStepCost (#3 — roll up per-step cost)", () => {
+  it("returns the SUM(cost_usd) for the session", async () => {
+    selectResults.push([{ total: 0.0123 }]);
+    const { sumStepCost } = await import("./sessions");
+    expect(await sumStepCost("sess-1")).toBeCloseTo(0.0123, 6);
+  });
+
+  it("returns 0 when the session has no steps", async () => {
+    selectResults.push([{ total: 0 }]);
+    const { sumStepCost } = await import("./sessions");
+    expect(await sumStepCost("sess-1")).toBe(0);
   });
 });

@@ -649,4 +649,75 @@ describe("createWorkflowExecutor", () => {
     // Note: input data in WORKFLOW_START event is a known limitation of the current implementation
     // The important thing is that the workflow executes correctly with the provided input data
   });
+
+  // ── Agent Platform #21/#24: executor context + resume node-skip ──
+
+  it("exposes a per-node context with the store's outputs/kinds", async () => {
+    const nodes: DBNode[] = [
+      createNode("start", NodeKind.Input, "Start Node"),
+      createNode("end", NodeKind.Output, "End Node"),
+    ];
+    const edges: DBEdge[] = [createEdge("e1", "start", "end")];
+
+    const { getWorkflowExecutorContext } = await import("./executor-context");
+    const app = createWorkflowExecutor({ nodes, edges });
+    const nodeExecutorModule = await import("./node-executor");
+    (
+      nodeExecutorModule as unknown as {
+        __setTestInputData: (d: Record<string, unknown>) => void;
+      }
+    ).__setTestInputData({ seed: 1 });
+
+    await app.run({ seed: 1 } as never);
+
+    const ctx = getWorkflowExecutorContext(app);
+    expect(ctx).toBeDefined();
+    expect(ctx!.getNodeKind("start")).toBe(NodeKind.Input);
+    expect(ctx!.getNodeKind("end")).toBe(NodeKind.Output);
+    // The input node's output is the seeded query — a per-node slice, not the
+    // whole graph state.
+    expect(ctx!.getNodeOutput("start")).toMatchObject({ seed: 1 });
+    expect(ctx!.getNodeOutput("start")).not.toHaveProperty("nodes");
+  });
+
+  it("#24 resume: a node whose output is seeded is NOT re-executed", async () => {
+    const { llmNodeExecutor } = await import("./node-executor");
+    const llmSpy = llmNodeExecutor as unknown as ReturnType<typeof vi.fn>;
+    llmSpy.mockClear();
+
+    const nodes: DBNode[] = [
+      createNode("start", NodeKind.Input, "Start Node"),
+      createNode("llm", NodeKind.LLM, "LLM Node"),
+      createNode("end", NodeKind.Output, "End Node"),
+    ];
+    const edges: DBEdge[] = [
+      createEdge("e1", "start", "llm"),
+      createEdge("e2", "llm", "end"),
+    ];
+
+    const { getWorkflowExecutorContext } = await import("./executor-context");
+    const app = createWorkflowExecutor({
+      nodes,
+      edges,
+      // The LLM node already ran in a prior (parked) execution.
+      initialOutputs: { llm: { answer: "from prior run", totalTokens: 7 } },
+    });
+    const nodeExecutorModule = await import("./node-executor");
+    (
+      nodeExecutorModule as unknown as {
+        __setTestInputData: (d: Record<string, unknown>) => void;
+      }
+    ).__setTestInputData({});
+
+    const result = await app.run({});
+    expect(result.isOk).toBe(true);
+    // The expensive LLM node was SKIPPED — not re-executed.
+    expect(llmSpy).not.toHaveBeenCalled();
+    // Downstream still sees the seeded output.
+    const ctx = getWorkflowExecutorContext(app);
+    expect(ctx!.getNodeOutput("llm")).toEqual({
+      answer: "from prior run",
+      totalTokens: 7,
+    });
+  });
 });

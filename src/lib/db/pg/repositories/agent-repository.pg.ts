@@ -1,6 +1,7 @@
 import { Agent, AgentRepository, AgentSummary } from "app-types/agent";
 import { SQL, and, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { generateUUID } from "lib/utils";
+import { revokeAllGrants } from "lib/visibility";
 import { pgDb as db } from "../db.pg";
 import { AgentTable, BookmarkTable, UserTable } from "../schema.pg";
 
@@ -152,6 +153,14 @@ export const pgAgentRepository: AgentRepository = {
         ),
       )
       .returning();
+
+    // Reverting to "private" means owner-only: drop every entity_grant so a
+    // formerly-shared agent stops leaking to its old grantees (the list query's
+    // hasGrant() EXISTS would otherwise still match stale rows). Only fire when
+    // an update actually landed (result is defined).
+    if (result && agent.visibility === "private") {
+      await revokeAllGrants("agent", id);
+    }
 
     return {
       ...result,

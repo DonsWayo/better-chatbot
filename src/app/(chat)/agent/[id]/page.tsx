@@ -1,4 +1,5 @@
 import EditAgent from "@/components/agent/edit-agent";
+import { canCreateAgent } from "lib/auth/client-permissions";
 import { agentRepository } from "lib/db/repository";
 import { getSession } from "auth/server";
 import { notFound, redirect } from "next/navigation";
@@ -15,8 +16,14 @@ export default async function AgentPage({
     redirect("/sign-in");
   }
 
-  // For new agents, pass no initial data
+  // For new agents, pass no initial data. Gate the creation form behind the
+  // SAME permission the POST /api/agent route enforces (canCreateAgent): basic
+  // users (role "user") otherwise see the full form and hit a cryptic 403 on
+  // Save. Mirror how /studio redirects non-builders away.
   if (id === "new") {
+    if (!canCreateAgent(session.user.role)) {
+      redirect("/");
+    }
     return <EditAgent userId={session.user.id} />;
   }
 

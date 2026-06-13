@@ -24,6 +24,8 @@ const {
   claimDueSchedulesMock,
   createSessionMock,
   failSessionMock,
+  getSessionWithStepsMock,
+  markAwaitingApprovalMock,
   attachMock,
   detachMock,
   selectStructureByIdMock,
@@ -37,6 +39,8 @@ const {
   claimDueSchedulesMock: vi.fn(),
   createSessionMock: vi.fn(),
   failSessionMock: vi.fn(),
+  getSessionWithStepsMock: vi.fn(),
+  markAwaitingApprovalMock: vi.fn(),
   attachMock: vi.fn(),
   detachMock: vi.fn(),
   selectStructureByIdMock: vi.fn(),
@@ -68,6 +72,10 @@ vi.mock("./scheduler", () => ({
 vi.mock("./sessions", () => ({
   createSession: createSessionMock,
   failSession: failSessionMock,
+  getSessionWithSteps: getSessionWithStepsMock,
+}));
+vi.mock("./approvals", () => ({
+  markSessionAwaitingApproval: markAwaitingApprovalMock,
 }));
 vi.mock("./persistent-executor", () => ({
   attachSessionPersistence: attachMock,
@@ -172,6 +180,14 @@ beforeEach(() => {
   claimDueSchedulesMock.mockResolvedValue([]);
   createSessionMock.mockResolvedValue({ id: "sess-1" });
   failSessionMock.mockResolvedValue({ id: "sess-1" });
+  // Default: no prior steps (fresh run, empty resume seed).
+  getSessionWithStepsMock.mockResolvedValue({ session: SESSION, steps: [] });
+  markAwaitingApprovalMock.mockResolvedValue({ id: "sess-1" });
+  // attachSessionPersistence returns a callable handle with a flush() the
+  // worker awaits before exit; mirror that shape on the mock.
+  (detachMock as unknown as { flush: ReturnType<typeof vi.fn> }).flush = vi
+    .fn()
+    .mockResolvedValue(undefined);
   attachMock.mockReturnValue(detachMock);
   selectStructureByIdMock.mockResolvedValue(WORKFLOW_STRUCTURE);
   checkAccessMock.mockResolvedValue(true);
@@ -381,6 +397,107 @@ describe("runClaimedSession", () => {
         teamId: "team-1",
         effectiveModelAllowList: ["deepseek-v4-flash"],
       }),
+    );
+  });
+
+  // ── #4: detached runs must carry the governing session id (approval nodes) ──
+
+  it("#4 passes agentSessionId so Approval nodes can park the session", async () => {
+    const { runClaimedSession } = await import("./worker");
+    await runClaimedSession(SESSION);
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ agentSessionId: "sess-1" }),
+    );
+  });
+
+  // ── #5: an approval-pending result is a PAUSE, never a failure ──
+
+  it("#5 approval-pending result → awaiting_approval, NOT failSession", async () => {
+    const { ApprovalPendingError } = await import("./approval-error");
+    executorRunMock.mockResolvedValue({
+      isOk: false,
+      error: new ApprovalPendingError("sess-1", "appr-1"),
+    });
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(SESSION);
+    expect(outcome).toBe("awaiting_approval");
+    expect(markAwaitingApprovalMock).toHaveBeenCalledWith("sess-1");
+    expect(failSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("#5 a thrown ApprovalPendingError is also a pause, not a failure", async () => {
+    const { ApprovalPendingError } = await import("./approval-error");
+    executorRunMock.mockRejectedValue(
+      new ApprovalPendingError("sess-1", "appr-1"),
+    );
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(SESSION);
+    expect(outcome).toBe("awaiting_approval");
+    expect(markAwaitingApprovalMock).toHaveBeenCalledWith("sess-1");
+    expect(failSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("a non-approval failure still fails the session (regression guard for #5)", async () => {
+    executorRunMock.mockResolvedValue({
+      isOk: false,
+      error: new Error("graph blew up"),
+    });
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(SESSION);
+    expect(outcome).toBe("failed");
+    expect(failSessionMock).toHaveBeenCalledWith("sess-1", "graph blew up");
+    expect(markAwaitingApprovalMock).not.toHaveBeenCalled();
+  });
+
+  // ── #6: resume seeds prior completed-node outputs (no re-execution) ──
+
+  it("#6 seeds prior nodes' outputs as initialOutputs on resume", async () => {
+    getSessionWithStepsMock.mockResolvedValue({
+      session: SESSION,
+      steps: [
+        {
+          nodeId: "upstream",
+          nodeKind: "llm",
+          status: "completed",
+          output: { answer: "prior" },
+        },
+        // A node whose terminal write raced an abort (running but has output)
+        // is still seeded — output presence, not status, decides.
+        {
+          nodeId: "raced",
+          nodeKind: "input",
+          status: "running",
+          output: { q: "x" },
+        },
+        // No-output steps are NOT seeded (the node never produced a result).
+        { nodeId: "pending", nodeKind: "llm", status: "running", output: null },
+        // The approval node must re-run on resume to re-check the decision —
+        // never seed it even if it has a payload-ish output.
+        {
+          nodeId: "appr",
+          nodeKind: "approval",
+          status: "failed",
+          output: { x: 1 },
+        },
+      ],
+    });
+    const { runClaimedSession } = await import("./worker");
+    await runClaimedSession(SESSION);
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialOutputs: {
+          upstream: { answer: "prior" },
+          raced: { q: "x" },
+        },
+      }),
+    );
+  });
+
+  it("#6 fresh run (no prior steps) seeds an empty initialOutputs map", async () => {
+    const { runClaimedSession } = await import("./worker");
+    await runClaimedSession(SESSION);
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ initialOutputs: {} }),
     );
   });
 });

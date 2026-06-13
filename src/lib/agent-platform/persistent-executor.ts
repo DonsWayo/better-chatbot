@@ -1,12 +1,18 @@
 import "server-only";
 
+import {
+  type WorkflowExecutorContext,
+  getWorkflowExecutorContext,
+} from "lib/ai/workflow/executor/executor-context";
 import globalLogger from "logger";
 import { isApprovalPending } from "./approval-error";
 import {
+  completeRunningSteps,
   completeSession,
   failSession,
   recordStep,
   startSession,
+  sumStepCost,
   touchHeartbeat,
 } from "./sessions";
 
@@ -72,11 +78,18 @@ function errorMessage(error: unknown): string {
   return String(error ?? "Unknown error");
 }
 
-/** Swallow + log: persistence must never break a live run. */
-function fireAndForget(promise: Promise<unknown>, context: string): void {
-  promise.catch((error) => {
-    logger.error(`${context} failed:`, error);
-  });
+/**
+ * Detach handle returned by attachSessionPersistence. Callable to unsubscribe
+ * (back-compat with the `() => void` contract the execute route uses), plus a
+ * `flush()` for callers that must await all pending writes before the process
+ * tears down — the detached worker exits right after run() resolves, and the
+ * step writes are fire-and-forget, so without a flush the per-node rows race
+ * the exit and are lost (see #21 real-run durability).
+ */
+export interface SessionPersistenceHandle {
+  (): void;
+  /** Resolves once every fire-and-forget persistence write has settled. */
+  flush(): Promise<void>;
 }
 
 /**
@@ -97,11 +110,57 @@ function fireAndForget(promise: Promise<unknown>, context: string): void {
 export function attachSessionPersistence(
   executor: SubscribableExecutor,
   sessionId: string,
-): () => void {
+): SessionPersistenceHandle {
   let nextStepIndex = 0;
   // NODE_END must land on the same stepIndex its NODE_START created; key by
   // nodeExecutionId when available (parallel branches), node name otherwise.
   const stepIndexByExecution = new Map<string, number>();
+
+  // Track every fire-and-forget write so a caller (the detached worker) can
+  // flush() them before exiting — otherwise the per-node step rows race the
+  // process teardown and never land.
+  const pending = new Set<Promise<unknown>>();
+  const fireAndForget = (promise: Promise<unknown>, context: string): void => {
+    const tracked = promise
+      .catch((error) => {
+        logger.error(`${context} failed:`, error);
+      })
+      .finally(() => {
+        pending.delete(tracked);
+      });
+    pending.add(tracked);
+  };
+
+  // The ts-edge NODE_START/NODE_END event's node.input/node.output are the
+  // WHOLE graph state (createStateGraph wraps execute with `.map(() =>
+  // store.get())`), not the node's own slice. Pull the per-node
+  // input/output/cost/kind from the executor's runtime context instead;
+  // fall back to the raw event fields when no context is attached (unit tests
+  // that emit synthetic events).
+  const context: WorkflowExecutorContext | undefined =
+    getWorkflowExecutorContext(executor);
+
+  // node id (== ts-edge node name) of every step we've recorded, so the
+  // WORKFLOW_END rollup can seed completeSession with the real per-step sum.
+  const seenNodeIds = new Set<string>();
+
+  // Per-stepIndex write chain. NODE_START and NODE_END upsert the SAME
+  // (sessionId, stepIndex) row; both writes are fire-and-forget, so without
+  // ordering a slow NODE_START can land AFTER NODE_END and stomp 'completed'
+  // back to 'running' (observed when an approval abort tightens the timing).
+  // Chaining per stepIndex guarantees NODE_END's write always follows its
+  // NODE_START's.
+  const stepWriteChain = new Map<number, Promise<unknown>>();
+  const recordStepSerialized = (
+    stepIndex: number,
+    step: Parameters<typeof recordStep>[1],
+    label: string,
+  ): void => {
+    const prior = stepWriteChain.get(stepIndex) ?? Promise.resolve();
+    const next = prior.then(() => recordStep(sessionId, step));
+    stepWriteChain.set(stepIndex, next);
+    fireAndForget(next, label);
+  };
 
   const handler = (event: PersistableGraphEvent): void => {
     try {
@@ -113,21 +172,26 @@ export function attachSessionPersistence(
         case "NODE_START": {
           const evt = event as NodeStartEventLike;
           if (evt.node.name === SKIP_NODE_NAME) break;
+          const nodeId = evt.node.name; // ts-edge node name == workflow node id
           const stepIndex = nextStepIndex++;
-          stepIndexByExecution.set(
-            evt.nodeExecutionId ?? evt.node.name,
-            stepIndex,
-          );
+          stepIndexByExecution.set(evt.nodeExecutionId ?? nodeId, stepIndex);
+          seenNodeIds.add(nodeId);
+          // node_kind from the executor context (event carries no metadata).
+          const nodeKind = context?.getNodeKind(nodeId);
+          // node.input on the event is the whole graph state — never persist
+          // it; the per-node input lands at NODE_END via the context. Only
+          // pass through a synthetic event input when no context is attached.
+          const input = context ? undefined : evt.node.input;
           fireAndForget(touchHeartbeat(sessionId), "touchHeartbeat");
-          fireAndForget(
-            recordStep(sessionId, {
-              nodeId: evt.node.name,
+          recordStepSerialized(
+            stepIndex,
+            {
+              nodeId,
               stepIndex,
               status: "running",
-              ...(evt.node.input !== undefined
-                ? { input: evt.node.input }
-                : {}),
-            }),
+              ...(nodeKind !== undefined ? { nodeKind } : {}),
+              ...(input !== undefined ? { input } : {}),
+            },
             "recordStep(NODE_START)",
           );
           break;
@@ -135,21 +199,34 @@ export function attachSessionPersistence(
         case "NODE_END": {
           const evt = event as NodeEndEventLike;
           if (evt.node.name === SKIP_NODE_NAME) break;
-          const key = evt.nodeExecutionId ?? evt.node.name;
+          const nodeId = evt.node.name; // ts-edge node name == workflow node id
+          const key = evt.nodeExecutionId ?? nodeId;
           const stepIndex =
             stepIndexByExecution.get(key) ?? Math.max(nextStepIndex - 1, 0);
           stepIndexByExecution.delete(key);
+          seenNodeIds.add(nodeId);
+          // Per-node output/input/cost/kind from the runtime store. The event's
+          // node.output is the WHOLE graph state — using it here is the bug
+          // that recorded the entire graph JSON on every step.
+          const output = context
+            ? context.getNodeOutput(nodeId)
+            : evt.node.output;
+          const input = context ? context.getNodeInput(nodeId) : undefined;
+          const nodeKind = context?.getNodeKind(nodeId);
+          const costUsd = context?.getNodeCost(nodeId);
           fireAndForget(touchHeartbeat(sessionId), "touchHeartbeat");
-          fireAndForget(
-            recordStep(sessionId, {
-              nodeId: evt.node.name,
+          recordStepSerialized(
+            stepIndex,
+            {
+              nodeId,
               stepIndex,
               status: evt.isOk ? "completed" : "failed",
-              ...(evt.node.output !== undefined
-                ? { output: evt.node.output }
-                : {}),
+              ...(nodeKind !== undefined ? { nodeKind } : {}),
+              ...(input !== undefined ? { input } : {}),
+              ...(output !== undefined ? { output } : {}),
+              ...(costUsd !== undefined ? { costUsd } : {}),
               ...(evt.isOk ? {} : { error: errorMessage(evt.error) }),
-            }),
+            },
             "recordStep(NODE_END)",
           );
           break;
@@ -161,12 +238,27 @@ export function attachSessionPersistence(
             // The approvals lib already set the session status; do nothing.
             break;
           }
-          fireAndForget(
-            evt.isOk
-              ? completeSession(sessionId)
-              : failSession(sessionId, errorMessage(evt.error)),
-            evt.isOk ? "completeSession" : "failSession",
-          );
+          if (evt.isOk) {
+            // #2: the output node's NODE_END can land after WORKFLOW_END (or
+            // not flip its step) — sweep any still-'running' steps to
+            // 'completed' so the final step is never stuck. #3: roll the real
+            // per-step cost sum into agent_session.cost_so_far. The rollup must
+            // see every step write, so it waits for the in-flight node writes
+            // (snapshot of `pending`) to settle first.
+            const priorWrites = Promise.allSettled([...pending]);
+            fireAndForget(
+              priorWrites
+                .then(() => completeRunningSteps(sessionId))
+                .then(() => sumStepCost(sessionId))
+                .then((costSoFar) => completeSession(sessionId, { costSoFar })),
+              "completeSession(rollup)",
+            );
+          } else {
+            fireAndForget(
+              failSession(sessionId, errorMessage(evt.error)),
+              "failSession",
+            );
+          }
           break;
         }
         default:
@@ -181,11 +273,22 @@ export function attachSessionPersistence(
 
   executor.subscribe(handler);
 
-  return () => {
+  const handle = (() => {
     try {
       executor.unsubscribe?.(handler);
     } catch (error) {
       logger.error("session persistence detach failed:", error);
     }
+  }) as SessionPersistenceHandle;
+
+  // Drain every fire-and-forget write — including chained ones enqueued while
+  // earlier writes resolve (the WORKFLOW_END rollup waits on prior writes) —
+  // by settling repeatedly until no new writes appear.
+  handle.flush = async () => {
+    while (pending.size > 0) {
+      await Promise.allSettled([...pending]);
+    }
   };
+
+  return handle;
 }

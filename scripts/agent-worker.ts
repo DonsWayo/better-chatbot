@@ -9,6 +9,18 @@
 
 import "load-env";
 
+import { isApprovalPending } from "lib/agent-platform/approval-error";
+
+// The ts-edge graph rethrows a halted node's error on a detached promise in
+// addition to surfacing it in run()'s result. For Approval nodes that detached
+// throw is an ApprovalPendingError — a normal pause, already handled by
+// runClaimedSession. Swallow it here so a parked approval never crashes the
+// long-lived worker process; surface anything else.
+process.on("unhandledRejection", (reason) => {
+  if (isApprovalPending(reason)) return;
+  console.error("agent worker unhandledRejection:", reason);
+});
+
 const intervalMs = Number(process.env.AGENT_WORKER_INTERVAL_MS ?? "5000");
 
 const { startWorkerLoop, tickOnce } = await import("lib/agent-platform/worker");
