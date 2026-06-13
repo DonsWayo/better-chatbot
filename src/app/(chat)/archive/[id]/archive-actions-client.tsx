@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { Button } from "ui/button";
+import { ArchiveDialog } from "@/components/archive-dialog";
 import { Settings2, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button } from "ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,11 +14,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "ui/dialog";
-import { ArchiveDialog } from "@/components/archive-dialog";
 
-import { toast } from "sonner";
-import { Archive } from "app-types/archive";
 import { deleteArchiveAction } from "@/app/api/archive/actions";
+import { Archive } from "app-types/archive";
+import { toast } from "sonner";
 import { mutate } from "swr";
 
 interface ArchiveActionsClientProps {
@@ -34,12 +34,16 @@ export function ArchiveActionsClient({ archive }: ArchiveActionsClientProps) {
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteArchiveAction(archive.id);
+      // deleteArchiveAction returns a structured result instead of throwing so
+      // its reason (e.g. "Archive not found or access denied") survives prod's
+      // masked-500.
+      const result = await deleteArchiveAction(archive.id);
+      if (!result.success) {
+        toast.error(result.error || t("Archive.failedToDeleteArchive"));
+        return;
+      }
       toast.success(t("Archive.archiveDeleted"));
       router.push("/");
-    } catch (error) {
-      console.error("Failed to delete archive:", error);
-      toast.error(t("Archive.failedToDeleteArchive"));
     } finally {
       mutate("/api/archive");
       setIsDeleting(false);

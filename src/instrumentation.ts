@@ -13,6 +13,22 @@ export async function register() {
   }
 
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // The web server can execute workflow runs in-process (e.g. the /api/v1
+    // sessions endpoint fires runSessionByIdDetached). When a run parks at an
+    // approval node, ts-edge re-throws an ApprovalPendingError on a DETACHED
+    // promise that escapes our .catch and surfaces as a process-level
+    // unhandledRejection. That is a normal pause (the session is already set to
+    // awaiting_approval), not a fault — but on plain Node (EKS) an unhandled
+    // rejection can tear down the process. Swallow exactly that signal here, the
+    // same way scripts/agent-worker.ts does for the standalone worker.
+    const { isApprovalPending } = await import(
+      "lib/agent-platform/approval-error"
+    );
+    process.on("unhandledRejection", (reason) => {
+      if (isApprovalPending(reason)) return;
+      console.error("server unhandledRejection:", reason);
+    });
+
     // Enable proxy support for undici (used by AI SDK) via HTTP_PROXY/HTTPS_PROXY env vars
     const proxyUrl =
       process.env.HTTPS_PROXY ||

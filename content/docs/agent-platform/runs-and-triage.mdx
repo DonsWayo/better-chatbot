@@ -10,22 +10,58 @@ while at least one session is non-terminal** (queued / running / awaiting approv
 paused). The teal pulse dot — the one "[alive](/docs/design-language)" signal — marks
 running sessions, with cost-so-far and abort affordances.
 
-When nothing is live the rail disappears entirely and **idle polling stops** — the
-client does one fetch on mount to know whether anything is active, then polls (5s)
-only while active runs exist. Completed-run history lives in the
+When nothing is live the rail disappears entirely. Completed-run history lives in the
 [Inbox](#the-inbox-inbox) under its **Runs** tab.
 
-Data flows over SWR routes (per the
-[Server Actions vs routes rule](/docs/development/server-actions-vs-routes), client-side
-data fetching is route-based):
+### Live updates
+
+The rail and the `/runs/[id]` page refresh automatically while a run is in flight: the
+rail revalidates `GET /api/runs` every 5s and the per-run page every 4s, **only** while a
+session is non-terminal (idle = no requests). Inserts, status changes
+(`queued → running → awaiting_approval → completed`) and cost bumps appear without a
+manual refresh.
+
+A push-based rail over the `agent_session`
+[Electric shape](/docs/collaboration/realtime) (proxied server-side, scoped to
+`WHERE user_id = <caller>`) is planned. It was reverted from this build because mounting
+the shape long-poll in the always-present sidebar keeps a connection open on every page,
+so pages never reach network-idle; the lazy / network-idle-safe wiring is tracked as a
+follow-up.
+
+Data still flows over routes for the fallback and the per-id read (per the
+[Server Actions vs routes rule](/docs/development/server-actions-vs-routes)):
 
 | Route | Shape |
 |---|---|
-| `GET /api/runs` | The user's sessions (default page of 30). Optional `?origin=schedule` filters by `originSurface` (used by the Inbox's "Recent routine runs"). |
+| `GET /api/runs` | The user's sessions (default page of 30). Degraded fallback for the rail; also `?origin=schedule` filters by `originSurface` (Inbox's "Recent routine runs"). |
 | `GET /api/runs/[id]` | One session with its ordered step rows (`getSessionWithSteps`). |
 | `GET /api/agent-platform/approvals/count` | Pending-approval count — the badge on the sidebar Inbox item. |
 
-Mutations — abort, steer — are Server Actions in `src/app/api/runs/actions.ts`.
+Mutations — abort, steer — are Server Actions in `src/app/api/runs/actions.ts`. An abort
+shows instantly via an optimistic overlay, then the authoritative status arrives over the
+shape.
+
+## Agent chats are governed sessions
+
+A chat turn run **with a selected agent** (an `@agent` mention) is now a first-class
+governed run, exactly like a workflow run. On each turn's `onFinish`, the chat route
+records a `conversational` `agent_session` for the thread (one per thread, reused across
+turns, keyed on `input_payload.threadId`) and appends the user→assistant exchange as a
+`turn` [agent_step](/docs/agent-platform/sessions-and-steps), with the turn's cost rolled
+into `cost_so_far` from the same usage it meters for billing. The agent's published
+[revision](/docs/agent-platform/sessions-and-steps#agent_session--one-governed-execution)
+is pinned when one exists.
+
+So an agent chat shows up in the Runs surfaces with a per-turn transcript + cost, just
+like a workflow run. Recording is **fully non-blocking and fail-open** (a persistence
+error never breaks the chat — `recordAgentChatTurn` in
+`src/lib/agent-platform/conversational-session.ts` swallows). Stored turn input/output is
+a **bounded, content-safe preview** (trimmed to 2000 chars + a hash + char count — the
+same "no raw bodies" discipline the
+[audit log](/docs/governance/audit-and-compliance) follows), never a raw message dump.
+
+**Plain (no-agent) chats are intentionally NOT governed**, to keep run volume bounded —
+only agent chats earn a session.
 
 ## /runs/[id] — permanent transcripts
 

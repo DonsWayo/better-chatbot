@@ -147,23 +147,25 @@ function FolderRow({
   const handleRename = async () => {
     const name = window.prompt(t("renameFolder"), folder.name);
     if (!name?.trim() || name.trim() === folder.name) return;
-    try {
-      await renameFolderAction(folder.id, name.trim());
-      mutate(FOLDERS_KEY);
-      toast.success(t("folderRenamed"));
-    } catch (error) {
-      handleErrorWithToast(error as Error);
+    // The action returns a structured result instead of throwing so its reason
+    // survives prod's masked-500.
+    const result = await renameFolderAction(folder.id, name.trim());
+    if (!result.success) {
+      handleErrorWithToast(new Error(result.error));
+      return;
     }
+    mutate(FOLDERS_KEY);
+    toast.success(t("folderRenamed"));
   };
 
   const handleDelete = async () => {
-    try {
-      await deleteFolderAction(folder.id);
-      mutate(FOLDERS_KEY);
-      toast.success(t("folderDeleted"));
-    } catch (error) {
-      handleErrorWithToast(error as Error);
+    const result = await deleteFolderAction(folder.id);
+    if (!result.success) {
+      handleErrorWithToast(new Error(result.error));
+      return;
     }
+    mutate(FOLDERS_KEY);
+    toast.success(t("folderDeleted"));
   };
 
   return (
@@ -248,17 +250,21 @@ function NewFolderDialog({ teams }: { teams: TeamItem[] }) {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await createFolderAction({
+      // The action returns a structured result instead of throwing so its
+      // reason survives prod's masked-500.
+      const result = await createFolderAction({
         name: name.trim(),
         teamId: teamId === PERSONAL ? null : teamId,
       });
+      if (!result.success) {
+        handleErrorWithToast(new Error(result.error));
+        return;
+      }
       mutate(FOLDERS_KEY);
       toast.success(t("folderCreated"));
       setOpen(false);
       setName("");
       setTeamId(PERSONAL);
-    } catch (error) {
-      handleErrorWithToast(error as Error);
     } finally {
       setSaving(false);
     }

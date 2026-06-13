@@ -1371,3 +1371,46 @@ export const EntityGrantTable = pgTable(
 );
 
 export type EntityGrantEntity = typeof EntityGrantTable.$inferSelect;
+
+// ── Public programmatic API keys (migration 0046) ────────────────────────────
+// API keys authenticate the public /api/v1 surface so external systems
+// (CI/CD, ERP triggers, partners) can run agents/workflows without a cookie
+// session. Only the sha256 hash of the secret is stored — the plaintext
+// `ck_live_<random>` is shown ONCE at creation and never persisted. A key acts
+// as its creating user's identity for entitlement/budget/ownership; teamId
+// pins the scope the key runs as.
+export const AsafeApiKeyTable = pgTable(
+  "asafe_api_key",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    // sha256 hex of the plaintext secret — the only stored form of the key.
+    keyHash: text("key_hash").notNull().unique(),
+    // First ~10 chars of the plaintext (e.g. "ck_live_AbC") for display only.
+    keyPrefix: text("key_prefix").notNull(),
+    name: text("name").notNull(),
+    // The user the key acts as (no FK — accountable admin identity, text id).
+    createdBy: text("created_by").notNull(),
+    // The team scope the key runs as (null = the creator's primary team).
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    // Capability scopes, e.g. ["agents:read","sessions:write"]. Default full.
+    scopes: jsonb("scopes")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'["*"]'::jsonb`),
+    lastUsedAt: timestamp("last_used_at"),
+    expiresAt: timestamp("expires_at"),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_api_key_key_hash_idx").on(t.keyHash),
+    index("asafe_api_key_team_id_idx").on(t.teamId),
+    index("asafe_api_key_created_by_idx").on(t.createdBy),
+  ],
+);
+
+export type AsafeApiKeyEntity = typeof AsafeApiKeyTable.$inferSelect;

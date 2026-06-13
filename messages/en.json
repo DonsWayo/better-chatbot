@@ -928,6 +928,9 @@
       "deactivated": "Kill switch deactivated — inference is running normally",
       "flagUpdated": "Flag updated"
     },
+    "ApiKeys": {
+      "title": "API Keys"
+    },
     "Guardrails": {
       "title": "Guardrails",
       "blockedCount": "Blocked",

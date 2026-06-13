@@ -45,15 +45,23 @@ export function TeamsTable({ teams }: TeamsTableProps) {
     if (!name.trim()) return;
     setIsSubmitting(true);
     try {
-      await createTeamAction(name.trim(), description.trim() || undefined);
+      // The action returns a structured result instead of throwing so the
+      // admin-permission denial / slug-collision reason survives prod's
+      // masked-500.
+      const result = await createTeamAction(
+        name.trim(),
+        description.trim() || undefined,
+      );
+      if (!result.success) {
+        toast.error(result.error || "Failed to create team");
+        return;
+      }
       setOpen(false);
       setName("");
       setDescription("");
       startTransition(() => {
         router.refresh();
       });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create team");
     } finally {
       setIsSubmitting(false);
     }

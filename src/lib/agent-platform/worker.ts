@@ -93,6 +93,63 @@ export async function claimQueuedSession(): Promise<AgentSessionEntity | null> {
   return mapSessionRow(rows[0]);
 }
 
+/**
+ * Claim ONE specific queued (or stale-running) workflow session by id with
+ * FOR UPDATE SKIP LOCKED. Used by the public /api/v1/sessions path to kick a
+ * just-created session promptly without waiting for the next cron tick. If the
+ * row is already locked/claimed by the cron worker, the SKIP LOCKED returns
+ * nothing and the cron worker keeps it — no double-run.
+ */
+export async function claimSessionById(
+  sessionId: string,
+): Promise<AgentSessionEntity | null> {
+  const result = await db.execute(sql`
+    UPDATE ${AgentSessionTable}
+       SET status = 'running',
+           heartbeat_at = now(),
+           started_at = COALESCE(started_at, now()),
+           updated_at = now()
+     WHERE id IN (
+       SELECT id
+         FROM ${AgentSessionTable}
+        WHERE id = ${sessionId}
+          AND kind = 'workflow'
+          AND (
+            status = 'queued'
+            OR (
+              status = 'running'
+              AND heartbeat_at IS NOT NULL
+              AND heartbeat_at < now() - make_interval(secs => ${HEARTBEAT_STALE_SECONDS})
+            )
+          )
+          FOR UPDATE SKIP LOCKED
+        LIMIT 1
+     )
+     RETURNING *
+  `);
+
+  const rows = extractRows(result);
+  if (rows.length === 0) return null;
+  return mapSessionRow(rows[0]);
+}
+
+/**
+ * Claim + run a specific session out-of-band (fire-and-forget). The public API
+ * calls this WITHOUT awaiting so the HTTP response returns 202 immediately
+ * while the workflow runs detached. If the session can't be claimed (already
+ * running, terminal, or locked by the cron worker) this is a no-op.
+ */
+export async function runSessionByIdDetached(sessionId: string): Promise<void> {
+  try {
+    const claimed = await claimSessionById(sessionId);
+    if (!claimed) return;
+    await runClaimedSession(claimed);
+  } catch (error) {
+    logger.error(`runSessionByIdDetached(${sessionId}) failed:`, error);
+    await failSession(sessionId, errorMessage(error)).catch(() => {});
+  }
+}
+
 /** Kill-switch path: hand the claimed session back to the queue untouched. */
 async function requeueSession(id: string): Promise<void> {
   await db

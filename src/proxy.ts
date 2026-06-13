@@ -12,6 +12,14 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
+  // The public programmatic API (/api/v1) authenticates with an
+  // `Authorization: Bearer ck_live_...` API key, NOT a session cookie. The
+  // cookie short-circuit below would 401 every external caller before the
+  // route's own authenticateApiKey runs, so let /api/v1 through to it.
+  if (pathname.startsWith("/api/v1/")) {
+    return NextResponse.next();
+  }
+
   // /admin is the admin console Dashboard (admin-sidebar.tsx); Users lives
   // at /admin/users — the old /admin → /admin/users redirect is gone.
 

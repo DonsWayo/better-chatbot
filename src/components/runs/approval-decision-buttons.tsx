@@ -34,26 +34,28 @@ export function ApprovalDecisionButtons({
 
   const approve = () => {
     startTransition(async () => {
-      try {
-        await approveRequestAction(requestId);
-        setDecided(true);
-        router.refresh();
-      } catch (error) {
-        handleErrorWithToast(error as Error);
+      // The action returns a structured result instead of throwing so its gate
+      // reason survives prod's masked-500.
+      const result = await approveRequestAction(requestId);
+      if (!result.success) {
+        handleErrorWithToast(new Error(result.error));
+        return;
       }
+      setDecided(true);
+      router.refresh();
     });
   };
 
   const reject = () => {
     if (!reason.trim()) return;
     startTransition(async () => {
-      try {
-        await rejectRequestAction(requestId, reason.trim());
-        setDecided(true);
-        router.refresh();
-      } catch (error) {
-        handleErrorWithToast(error as Error);
+      const result = await rejectRequestAction(requestId, reason.trim());
+      if (!result.success) {
+        handleErrorWithToast(new Error(result.error));
+        return;
       }
+      setDecided(true);
+      router.refresh();
     });
   };
 

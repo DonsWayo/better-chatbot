@@ -154,7 +154,10 @@ shape proxy applies the identical access checks as the content itself).
 ## Phasing
 
 - **Phase 2 (shipped)** — read-path-only sync: live shared threads and the
-  caller-scoped `agent_session` shape for run badges.
+  caller-scoped `agent_session` shape (proxied, ready to consume). A push-based
+  Runs rail over that shape is planned; today the rail and `/runs/[id]` page use
+  short-interval polling while a run is live — see
+  [Runs & Inbox](/docs/agent-platform/runs-and-triage#live-updates).
 - **Phase 3 (shipped)** — presence heartbeats + avatar stacks over the
   `asafe_presence` shape (table-backed, so it rides the existing Electric pipeline).
 - **Phase 4 (shipped, first slice)** — typing indicators on the presence row.

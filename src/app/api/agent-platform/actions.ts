@@ -1,5 +1,6 @@
 "use server";
 
+import { type ActionResult, toActionResult } from "app-types/util";
 import { getSession } from "auth/server";
 import { getUserPrimaryTeamId } from "lib/admin/teams";
 import {
@@ -12,6 +13,7 @@ import {
   type AutonomyMode,
   resolveAutonomyCap,
 } from "lib/agent-platform/autonomy";
+import type { ApprovalRequestEntity } from "lib/db/pg/schema.pg";
 
 // Agent Platform #24 — approval decisions + autonomy resolution.
 // Internal-UI mutations → Server Actions only (docs/CLAUDE.md rule); the
@@ -38,14 +40,31 @@ async function requireDecidableRequest(id: string): Promise<{
   return { userId: session.user.id, found };
 }
 
-export async function approveRequestAction(id: string, reason?: string) {
-  const { userId } = await requireDecidableRequest(id);
-  return decideApproval(id, { decidedBy: userId, approve: true, reason });
+// approve/reject return a structured {@link ActionResult} rather than throwing:
+// production Next.js masks errors thrown from a Server Action into an opaque
+// 500 ("digest"), so the gate reasons ("Unauthorized", "Approval request not
+// found", "Forbidden", "Already decided") would never reach the decision
+// buttons' toast. The auth/lookup LOGIC is unchanged — only the delivery moves
+// from throw to a returned result.
+
+export async function approveRequestAction(
+  id: string,
+  reason?: string,
+): Promise<ActionResult<ApprovalRequestEntity>> {
+  return toActionResult(async () => {
+    const { userId } = await requireDecidableRequest(id);
+    return decideApproval(id, { decidedBy: userId, approve: true, reason });
+  });
 }
 
-export async function rejectRequestAction(id: string, reason: string) {
-  const { userId } = await requireDecidableRequest(id);
-  return decideApproval(id, { decidedBy: userId, approve: false, reason });
+export async function rejectRequestAction(
+  id: string,
+  reason: string,
+): Promise<ActionResult<ApprovalRequestEntity>> {
+  return toActionResult(async () => {
+    const { userId } = await requireDecidableRequest(id);
+    return decideApproval(id, { decidedBy: userId, approve: false, reason });
+  });
 }
 
 /** The caller's effective autonomy cap (org → team → user layering). */

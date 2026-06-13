@@ -23,28 +23,40 @@ describe("cancelRunAction", () => {
     vi.clearAllMocks();
   });
 
-  it("throws when unauthenticated", async () => {
+  // cancelRunAction now returns a structured ActionResult instead of throwing
+  // (prod Next.js masks thrown Server-Action errors into a 500), so the gate
+  // reason survives to the Runs rail toast / optimistic rollback.
+  it("returns a structured Unauthorized failure when unauthenticated", async () => {
     getSessionMock.mockResolvedValue(null);
     const { cancelRunAction } = await import("./actions");
-    await expect(cancelRunAction("run-1")).rejects.toThrow("Unauthorized");
+    await expect(cancelRunAction("run-1")).resolves.toEqual({
+      success: false,
+      error: "Unauthorized",
+    });
     expect(cancelSessionMock).not.toHaveBeenCalled();
   });
 
-  it("throws when the run does not exist", async () => {
+  it("returns a structured Not Found failure when the run does not exist", async () => {
     getSessionMock.mockResolvedValue({ user: { id: "owner-1" } });
     getSessionWithStepsMock.mockResolvedValueOnce(null);
     const { cancelRunAction } = await import("./actions");
-    await expect(cancelRunAction("missing")).rejects.toThrow("Not Found");
+    await expect(cancelRunAction("missing")).resolves.toEqual({
+      success: false,
+      error: "Not Found",
+    });
     expect(cancelSessionMock).not.toHaveBeenCalled();
   });
 
-  it("throws for a non-owner non-admin and never cancels", async () => {
+  it("returns a structured Forbidden failure for a non-owner non-admin and never cancels", async () => {
     getSessionMock.mockResolvedValue({
       user: { id: "intruder", role: "user" },
     });
     getSessionWithStepsMock.mockResolvedValueOnce(RUN);
     const { cancelRunAction } = await import("./actions");
-    await expect(cancelRunAction("run-1")).rejects.toThrow("Forbidden");
+    await expect(cancelRunAction("run-1")).resolves.toEqual({
+      success: false,
+      error: "Forbidden",
+    });
     expect(cancelSessionMock).not.toHaveBeenCalled();
   });
 
@@ -58,7 +70,10 @@ describe("cancelRunAction", () => {
       status: "cancelled",
     });
     const { cancelRunAction } = await import("./actions");
-    await expect(cancelRunAction("run-1")).resolves.toBeUndefined();
+    await expect(cancelRunAction("run-1")).resolves.toEqual({
+      success: true,
+      data: undefined,
+    });
     expect(cancelSessionMock).toHaveBeenCalledWith("run-1");
   });
 
@@ -72,7 +87,10 @@ describe("cancelRunAction", () => {
       status: "cancelled",
     });
     const { cancelRunAction } = await import("./actions");
-    await expect(cancelRunAction("run-1")).resolves.toBeUndefined();
+    await expect(cancelRunAction("run-1")).resolves.toEqual({
+      success: true,
+      data: undefined,
+    });
     expect(cancelSessionMock).toHaveBeenCalledWith("run-1");
   });
 

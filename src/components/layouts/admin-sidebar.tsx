@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
+  KeyRound,
   LayoutDashboard,
   Package,
   Plug2,
@@ -58,6 +59,7 @@ export function AdminSidebar() {
             !pathname.startsWith("/admin/quality") &&
             !pathname.startsWith("/admin/guardrails") &&
             !pathname.startsWith("/admin/feature-flags") &&
+            !pathname.startsWith("/admin/api-keys") &&
             !pathname.startsWith("/admin/audit")),
       },
       {
@@ -122,6 +124,13 @@ export function AdminSidebar() {
         url: "/admin/feature-flags",
         icon: ToggleLeft,
         isActive: pathname.startsWith("/admin/feature-flags"),
+      },
+      {
+        id: "api-keys",
+        title: t("ApiKeys.title"),
+        url: "/admin/api-keys",
+        icon: KeyRound,
+        isActive: pathname.startsWith("/admin/api-keys"),
       },
       {
         id: "audit",

@@ -37,6 +37,7 @@ import { retrieveForChat } from "lib/ai/embeddings/retrieval";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
 import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
+import { aupGateResponse } from "lib/compliance/aup";
 import { serverFileStorage } from "lib/file-storage";
 import { runPostTurnMemoryExtraction } from "lib/memory/extract";
 import { buildMemoryPromptBlock } from "lib/memory/inject";
@@ -53,7 +54,6 @@ import {
   rateLimitActivations,
   ttftMs,
 } from "lib/observability/slo";
-import { aupGateResponse } from "lib/compliance/aup";
 import { checkRateLimit } from "lib/rate-limit";
 import { isThreadShared } from "lib/teamspaces/folders";
 import { getUserPreferences } from "lib/user/server";
@@ -503,9 +503,7 @@ export async function POST(request: Request) {
           // Per-tool team policy (Feature B): strip web-search / code-exec /
           // http tools the team has disabled — applied AFTER canUseTools so it
           // further-restricts WITHIN the allowed set, even for elevated users.
-          .map((tools) =>
-            filterAppDefaultToolsByTeamPolicy(tools, teamPolicy),
-          )
+          .map((tools) => filterAppDefaultToolsByTeamPolicy(tools, teamPolicy))
           .orElse({});
         const inProgressToolParts = extractInProgressToolPart(message);
         if (inProgressToolParts.length) {
@@ -780,9 +778,7 @@ export async function POST(request: Request) {
           agentRepository
             .updateAgent(agent.id, session.user.id, {
               updatedAt: new Date(),
-            } as unknown as Parameters<
-              typeof agentRepository.updateAgent
-            >[2])
+            } as unknown as Parameters<typeof agentRepository.updateAgent>[2])
             .catch((e) => logger.error("touchAgent failed", e));
         }
 
@@ -807,6 +803,32 @@ export async function POST(request: Request) {
             completionTokens: outputTokens,
             costUsd,
           }).catch((e) => logger.error("recordUsage failed:", e));
+
+          // Platform-completeness (task #46): an agent chat is a first-class
+          // governed session. When this turn ran WITH a selected agent, record
+          // a conversational agent_session/agent_step so it shows in the Runs
+          // rail + /runs/[id] with a per-turn transcript and the SAME cost we
+          // just metered. Plain (no-agent) chats are intentionally NOT governed
+          // (to cap volume). Fully fire-and-forget + fail-open: a persistence
+          // error must never break the chat (recordAgentChatTurn swallows).
+          if (agent) {
+            import("lib/agent-platform/conversational-session")
+              .then(({ recordAgentChatTurn }) =>
+                recordAgentChatTurn({
+                  threadId: thread!.id,
+                  agentId: agent.id,
+                  agentName: agent.name,
+                  userId: session.user.id,
+                  teamId: userTeamId,
+                  userText: lastUserText,
+                  assistantText: textOfParts(responseMessage.parts).join("\n"),
+                  costUsd,
+                }),
+              )
+              .catch((e) =>
+                logger.error("recordAgentChatTurn dispatch failed:", e),
+              );
+          }
         }
 
         // asafe-ai user memory: post-turn extraction, fire-and-forget — all

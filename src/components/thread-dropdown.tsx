@@ -125,7 +125,13 @@ export function ThreadDropdown({
 
   const handleAddToArchive = async (archiveId: string) => {
     safe()
-      .ifOk(() => addItemToArchiveAction(archiveId, threadId))
+      .map(async () => {
+        // addItemToArchiveAction returns a structured result instead of
+        // throwing so its reason survives prod's masked-500; re-throw to keep
+        // the existing watch() error branch.
+        const result = await addItemToArchiveAction(archiveId, threadId);
+        if (!result.success) throw new Error(result.error);
+      })
       .watch(({ isOk, error }) => {
         if (isOk) {
           toast.success(t("Archive.itemAddedToArchive"));

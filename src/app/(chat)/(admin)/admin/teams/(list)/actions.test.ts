@@ -1,22 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireAdminPermissionMock, createTeamMock, revalidatePathMock } = vi.hoisted(() => ({
-  requireAdminPermissionMock: vi.fn(),
-  createTeamMock: vi.fn(),
-  revalidatePathMock: vi.fn(),
+const { requireAdminPermissionMock, createTeamMock, revalidatePathMock } =
+  vi.hoisted(() => ({
+    requireAdminPermissionMock: vi.fn(),
+    createTeamMock: vi.fn(),
+    revalidatePathMock: vi.fn(),
+  }));
+
+vi.mock("lib/auth/permissions", () => ({
+  requireAdminPermission: requireAdminPermissionMock,
 }));
-
-vi.mock("lib/auth/permissions", () => ({ requireAdminPermission: requireAdminPermissionMock }));
 vi.mock("lib/admin/teams", () => ({ createTeam: createTeamMock }));
 vi.mock("next/cache", () => ({ revalidatePath: revalidatePathMock }));
 
-describe("createTeamAction", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+// createTeamAction now returns a structured ActionResult instead of throwing
+// (prod Next.js masks thrown Server-Action errors into a 500), so the
+// admin-permission denial / DB error reason survives to the dialog toast.
 
-  it("throws when not admin", async () => {
+describe("createTeamAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns a structured failure when not admin", async () => {
     requireAdminPermissionMock.mockRejectedValue(new Error("Forbidden"));
     const { createTeamAction } = await import("./actions");
-    await expect(createTeamAction("My Team")).rejects.toThrow(/Forbidden/i);
+    await expect(createTeamAction("My Team")).resolves.toEqual({
+      success: false,
+      error: "Forbidden",
+    });
     expect(createTeamMock).not.toHaveBeenCalled();
   });
 
@@ -24,7 +36,8 @@ describe("createTeamAction", () => {
     requireAdminPermissionMock.mockResolvedValue(undefined);
     createTeamMock.mockResolvedValue(undefined);
     const { createTeamAction } = await import("./actions");
-    await createTeamAction("Engineering", "Tech team");
+    const result = await createTeamAction("Engineering", "Tech team");
+    expect(result).toEqual({ success: true, data: undefined });
     expect(createTeamMock).toHaveBeenCalledWith("Engineering", "Tech team");
     expect(revalidatePathMock).toHaveBeenCalledWith("/admin/teams");
   });
@@ -40,15 +53,19 @@ describe("createTeamAction", () => {
   it("revalidatePath is not called when requireAdminPermission throws", async () => {
     requireAdminPermissionMock.mockRejectedValue(new Error("Forbidden"));
     const { createTeamAction } = await import("./actions");
-    await expect(createTeamAction("Ops")).rejects.toThrow();
+    const result = await createTeamAction("Ops");
+    expect(result.success).toBe(false);
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
-  it("revalidatePath is not called when createTeam throws", async () => {
+  it("returns a structured failure when createTeam throws (e.g. slug collision)", async () => {
     requireAdminPermissionMock.mockResolvedValue(undefined);
-    createTeamMock.mockRejectedValue(new Error("DB error"));
+    createTeamMock.mockRejectedValue(new Error("unique constraint violation"));
     const { createTeamAction } = await import("./actions");
-    await expect(createTeamAction("Dev")).rejects.toThrow("DB error");
+    await expect(createTeamAction("Dev")).resolves.toEqual({
+      success: false,
+      error: "unique constraint violation",
+    });
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
@@ -91,24 +108,38 @@ describe("createTeamAction", () => {
     createTeamMock.mockResolvedValue(undefined);
     const { createTeamAction } = await import("./actions");
     await createTeamAction("Alpha", "Alpha team description");
-    expect(createTeamMock).toHaveBeenCalledWith("Alpha", "Alpha team description");
+    expect(createTeamMock).toHaveBeenCalledWith(
+      "Alpha",
+      "Alpha team description",
+    );
   });
 });
 
 describe("createTeamAction — additional", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-  it("propagates error from createTeam to caller", async () => {
+  it("surfaces the error from createTeam as a structured failure", async () => {
     requireAdminPermissionMock.mockResolvedValue(undefined);
-    createTeamMock.mockRejectedValueOnce(new Error("unique constraint violation"));
+    createTeamMock.mockRejectedValueOnce(
+      new Error("unique constraint violation"),
+    );
     const { createTeamAction } = await import("./actions");
-    await expect(createTeamAction("DupTeam")).rejects.toThrow("unique constraint violation");
+    await expect(createTeamAction("DupTeam")).resolves.toEqual({
+      success: false,
+      error: "unique constraint violation",
+    });
   });
 
   it("requireAdminPermission is called before createTeam", async () => {
     const callOrder: string[] = [];
-    requireAdminPermissionMock.mockImplementation(async () => { callOrder.push("permission"); });
-    createTeamMock.mockImplementation(async () => { callOrder.push("create"); });
+    requireAdminPermissionMock.mockImplementation(async () => {
+      callOrder.push("permission");
+    });
+    createTeamMock.mockImplementation(async () => {
+      callOrder.push("create");
+    });
     const { createTeamAction } = await import("./actions");
     await createTeamAction("OrderedTeam");
     expect(callOrder).toEqual(["permission", "create"]);

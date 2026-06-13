@@ -1,0 +1,167 @@
+---
+title: API / Programmatic access
+description: The public /api/v1 REST + streaming API — run agents and workflows, poll or stream sessions, and decide approvals with an API key.
+---
+
+The public **`/api/v1`** surface lets external systems — CI/CD pipelines, ERP
+triggers, partner integrations — run governed workflows and handle approvals
+without a browser session. It mirrors the managed-agents shape: persistent
+definitions referenced by id, sessions created and polled or streamed, and
+approvals decided over HTTP.
+
+The interactive cookie-session routes are unchanged; this API is **additive**.
+
+## Authentication
+
+Every request authenticates with an API key as a Bearer token:
+
+```
+Authorization: Bearer ck_live_<secret>
+```
+
+Keys are issued by an admin in **Admin → API Keys**. The plaintext
+`ck_live_...` secret is shown **once** at creation and is never retrievable
+again (only its SHA-256 hash is stored). A key **acts as its creating user's
+identity** for entitlement, budget, and ownership; an optional team scope pins
+the team the key runs as (otherwise the creator's primary team applies).
+
+A missing or invalid/revoked/expired key returns **401**. A valid key lacking a
+required scope returns **403**.
+
+### Governance: AUP-exempt, everything else enforced
+
+API keys are **exempt from the interactive AUP modal gate** — they are
+programmatic credentials issued by an accountable admin who accepted the AUP on
+the org's behalf; there is no human at the keyboard to show a modal to.
+
+Every **other** control still applies, exactly as for a cookie session:
+
+- **Budget** — an exhausted team budget returns **402**.
+- **Model allow-list** — runs are confined to the principal's effective models.
+- **Guardrails** — LLM nodes are scanned with the team's guardrail posture.
+- **Per-tool policy** — team tool flags are honored.
+- **Ownership / visibility** — you only see and run what your user can.
+
+### Scopes
+
+Keys carry capability scopes. The default is full access (`["*"]`). Granular
+scopes the routes check:
+
+| Scope | Grants |
+| --- | --- |
+| `agents:read` | list/get agents |
+| `agents:write` | create agents |
+| `workflows:read` | list/get workflows |
+| `sessions:read` | get session status / transcript / stream |
+| `sessions:write` | create sessions, decide approvals |
+
+### Rate limits
+
+The API is intended for server-to-server automation. Be a good citizen: poll
+session status no faster than once per second, or prefer the SSE stream
+endpoint which pushes changes. Per-key rate limiting is enforced at the
+deployment edge.
+
+## Errors
+
+Errors return a JSON envelope with a stable `code`:
+
+```json
+{ "error": { "code": "budget_exhausted", "message": "Team budget exhausted" } }
+```
+
+Codes: `unauthorized` (401), `forbidden` (403), `not_found` (404),
+`invalid_request` (400), `budget_exhausted` (402), `internal_error` (500).
+
+## Endpoints
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/agents` | List agents visible to the principal |
+| `GET` | `/api/v1/agents/:id` | Get one agent |
+| `POST` | `/api/v1/agents` | Create an agent (role-gated) |
+| `GET` | `/api/v1/workflows` | List workflows |
+| `GET` | `/api/v1/workflows/:id` | Get one workflow |
+| `POST` | `/api/v1/sessions` | Create + run a workflow session |
+| `GET` | `/api/v1/sessions/:id` | Session status snapshot |
+| `GET` | `/api/v1/sessions/:id/transcript` | Ordered step transcript |
+| `GET` | `/api/v1/sessions/:id/stream` | SSE of status/step changes |
+| `POST` | `/api/v1/sessions/:id/approvals/:approvalId` | Decide an approval |
+
+## Walkthrough
+
+### 1. Create a key (admin, in the UI)
+
+Admin → **API Keys** → name it, optionally pick a team → **Create**. Copy the
+`ck_live_...` secret immediately.
+
+### 2. List workflows
+
+```bash
+curl https://YOUR_HOST/api/v1/workflows \
+  -H "Authorization: Bearer ck_live_..."
+```
+
+### 3. Create + run a session
+
+`POST /api/v1/sessions` creates a governed `agent_session` and runs it
+**detached** — it returns **202** with a `sessionId` immediately while the
+workflow executes out-of-band:
+
+```bash
+curl -X POST https://YOUR_HOST/api/v1/sessions \
+  -H "Authorization: Bearer ck_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "workflowId": "WORKFLOW_UUID", "input": { "query": "hello" } }'
+# → 202 { "sessionId": "…", "status": "queued" }
+```
+
+> Agent runs are not exposed programmatically — agents execute interactively in
+> chat. Drive an agent from automation by wrapping it in a **workflow**.
+
+### 4. Poll status
+
+```bash
+curl https://YOUR_HOST/api/v1/sessions/SESSION_ID \
+  -H "Authorization: Bearer ck_live_..."
+# → { "sessionId": "…", "status": "running", "costSoFar": 0.0012, ... }
+```
+
+Terminal statuses: `completed`, `failed`, `cancelled`, `awaiting_approval`.
+
+### 5. …or stream (SSE)
+
+```bash
+curl -N https://YOUR_HOST/api/v1/sessions/SESSION_ID/stream \
+  -H "Authorization: Bearer ck_live_..."
+# event: status … / event: step … / event: done …
+```
+
+The stream emits `status` and `step` events as the run progresses and a final
+`done` event on any terminal state, then closes.
+
+### 6. Approvals
+
+If a run hits an approval node it **parks** with status `awaiting_approval` (it
+does not error). Fetch the transcript or status to find the pending approval,
+then decide it:
+
+```bash
+curl -X POST \
+  https://YOUR_HOST/api/v1/sessions/SESSION_ID/approvals/APPROVAL_ID \
+  -H "Authorization: Bearer ck_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{ "approve": true, "reason": "looks good" }'
+```
+
+Approving **re-queues** the session — the worker resumes from the checkpoint
+(already-completed steps are skipped). Rejecting **fails** it. You must be
+permitted to decide the request's required role (owner / team-admin / admin).
+
+### 7. Transcript
+
+```bash
+curl https://YOUR_HOST/api/v1/sessions/SESSION_ID/transcript \
+  -H "Authorization: Bearer ck_live_..."
+# → { "steps": [ { "stepIndex": 0, "nodeKind": "llm", "status": "completed", "output": …, "costUsd": … }, … ] }
+```

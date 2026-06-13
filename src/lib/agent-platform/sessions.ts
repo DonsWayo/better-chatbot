@@ -266,6 +266,18 @@ export async function listActiveSessionsForTeam(
     .orderBy(desc(AgentSessionTable.createdAt));
 }
 
+/** Fetch one session row by id (no ownership check), or null. */
+export async function getSession(
+  id: string,
+): Promise<AgentSessionEntity | null> {
+  const [session] = await db
+    .select()
+    .from(AgentSessionTable)
+    .where(eq(AgentSessionTable.id, id))
+    .limit(1);
+  return session ?? null;
+}
+
 export async function getSessionWithSteps(
   id: string,
 ): Promise<{ session: AgentSessionEntity; steps: AgentStepEntity[] } | null> {

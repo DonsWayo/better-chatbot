@@ -35,24 +35,34 @@ describe("teamspaces server actions", () => {
       getSessionMock.mockResolvedValue(null);
     });
 
-    it("createFolderAction throws Unauthorized", async () => {
+    // create/rename/delete now return a structured ActionResult instead of
+    // throwing (prod Next.js masks thrown Server-Action errors into a 500), so
+    // the "Unauthorized" reason survives to the sidebar toast.
+    it("createFolderAction returns a structured Unauthorized failure", async () => {
       const { createFolderAction } = await import("./actions");
-      await expect(createFolderAction({ name: "X" })).rejects.toThrow(
-        "Unauthorized",
-      );
+      await expect(createFolderAction({ name: "X" })).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
       expect(createFolderMock).not.toHaveBeenCalled();
     });
 
-    it("renameFolderAction throws Unauthorized", async () => {
+    it("renameFolderAction returns a structured Unauthorized failure", async () => {
       const { renameFolderAction } = await import("./actions");
-      await expect(renameFolderAction("f1", "X")).rejects.toThrow(
-        "Unauthorized",
-      );
+      await expect(renameFolderAction("f1", "X")).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
+      expect(renameFolderMock).not.toHaveBeenCalled();
     });
 
-    it("deleteFolderAction throws Unauthorized", async () => {
+    it("deleteFolderAction returns a structured Unauthorized failure", async () => {
       const { deleteFolderAction } = await import("./actions");
-      await expect(deleteFolderAction("f1")).rejects.toThrow("Unauthorized");
+      await expect(deleteFolderAction("f1")).resolves.toEqual({
+        success: false,
+        error: "Unauthorized",
+      });
+      expect(deleteFolderMock).not.toHaveBeenCalled();
     });
 
     it("moveThreadToFolderAction throws Unauthorized", async () => {
@@ -79,7 +89,7 @@ describe("teamspaces server actions", () => {
       createFolderMock.mockResolvedValue({ id: "f1" });
       const { createFolderAction } = await import("./actions");
       const result = await createFolderAction({ name: "Docs", teamId: "t1" });
-      expect(result).toEqual({ id: "f1" });
+      expect(result).toEqual({ success: true, data: { id: "f1" } });
       expect(createFolderMock).toHaveBeenCalledWith({
         name: "Docs",
         teamId: "t1",
