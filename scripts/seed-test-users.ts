@@ -125,6 +125,20 @@ async function clearExistingTestUsers() {
       for (const email of legacyTestEmails) {
         await db.delete(UserTable).where(sql`email = ${email}`);
       }
+
+      // Cancel any stale non-terminal agent_session runs left over from manual
+      // smokes / prior runs. In production the Runs rail legitimately holds an
+      // Electric subscription open while a run is live; a perpetually-pending
+      // run in the test DB would keep that connection open on every page and
+      // prevent Playwright specs that wait for `networkidle` from ever settling.
+      // This is the e2e test DB, so any non-terminal run here is stale pollution.
+      console.log("Cancelling stale non-terminal agent runs...");
+      await db.execute(
+        sql`UPDATE agent_session SET status = 'cancelled', ended_at = now() WHERE status IN ('queued', 'running', 'awaiting_approval', 'paused')`,
+      );
+      await db.execute(
+        sql`UPDATE approval_request SET status = 'cancelled' WHERE status = 'pending'`,
+      );
     }
   } catch (error) {
     console.log(

@@ -151,6 +151,60 @@ fields beyond the id; heartbeats stop the moment the tab is hidden or the contex
 closed; and the data only flows to people who could already see the same context (the
 shape proxy applies the identical access checks as the content itself).
 
+## Documents (chat exports): comments & presence — polling, not Electric
+
+A **document** is a chat export (`/export/[id]`) — an immutable conversation
+snapshot on a **public** page that anonymous viewers may read. That publicness
+rules out the Electric path used everywhere else above: the shape proxy is
+authenticated, so it cannot serve anonymous viewers. Documents therefore go
+**realtime via polling** instead — which is the right tool here anyway, because
+an interval poll holds no connection open and the network idles between polls
+(so a normally-loaded export page still reaches `networkidle`).
+
+### Live comments
+
+The comments drawer (`src/components/export/comments.tsx`) re-fetches
+`GET /api/export/[id]/comments` on an SWR `refreshInterval` of **4 seconds**,
+but only while:
+
+- the **drawer is open** — `refreshInterval` returns `0` when closed (the
+  default state of a freshly-loaded page), so a normal load never starts the
+  poll; and
+- the **tab is visible** — SWR pauses the interval while hidden
+  (`refreshWhenHidden` left at its default `false`), so a backgrounded tab stops
+  polling and no timer leaks (the interval is cleared on unmount).
+
+Each poll re-renders the list from server truth, so OTHER viewers' new top-level
+comments, nested replies, and deletions all appear live. To keep the local
+user's just-posted comment from flickering away if a poll lands mid-POST, a tiny
+optimistic buffer holds their comment until the next server fetch (which, after
+the POST + `mutate`, already contains the real row) retires it. The merge is a
+pure, unit-tested helper (`src/components/export/comments-merge.ts`:
+`mergeComments` / `countComments`) so the live-merge behaviour is testable
+without a DOM. The count badge on the trigger reads from the same merged data,
+and scroll position is preserved — new comments append, and a subtle *"New
+comments"* affordance appears instead of yanking a user who is scrolled up.
+
+### Document presence
+
+A lightweight *"N viewing"* pill (`src/components/export/document-presence.tsx`)
+shows how many signed-in people have the document open. It reuses
+`asafe_presence` with a new `context_type = 'document'` (the `context_id` column
+is `text`, so it stores the export's nanoid id directly):
+
+1. **Heartbeat** — only **logged-in** viewers beat, via the
+   `heartbeatDocumentPresenceAction` Server Action
+   (`src/lib/realtime/document-presence-actions.ts`), on mount and every 30s
+   while the tab is visible. Anonymous viewers do **not** heartbeat and are
+   simply not counted — no auth changes, no tracking of signed-out users.
+2. **Count** — everyone (including anonymous viewers) polls
+   `GET /api/export/[id]/presence` every 15s while visible. The endpoint returns
+   a **number only**, never identities, so a public page never leaks *who* is
+   reading it.
+
+Both paths are best-effort chrome: failures are swallowed and never block the
+page.
+
 ## Phasing
 
 - **Phase 2 (shipped)** — read-path-only sync: live shared threads and the

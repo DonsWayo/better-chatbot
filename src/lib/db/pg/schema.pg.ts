@@ -28,45 +28,57 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const ChatThreadTable = pgTable("chat_thread", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  title: text("title").notNull(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => UserTable.id, { onDelete: "cascade" }),
-  // Teamspaces phase 1: optional folder placement + sharing visibility.
-  // "team" = read-only visible to members of the containing folder's team.
-  folderId: uuid("folder_id").references(() => FolderTable.id, {
-    onDelete: "set null",
-  }),
-  visibility: varchar("visibility", { enum: ["private", "team"] })
-    .notNull()
-    .default("private"),
-  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [
-  // Sidebar thread list: WHERE user_id ORDER BY latest message time.
-  index("chat_thread_user_id_created_at_idx").on(
-    table.userId,
-    table.createdAt,
-  ),
-]);
+export const ChatThreadTable = pgTable(
+  "chat_thread",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    title: text("title").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    // Teamspaces phase 1: optional folder placement + sharing visibility.
+    // "team" = read-only visible to members of the containing folder's team.
+    folderId: uuid("folder_id").references(() => FolderTable.id, {
+      onDelete: "set null",
+    }),
+    visibility: varchar("visibility", { enum: ["private", "team"] })
+      .notNull()
+      .default("private"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    // Sidebar thread list: WHERE user_id ORDER BY latest message time.
+    index("chat_thread_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
 
-export const ChatMessageTable = pgTable("chat_message", {
-  id: text("id").primaryKey().notNull(),
-  threadId: uuid("thread_id")
-    .notNull()
-    .references(() => ChatThreadTable.id, { onDelete: "cascade" }),
-  role: text("role").notNull().$type<UIMessage["role"]>(),
-  parts: json("parts").notNull().array().$type<UIMessage["parts"]>(),
-  metadata: json("metadata").$type<ChatMetadata>(),
-  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, (table) => [
-  // selectMessagesByThreadId: WHERE thread_id ORDER BY created_at.
-  index("chat_message_thread_id_created_at_idx").on(
-    table.threadId,
-    table.createdAt,
-  ),
-]);
+export const ChatMessageTable = pgTable(
+  "chat_message",
+  {
+    id: text("id").primaryKey().notNull(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => ChatThreadTable.id, { onDelete: "cascade" }),
+    role: text("role").notNull().$type<UIMessage["role"]>(),
+    parts: json("parts").notNull().array().$type<UIMessage["parts"]>(),
+    metadata: json("metadata").$type<ChatMetadata>(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    // selectMessagesByThreadId: WHERE thread_id ORDER BY created_at.
+    index("chat_message_thread_id_created_at_idx").on(
+      table.threadId,
+      table.createdAt,
+    ),
+  ],
+);
 
 export const AgentTable = pgTable("agent", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -550,7 +562,13 @@ export const AsafePresenceTable = pgTable(
       .notNull()
       .references(() => UserTable.id, { onDelete: "cascade" }),
     contextType: varchar("context_type", {
-      enum: ["thread", "folder"],
+      // "document" = a public chat-export page (/export/[id]). Unlike
+      // thread/folder (which stream over the authenticated Electric shape
+      // proxy), document presence is POLLED — the export page is public and the
+      // proxy can't serve anonymous viewers. context_id is a chat-export id
+      // (nanoid, not a uuid), which the `text` column already accepts.
+      // See content/docs/collaboration/realtime.mdx#document-presence.
+      enum: ["thread", "folder", "document"],
     }).notNull(),
     contextId: text("context_id").notNull(),
     lastSeenAt: timestamp("last_seen_at").notNull().default(sql`now()`),

@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ApprovalDecisionButtons } from "@/components/runs/approval-decision-buttons";
 import { RunCopyButton } from "@/components/runs/run-copy-button";
+import { RunSessionLive } from "@/components/realtime/use-run-sessions";
 import { RunRefreshPoller } from "@/components/runs/run-refresh-poller";
 import { getSession } from "auth/server";
 import type { ApprovalRequestedRole } from "lib/agent-platform/approvals";
@@ -132,6 +133,9 @@ export default async function RunPage({
   }
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
+      {/* Page-scoped realtime: Electric push + SWR poll fail-soft baseline,
+          both gated on non-terminal so a completed run opens no connection. */}
+      {isNonTerminal && <RunSessionLive runId={session.id} />}
       {isNonTerminal && <RunRefreshPoller runId={session.id} />}
 
       <Link

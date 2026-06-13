@@ -1,28 +1,33 @@
 "use client";
 
-import CommentForm from "./comment-form";
-import Comment from "./comment";
-import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from "ui/drawer";
-import { useMemo, useRef, useState } from "react";
-import { CornerDownRightIcon, MessagesSquareIcon, XIcon } from "lucide-react";
-import { Button } from "ui/button";
-import useSWR, { mutate } from "swr";
-import { fetcher, truncateString } from "lib/utils";
 import { ChatExportCommentWithUser } from "app-types/chat-export";
-import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
-import { Skeleton } from "ui/skeleton";
 import { authClient } from "auth/client";
 import { notify } from "lib/notify";
+import { fetcher, truncateString } from "lib/utils";
+import { CornerDownRightIcon, MessagesSquareIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import useSWR, { mutate } from "swr";
+import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
+import { Button } from "ui/button";
+import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from "ui/drawer";
+import { Skeleton } from "ui/skeleton";
+import Comment from "./comment";
+import CommentForm from "./comment-form";
+import { countComments, mergeComments } from "./comments-merge";
 
-function deepReplyCount(comment: ChatExportCommentWithUser): number {
-  if (comment.replies?.length) {
-    return comment.replies.reduce((acc, reply) => {
-      return acc + deepReplyCount(reply);
-    }, 1);
-  }
-  return 1; // original comment
-}
+/**
+ * How often the comments drawer re-polls the server while it is OPEN and the
+ * tab is VISIBLE. Realtime here is polling, not a held-open connection: the
+ * export page is PUBLIC so the authenticated Electric shape proxy can't serve
+ * anonymous viewers, and an interval poll is network-idle-safe (the network
+ * goes quiet between polls, so Playwright `networkidle` still settles).
+ * See content/docs/collaboration/realtime.mdx#comments.
+ */
+const COMMENTS_POLL_INTERVAL_MS = 4000;
+
+/** Treat the user as "near the bottom" within this many px (don't yank them). */
+const NEAR_BOTTOM_THRESHOLD_PX = 80;
 
 export default function Comments({
   id,
@@ -42,24 +47,72 @@ export default function Comments({
   const [replyTo, setReplyTo] = useState<ChatExportCommentWithUser | null>(
     null,
   );
+  // Local optimistic comments this user just posted, kept only until the next
+  // server fetch lands (which, after the POST + mutate, already includes the
+  // real row). Each entry remembers the data-version it was inserted at; once a
+  // newer fetch resolves we retire it and let the server copy win. This guards
+  // against a poll that fires mid-POST dropping the user's own comment.
+  const [optimistic, setOptimistic] = useState<
+    Array<{ comment: ChatExportCommentWithUser; insertedAtVersion: number }>
+  >([]);
+  // Subtle "new comments" affordance when others' comments land while the user
+  // is scrolled up reading older ones.
+  const [hasNewWhileScrolledUp, setHasNewWhileScrolledUp] = useState(false);
 
   const router = useRouter();
 
+  // Poll only while the drawer is open AND the tab is visible. SWR's
+  // refreshInterval accepts a callback evaluated against the latest data, but
+  // visibility can change without new data, so we also gate via refreshWhenHidden
+  // (left default = false) and an explicit visibility check below.
+  const key = isLoggedIn ? `/api/export/${id}/comments` : null;
   const { data, isLoading } = useSWR<ChatExportCommentWithUser[]>(
-    isLoggedIn ? `/api/export/${id}/comments` : null,
+    key,
     fetcher,
     {
       fallbackData: defaultComments,
       revalidateOnMount: false,
+      // Active polling ONLY while the drawer is open. When closed (the default
+      // state of a freshly-loaded export page) this returns 0, so a normal load
+      // reaches network-idle and never opens a long-lived request.
+      refreshInterval: () => (open ? COMMENTS_POLL_INTERVAL_MS : 0),
+      // SWR pauses refreshInterval automatically while the tab is hidden
+      // (refreshWhenHidden defaults to false) — no held timer fires in the
+      // background, saving resources and keeping things network-idle-safe.
     },
   );
+
+  // Monotonic version that bumps every time a fresh server response lands.
+  // Optimistic inserts are stamped with the current version and retired once a
+  // strictly newer response arrives (which, post-POST, already has the row).
+  const dataVersionRef = useRef(0);
+  useEffect(() => {
+    dataVersionRef.current += 1;
+    const version = dataVersionRef.current;
+    setOptimistic((prev) => {
+      const stillPending = prev.filter((o) => o.insertedAtVersion >= version);
+      return stillPending.length === prev.length ? prev : stillPending;
+    });
+  }, [data]);
+
+  const pendingOptimistic = useMemo(
+    () => optimistic.map((o) => o.comment),
+    [optimistic],
+  );
+
+  // Merge server truth with still-pending local optimistic inserts so a poll
+  // that beats the POST round-trip never drops the user's own comment, while
+  // OTHER users' new comments / replies / deletions are reflected live.
+  const comments = useMemo(
+    () => mergeComments(data, pendingOptimistic),
+    [data, pendingOptimistic],
+  );
+
+  const commentCount = useMemo(() => countComments(comments), [comments]);
 
   const trigger = useMemo(() => {
     if (children) return children;
 
-    const commentCount = data?.length
-      ? data.map(deepReplyCount).reduce((acc, count) => acc + count, 0)
-      : 0;
     return (
       <Button
         variant="ghost"
@@ -76,9 +129,35 @@ export default function Comments({
         )}
       </Button>
     );
-  }, [children, data, isPending]);
+  }, [children, commentCount, isPending]);
 
-  const handleOpenChange = (open: boolean) => {
+  // Track whether new comments arrived while the user was scrolled up, so we
+  // can show a calm affordance instead of yanking them to the bottom.
+  const prevCountRef = useRef(commentCount);
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    prevCountRef.current = commentCount;
+    if (!open || commentCount <= prev) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom > NEAR_BOTTOM_THRESHOLD_PX) {
+      // The user is reading older comments — don't move them, just hint.
+      setHasNewWhileScrolledUp(true);
+    } else {
+      // Already near the bottom: keep them pinned to the newest comment.
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  }, [commentCount, open]);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+    setHasNewWhileScrolledUp(false);
+  };
+
+  const handleOpenChange = (next: boolean) => {
     if (!isLoggedIn) {
       notify
         .confirm({
@@ -92,19 +171,27 @@ export default function Comments({
           }
         });
     } else {
-      setOpen(open);
+      setOpen(next);
+      if (next) {
+        // Pull the latest immediately on open instead of waiting a full
+        // interval, then let the poll take over.
+        mutate(key);
+      }
     }
   };
 
-  const handleReplySubmit = async () => {
+  const handleReplySubmit = async (created?: ChatExportCommentWithUser) => {
     setReplyTo(null);
-    await mutate(`/api/export/${id}/comments`);
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+    if (created) {
+      // Stamp with the current data-version; the revalidation triggered below
+      // bumps the version when it lands and retires this optimistic entry.
+      setOptimistic((prev) => [
+        ...prev,
+        { comment: created, insertedAtVersion: dataVersionRef.current },
+      ]);
     }
+    await mutate(key);
+    scrollToBottom();
   };
 
   return (
@@ -130,36 +217,58 @@ export default function Comments({
             </Button>
           </div>
 
-          <div
-            className="flex-1 overflow-y-auto p-4 pt-0 space-y-4"
-            ref={scrollRef}
-          >
-            {isLoading ? (
-              <>
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </>
-            ) : data?.length === 0 ? (
-              <div
-                className="text-center py-8 h-full flex justify-center items-center"
-                data-testid="comments-empty"
+          <div className="relative flex-1 min-h-0">
+            <div
+              className="h-full overflow-y-auto p-4 pt-0 space-y-4"
+              ref={scrollRef}
+              onScroll={() => {
+                const el = scrollRef.current;
+                if (!el) return;
+                const distanceFromBottom =
+                  el.scrollHeight - el.scrollTop - el.clientHeight;
+                if (distanceFromBottom <= NEAR_BOTTOM_THRESHOLD_PX) {
+                  setHasNewWhileScrolledUp(false);
+                }
+              }}
+            >
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </>
+              ) : comments.length === 0 ? (
+                <div
+                  className="text-center py-8 h-full flex justify-center items-center"
+                  data-testid="comments-empty"
+                >
+                  <p className="text-muted-foreground">
+                    Be the first to comment!
+                  </p>
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <Comment
+                    key={comment.id}
+                    comment={comment}
+                    exportId={id}
+                    maxReplyDepth={1}
+                    onReply={() => setReplyTo(comment)}
+                  />
+                ))
+              )}
+            </div>
+
+            {hasNewWhileScrolledUp && (
+              <button
+                type="button"
+                onClick={() => scrollToBottom()}
+                data-testid="comments-new-affordance"
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-primary text-primary-foreground text-xs px-3 py-1 shadow-md hover:opacity-90 transition-opacity"
               >
-                <p className="text-muted-foreground">
-                  Be the first to comment!
-                </p>
-              </div>
-            ) : (
-              data?.map((comment) => (
-                <Comment
-                  key={comment.id}
-                  comment={comment}
-                  exportId={id}
-                  maxReplyDepth={1}
-                  onReply={() => setReplyTo(comment)}
-                />
-              ))
+                New comments
+              </button>
             )}
           </div>
 
@@ -186,6 +295,9 @@ export default function Comments({
             <CommentForm
               exportId={id}
               parentId={replyTo?.id}
+              authorId={session?.user?.id}
+              authorName={session?.user?.name}
+              authorImage={session?.user?.image ?? undefined}
               onSubmit={handleReplySubmit}
             />
           </div>

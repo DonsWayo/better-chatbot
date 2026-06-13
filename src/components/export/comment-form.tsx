@@ -1,20 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "ui/button";
-import MentionInput from "../mention-input";
+import { ChatExportCommentWithUser } from "app-types/chat-export";
 import { TipTapMentionJsonContent } from "app-types/util";
 import { LoaderIcon, SendIcon } from "lucide-react";
+import { useState } from "react";
 import { useSWRConfig } from "swr";
+import { Button } from "ui/button";
+import MentionInput from "../mention-input";
 
 export default function CommentForm({
   exportId,
   parentId,
+  authorId,
+  authorName,
+  authorImage,
   onSubmit,
 }: {
   exportId: string;
   parentId?: string;
-  onSubmit?: () => void;
+  authorId?: string;
+  authorName?: string | null;
+  authorImage?: string;
+  onSubmit?: (created?: ChatExportCommentWithUser) => void;
 }) {
   const [content, setContent] = useState<
     TipTapMentionJsonContent | undefined | string
@@ -54,12 +61,32 @@ export default function CommentForm({
         throw new Error("Failed to create comment");
       }
 
+      // Build an optimistic comment so it shows instantly and survives a poll
+      // that fires before this POST's revalidation lands. mergeComments retires
+      // it once the server returns the real row. A temporary id keeps it
+      // distinct from server ids until then.
+      const now = new Date();
+      const optimistic: ChatExportCommentWithUser | undefined = authorId
+        ? {
+            id: `optimistic-${crypto.randomUUID()}`,
+            exportId,
+            authorId,
+            parentId,
+            content: content as TipTapMentionJsonContent,
+            createdAt: now,
+            updatedAt: now,
+            authorName: authorName ?? "You",
+            authorImage,
+            isOwner: true,
+          }
+        : undefined;
+
       // Reset form
       setContent("");
       // Refresh comments
       mutate(`/api/export/${exportId}/comments`);
 
-      onSubmit?.();
+      onSubmit?.(optimistic);
     } catch (error) {
       console.error("Failed to create comment:", error);
     } finally {

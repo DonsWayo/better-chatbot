@@ -9,6 +9,7 @@ import { PreviewMessage } from "../message";
 
 import Particles from "ui/particles";
 import Comments from "./comments";
+import DocumentPresence from "./document-presence";
 
 export default function ChatPreview({
   thread,
@@ -22,7 +23,8 @@ export default function ChatPreview({
       <div className="absolute top-0 left-0 w-full h-full -z-10">
         <Particles particleCount={400} particleBaseSize={10} />
       </div>
-      <div className="fixed top-0 right-0 p-4">
+      <div className="fixed top-0 right-0 p-4 flex items-center gap-2">
+        <DocumentPresence exportId={thread.id} />
         <Comments id={thread.id} defaultComments={comments} />
       </div>
 

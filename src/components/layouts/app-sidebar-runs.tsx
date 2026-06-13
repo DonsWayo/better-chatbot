@@ -4,6 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { MessageCircle, Terminal, Workflow, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useCallback } from "react";
 import useSWR, { mutate } from "swr";
 import { handleErrorWithToast } from "ui/shared-toast";
 import {
@@ -17,6 +18,7 @@ import {
 } from "ui/sidebar";
 
 import { cancelRunAction } from "@/app/api/runs/actions";
+import { RunSessionsLive } from "@/components/realtime/use-run-sessions";
 import { cn, fetcher } from "lib/utils";
 
 // Client-safe shape of an AgentSessionEntity serialized over /api/runs
@@ -103,6 +105,13 @@ export function AppSidebarRuns() {
       latest?.some((run) => NON_TERMINAL.includes(run.status)) ? 5000 : 0,
   });
 
+  // Electric push, layered on top of the SWR baseline. Revalidating /api/runs
+  // (rather than rendering raw shape rows) keeps the rail's existing mapping as
+  // the single source of truth.
+  const refreshRuns = useCallback(() => {
+    mutate("/api/runs");
+  }, []);
+
   const handleCancel = async (id: string) => {
     // Optimistic flip to cancelled, then reconcile with the server.
     mutate(
@@ -127,6 +136,10 @@ export function AppSidebarRuns() {
 
   return (
     <SidebarGroup>
+      {/* Gated: this whole branch only renders while a run is non-terminal (see
+          the early `return null` above), so the Electric subscription mounts —
+          and opens a connection — ONLY then. Idle pages mount nothing. */}
+      <RunSessionsLive onChange={refreshRuns} />
       <SidebarGroupContent className="group-data-[collapsible=icon]:hidden group/runs">
         <SidebarMenu data-testid="runs-sidebar-menu">
           <SidebarMenuItem>
