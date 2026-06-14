@@ -1076,7 +1076,13 @@
     "routineCreated": "ルーチンをスケジュールしました",
     "routineDeleted": "ルーチンを削除しました",
     "runsTab": "実行",
-    "emptyRuns": "まだ実行はありません。エージェントとワークフローの実行がここに表示されます。"
+    "emptyRuns": "まだ実行はありません。エージェントとワークフローの実行がここに表示されます。",
+    "searchPlaceholder": "検索…",
+    "noSelectionTitle": "未選択",
+    "noSelectionBody": "リストから項目を選択すると詳細が表示されます。",
+    "openRun": "実行を開く",
+    "approved": "承認しました",
+    "rejected": "却下しました"
   },
   "Teamspaces": {
     "folders": "フォルダ",

@@ -1076,7 +1076,13 @@
     "routineCreated": "Routine planifiée",
     "routineDeleted": "Routine supprimée",
     "runsTab": "Exécutions",
-    "emptyRuns": "Aucune exécution pour l'instant. Les exécutions d'agents et de workflows apparaîtront ici."
+    "emptyRuns": "Aucune exécution pour l'instant. Les exécutions d'agents et de workflows apparaîtront ici.",
+    "searchPlaceholder": "Rechercher…",
+    "noSelectionTitle": "Rien de sélectionné",
+    "noSelectionBody": "Sélectionnez un élément dans la liste pour voir ses détails.",
+    "openRun": "Ouvrir l’exécution",
+    "approved": "Approuvé",
+    "rejected": "Rejeté"
   },
   "Teamspaces": {
     "folders": "Dossiers",

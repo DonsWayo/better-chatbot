@@ -54,6 +54,24 @@ const STEP_STATUS_CLASS: Record<AgentStepStatus, string> = {
   skipped: "bg-muted text-muted-foreground",
 };
 
+// Timeline node ring colour per step status (the dot on the rail).
+const STEP_NODE_CLASS: Record<AgentStepStatus, string> = {
+  running: "border-primary bg-primary/20",
+  completed: "border-green-500 bg-green-500/20",
+  failed: "border-red-500 bg-red-500/20",
+  skipped: "border-muted-foreground/40 bg-muted",
+};
+
+const SESSION_DOT_CLASS: Record<AgentSessionStatus, string> = {
+  queued: "bg-muted-foreground/40",
+  running: "bg-primary animate-pulse",
+  awaiting_approval: "bg-amber-500",
+  paused: "bg-muted-foreground/40",
+  completed: "bg-green-500",
+  failed: "bg-red-500",
+  cancelled: "bg-red-500/60",
+};
+
 function formatDuration(start: Date | null, end: Date | null): string | null {
   if (!start || !end) return null;
   const ms = end.getTime() - start.getTime();
@@ -169,10 +187,16 @@ export default async function RunPage({
 
       {/* Header */}
       <div className="rounded-2xl border bg-card p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="rounded-full capitalize">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span
+            className={cn(
+              "size-2.5 shrink-0 rounded-full",
+              SESSION_DOT_CLASS[session.status],
+            )}
+          />
+          <h1 className="font-display text-lg font-semibold capitalize tracking-tight">
             {session.kind}
-          </Badge>
+          </h1>
           <Badge
             className={cn(
               "rounded-full border-transparent",
@@ -189,7 +213,7 @@ export default async function RunPage({
           </Badge>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
           <div>
             <p className="text-xs text-muted-foreground">{t("started")}</p>
             <p>
@@ -234,46 +258,68 @@ export default async function RunPage({
           {t("noStepsYet")}
         </div>
       ) : (
-        <ol className="flex flex-col gap-3">
-          {steps.map((step) => {
+        <ol className="relative flex flex-col">
+          {steps.map((step, idx) => {
             const duration = formatDuration(step.startedAt, step.endedAt);
+            const status = step.status as AgentStepStatus;
+            const isLast = idx === steps.length - 1;
             return (
-              <li
-                key={step.id}
-                className="rounded-2xl border bg-card p-4 shadow-xs"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                    #{step.stepIndex}
-                  </span>
-                  <span className="text-sm font-medium">{step.nodeId}</span>
-                  {step.nodeKind && (
-                    <Badge variant="outline" className="rounded-full">
-                      {step.nodeKind}
-                    </Badge>
-                  )}
-                  <Badge
+              <li key={step.id} className="relative flex gap-4 pb-3">
+                {/* Timeline rail: node + connecting line */}
+                <div className="flex shrink-0 flex-col items-center">
+                  <span
                     className={cn(
-                      "rounded-full border-transparent",
-                      STEP_STATUS_CLASS[step.status as AgentStepStatus],
+                      "z-10 mt-4 size-3 rounded-full border-2",
+                      STEP_NODE_CLASS[status],
                     )}
-                  >
-                    {step.status}
-                  </Badge>
-                  <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                    {duration}
-                  </span>
+                  />
+                  {!isLast && (
+                    <span className="w-px flex-1 bg-border" aria-hidden />
+                  )}
                 </div>
 
-                <div className="mt-3 flex flex-col gap-2">
-                  {step.input !== null && step.input !== undefined && (
-                    <JsonBlock label={t("input")} value={step.input} />
-                  )}
-                  {step.output !== null && step.output !== undefined && (
-                    <JsonBlock label={t("output")} value={step.output} />
-                  )}
-                  {step.error && (
-                    <p className="text-sm text-red-500">{step.error}</p>
+                <div className="min-w-0 flex-1 rounded-2xl border bg-card p-4 shadow-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                      #{step.stepIndex}
+                    </span>
+                    <span className="truncate text-sm font-medium">
+                      {step.nodeId}
+                    </span>
+                    {step.nodeKind && (
+                      <Badge variant="outline" className="rounded-full">
+                        {step.nodeKind}
+                      </Badge>
+                    )}
+                    <Badge
+                      className={cn(
+                        "rounded-full border-transparent",
+                        STEP_STATUS_CLASS[status],
+                      )}
+                    >
+                      {step.status}
+                    </Badge>
+                    {duration && (
+                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                        {duration}
+                      </span>
+                    )}
+                  </div>
+
+                  {(step.input != null ||
+                    step.output != null ||
+                    step.error) && (
+                    <div className="mt-3 flex flex-col gap-2">
+                      {step.input !== null && step.input !== undefined && (
+                        <JsonBlock label={t("input")} value={step.input} />
+                      )}
+                      {step.output !== null && step.output !== undefined && (
+                        <JsonBlock label={t("output")} value={step.output} />
+                      )}
+                      {step.error && (
+                        <p className="text-sm text-red-500">{step.error}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               </li>

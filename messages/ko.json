@@ -1076,7 +1076,13 @@
     "routineCreated": "루틴이 예약되었습니다",
     "routineDeleted": "루틴이 삭제되었습니다",
     "runsTab": "실행",
-    "emptyRuns": "아직 실행이 없습니다. 에이전트와 워크플로 실행이 여기에 표시됩니다."
+    "emptyRuns": "아직 실행이 없습니다. 에이전트와 워크플로 실행이 여기에 표시됩니다.",
+    "searchPlaceholder": "검색…",
+    "noSelectionTitle": "선택된 항목 없음",
+    "noSelectionBody": "목록에서 항목을 선택하면 세부 정보가 표시됩니다.",
+    "openRun": "실행 열기",
+    "approved": "승인됨",
+    "rejected": "거부됨"
   },
   "Teamspaces": {
     "folders": "폴더",

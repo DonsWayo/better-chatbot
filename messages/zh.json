@@ -1076,7 +1076,13 @@
     "routineCreated": "例行任务已安排",
     "routineDeleted": "例行任务已删除",
     "runsTab": "运行",
-    "emptyRuns": "暂无运行记录。智能体和工作流的运行将显示在这里。"
+    "emptyRuns": "暂无运行记录。智能体和工作流的运行将显示在这里。",
+    "searchPlaceholder": "搜索…",
+    "noSelectionTitle": "未选择",
+    "noSelectionBody": "从列表中选择一个项目以查看详情。",
+    "openRun": "打开运行",
+    "approved": "已批准",
+    "rejected": "已拒绝"
   },
   "Teamspaces": {
     "folders": "文件夹",

@@ -1075,7 +1075,13 @@
     "routineCreated": "Rutina programada",
     "routineDeleted": "Rutina eliminada",
     "runsTab": "Ejecuciones",
-    "emptyRuns": "Aún no hay ejecuciones. Las ejecuciones de agentes y flujos aparecerán aquí."
+    "emptyRuns": "Aún no hay ejecuciones. Las ejecuciones de agentes y flujos aparecerán aquí.",
+    "searchPlaceholder": "Buscar…",
+    "noSelectionTitle": "Nada seleccionado",
+    "noSelectionBody": "Selecciona un elemento de la lista para ver sus detalles.",
+    "openRun": "Abrir ejecución",
+    "approved": "Aprobado",
+    "rejected": "Rechazado"
   },
   "Teamspaces": {
     "folders": "Carpetas",

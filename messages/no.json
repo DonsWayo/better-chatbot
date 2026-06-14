@@ -1075,7 +1075,13 @@
     "routineCreated": "Rutine planlagt",
     "routineDeleted": "Rutine slettet",
     "runsTab": "Kjøringer",
-    "emptyRuns": "Ingen kjøringer ennå. Agent- og arbeidsflytkjøringer vises her."
+    "emptyRuns": "Ingen kjøringer ennå. Agent- og arbeidsflytkjøringer vises her.",
+    "searchPlaceholder": "Søk…",
+    "noSelectionTitle": "Ingenting valgt",
+    "noSelectionBody": "Velg et element fra listen for å se detaljene.",
+    "openRun": "Åpne kjøring",
+    "approved": "Godkjent",
+    "rejected": "Avvist"
   },
   "Teamspaces": {
     "folders": "Mapper",

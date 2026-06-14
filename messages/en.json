@@ -1075,7 +1075,13 @@
     "routineCreated": "Routine scheduled",
     "routineDeleted": "Routine deleted",
     "runsTab": "Runs",
-    "emptyRuns": "No runs yet. Agent and workflow runs will land here."
+    "emptyRuns": "No runs yet. Agent and workflow runs will land here.",
+    "searchPlaceholder": "Search…",
+    "noSelectionTitle": "Nothing selected",
+    "noSelectionBody": "Select an item from the list to see its details.",
+    "openRun": "Open run",
+    "approved": "Approved",
+    "rejected": "Rejected"
   },
   "Teamspaces": {
     "folders": "Folders",
