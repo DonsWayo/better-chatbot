@@ -363,7 +363,7 @@ ${workflow!.description ? `tool-description: ${workflow!.description}` : ""}`,
     );
   }, [isRunning, result]);
   return (
-    <div className="fade-300 w-sm h-[85vh] bg-card border rounded-lg shadow-lg overflow-y-auto py-4">
+    <div className="fade-300 w-full md:w-sm h-[85vh] bg-card border rounded-lg shadow-lg overflow-y-auto py-4">
       <div className="flex flex-col px-4">
         <div className="flex items-center gap-2 w-full h-9">
           <span className="font-semibold">Test Run</span>

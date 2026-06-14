@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ApprovalDecisionButtons } from "@/components/runs/approval-decision-buttons";
 import {
@@ -121,6 +121,18 @@ export function InboxView({
   const [selectedId, setSelectedId] = useState<string | null>(
     approvals[0]?.id ?? runs[0]?.id ?? null,
   );
+  // On phones the two panes can't sit side by side, so we show one at a time:
+  // the list, then the selected item's detail with a back affordance. We render
+  // ONE layout (never both) so the testids/markup aren't duplicated.
+  const [mobileDetail, setMobileDetail] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const RUN_STATUS_LABEL: Record<AgentSessionStatus, string> = {
     queued: tRuns("queued"),
@@ -230,7 +242,10 @@ export function InboxView({
               <li key={item.id}>
                 <button
                   type="button"
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    setMobileDetail(true);
+                  }}
                   data-testid="inbox-item"
                   className={cn(
                     "flex w-full flex-col gap-1 rounded-xl px-3 py-2.5 text-left transition-colors",
@@ -298,35 +313,65 @@ export function InboxView({
     </div>
   );
 
+  const detailBody = !selected ? (
+    <div className="flex h-full min-h-64 flex-col items-center justify-center gap-2 text-center">
+      <InboxIcon className="size-8 text-muted-foreground/40" />
+      <p className="text-sm font-medium">{t("noSelectionTitle")}</p>
+      <p className="max-w-xs text-xs text-muted-foreground">
+        {t("noSelectionBody")}
+      </p>
+    </div>
+  ) : selected.kind === "approval" ? (
+    <ApprovalDetail item={selected} />
+  ) : (
+    <RunDetail item={selected} statusLabel={RUN_STATUS_LABEL} />
+  );
+
   return (
     <div className="flex h-full flex-col">
       {header}
       {tabsBar}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={38} minSize={28} maxSize={55}>
-          {listPane}
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={62}>
-          <ScrollArea className="h-full">
-            <div className="px-6 py-6" data-testid="inbox-detail">
-              {!selected ? (
-                <div className="flex h-full min-h-64 flex-col items-center justify-center gap-2 text-center">
-                  <InboxIcon className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm font-medium">{t("noSelectionTitle")}</p>
-                  <p className="max-w-xs text-xs text-muted-foreground">
-                    {t("noSelectionBody")}
-                  </p>
+
+      {isMobile ? (
+        /* Mobile: one pane at a time — list, then detail with a back button. */
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {mobileDetail && selected ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setMobileDetail(false)}
+                className="flex items-center gap-1.5 border-b px-4 py-3 text-sm font-medium text-muted-foreground"
+                data-testid="inbox-back"
+              >
+                <ChevronRight className="size-4 rotate-180" />
+                {t("inboxTab")}
+              </button>
+              <ScrollArea className="flex-1">
+                <div className="px-4 py-5" data-testid="inbox-detail">
+                  {detailBody}
                 </div>
-              ) : selected.kind === "approval" ? (
-                <ApprovalDetail item={selected} />
-              ) : (
-                <RunDetail item={selected} statusLabel={RUN_STATUS_LABEL} />
-              )}
-            </div>
-          </ScrollArea>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+              </ScrollArea>
+            </>
+          ) : (
+            listPane
+          )}
+        </div>
+      ) : (
+        /* Desktop: resizable two-pane (list + detail). */
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={38} minSize={28} maxSize={55}>
+            {listPane}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={62}>
+            <ScrollArea className="h-full">
+              <div className="px-6 py-6" data-testid="inbox-detail">
+                {detailBody}
+              </div>
+            </ScrollArea>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      )}
     </div>
   );
 }
@@ -374,7 +419,7 @@ function ApprovalDetail({ item }: { item: InboxApprovalItem }) {
         <p className="text-xs text-muted-foreground">{t("localMcpTtlNote")}</p>
       )}
 
-      <div className="flex items-center justify-between gap-3 pt-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
         <ApprovalDecisionButtons requestId={item.requestId} />
         {item.runId && (
           <Link
@@ -422,7 +467,7 @@ function RunDetail({
         </Badge>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+      <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-xs text-muted-foreground">{tRuns("started")}</dt>
           <dd className="tabular-nums">

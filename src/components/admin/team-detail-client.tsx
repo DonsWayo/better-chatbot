@@ -506,7 +506,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
         {isRenaming ? (
           <div className="space-y-2">
             <input
-              className="text-2xl font-semibold bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
+              className="text-xl sm:text-2xl font-semibold bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
@@ -552,7 +552,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             )}
           </div>
         ) : (
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="space-y-1">
               <h1 className="font-display text-2xl font-semibold tracking-tight">
                 {team.name}
@@ -629,7 +629,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             <p className="text-sm text-muted-foreground italic">Loading…</p>
           ) : usageTotals && usageTotals.totalRequests > 0 ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Requests</p>
                   <p className="text-lg font-semibold tabular-nums">
@@ -1157,7 +1157,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           )}
 
           {/* Budget form */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Budget (USD)

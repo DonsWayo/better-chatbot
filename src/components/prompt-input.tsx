@@ -459,7 +459,10 @@ export default function PromptInput({
               <div className="bg-input rounded-b-sm rounded-t-3xl p-3 flex flex-col gap-4 mx-2 my-2">
                 {mentions.map((mention, i) => {
                   return (
-                    <div key={i} className="flex items-center gap-2">
+                    <div
+                      key={i}
+                      className="flex flex-col sm:flex-row items-start sm:items-center gap-2"
+                    >
                       {mention.type === "workflow" ||
                       mention.type === "agent" ? (
                         <Avatar
@@ -528,7 +531,7 @@ export default function PromptInput({
                   onFocus={onFocus}
                 />
               </div>
-              <div className="flex w-full items-center z-30">
+              <div className="flex w-full items-center z-30 flex-wrap">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -619,7 +622,10 @@ export default function PromptInput({
                       <BookOpen className="size-3.5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+                  <SheetContent
+                    side="right"
+                    className="w-[90vw] max-w-[350px] sm:w-[400px] md:w-[540px]"
+                  >
                     <SheetHeader>
                       <SheetTitle>Prompt Library</SheetTitle>
                     </SheetHeader>
@@ -695,7 +701,7 @@ export default function PromptInput({
                             <GeminiIcon className="size-3 opacity-0 group-data-[state=open]:opacity-100 group-hover:opacity-100" />
                           ) : null}
                           <span
-                            className="text-foreground group-data-[state=open]:text-foreground  "
+                            className="text-foreground group-data-[state=open]:text-foreground hidden sm:inline"
                             data-testid="selected-model-name"
                           >
                             {chatModel.model}
@@ -779,10 +785,10 @@ export default function PromptInput({
                           <img
                             src={imageSrc}
                             alt={file.name}
-                            className="w-24 h-24 object-cover"
+                            className="w-20 h-20 sm:w-24 sm:h-24 object-cover"
                           />
                         ) : (
-                          <div className="w-32 h-28 flex flex-col items-center justify-center bg-muted px-2 py-3 text-center">
+                          <div className="w-28 h-24 sm:w-32 sm:h-28 flex flex-col items-center justify-center bg-muted px-2 py-3 text-center">
                             <FileIcon className="size-8 text-muted-foreground mb-1" />
                             <span className="text-xs font-medium text-muted-foreground line-clamp-2 w-full">
                               {displayName}

@@ -27,7 +27,7 @@ export function AsafeTourCard({
       role="dialog"
       aria-modal="true"
       aria-label={step.title}
-      className="relative w-80 max-w-[calc(100vw-2rem)] rounded-2xl border bg-card text-card-foreground shadow-lg p-5 flex flex-col gap-3"
+      className="relative w-full max-w-[calc(100vw-1rem)] sm:w-80 rounded-2xl border bg-card text-card-foreground shadow-lg p-5 flex flex-col gap-3"
     >
       <h2 className="font-display text-lg font-semibold tracking-tight">
         {step.title}

@@ -216,14 +216,14 @@ export const UserMessagePart = memo(
           )}
         </div>
         {isLast && (
-          <div className="flex w-full justify-end md:opacity-0 group-hover/message:opacity-100 transition-opacity duration-300">
+          <div className="flex w-full justify-end opacity-100 md:opacity-0 md:group-hover/message:opacity-100 transition-opacity duration-300">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   data-testid="message-edit-button"
                   variant="ghost"
                   size="icon"
-                  className={cn("size-3! p-4!")}
+                  className={cn("size-8 md:size-3! md:p-4!")}
                   onClick={() => copy(part.text)}
                 >
                   {copied ? <Check /> : <Copy />}
@@ -239,7 +239,7 @@ export const UserMessagePart = memo(
                       data-testid="message-edit-button"
                       variant="ghost"
                       size="icon"
-                      className="size-3! p-4!"
+                      className="size-8 md:size-3! md:p-4!"
                       onClick={() => setMode("edit")}
                     >
                       <Pencil />
@@ -255,7 +255,7 @@ export const UserMessagePart = memo(
                       onClick={deleteMessage}
                       variant="ghost"
                       size="icon"
-                      className="size-3! p-4! hover:text-destructive"
+                      className="size-8 md:size-3! md:p-4! hover:text-destructive"
                     >
                       {isDeleting ? (
                         <Loader className="animate-spin" />
@@ -390,14 +390,14 @@ export const AssistMessagePart = memo(function AssistMessagePart({
         )}
       </div>
       {showActions && (
-        <div className="flex w-full">
+        <div className="flex w-full opacity-100 md:opacity-0 md:group-hover/message:opacity-100 transition-opacity duration-300">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 data-testid="message-edit-button"
                 variant="ghost"
                 size="icon"
-                className="size-3! p-4!"
+                className="size-8 md:size-3! md:p-4!"
                 onClick={() => copy(part.text)}
               >
                 {copied ? <Check /> : <Copy />}
@@ -415,7 +415,7 @@ export const AssistMessagePart = memo(function AssistMessagePart({
                         data-testid="message-edit-button data-[state=open]:bg-secondary!"
                         variant="ghost"
                         size="icon"
-                        className="size-3! p-4!"
+                        className="size-8 md:size-3! md:p-4!"
                       >
                         {<RefreshCw />}
                       </Button>
@@ -431,7 +431,7 @@ export const AssistMessagePart = memo(function AssistMessagePart({
                     size="icon"
                     disabled={isDeleting}
                     onClick={deleteMessage}
-                    className="size-3! p-4! hover:text-destructive"
+                    className="size-8 md:size-3! md:p-4! hover:text-destructive"
                   >
                     {isDeleting ? (
                       <Loader className="animate-spin" />
@@ -457,7 +457,7 @@ export const AssistMessagePart = memo(function AssistMessagePart({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-3! p-4! opacity-0 group-hover/message:opacity-100 transition-opacity duration-300"
+                  className="size-8 md:size-3! md:p-4! opacity-100 md:opacity-0 md:group-hover/message:opacity-100 transition-opacity duration-300"
                 >
                   <EllipsisIcon />
                 </Button>
@@ -1114,7 +1114,7 @@ export const ToolMessagePart = memo(
                 )}
 
                 {isManualToolInvocation && (
-                  <div className="flex flex-row gap-2 items-center mt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center mt-2">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -1131,8 +1131,11 @@ export const ToolMessagePart = memo(
                     >
                       <Check />
                       {t("Common.approve")}
-                      <Separator orientation="vertical" className="h-4" />
-                      <span className="text-muted-foreground">
+                      <Separator
+                        orientation="vertical"
+                        className="h-4 hidden sm:block"
+                      />
+                      <span className="text-muted-foreground hidden sm:inline">
                         {getShortcutKeyList(approveToolInvocationShortcut).join(
                           " ",
                         )}
@@ -1154,8 +1157,11 @@ export const ToolMessagePart = memo(
                     >
                       <X />
                       {t("Common.reject")}
-                      <Separator orientation="vertical" />
-                      <span className="text-muted-foreground">
+                      <Separator
+                        orientation="vertical"
+                        className="hidden sm:block"
+                      />
+                      <span className="text-muted-foreground hidden sm:inline">
                         {getShortcutKeyList(rejectToolInvocationShortcut).join(
                           " ",
                         )}

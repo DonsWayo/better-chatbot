@@ -125,7 +125,7 @@ export function EntraTeamMappingsCard({
               value={draftGroupId}
               onChange={(e) => setDraftGroupId(e.target.value)}
               placeholder={t("groupIdPlaceholder")}
-              className="h-8 w-72 font-mono text-xs"
+              className="h-8 flex-1 min-w-0 sm:w-72 max-w-full font-mono text-xs"
               disabled={pending}
               data-testid="entra-team-mapping-group-input"
             />

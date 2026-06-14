@@ -69,7 +69,7 @@ export function TeamsTable({ teams }: TeamsTableProps) {
 
   return (
     <div className="space-y-4 w-full">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="text-sm text-muted-foreground">
           {teams.length} {teams.length === 1 ? "team" : "teams"}
         </div>

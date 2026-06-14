@@ -30,7 +30,7 @@ export function SelectedNodeConfigTab({ node }: { node: UINode }) {
   return (
     <div
       key={node.id}
-      className="w-sm h-[85vh] space-y-4 bg-card border rounded-lg shadow-lg overflow-y-auto py-4"
+      className="w-full md:w-sm h-[85vh] space-y-4 bg-card border rounded-lg shadow-lg overflow-y-auto py-4"
     >
       {/* Header */}
       <div className="px-4">

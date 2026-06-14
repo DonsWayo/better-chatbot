@@ -53,7 +53,7 @@ export function NodeResultPopup({
   return (
     <Dialog open={disabled ? false : undefined}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="min-w-[40vw] h-[70vh] max-w-[40vw] overflow-y-auto flex flex-col">
+      <DialogContent className="w-full max-w-none md:min-w-[40vw] md:w-[40vw] md:max-w-[40vw] h-[70vh] overflow-y-auto flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {history.name}

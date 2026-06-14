@@ -171,7 +171,7 @@ export const WorkflowPanel = memo(
 
     return (
       <div className="min-h-0 flex flex-col items-end">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <div
@@ -372,7 +372,7 @@ function WorkflowVisibilityControl({
         </TooltipTrigger>
         <TooltipContent>{t("Visibility.label")}</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className="w-80 rounded-2xl p-3">
+      <PopoverContent align="end" className="w-72 md:w-80 max-w-[90vw] rounded-2xl p-3">
         <p className="mb-2 px-1 text-sm font-medium">{t("Visibility.label")}</p>
         <VisibilityField
           value={value}

@@ -84,7 +84,7 @@ function ToolbarButton({
           tabIndex={-1}
           onClick={onClick}
           className={cn(
-            "size-8 rounded-lg text-muted-foreground hover:text-foreground",
+            "size-8 min-h-9 min-w-9 rounded-lg text-muted-foreground hover:text-foreground md:min-h-0 md:min-w-0",
             active && "bg-primary/10 text-primary hover:text-primary",
           )}
         >

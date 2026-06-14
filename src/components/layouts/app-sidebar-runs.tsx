@@ -161,7 +161,7 @@ export function AppSidebarRuns() {
                   >
                     <StatusDot status={run.status} />
                     <KindIcon kind={run.kind} />
-                    <span className="truncate min-w-0 text-xs">
+                    <span className="truncate min-w-0 text-[9px] sm:text-xs">
                       {t(STATUS_LABEL_KEY[run.status])}
                     </span>
                     {run.status === "awaiting_approval" && (
@@ -197,7 +197,7 @@ export function AppSidebarRuns() {
                       handleCancel(run.id);
                     }}
                   >
-                    <X className="size-3.5" />
+                    <X className="size-4 sm:size-3.5" />
                   </SidebarMenuAction>
                 )}
               </SidebarMenuItem>

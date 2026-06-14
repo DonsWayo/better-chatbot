@@ -64,7 +64,7 @@ export function AupModal() {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="max-w-lg"
+        className="max-w-[calc(100vw-2rem)] sm:max-w-lg"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >

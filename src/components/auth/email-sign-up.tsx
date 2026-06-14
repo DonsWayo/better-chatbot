@@ -262,11 +262,11 @@ export default function EmailSignUp({
           <p className="text-muted-foreground text-xs mb-6">
             {steps[step - 1]}
           </p>
-          <div className="flex flex-row-reverse gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row-reverse">
             <Button
               tabIndex={0}
               disabled={isLoading}
-              className="w-1/2"
+              className="w-full sm:w-1/2"
               onClick={() => {
                 if (step === 1) successEmailStep();
                 if (step === 2) successNameStep();
@@ -279,7 +279,7 @@ export default function EmailSignUp({
             <Button
               tabIndex={step === 1 ? -1 : 0}
               disabled={isLoading || step === 1}
-              className={cn(step === 1 && "invisible", "w-1/2")}
+              className={cn(step === 1 && "invisible", "w-full sm:w-1/2")}
               variant="ghost"
               onClick={backStep}
             >

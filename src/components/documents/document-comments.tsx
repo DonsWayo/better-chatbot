@@ -132,7 +132,7 @@ export function DocumentComments({
 
   return (
     <aside
-      className="flex h-full w-full flex-col border-l border-border bg-background lg:w-80"
+      className="fixed inset-x-0 bottom-0 top-14 z-40 flex w-full flex-col border-l border-border bg-background md:static md:inset-auto md:z-auto md:w-80"
       data-testid="document-comments-panel"
     >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">

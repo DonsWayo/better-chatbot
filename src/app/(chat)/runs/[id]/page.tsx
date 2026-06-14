@@ -150,7 +150,7 @@ export default async function RunPage({
     }
   }
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8">
+    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-8">
       {/* Page-scoped realtime: Electric push + SWR poll fail-soft baseline,
           both gated on non-terminal so a completed run opens no connection. */}
       {isNonTerminal && <RunSessionLive runId={session.id} />}
@@ -167,7 +167,7 @@ export default async function RunPage({
       {/* Pending approval — decidable by the current user */}
       {pendingApprovalId && (
         <div
-          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 sm:p-4"
           data-testid="run-approval-panel"
         >
           <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
@@ -278,8 +278,8 @@ export default async function RunPage({
                   )}
                 </div>
 
-                <div className="min-w-0 flex-1 rounded-2xl border bg-card p-4 shadow-xs">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-1 rounded-2xl border bg-card p-3 shadow-xs sm:p-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-mono text-xs text-muted-foreground tabular-nums">
                       #{step.stepIndex}
                     </span>
