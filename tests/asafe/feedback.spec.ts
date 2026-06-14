@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
+import { seedChatMessage } from "../helpers/seed-chat-message";
 
 const FEEDBACK_URL = "/api/feedback";
 
@@ -8,8 +9,11 @@ test.describe("Feedback API", () => {
     test.use({ storageState: TEST_USERS.regular.authFile });
 
     test("POST with 'up' rating returns 200 { ok: true }", async ({ page }) => {
-      const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const threadId = `thread-${Date.now()}`;
+      // The route resolves messageId against a real, caller-owned message
+      // (synthetic ids 404 since the deep-audit hardening), so seed one first.
+      const { messageId, threadId } = await seedChatMessage(
+        TEST_USERS.regular.email,
+      );
 
       const response = await page.request.post(FEEDBACK_URL, {
         data: {
@@ -27,8 +31,9 @@ test.describe("Feedback API", () => {
     test("POSTing again with 'down' rating updates the existing record (upsert)", async ({
       page,
     }) => {
-      const messageId = `msg-upsert-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const threadId = `thread-upsert-${Date.now()}`;
+      const { messageId, threadId } = await seedChatMessage(
+        TEST_USERS.regular.email,
+      );
 
       // First POST: thumbs up
       const first = await page.request.post(FEEDBACK_URL, {
@@ -53,8 +58,9 @@ test.describe("Feedback API", () => {
     test("DELETE with messageId removes the feedback and returns 200", async ({
       page,
     }) => {
-      const messageId = `msg-delete-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const threadId = `thread-delete-${Date.now()}`;
+      const { messageId, threadId } = await seedChatMessage(
+        TEST_USERS.regular.email,
+      );
 
       // Create feedback first
       const created = await page.request.post(FEEDBACK_URL, {

@@ -10,6 +10,7 @@
 
 import { expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
+import { seedChatMessage } from "../helpers/seed-chat-message";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001";
 
@@ -193,10 +194,15 @@ test.describe("W9: team policy API", () => {
   });
 
   test("14. POST /api/feedback — thumbs-up accepted", async ({ page }) => {
+    // The feedback route requires a real, caller-owned message (synthetic ids
+    // 404 since the deep-audit hardening). These tests run as admin.
+    const { messageId, threadId } = await seedChatMessage(
+      TEST_USERS.admin.email,
+    );
     const res = await apiRequest(page, "POST", "/api/feedback", {
-      messageId: `msg-w9-up-${Date.now()}`,
-      threadId: `thread-w9-up-${Date.now()}`,
-      rating: "thumbs-up",
+      messageId,
+      threadId,
+      rating: "up",
     });
     expect([200, 201]).toContain(res.status());
   });
@@ -204,10 +210,13 @@ test.describe("W9: team policy API", () => {
   test("15. POST /api/feedback — thumbs-down with comment", async ({
     page,
   }) => {
+    const { messageId, threadId } = await seedChatMessage(
+      TEST_USERS.admin.email,
+    );
     const res = await apiRequest(page, "POST", "/api/feedback", {
-      messageId: `msg-w9-down-${Date.now()}`,
-      threadId: `thread-w9-down-${Date.now()}`,
-      rating: "thumbs-down",
+      messageId,
+      threadId,
+      rating: "down",
       comment: "Response was inaccurate about EU AI Act scope.",
     });
     expect([200, 201]).toContain(res.status());

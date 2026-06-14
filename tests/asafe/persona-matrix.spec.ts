@@ -1,5 +1,6 @@
 import { BrowserContext, Page, expect, test } from "@playwright/test";
 import { TEST_USERS } from "../constants/test-users";
+import { seedChatMessage } from "../helpers/seed-chat-message";
 
 let counter = 0;
 function uid(): string {
@@ -166,9 +167,14 @@ test.describe("Personas 6-9: Regular user — read access", () => {
     });
     const page = await ctx.newPage();
     try {
+      // The feedback route requires a real, caller-owned message (synthetic ids
+      // 404 since the deep-audit hardening), so seed one for this user first.
+      const { messageId, threadId } = await seedChatMessage(
+        TEST_USERS.regular.email,
+      );
       const response = await page.request.post("/api/feedback", {
         headers: { "Content-Type": "application/json" },
-        data: { messageId: uid(), threadId: uid(), rating: "up" },
+        data: { messageId, threadId, rating: "up" },
         failOnStatusCode: false,
       });
       expect(response.status()).toBe(200);
