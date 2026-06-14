@@ -8,6 +8,10 @@ import {
   findOpenLocalMcpArmRequest,
   resolveOpenLocalMcpArmRequests,
 } from "lib/agent-platform/approvals";
+import {
+  MCP_CONNECTION_ERROR_MESSAGE,
+  isMcpConnectionError,
+} from "lib/ai/mcp/connection-error";
 import { isMaybeStdioConfig } from "lib/ai/mcp/is-mcp-config";
 import { resolveLocalMcpPolicy } from "lib/ai/mcp/local-policy";
 import {
@@ -70,7 +74,17 @@ export async function selectMcpClientAction(id: string) {
 
 export type SaveMcpClientResult =
   | { success: true; id: string }
-  | { success: false; error: string };
+  | {
+      success: false;
+      error: string;
+      /**
+       * Coarse error class so callers (e.g. the REST POST) can pick the right
+       * HTTP status without re-parsing the message. "connection" = the target
+       * MCP server URL was unreachable (a client/validation error → 4xx, never
+       * a 500); "other" = a validation/authorization/unexpected failure.
+       */
+      kind: "connection" | "other";
+    };
 
 /**
  * Saves (creates or updates) an MCP connector.
@@ -88,11 +102,23 @@ export async function saveMcpClientAction(
     const id = await saveMcpClientOrThrow(server);
     return { success: true, id };
   } catch (error) {
+    // An unreachable / non-responsive server URL is a CLIENT error, not a
+    // server bug. The transport layer throws a raw message that leaks
+    // internals (ECONNREFUSED, the host/port, "fetch failed", "SSE error",
+    // a stack-class name) — never surface that. Map it to a clean, user-safe
+    // message and tag it "connection" so the REST POST returns a 4xx.
+    if (isMcpConnectionError(error)) {
+      return {
+        success: false,
+        error: MCP_CONNECTION_ERROR_MESSAGE,
+        kind: "connection",
+      };
+    }
     const message =
       error instanceof Error && error.message
         ? error.message
         : "Failed to save the MCP connection. Please try again.";
-    return { success: false, error: message };
+    return { success: false, error: message, kind: "other" };
   }
 }
 

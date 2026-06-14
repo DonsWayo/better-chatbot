@@ -929,6 +929,9 @@
       "deactivated": "Kill switch deaktivert — inferens kjører normalt",
       "flagUpdated": "Flagg oppdatert"
     },
+    "ApiKeys": {
+      "title": "API-nøkler"
+    },
     "Guardrails": {
       "title": "Sikkerhetsbarrierer",
       "blockedCount": "Blokkert",

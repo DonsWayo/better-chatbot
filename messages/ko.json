@@ -930,6 +930,9 @@
       "deactivated": "킬 스위치 비활성화 — 추론이 정상적으로 작동합니다",
       "flagUpdated": "플래그가 업데이트되었습니다"
     },
+    "ApiKeys": {
+      "title": "API 키"
+    },
     "Guardrails": {
       "title": "가드레일",
       "blockedCount": "차단됨",

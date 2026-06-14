@@ -930,6 +930,9 @@
       "deactivated": "终止开关已停用 — 推理正常运行",
       "flagUpdated": "标志已更新"
     },
+    "ApiKeys": {
+      "title": "API 密钥"
+    },
     "Guardrails": {
       "title": "护栏",
       "blockedCount": "已阻止",

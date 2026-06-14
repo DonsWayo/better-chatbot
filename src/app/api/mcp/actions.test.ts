@@ -107,7 +107,7 @@ describe("saveMcpClientAction", () => {
       name: "Test",
       config: { url: "http://mcp" },
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/logged in/i),
     });
@@ -121,7 +121,7 @@ describe("saveMcpClientAction", () => {
       name: "Test",
       config: { url: "http://mcp" },
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/permission/i),
     });
@@ -135,7 +135,7 @@ describe("saveMcpClientAction", () => {
       name: "Test",
       config: {},
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/Not allowed/i),
     });
@@ -150,7 +150,7 @@ describe("saveMcpClientAction", () => {
       scope: "org",
       config: {},
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/admin/i),
     });
@@ -165,7 +165,7 @@ describe("saveMcpClientAction", () => {
       scope: "team",
       config: {},
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/admin/i),
     });
@@ -179,13 +179,13 @@ describe("saveMcpClientAction", () => {
       name: "invalid name!",
       config: {},
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/alphanumeric/i),
     });
   });
 
-  it("returns a user-readable error when connecting/persisting fails (e.g. unreachable URL)", async () => {
+  it("maps an unreachable-URL connect failure to a clean error (NO transport leak)", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "editor" });
     canCreateMCPMock.mockResolvedValueOnce(true);
     persistClientMock.mockRejectedValueOnce(
@@ -196,10 +196,13 @@ describe("saveMcpClientAction", () => {
       name: "qa-x",
       config: { url: "http://localhost:3007/mcp" },
     } as any);
-    expect(result).toEqual({
+    // QA P1: must NOT leak the raw transport string; must be tagged connection.
+    expect(result).toMatchObject({
       success: false,
-      error: expect.stringMatching(/ECONNREFUSED/),
+      kind: "connection",
     });
+    if (result.success) throw new Error("expected failure");
+    expect(result.error).not.toMatch(/ECONNREFUSED|fetch failed|127\.0\.0\.1/);
   });
 
   it("returns { success: true, id } when an editor saves a remote connector", async () => {
@@ -413,9 +416,88 @@ describe("saveMcpClientAction — additional", () => {
       scope: "org",
       config: {},
     } as any);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/admin/i),
+    });
+  });
+});
+
+describe("saveMcpClientAction — unreachable server (connection error mapping)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.NOT_ALLOW_ADD_MCP_SERVERS;
+    getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
+    canCreateMCPMock.mockResolvedValue(true);
+  });
+
+  // Repro of the QA P1: a bogus URL makes persistClient (which connects) reject
+  // with a raw transport message. The action must map it to a clean, user-safe
+  // message tagged kind:"connection" — NEVER echo the ECONNREFUSED/host/port/
+  // "fetch failed"/"SSE error" string.
+  it("maps a raw SSE/ECONNREFUSED reject to a clean kind=connection result", async () => {
+    persistClientMock.mockRejectedValueOnce(
+      new Error(
+        "SSE error: TypeError: fetch failed: connect ECONNREFUSED ::1:19999",
+      ),
+    );
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      name: "bogus",
+      config: { url: "http://localhost:19999/bogus" },
+    } as any);
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Could not connect to the MCP server at that URL. Check the URL is reachable.",
+      kind: "connection",
+    });
+  });
+
+  it("never leaks the raw transport string in the error message", async () => {
+    persistClientMock.mockRejectedValueOnce(
+      new Error(
+        "SSE error: TypeError: fetch failed: connect ECONNREFUSED ::1:19999",
+      ),
+    );
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      name: "bogus",
+      config: { url: "http://localhost:19999/bogus" },
+    } as any);
+    if (result.success) throw new Error("expected failure");
+    expect(result.error).not.toMatch(
+      /ECONNREFUSED|fetch failed|SSE error|::1|19999|TypeError/i,
+    );
+  });
+
+  it("classifies a nested cause chain (fetch failed inside a wrapper)", async () => {
+    const wrapper = new Error("Failed to initialize transport");
+    (wrapper as { cause?: unknown }).cause = new Error(
+      "fetch failed: getaddrinfo ENOTFOUND not-a-real-host",
+    );
+    persistClientMock.mockRejectedValueOnce(wrapper);
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      name: "bogus",
+      config: { url: "http://not-a-real-host/sse" },
+    } as any);
+    expect(result).toMatchObject({ success: false, kind: "connection" });
+  });
+
+  it("a non-connection failure stays kind=other with its own message", async () => {
+    persistClientMock.mockRejectedValueOnce(
+      new Error("A featured MCP server with this name already exists"),
+    );
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      name: "dup",
+      config: { url: "http://mcp" },
+    } as any);
+    expect(result).toMatchObject({
+      success: false,
+      kind: "other",
+      error: expect.stringMatching(/already exists/),
     });
   });
 });
@@ -593,7 +675,7 @@ describe("saveMcpClientAction — local-MCP policy gate (stdio)", () => {
       name: "local-server",
       config: STDIO_CONFIG,
     } as unknown as SaveMcpPayload);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/organization's policy/i),
     });

@@ -82,7 +82,13 @@ export async function createApiKeyAction(input: {
     },
   });
 
-  revalidatePath("/admin/api-keys");
+  // NOTE: do NOT revalidatePath here. This page is `force-dynamic`, so a
+  // synchronous revalidate re-renders the server tree and remounts the client
+  // panel — wiping the `newSecret` state before React can paint the one-time
+  // reveal box, so the admin never sees the plaintext. The client optimistically
+  // prepends the new key row itself (api-keys-panel.tsx), so the list stays
+  // fresh without a revalidate. The next navigation/refresh reconciles from the
+  // DB anyway.
   return {
     id: record.id,
     name: record.name,

@@ -70,10 +70,17 @@ export function DocumentEditorPage({
   document: initialDoc,
   selfUserId,
   canEdit,
+  canManage,
 }: {
   document: DocumentEntity;
   selfUserId: string;
+  /** Owner / admin / edit-or-manage grant: may edit content + title. */
   canEdit: boolean;
+  /**
+   * Owner / admin / MANAGE grant only (never a plain editor): may delete the
+   * doc and change its visibility / re-share it. Strictly stronger than canEdit.
+   */
+  canManage: boolean;
 }) {
   const t = useTranslations("Documents");
   const tRoot = useTranslations();
@@ -322,7 +329,7 @@ export function DocumentEditorPage({
               variant="outline"
               size="sm"
               className="gap-1.5 rounded-full"
-              disabled={!canEdit}
+              disabled={!canManage}
               data-testid="document-visibility-trigger"
             >
               <VisibilityIcon className="size-3.5" />
@@ -337,7 +344,7 @@ export function DocumentEditorPage({
               }}
               onChange={handleVisibilityChange}
               entity={{ type: "document", id: initialDoc.id }}
-              disabled={!canEdit}
+              disabled={!canManage}
             />
           </PopoverContent>
         </Popover>
@@ -378,7 +385,7 @@ export function DocumentEditorPage({
           <TooltipContent>{t("comments.title")}</TooltipContent>
         </Tooltip>
 
-        {canEdit && (
+        {canManage && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

@@ -92,6 +92,7 @@ vi.mock("lib/ai/budget", () => ({
 vi.mock("lib/admin/teams", () => ({
   getTeamPolicy: vi.fn().mockResolvedValue({ guardrailPolicy: "standard" }),
   getUserPrimaryTeamId: vi.fn().mockResolvedValue("team-1"),
+  resolveStrictestGuardrailPolicy: vi.fn().mockResolvedValue("standard"),
 }));
 vi.mock("lib/admin/effective-models", () => ({
   resolveEffectiveModelAllowList: resolveAllowListMock,

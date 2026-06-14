@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Copy, KeyRound, Loader2 } from "lucide-react";
+import { Copy, KeyRound, Loader2, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -69,7 +69,10 @@ export function ApiKeysPanel({
         setNewSecret(result.plaintext);
         setName("");
         setTeamId(NO_TEAM);
-        // Optimistic prepend; the page also revalidates.
+        // Prepend the new row directly. The create action deliberately does NOT
+        // revalidatePath (that would remount this panel and wipe `newSecret`
+        // before the one-time reveal box paints), so this client update is the
+        // source of truth until the next navigation/refresh reconciles the list.
         setKeys((prev) => [
           {
             id: result.id,
@@ -176,6 +179,14 @@ export function ApiKeysPanel({
                   onClick={() => copy(newSecret)}
                 >
                   <Copy className="size-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Dismiss"
+                  onClick={() => setNewSecret(null)}
+                >
+                  <X className="size-4" />
                 </Button>
               </div>
             </div>

@@ -217,12 +217,13 @@ export async function runClaimedSession(
   let effectiveModelAllowList: string[] | null = null;
   if (session.userId) {
     try {
-      const { getTeamPolicy, getUserPrimaryTeamId } = await import(
-        "lib/admin/teams"
-      );
+      const { getUserPrimaryTeamId, resolveStrictestGuardrailPolicy } =
+        await import("lib/admin/teams");
+      // ENTITLEMENT/BILLING attribution stays on the PRIMARY team (budget +
+      // model allow-list below). The guardrail RESTRICTION uses the STRICTEST
+      // posture across ALL the owner's teams (most-restrictive wins).
       teamId = teamId ?? (await getUserPrimaryTeamId(session.userId));
-      if (teamId)
-        guardrailPolicy = (await getTeamPolicy(teamId)).guardrailPolicy;
+      guardrailPolicy = await resolveStrictestGuardrailPolicy(session.userId);
     } catch {
       // org default applies
     }

@@ -262,7 +262,7 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile, openMobile } = useSidebar();
 
   return (
     <Button
@@ -270,7 +270,15 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("size-7", className)}
+      className={cn(
+        "size-7",
+        // When the mobile drawer is open, the Sheet overlay (z-50) sits on top
+        // of the page and intercepts pointer events — re-tapping the toggle did
+        // nothing because the button was underneath the dialog. Lift the trigger
+        // above the overlay while the drawer is open so the second tap closes it.
+        isMobile && openMobile && "relative z-[60]",
+        className,
+      )}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();

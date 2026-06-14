@@ -90,6 +90,14 @@ vi.mock("lib/ai/budget", () => ({
 vi.mock("lib/admin/teams", () => ({
   getUserPrimaryTeamId: vi.fn().mockResolvedValue(null),
   getTeamPolicy: vi.fn().mockResolvedValue(null),
+  // Multi-team restriction resolvers: default to no restriction (all tools
+  // allowed; org-default guardrail) so existing route tests are unaffected.
+  resolveEffectiveToolPolicy: vi.fn().mockResolvedValue({
+    allowWebSearch: true,
+    allowCodeExec: true,
+    allowHttp: true,
+  }),
+  resolveStrictestGuardrailPolicy: vi.fn().mockResolvedValue(undefined),
 }));
 // Near-live shared generation: the partial-persist gate. Mocked so importing
 // the route never touches the real module (which pulls in the pg pool).

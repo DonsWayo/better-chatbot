@@ -31,7 +31,12 @@ import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
 import { resolveEffectiveModelAllowList } from "lib/admin/effective-models";
-import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
+import {
+  getTeamPolicy,
+  getUserPrimaryTeamId,
+  resolveEffectiveToolPolicy,
+  resolveStrictestGuardrailPolicy,
+} from "lib/admin/teams";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
 import { retrieveForChat } from "lib/ai/embeddings/retrieval";
 import { auditMcpInvocation } from "lib/ai/mcp/audit";
@@ -104,8 +109,25 @@ export async function POST(request: Request) {
     const aupGate = await aupGateResponse(session.user.id);
     if (aupGate) return aupGate;
 
+    // ENTITLEMENTS / BILLING stay keyed to the PRIMARY team (model allow-list +
+    // budget): an allow-list intersection across many teams would lock out
+    // multi-team users. userTeamId/teamPolicy below are used for those + for
+    // capabilities (vision/image/speech) and team-scoped audit/usage attribution.
     const userTeamId = await getUserPrimaryTeamId(session.user.id);
     const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
+
+    // RESTRICTIONS are resolved across ALL the user's teams (most-restrictive
+    // wins) — see lib/admin/teams.ts. Per-tool flags are AND-ed (a tool is
+    // bound only if EVERY team allows it) and the guardrail posture is the
+    // strictest among the user's teams. This closes the "escape via a looser
+    // team" hole the primary-team-only resolution left open. It only ever
+    // removes tools / tightens scanning — it never locks a user out of chat.
+    const effectiveToolPolicy = await resolveEffectiveToolPolicy(
+      session.user.id,
+    );
+    const effectiveGuardrailPolicy =
+      (await resolveStrictestGuardrailPolicy(session.user.id)) ??
+      teamPolicy?.guardrailPolicy;
 
     // W12: kill switch — operator can block all inference instantly, no deploy required
     const killSwitchResp = await checkKillSwitch(userTeamId);
@@ -345,10 +367,10 @@ export async function POST(request: Request) {
     const guardedModel = wrapWithGuardrails(
       modelWithFallback,
       session.user.id,
-      teamPolicy?.guardrailPolicy,
+      effectiveGuardrailPolicy,
     );
     const model = wrapWithCompression(guardedModel, {
-      level: compressionLevelFromPolicy(teamPolicy?.guardrailPolicy),
+      level: compressionLevelFromPolicy(effectiveGuardrailPolicy),
       teamId: userTeamId,
     });
 
@@ -482,10 +504,11 @@ export async function POST(request: Request) {
             loadWorkFlowTools({
               mentions,
               dataStream,
-              // W7: workflow LLM nodes scan with the invoking team's posture
+              // W7: workflow LLM nodes scan with the invoking user's STRICTEST
+              // team posture (most-restrictive across all their teams).
               guardrailCtx: {
                 userId: session.user.id,
-                policy: teamPolicy?.guardrailPolicy,
+                policy: effectiveGuardrailPolicy,
               },
             }),
           )
@@ -503,7 +526,11 @@ export async function POST(request: Request) {
           // Per-tool team policy (Feature B): strip web-search / code-exec /
           // http tools the team has disabled — applied AFTER canUseTools so it
           // further-restricts WITHIN the allowed set, even for elevated users.
-          .map((tools) => filterAppDefaultToolsByTeamPolicy(tools, teamPolicy))
+          // Uses the MOST-RESTRICTIVE policy across ALL the user's teams (AND),
+          // not just the primary team, so a tool disabled on any team is gone.
+          .map((tools) =>
+            filterAppDefaultToolsByTeamPolicy(tools, effectiveToolPolicy),
+          )
           .orElse({});
         const inProgressToolParts = extractInProgressToolPart(message);
         if (inProgressToolParts.length) {
@@ -516,7 +543,7 @@ export async function POST(request: Request) {
                 // W7: shield manually-confirmed tool outputs too
                 {
                   userId: session.user.id,
-                  policy: teamPolicy?.guardrailPolicy,
+                  policy: effectiveGuardrailPolicy,
                 },
               );
               part.output = output;
@@ -677,7 +704,7 @@ export async function POST(request: Request) {
           .map((t) =>
             wrapToolsWithGuardrails(t, {
               userId: session.user.id,
-              policy: teamPolicy?.guardrailPolicy,
+              policy: effectiveGuardrailPolicy,
             }),
           )
           .unwrap();

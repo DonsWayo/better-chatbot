@@ -929,6 +929,9 @@
       "deactivated": "Kill switch desactivado — la inferencia funciona con normalidad",
       "flagUpdated": "Indicador actualizado"
     },
+    "ApiKeys": {
+      "title": "Claves de API"
+    },
     "Guardrails": {
       "title": "Guardianes",
       "blockedCount": "Bloqueados",

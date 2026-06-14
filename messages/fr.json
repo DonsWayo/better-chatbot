@@ -930,6 +930,9 @@
       "deactivated": "Kill switch désactivé — l'inférence fonctionne normalement",
       "flagUpdated": "Indicateur mis à jour"
     },
+    "ApiKeys": {
+      "title": "Clés API"
+    },
     "Guardrails": {
       "title": "Gardes-fous",
       "blockedCount": "Bloqués",

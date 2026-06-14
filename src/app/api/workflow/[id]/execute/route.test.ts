@@ -11,6 +11,7 @@ const {
   checkBudgetMock,
   getUserPrimaryTeamIdMock,
   getTeamPolicyMock,
+  resolveStrictestGuardrailPolicyMock,
   resolveAllowListMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
@@ -26,6 +27,7 @@ const {
   checkBudgetMock: vi.fn().mockResolvedValue({ allowed: true }),
   getUserPrimaryTeamIdMock: vi.fn().mockResolvedValue("team-1"),
   getTeamPolicyMock: vi.fn().mockResolvedValue({ guardrailPolicy: "standard" }),
+  resolveStrictestGuardrailPolicyMock: vi.fn().mockResolvedValue("standard"),
   resolveAllowListMock: vi.fn().mockResolvedValue(null),
 }));
 
@@ -55,6 +57,7 @@ vi.mock("lib/ai/budget", () => ({ checkBudget: checkBudgetMock }));
 vi.mock("lib/admin/teams", () => ({
   getUserPrimaryTeamId: getUserPrimaryTeamIdMock,
   getTeamPolicy: getTeamPolicyMock,
+  resolveStrictestGuardrailPolicy: resolveStrictestGuardrailPolicyMock,
 }));
 vi.mock("lib/admin/effective-models", () => ({
   resolveEffectiveModelAllowList: resolveAllowListMock,

@@ -5,16 +5,20 @@ import {
   streamText,
 } from "ai";
 import { getSession } from "auth/server";
-import { customModelProvider } from "lib/ai/models";
-import { routeModel } from "lib/ai/routing/route-model";
-import { buildUserSystemPrompt } from "lib/ai/prompts";
-import { getUserPreferences } from "lib/user/server";
 import { resolveEffectiveModelAllowList } from "lib/admin/effective-models";
-import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
+import {
+  getTeamPolicy,
+  getUserPrimaryTeamId,
+  resolveStrictestGuardrailPolicy,
+} from "lib/admin/teams";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { customModelProvider } from "lib/ai/models";
+import { buildUserSystemPrompt } from "lib/ai/prompts";
+import { routeModel } from "lib/ai/routing/route-model";
 import { aupGateResponse } from "lib/compliance/aup";
 import { checkKillSwitch } from "lib/observability/kill-switch";
 import { checkRateLimit } from "lib/rate-limit";
+import { getUserPreferences } from "lib/user/server";
 import globalLogger from "logger";
 
 import { colorize } from "consola/utils";
@@ -140,13 +144,18 @@ export async function POST(request: Request) {
       return Response.json({ message: budgetCheck.reason }, { status: 402 });
     }
 
-    // W7 GA gate (ADR-0008): same guardrail posture as the main chat route.
-    // Temporary chats have no thread, so the team's (or org-default) policy applies.
+    // W7 GA gate (ADR-0008): same guardrail posture as the main chat route —
+    // the STRICTEST guardrail across ALL the user's teams (most-restrictive
+    // wins), not just the primary team. Falls back to the primary team's
+    // posture (then org default) when the user has no team.
+    const effectiveGuardrailPolicy =
+      (await resolveStrictestGuardrailPolicy(session.user.id)) ??
+      teamPolicy?.guardrailPolicy;
     const { wrapWithGuardrails } = await import("lib/ai/guardrails");
     const model = wrapWithGuardrails(
       customModelProvider.getModel(effectiveModel),
       session.user.id,
-      teamPolicy?.guardrailPolicy,
+      effectiveGuardrailPolicy,
     );
     const userPreferences =
       (await getUserPreferences(session.user.id)) || undefined;

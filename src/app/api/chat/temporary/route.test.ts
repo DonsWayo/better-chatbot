@@ -10,6 +10,7 @@ const {
   wrapWithGuardrailsMock,
   getUserPrimaryTeamIdMock,
   getTeamPolicyMock,
+  resolveStrictestGuardrailPolicyMock,
   resolveEffectiveModelAllowListMock,
   checkKillSwitchMock,
   checkRateLimitMock,
@@ -34,11 +35,19 @@ const {
   ),
   getUserPrimaryTeamIdMock: vi.fn().mockResolvedValue(null),
   getTeamPolicyMock: vi.fn().mockResolvedValue(null),
+  // Default undefined so the route falls back to teamPolicy?.guardrailPolicy,
+  // preserving the existing single-team guardrail assertions.
+  resolveStrictestGuardrailPolicyMock: vi.fn().mockResolvedValue(undefined),
   resolveEffectiveModelAllowListMock: vi.fn().mockResolvedValue(null),
   checkKillSwitchMock: vi.fn().mockResolvedValue(null),
   checkRateLimitMock: vi
     .fn()
-    .mockResolvedValue({ allowed: true, limit: 100, remaining: 99, resetAt: 0 }),
+    .mockResolvedValue({
+      allowed: true,
+      limit: 100,
+      remaining: 99,
+      resetAt: 0,
+    }),
   checkBudgetMock: vi.fn().mockResolvedValue({ allowed: true }),
   recordUsageMock: vi.fn().mockResolvedValue(undefined),
   estimateCostUsdMock: vi.fn(() => 0.001),
@@ -70,6 +79,7 @@ vi.mock("lib/admin/effective-models", () => ({
 vi.mock("lib/admin/teams", () => ({
   getUserPrimaryTeamId: getUserPrimaryTeamIdMock,
   getTeamPolicy: getTeamPolicyMock,
+  resolveStrictestGuardrailPolicy: resolveStrictestGuardrailPolicyMock,
 }));
 vi.mock("lib/ai/budget", () => ({
   checkBudget: checkBudgetMock,
@@ -100,6 +110,7 @@ function makeRequest(body?: unknown): Request {
 function resetEnforcementDefaults() {
   getUserPrimaryTeamIdMock.mockResolvedValue(null);
   getTeamPolicyMock.mockResolvedValue(null);
+  resolveStrictestGuardrailPolicyMock.mockResolvedValue(undefined);
   resolveEffectiveModelAllowListMock.mockResolvedValue(null);
   checkKillSwitchMock.mockResolvedValue(null);
   checkRateLimitMock.mockResolvedValue({
@@ -308,7 +319,9 @@ describe("POST /api/chat/temporary — metering (ADR-0003)", () => {
   });
 
   it("records usage attributed to userId + teamId in onFinish", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "metered", role: "admin" } });
+    getSessionMock.mockResolvedValue({
+      user: { id: "metered", role: "admin" },
+    });
     getUserPrimaryTeamIdMock.mockResolvedValue("team-9");
     let captured: any;
     streamTextMock.mockImplementationOnce((opts: any) => {
@@ -342,7 +355,9 @@ describe("POST /api/chat/temporary — guardrails (W7)", () => {
   });
 
   it("wraps the model with guardrails using the session userId + team policy", async () => {
-    getSessionMock.mockResolvedValue({ user: { id: "u-guard", role: "admin" } });
+    getSessionMock.mockResolvedValue({
+      user: { id: "u-guard", role: "admin" },
+    });
     getUserPrimaryTeamIdMock.mockResolvedValue("team-1");
     getTeamPolicyMock.mockResolvedValue({ guardrailPolicy: "strict" });
     const rawModel = { raw: true };

@@ -930,6 +930,9 @@
       "deactivated": "キルスイッチが無効です — 推論は正常に動作しています",
       "flagUpdated": "フラグを更新しました"
     },
+    "ApiKeys": {
+      "title": "APIキー"
+    },
     "Guardrails": {
       "title": "ガードレール",
       "blockedCount": "ブロック済み",
