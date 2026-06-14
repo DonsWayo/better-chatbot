@@ -5,6 +5,7 @@ import { cn } from "lib/utils";
 import {
   BotIcon,
   BoxIcon,
+  DatabaseIcon,
   HardDriveUpload,
   HouseIcon,
   InfoIcon,
@@ -40,6 +41,8 @@ export function NodeIcon({
         return HardDriveUpload;
       case NodeKind.Template:
         return TextIcon;
+      case NodeKind.Knowledge:
+        return DatabaseIcon;
       case NodeKind.Code:
         return TerminalIcon;
       case NodeKind.Approval:
@@ -66,7 +69,9 @@ export function NodeIcon({
                     ? "bg-rose-500"
                     : type === NodeKind.Template
                       ? "bg-purple-500"
-                      : type === NodeKind.Condition
+                      : type === NodeKind.Knowledge
+                        ? "bg-cyan-500"
+                        : type === NodeKind.Condition
                         ? "bg-amber-500"
                         : type === NodeKind.Approval
                           ? "bg-emerald-500"

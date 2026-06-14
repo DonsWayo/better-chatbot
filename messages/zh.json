@@ -121,6 +121,10 @@
     "jsonSchemaEditorDescription": "在 AI 辅助下直接编辑 JSON 模式。支持复杂的嵌套结构和数组。",
     "template": "模板",
     "templateDescription": "生成模板文档。\n\n使用 '/' 引用和使用其他节点的输出值。",
+    "knowledgeCollection": "知识库",
+    "knowledgeCollectionPlaceholder": "选择知识库",
+    "knowledgeTopK": "Top K",
+    "knowledgeQuery": "查询",
     "greeting": {
       "buildAutomationTitle": "通过连接节点构建自动化",
       "buildAutomationDescription": "连接各种节点来自动化复杂任务。每个节点处理特定功能，数据按顺序流动处理。",
@@ -148,6 +152,7 @@
       "code": "执行可访问前一个节点数据的自定义代码脚本。\n\n在工作流中运行 JavaScript、Python 或其他语言（即将推出）。",
       "http": "通过 HTTP 请求从外部 API 和 Web 服务获取数据。\n\n与 REST API、webhook 和第三方服务集成。",
       "template": "通过将文本与前一个节点的数据结合来创建动态文档。\n\n使用变量替换生成电子邮件、报告或格式化内容。",
+      "knowledge": "从知识库中检索相关片段（RAG）",
       "condition": "基于数据评估添加条件逻辑来分支您的工作流。\n\n创建 if-else 逻辑来处理不同的场景和数据条件。"
     },
     "structuredOutputSwitchConfirm": "您当前已启用结构化输出。\n您希望如何操作？",

@@ -111,6 +111,21 @@ export function createUINode(
         content: [],
       },
     };
+  } else if (node.data.kind === NodeKind.Knowledge) {
+    // Set default values for Knowledge node
+    node.data.topK = 6;
+    node.data.query = {
+      type: "doc",
+      content: [],
+    };
+    node.data.outputSchema.properties = {
+      chunks: {
+        type: "array",
+      },
+      text: {
+        type: "string",
+      },
+    };
   }
 
   return node;

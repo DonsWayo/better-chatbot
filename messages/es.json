@@ -121,6 +121,10 @@
     "jsonSchemaEditorDescription": "Edición directa de esquema JSON con asistencia de IA. Compatible con estructuras anidadas complejas y arrays.",
     "template": "Plantilla",
     "templateDescription": "Genera documentos de plantilla.\n\nUsa '/' para referenciar y usar valores de salida de otros nodos.",
+    "knowledgeCollection": "Colección",
+    "knowledgeCollectionPlaceholder": "Selecciona una colección",
+    "knowledgeTopK": "Top K",
+    "knowledgeQuery": "Consulta",
     "greeting": {
       "buildAutomationTitle": "Construir Automatización Conectando Nodos",
       "buildAutomationDescription": "Conecta varios nodos para automatizar tareas complejas. Cada nodo gestiona funciones específicas y los datos fluyen secuencialmente para su procesamiento.",
@@ -148,6 +152,7 @@
       "code": "Ejecuta scripts de código personalizados con acceso a datos de nodos anteriores.\n\nEjecuta JavaScript, Python u otros lenguajes dentro de tu flujo de trabajo (próximamente).",
       "http": "Obtén datos de APIs externas y servicios web mediante peticiones HTTP.\n\nIntégrate con APIs REST, webhooks y servicios de terceros.",
       "template": "Crea documentos dinámicos combinando texto con datos de nodos anteriores.\n\nGenera correos, informes o contenido formateado usando sustitución de variables.",
+      "knowledge": "Recupera fragmentos relevantes de una colección de conocimiento (RAG)",
       "condition": "Añade lógica condicional para ramificar tu flujo de trabajo en función de la evaluación de datos.\n\nCrea lógica if-else para gestionar distintos escenarios y condiciones de datos."
     },
     "structuredOutputSwitchConfirm": "Actualmente tienes la salida estructurada habilitada.\n¿Qué deseas hacer?",

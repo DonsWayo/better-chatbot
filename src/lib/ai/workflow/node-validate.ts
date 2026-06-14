@@ -5,6 +5,7 @@ import {
   ConditionNodeData,
   HttpNodeData,
   InputNodeData,
+  KnowledgeNodeData,
   LLMNodeData,
   NodeKind,
   OutputNodeData,
@@ -110,6 +111,8 @@ export const nodeValidate: NodeValidate<WorkflowNodeData> = ({
       return httpNodeValidate({ node, nodes, edges });
     case NodeKind.Template:
       return templateNodeValidate({ node, nodes, edges });
+    case NodeKind.Knowledge:
+      return knowledgeNodeValidate({ node, nodes, edges });
     case NodeKind.Approval:
       return approvalNodeValidate({ node, nodes, edges });
   }
@@ -288,4 +291,17 @@ export const templateNodeValidate: NodeValidate<TemplateNodeData> = ({
 
   // Template content can be undefined/empty - that's valid
   // The actual content validation is handled by the TipTap editor
+};
+
+export const knowledgeNodeValidate: NodeValidate<KnowledgeNodeData> = ({
+  node,
+}) => {
+  // A Knowledge node must point at a collection to retrieve from.
+  if (!node.collectionId) {
+    throw new Error("Knowledge node must have a collection");
+  }
+  // The retrieval query must have content (a TipTap doc with at least one node).
+  if (!node.query || (node.query.content?.length ?? 0) === 0) {
+    throw new Error("Knowledge node must have a query");
+  }
 };

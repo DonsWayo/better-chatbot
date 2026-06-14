@@ -34,6 +34,7 @@ import {
   ConditionNodeData,
   HttpNodeData,
   InputNodeData,
+  KnowledgeNodeData,
   LLMNodeData,
   OutputNodeData,
   OutputSchemaSourceKey,
@@ -797,5 +798,50 @@ export const templateNodeExecutor: NodeExecutor<TemplateNodeData> = ({
     output: {
       template: text,
     },
+  };
+};
+
+/**
+ * Knowledge Node Executor
+ * Retrieves top-k relevant chunks from a knowledge collection (Conek's pgvector
+ * RAG) and outputs them so downstream LLM nodes can ground on org knowledge.
+ *
+ * Workflow:
+ * 1. Render the TipTap query (with upstream-output mentions) to plain text.
+ * 2. If no collection is selected or the query is empty → return empty results.
+ * 3. Otherwise retrieve the top-k chunks and join their text for easy
+ *    consumption by downstream nodes.
+ *
+ * `retrieveChunks` is imported dynamically so this module stays importable
+ * without pulling the server-only embeddings/DB layer until a Knowledge node
+ * actually runs.
+ */
+export const knowledgeNodeExecutor: NodeExecutor<KnowledgeNodeData> = async ({
+  node,
+  state,
+}) => {
+  // Render the TipTap query to text, resolving mentions to upstream node data.
+  const query = convertTiptapJsonToText({
+    json: node.query,
+    getOutput: state.getOutput,
+  }).trim();
+
+  const topK = node.topK ?? 6;
+
+  // No collection or empty query → nothing to retrieve.
+  if (!node.collectionId || !query) {
+    return {
+      input: { query, collectionId: node.collectionId, topK },
+      output: { chunks: [], text: "" },
+    };
+  }
+
+  const { retrieveChunks } = await import("lib/ai/embeddings/ingest");
+  const chunks = await retrieveChunks(query, node.collectionId, topK);
+  const text = chunks.map((c) => c.chunkText).join("\n\n");
+
+  return {
+    input: { query, collectionId: node.collectionId, topK },
+    output: { chunks, text },
   };
 };

@@ -121,6 +121,10 @@
     "jsonSchemaEditorDescription": "AI支援による直接的なJSONスキーマ編集。複雑なネストした構造と配列をサポートします。",
     "template": "テンプレート",
     "templateDescription": "テンプレート文書を生成します。\n\n'/'を使用して他のノードの出力値を参照・使用してください。",
+    "knowledgeCollection": "コレクション",
+    "knowledgeCollectionPlaceholder": "コレクションを選択",
+    "knowledgeTopK": "上位K件",
+    "knowledgeQuery": "クエリ",
     "greeting": {
       "buildAutomationTitle": "ノード接続による自動化構築",
       "buildAutomationDescription": "様々なノードを接続して複雑なタスクを自動化します。各ノードは特定の機能を担当し、データが順次流れて処理されます。",
@@ -148,6 +152,7 @@
       "code": "前のノードデータにアクセスできるカスタムコードスクリプトを実行します。\n\nワークフロー内でJavaScript、Python、その他の言語を実行します（近日公開）。",
       "http": "HTTPリクエストを通じて外部APIやWebサービスからデータを取得します。\n\nREST API、Webhook、サードパーティサービスと統合します。",
       "template": "前のノードのデータとテキストを組み合わせて動的文書を作成します。\n\n変数置換を使用してメール、レポート、フォーマットされたコンテンツを生成します。",
+      "knowledge": "ナレッジコレクションから関連するチャンクを取得します（RAG）",
       "condition": "データ評価に基づいてワークフローを分岐する条件ロジックを追加します。\n\n異なるシナリオやデータ条件を処理するif-elseロジックを作成します。"
     },
     "structuredOutputSwitchConfirm": "現在、構造化出力が有効になっています。\n どうしますか？",

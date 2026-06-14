@@ -121,6 +121,10 @@
     "jsonSchemaEditorDescription": "Direkte JSON-skjemaredigering med AI-assistanse. Støtter komplekse nestede strukturer og arrays.",
     "template": "Mal",
     "templateDescription": "Generer maldokumenter.\n\nBruk '/' for å referere til og bruke utdataverdier fra andre noder.",
+    "knowledgeCollection": "Samling",
+    "knowledgeCollectionPlaceholder": "Velg en samling",
+    "knowledgeTopK": "Topp K",
+    "knowledgeQuery": "Spørring",
     "greeting": {
       "buildAutomationTitle": "Automatiser ved å koble sammen noder",
       "buildAutomationDescription": "Koble sammen ulike noder for å automatisere komplekse oppgaver. Hver node håndterer spesifikke funksjoner, og data flyter sekvensielt for behandling.",
@@ -148,6 +152,7 @@
       "code": "Utfør egendefinerte kodeskript med tilgang til data fra tidligere noder.\n\nKjør JavaScript, Python eller andre språk i arbeidsflyten din (kommer snart).",
       "http": "Hent data fra eksterne APIer og webtjenester via HTTP-forespørsler.\n\nIntegrer med REST-APIer, webhooks og tredjepartstjenester.",
       "template": "Opprett dynamiske dokumenter ved å kombinere tekst med data fra tidligere noder.\n\nGenerer e-poster, rapporter eller formatert innhold ved hjelp av variabelsubstitusjon.",
+      "knowledge": "Hent relevante biter fra en kunnskapssamling (RAG)",
       "condition": "Legg til betinget logikk for å forgrene arbeidsflyten din basert på dataevaluering.\n\nOpprett hvis-ellers-logikk for å håndtere ulike scenarier og databetingelser."
     },
     "structuredOutputSwitchConfirm": "Du har for øyeblikket strukturert utdata aktivert.\nHva vil du gjøre?",

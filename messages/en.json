@@ -121,6 +121,10 @@
     "jsonSchemaEditorDescription": "Direct JSON Schema editing with AI assistance. Supports complex nested structures and arrays.",
     "template": "Template",
     "templateDescription": "Generate template documents.\n\nUse '/' to reference and use output values from other nodes.",
+    "knowledgeCollection": "Collection",
+    "knowledgeCollectionPlaceholder": "Select a collection",
+    "knowledgeTopK": "Top K",
+    "knowledgeQuery": "Query",
     "greeting": {
       "buildAutomationTitle": "Build Automation by Connecting Nodes",
       "buildAutomationDescription": "Connect various nodes to automate complex tasks. Each node handles specific functions, and data flows sequentially for processing.",
@@ -148,6 +152,7 @@
       "code": "Execute custom code scripts with access to previous node data.\n\nRun JavaScript, Python, or other languages within your workflow (coming soon).",
       "http": "Fetch data from external APIs and web services via HTTP requests.\n\nIntegrate with REST APIs, webhooks, and third-party services.",
       "template": "Create dynamic documents by combining text with data from previous nodes.\n\nGenerate emails, reports, or formatted content using variable substitution.",
+      "knowledge": "Retrieve relevant chunks from a knowledge collection (RAG)",
       "condition": "Add conditional logic to branch your workflow based on data evaluation.\n\nCreate if-else logic to handle different scenarios and data conditions."
     },
     "structuredOutputSwitchConfirm": "You currently have structured output enabled.\n What would you like to do?",

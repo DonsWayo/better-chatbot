@@ -121,6 +121,10 @@
     "jsonSchemaEditorDescription": "AI 지원으로 직접 JSON 스키마 편집. 복잡한 중첩 구조와 배열을 지원합니다.",
     "template": "템플릿",
     "templateDescription": "템플릿 문서를 생성합니다.\n\n'/'를 사용하여 다른 노드의 출력 값을 참조하고 사용하세요.",
+    "knowledgeCollection": "컬렉션",
+    "knowledgeCollectionPlaceholder": "컬렉션 선택",
+    "knowledgeTopK": "상위 K개",
+    "knowledgeQuery": "쿼리",
     "greeting": {
       "buildAutomationTitle": "노드 연결로 자동화 구축",
       "buildAutomationDescription": "다양한 노드들을 연결하여 복잡한 작업을 자동화하세요. 각 노드는 특정 기능을 담당하며, 데이터가 순차적으로 흘러가며 처리됩니다.",
@@ -148,6 +152,7 @@
       "code": "이전 노드 데이터에 접근할 수 있는 커스텀 코드 스크립트를 실행합니다.\n\n워크플로우 내에서 JavaScript, Python 또는 기타 언어를 실행합니다 (곧 출시).",
       "http": "HTTP 요청을 통해 외부 API 및 웹 서비스에서 데이터를 가져옵니다.\n\nREST API, 웹훅 및 타사 서비스와 통합합니다.",
       "template": "이전 노드의 데이터와 텍스트를 결합하여 동적 문서를 생성합니다.\n\n변수 치환을 사용하여 이메일, 보고서 또는 형식화된 콘텐츠를 생성합니다.",
+      "knowledge": "지식 컬렉션에서 관련 청크를 검색합니다 (RAG)",
       "condition": "데이터 평가를 기반으로 워크플로우를 분기하는 조건부 로직을 추가합니다.\n\n다양한 시나리오와 데이터 조건을 처리하기 위한 if-else 로직을 생성합니다."
     },
     "structuredOutputSwitchConfirm": "현재 구조화된 출력이 활성화되어 있습니다.\n 어떻게 하시겠습니까?",

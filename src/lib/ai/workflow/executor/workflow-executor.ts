@@ -18,6 +18,7 @@ import {
   conditionNodeExecutor,
   httpNodeExecutor,
   inputNodeExecutor,
+  knowledgeNodeExecutor,
   llmNodeExecutor,
   outputNodeExecutor,
   templateNodeExecutor,
@@ -44,6 +45,8 @@ function getExecutorByKind(kind: NodeKind): NodeExecutor {
       return httpNodeExecutor;
     case NodeKind.Template:
       return templateNodeExecutor;
+    case NodeKind.Knowledge:
+      return knowledgeNodeExecutor;
     case NodeKind.Approval:
       return approvalNodeExecutor;
     case "NOOP" as any:

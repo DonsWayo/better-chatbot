@@ -36,9 +36,17 @@ vi.mock("ai", async () => ({
   generateObject: vi.fn(),
   convertToModelMessages: vi.fn(() => []),
 }));
+// Knowledge node lazily imports the server-only RAG retriever.
+const { retrieveChunksMock } = vi.hoisted(() => ({
+  retrieveChunksMock: vi.fn(),
+}));
+vi.mock("lib/ai/embeddings/ingest", () => ({
+  retrieveChunks: retrieveChunksMock,
+}));
 import { NodeKind } from "../workflow.interface";
 import type {
   InputNodeData,
+  KnowledgeNodeData,
   OutputNodeData,
   OutputSchemaSourceKey,
   TemplateNodeData,
@@ -46,6 +54,7 @@ import type {
 import type { WorkflowRuntimeState } from "./graph-store";
 import {
   inputNodeExecutor,
+  knowledgeNodeExecutor,
   outputNodeExecutor,
   templateNodeExecutor,
 } from "./node-executor";
@@ -213,6 +222,91 @@ describe("templateNodeExecutor", () => {
     const node = makeTemplateNode({ type: "string" });
     const result = templateNodeExecutor({ node, state }) as ExecResult;
     expect(typeof result.output).toBe("object");
+  });
+});
+
+// ── knowledgeNodeExecutor (RAG retrieval) ───────────────────────────────────
+
+const knowledgeQueryDoc = (text: string) => ({
+  type: "doc" as const,
+  content: [
+    { type: "paragraph" as const, content: [{ type: "text" as const, text }] },
+  ],
+});
+
+const makeKnowledgeNode = (over: Partial<KnowledgeNodeData> = {}): KnowledgeNodeData =>
+  ({
+    id: "knw-1",
+    name: "Knowledge",
+    kind: NodeKind.Knowledge,
+    collectionId: "col-1",
+    topK: 3,
+    query: knowledgeQueryDoc("what is the policy?"),
+    outputSchema: {
+      type: "object",
+      properties: { chunks: { type: "array" }, text: { type: "string" } },
+    },
+    ...over,
+  }) as unknown as KnowledgeNodeData;
+
+describe("knowledgeNodeExecutor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("retrieves chunks and joins their text", async () => {
+    retrieveChunksMock.mockResolvedValueOnce([
+      { chunkText: "alpha", sourceRef: "a.md", chunkIndex: 0 },
+      { chunkText: "beta", sourceRef: "b.md", chunkIndex: 1 },
+    ]);
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode(),
+      state,
+    })) as ExecResult;
+
+    expect(retrieveChunksMock).toHaveBeenCalledWith(
+      "what is the policy?",
+      "col-1",
+      3,
+    );
+    const out = result.output as { chunks: unknown[]; text: string };
+    expect(out.chunks).toHaveLength(2);
+    expect(out.text).toBe("alpha\n\nbeta");
+  });
+
+  it("defaults topK to 6 when not set", async () => {
+    retrieveChunksMock.mockResolvedValueOnce([]);
+    const state = makeState({});
+    await knowledgeNodeExecutor({
+      node: makeKnowledgeNode({ topK: undefined }),
+      state,
+    });
+    expect(retrieveChunksMock).toHaveBeenCalledWith(
+      "what is the policy?",
+      "col-1",
+      6,
+    );
+  });
+
+  it("returns empty results without calling retrieve when no collection", async () => {
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode({ collectionId: undefined }),
+      state,
+    })) as ExecResult;
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
+  });
+
+  it("returns empty results without calling retrieve when query is empty", async () => {
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode({ query: { type: "doc", content: [] } as any }),
+      state,
+    })) as ExecResult;
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
   });
 });
 
