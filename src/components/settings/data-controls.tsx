@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { useArchives } from "@/hooks/queries/use-archives";
 import { Button } from "ui/button";
+import { EmptyState } from "ui/empty-state";
 import { Skeleton } from "ui/skeleton";
 import { ArchiveDialog } from "../archive-dialog";
 import { ExportsManagementContent } from "../chat-preferences-content";
@@ -64,9 +65,11 @@ export function DataControls() {
               ))}
             </div>
           ) : !archives || archives.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              {tArchive("noArchives")}
-            </div>
+            <EmptyState
+              compact
+              icon={FolderSearchIcon}
+              title={tArchive("noArchives")}
+            />
           ) : (
             <ul className="flex flex-col gap-1">
               {archives.map((archive) => (

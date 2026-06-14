@@ -13,6 +13,7 @@ import {
 } from "@/app/api/agent-platform/schedule-actions";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
+import { EmptyState } from "ui/empty-state";
 import { handleErrorWithToast } from "ui/shared-toast";
 import { Switch } from "ui/switch";
 
@@ -49,11 +50,7 @@ export function RoutinesList({ routines }: { routines: RoutineItem[] }) {
   const visible = routines.filter((r) => !deleted[r.id]);
 
   if (visible.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        {t("emptyRoutines")}
-      </div>
-    );
+    return <EmptyState compact icon={Workflow} title={t("emptyRoutines")} />;
   }
 
   const toggle = (id: string, enabled: boolean) => {

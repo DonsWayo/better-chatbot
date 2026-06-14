@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
+import { EmptyState } from "ui/empty-state";
 import { Skeleton } from "ui/skeleton";
 
 // Settings › Personalization › Memory — the transparency surface for user
@@ -162,10 +163,11 @@ export function MemoryManager() {
 
           {/* Memory list */}
           {memories.length === 0 ? (
-            <p className="text-sm text-muted-foreground rounded-lg border border-dashed px-4 py-8 text-center">
-              {t("emptyState")}
-              <span className="block mt-1 text-xs">{t("explicitHint")}</span>
-            </p>
+            <EmptyState
+              compact
+              title={t("emptyState")}
+              description={t("explicitHint")}
+            />
           ) : (
             <div className="flex flex-col gap-3">
               {memories.map((memory) => (

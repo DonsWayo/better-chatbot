@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "ui/dialog";
+import { EmptyState } from "ui/empty-state";
 import { Input } from "ui/input";
 import {
   Table,
@@ -204,13 +205,14 @@ export function KnowledgeCollectionDetail({
           </TableHeader>
           <TableBody>
             {documents.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-center py-8 text-muted-foreground"
-                >
-                  No documents ingested yet. Click &quot;Ingest Document&quot;
-                  to add one.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="p-4">
+                  <EmptyState
+                    icon={FileText}
+                    title="No documents ingested yet"
+                    description={'Click "Ingest Document" to add one.'}
+                    compact
+                  />
                 </TableCell>
               </TableRow>
             ) : (
