@@ -95,28 +95,40 @@ describe("decideNearLive", () => {
     expect(d).toEqual({ action: "refetch" });
   });
 
-  it("shows the banner when the editor is dirty (don't clobber)", () => {
+  it("flags overridden when the editor is dirty (unsaved work superseded)", () => {
+    // A newer remote version landed while we had unsaved dirty edits: the
+    // losing writer's work is overwritten under last-write-wins, so the banner
+    // must mark it as a data-loss override (never clobber silently).
     const d = decideNearLive(
       { lastEditedBy: OTHER, lastEditedAtMs: 5000 },
       cleanIdleState({ editorDirty: true }),
     );
-    expect(d).toEqual({ action: "banner" });
+    expect(d).toEqual({ action: "banner", overridden: true });
   });
 
-  it("shows the banner when the editor is focused (don't clobber)", () => {
+  it("shows the banner (not overridden) when focused but not dirty", () => {
+    // Focused with no unsaved edits → nothing of ours was lost; softer wording.
     const d = decideNearLive(
       { lastEditedBy: OTHER, lastEditedAtMs: 5000 },
       cleanIdleState({ editorFocused: true }),
     );
-    expect(d).toEqual({ action: "banner" });
+    expect(d).toEqual({ action: "banner", overridden: false });
   });
 
-  it("shows the banner when the user typed very recently", () => {
+  it("shows the banner (not overridden) when typed recently but not dirty", () => {
     const d = decideNearLive(
       { lastEditedBy: OTHER, lastEditedAtMs: 5000 },
       cleanIdleState({ msSinceLastEdit: REMOTE_APPLY_IDLE_MS - 1 }),
     );
-    expect(d).toEqual({ action: "banner" });
+    expect(d).toEqual({ action: "banner", overridden: false });
+  });
+
+  it("flags overridden when dirty AND focused (still data loss)", () => {
+    const d = decideNearLive(
+      { lastEditedBy: OTHER, lastEditedAtMs: 5000 },
+      cleanIdleState({ editorDirty: true, editorFocused: true }),
+    );
+    expect(d).toEqual({ action: "banner", overridden: true });
   });
 
   it("treats a null last_edited_by as a foreign change (not self)", () => {

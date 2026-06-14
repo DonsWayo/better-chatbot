@@ -1,89 +1,75 @@
 /**
- * Conek brand lockup, theme-adaptive.
+ * Conek brand lockup — official brand mark + wordmark.
  *
- * Renders the Conek mark — a solid teal circle carrying a white ring whose
- * lower arc is interrupted by an upward triangular peak rising into the
- * ring's center hole, with two legs extending down/outward (an abstract
- * person/peak) — next to a hand-typeset "Conek AI" wordmark. The wordmark
- * uses the foreground color so it adapts to the light/dark theme.
+ * Provenance: the geometry below is the official Conek brand artwork, taken
+ * verbatim from the live site's published assets:
+ *   - mark glyph:   https://conek.dev/icon.svg
+ *   - full wordmark: the inline header logo on https://conek.dev
+ * (Fetched 2026-06; brand teal #3BBFC6 — equivalent to the design-token
+ * hsl(183 55% 50%) already used across the app.)
  *
- * Height is controlled by the caller via `className` (e.g. "h-6"); the mark
- * scales to match.
+ * The mark is a teal signal/antenna glyph; the wordmark spells "conek" in the
+ * brand's custom typeface and uses the foreground color so it adapts to the
+ * light/dark theme. Height is controlled by the caller via `className`
+ * (e.g. "h-7"); the artwork scales to match.
  */
 
-const CONEK_TEAL = "#3ABFC6";
+const CONEK_TEAL = "#3BBFC6";
+
+/** Official mark glyph path (viewBox 0 0 23 27, source: conek.dev wordmark). */
+const CONEK_MARK_D =
+  "M0 10.5609C0 14.5148 2.36601 17.9611 5.86875 19.7711L1.93291 27H6.42086L9.4658 21.4074V27H13.3172V21.1971L16.5771 27H21.094L17.0549 19.8102C20.5996 18.011 23 14.5434 23 10.5609C23 4.72827 17.8513 0 11.5 0C5.14873 0 0 4.72827 0 10.5609ZM9.59633 12.9248L7.61885 16.5568C5.39529 15.3403 3.90566 13.1103 3.90566 10.5609C3.90566 6.70916 7.30576 3.58672 11.5 3.58672C15.6942 3.58672 19.0943 6.70916 19.0943 10.5609C19.0943 13.1553 17.5517 15.4188 15.2628 16.6202L13.1752 12.904C12.8287 12.2873 12.1345 11.9016 11.3788 11.9059C10.6232 11.9103 9.93427 12.3041 9.59633 12.9248Z";
+
+/** Official wordmark letterform paths ("c", "o", "n", "e", "k"), currentColor. */
+const CONEK_WORDMARK_LETTERS = [
+  "M43.0583 27C40.5488 27 38.3902 26.4325 36.5825 25.2976C34.7855 24.1513 33.4031 22.5624 32.4355 20.5309C31.4785 18.4994 31 16.1614 31 13.517C31 10.8386 31.4838 8.48928 32.4515 6.4691C33.4297 4.43758 34.8174 2.85435 36.6144 1.71942C38.4115 0.573139 40.5488 0 43.0264 0C45.1637 0 47.0351 0.414248 48.6408 1.24275C50.2464 2.07125 51.5171 3.23455 52.4528 4.73266C53.3886 6.23077 53.9043 7.98991 54 10.0101H47.5881C47.4073 8.70492 46.9288 7.65511 46.1526 6.86066C45.387 6.05486 44.3821 5.65195 43.138 5.65195C42.0853 5.65195 41.1655 5.95838 40.3786 6.57125C39.6024 7.17276 38.9963 8.05233 38.5603 9.20996C38.1244 10.3676 37.9064 11.7692 37.9064 13.4149C37.9064 15.0832 38.119 16.5019 38.5444 17.6709C38.9804 18.8398 39.5918 19.7308 40.3786 20.3436C41.1655 20.9565 42.0853 21.2629 43.138 21.2629C43.9142 21.2629 44.6107 21.0927 45.2275 20.7522C45.8548 20.4117 46.3706 19.918 46.7746 19.2711C47.1893 18.6129 47.4605 17.8241 47.5881 16.9048H54C53.8937 18.9023 53.3833 20.6614 52.4688 22.1822C51.565 23.6917 50.3155 24.872 48.7205 25.7232C47.1255 26.5744 45.2381 27 43.0583 27Z",
+  "M68.5 27C65.9317 27 63.7105 26.4382 61.8366 25.3146C59.9738 24.1797 58.5353 22.6021 57.5212 20.582C56.5071 18.5504 56 16.1955 56 13.517C56 10.8159 56.5071 8.45523 57.5212 6.43505C58.5353 4.40353 59.9738 2.82598 61.8366 1.70239C63.7105 0.567465 65.9317 0 68.5 0C71.0683 0 73.2839 0.567465 75.1468 1.70239C77.0207 2.82598 78.4647 4.40353 79.4788 6.43505C80.4929 8.45523 81 10.8159 81 13.517C81 16.1955 80.4929 18.5504 79.4788 20.582C78.4647 22.6021 77.0207 24.1797 75.1468 25.3146C73.2839 26.4382 71.0683 27 68.5 27ZM68.5331 21.3821C69.7015 21.3821 70.677 21.0416 71.4597 20.3607C72.2423 19.6683 72.832 18.7264 73.2288 17.5347C73.6367 16.343 73.8406 14.9868 73.8406 13.466C73.8406 11.9451 73.6367 10.5889 73.2288 9.39723C72.832 8.20555 72.2423 7.26355 71.4597 6.57125C70.677 5.87894 69.7015 5.53279 68.5331 5.53279C67.3536 5.53279 66.3616 5.87894 65.5569 6.57125C64.7632 7.26355 64.1625 8.20555 63.7546 9.39723C63.3578 10.5889 63.1594 11.9451 63.1594 13.466C63.1594 14.9868 63.3578 16.343 63.7546 17.5347C64.1625 18.7264 64.7632 19.6683 65.5569 20.3607C66.3616 21.0416 67.3536 21.3821 68.5331 21.3821Z",
+  "M89.3178 11.5913V27H83V0.347042H89.0212V5.04948H89.2881C89.7924 3.49936 90.6377 2.27313 91.8242 1.37082C93.0106 0.45694 94.4492 0 96.1398 0C97.7217 0 99.101 0.404884 100.278 1.21465C101.454 2.02442 102.369 3.18123 103.021 4.68509C103.674 6.17738 104 7.95887 104 10.0296V27H97.6822V11.3483C97.6921 9.71722 97.3362 8.44473 96.6144 7.53085C95.8927 6.6054 94.899 6.14267 93.6335 6.14267C92.7832 6.14267 92.0318 6.35668 91.3792 6.7847C90.7366 7.21272 90.2323 7.8374 89.8665 8.65874C89.5106 9.46851 89.3277 10.446 89.3178 11.5913Z",
+  "M117.947 27C115.47 27 113.337 26.4552 111.55 25.3657C109.773 24.2648 108.404 22.71 107.442 20.7011C106.481 18.681 106 16.2919 106 13.534C106 10.8443 106.481 8.48361 107.442 6.45208C108.404 4.42055 109.758 2.83733 111.503 1.70239C113.259 0.567465 115.318 0 117.68 0C119.269 0 120.748 0.278057 122.117 0.834173C123.497 1.37894 124.699 2.20177 125.723 3.30265C126.758 4.40353 127.563 5.78815 128.138 7.45649C128.713 9.11349 129 11.0542 129 13.2787V15.2705H108.665V10.7762H122.713C122.713 9.73203 122.504 8.80706 122.086 8.00126C121.668 7.19546 121.088 6.56557 120.346 6.1116C119.614 5.64628 118.762 5.41362 117.79 5.41362C116.776 5.41362 115.877 5.66898 115.093 6.1797C114.32 6.67907 113.714 7.35435 113.275 8.20555C112.836 9.0454 112.611 9.98171 112.601 11.0145V15.2875C112.601 16.5813 112.82 17.6992 113.259 18.6412C113.708 19.5832 114.341 20.3096 115.156 20.8203C115.971 21.331 116.938 21.5864 118.057 21.5864C118.799 21.5864 119.478 21.4729 120.095 21.2459C120.711 21.0189 121.239 20.6784 121.678 20.2245C122.117 19.7705 123.191 18.9559 122.876 16.2165H129C128.868 20.668 128.317 21.8622 126.975 23.4074C125.974 24.5603 124.725 25.343 123.199 26.0126C121.683 26.6709 119.933 27 117.947 27Z",
+  "M137.085 18.5182L137.101 9.86849H138.078L145.834 0H153.543L143.123 13.0677H141.531L137.085 18.5182ZM131 26V5.19525e-06L137.716 0V26H131ZM146.134 26L139.008 14.6758L143.485 9.58073L154 26H146.134Z",
+];
 
 /**
- * Mark-only variant: the white glyph drawn in `currentColor`, no background
- * circle. For surfaces where the old transparent-background mark was used.
+ * Mark-only variant: the official Conek glyph drawn in `currentColor`, no
+ * background tile. For surfaces where a single-color mark is wanted.
  */
 export function ConekMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox="0 0 23 27"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       aria-hidden="true"
       fill="currentColor"
     >
-      <mask id="conek-peak-gap">
-        <rect width="100" height="100" fill="white" />
-        {/* enlarged peak cuts a gap through the ring's lower arc */}
-        <polygon points="46,32 54,32 70,70 30,70" fill="black" />
-      </mask>
-      <path
-        fillRule="evenodd"
-        mask="url(#conek-peak-gap)"
-        d="M50 21a24 24 0 1 1 0 48 24 24 0 0 1 0-48Zm0 11a13 13 0 1 0 0 26 13 13 0 0 0 0-26Z"
-      />
-      {/* the peak itself, inset from the gap so the cut stays visible */}
-      <polygon points="50,33 65,66 35,66" />
-      {/* legs from the ring's bottom-left / bottom-right, down and outward */}
-      <path
-        d="M31 61 22 84M69 61l9 23"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        fill="none"
-      />
+      <path fillRule="evenodd" clipRule="evenodd" d={CONEK_MARK_D} />
     </svg>
   );
 }
 
+/**
+ * Full Conek lockup: the official teal mark followed by the "conek" wordmark.
+ * The wordmark uses `currentColor` (foreground), so it adapts to the theme.
+ */
 export function ConekLogo({ className = "h-7" }: { className?: string }) {
   return (
-    <span className={`flex items-center gap-2 ${className}`}>
-      <svg
-        viewBox="0 0 100 100"
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-full w-auto"
-        role="img"
-        aria-label="Conek"
-      >
-        <circle cx="50" cy="50" r="50" fill={CONEK_TEAL} />
-        <g fill="#fff">
-          <mask id="conek-peak-gap-full">
-            <rect width="100" height="100" fill="white" />
-            <polygon points="46,32 54,32 70,70 30,70" fill="black" />
-          </mask>
-          <path
-            fillRule="evenodd"
-            mask="url(#conek-peak-gap-full)"
-            d="M50 21a24 24 0 1 1 0 48 24 24 0 0 1 0-48Zm0 11a13 13 0 1 0 0 26 13 13 0 0 0 0-26Z"
-          />
-          <polygon points="50,33 65,66 35,66" />
-          <path
-            d="M31 61 22 84M69 61l9 23"
-            stroke="#fff"
-            strokeWidth="7"
-            strokeLinecap="round"
-            fill="none"
-          />
-        </g>
-      </svg>
-      <span className="text-xl font-extrabold tracking-tight text-foreground leading-none">
-        Conek AI
-      </span>
-    </span>
+    <svg
+      viewBox="0 0 154 27"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`w-auto ${className}`}
+      role="img"
+      aria-label="Conek"
+      fill="none"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d={CONEK_MARK_D}
+        fill={CONEK_TEAL}
+      />
+      {CONEK_WORDMARK_LETTERS.map((d) => (
+        <path key={d.slice(0, 12)} d={d} fill="currentColor" />
+      ))}
+    </svg>
   );
 }

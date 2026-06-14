@@ -81,7 +81,19 @@ export interface NearLiveState {
 export type NearLiveDecision =
   | { action: "ignore"; reason: string }
   | { action: "refetch" }
-  | { action: "banner" };
+  | {
+      action: "banner";
+      /**
+       * True when the local editor has UNSAVED DIRTY edits at the moment a
+       * newer remote version landed — i.e. the remote write has superseded
+       * (overridden) the in-progress local work under last-write-wins. The UI
+       * uses this to make the banner explicit about data loss ("Your unsaved
+       * changes were overridden …") rather than the softer "updated by someone
+       * else" message shown when the editor is merely focused / recently typed
+       * but not actually dirty.
+       */
+      overridden: boolean;
+    };
 
 /**
  * Core near-live reconciliation decision (last-write-wins, non-destructive):
@@ -93,7 +105,9 @@ export type NearLiveDecision =
  *               can silently pull their version in (last-write-wins);
  *   - banner  — another user saved BUT the local editor is dirty or focused or
  *               recently edited, so overwriting would clobber in-progress work;
- *               show "Updated by … — click to reload" instead.
+ *               show a non-destructive reload banner instead. When the editor is
+ *               actually dirty, `overridden` is true so the UI can warn the
+ *               losing writer that their unsaved changes were superseded.
  *
  * Pure: callers feed it observable state and act on the returned action.
  */
@@ -128,6 +142,8 @@ export function decideNearLive(
   if (idle) {
     return { action: "refetch" };
   }
-  // Dirty / focused / recently typed → never clobber; offer a reload.
-  return { action: "banner" };
+  // Dirty / focused / recently typed → never clobber; offer a reload. When the
+  // editor is actually dirty, the newer remote version has superseded unsaved
+  // local work, so flag it so the UI can warn the losing writer explicitly.
+  return { action: "banner", overridden: state.editorDirty };
 }

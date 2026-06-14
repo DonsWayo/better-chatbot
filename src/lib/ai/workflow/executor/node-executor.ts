@@ -276,8 +276,28 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     state,
   );
 
+  // Resolve the node's output shape from its outputSchema GENERICALLY, instead
+  // of assuming a hard-coded "answer" property. The schema's own property names
+  // drive both the provider call and the keys we write into the node output, so
+  // downstream nodes can reference whatever the author named them.
+  //
+  // Behaviour (backward-compatible):
+  //   - exactly ONE property whose type is "string"   → text branch
+  //       (generateText) → output { [prop]: text }.
+  //       A `{ answer: { type: "string" } }` schema (the historical default)
+  //       therefore still produces `{ answer }` exactly as before.
+  //   - exactly ONE non-string property               → object branch
+  //       (generateObject against THAT property's schema) → output
+  //       { [prop]: object }. A `{ answer: { type: "object" } }` schema still
+  //       produces `{ answer: <object> }` as before.
+  //   - ZERO or MULTIPLE properties                    → object branch
+  //       (generateObject against the WHOLE outputSchema) → the generated
+  //       object is spread so every schema property is a top-level output key.
+  const properties = node.outputSchema.properties ?? {};
+  const propertyKeys = Object.keys(properties);
+  const singleKey = propertyKeys.length === 1 ? propertyKeys[0] : undefined;
   const isTextResponse =
-    node.outputSchema.properties?.answer?.type === "string";
+    singleKey !== undefined && properties[singleKey]?.type === "string";
 
   state.setInput(node.id, {
     chatModel,
@@ -295,18 +315,30 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     return {
       output: {
         totalTokens: response.usage.totalTokens,
-        // W7: output-stage scrub (system-prompt-leak markers) per policy
-        answer: applyOutputGuardrails(response.text, state),
+        // W7: output-stage scrub (system-prompt-leak markers) per policy.
+        // Keyed by the schema's own property name (e.g. "answer", "summary").
+        [singleKey!]: applyOutputGuardrails(response.text, state),
       },
     };
   }
 
+  // Object branch. A single non-string property generates against that
+  // property's sub-schema and is nested under its key (legacy `answer:object`
+  // shape preserved); zero/multiple properties generate against the whole
+  // outputSchema and are spread so each property becomes a top-level key.
+  const generateAgainst =
+    singleKey !== undefined ? properties[singleKey] : node.outputSchema;
+
   const response = await generateObject({
     model,
     messages: convertToModelMessages(messages),
-    schema: jsonSchemaToZod(node.outputSchema.properties.answer),
+    schema: jsonSchemaToZod(generateAgainst),
     maxRetries: 3,
   });
+
+  // W7: object-branch output scrub (parity with the text branch) — the object
+  // is serialized so leak markers in string fields are scrubbed too.
+  const scrubbed = scrubObjectOutput(response.object, state);
 
   // W3: attribute this provider call to the executing user + team budget.
   recordNodeUsage(state, chatModel, response.usage, node.id);
@@ -314,9 +346,9 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
   return {
     output: {
       totalTokens: response.usage.totalTokens,
-      // W7: object-branch output scrub (parity with the text branch) — the
-      // object is serialized so leak markers in string fields are scrubbed too.
-      answer: scrubObjectOutput(response.object, state),
+      ...(singleKey !== undefined
+        ? { [singleKey]: scrubbed } // nest under the single property's name
+        : (scrubbed as object)), // spread multi/zero-property objects
     },
   };
 };

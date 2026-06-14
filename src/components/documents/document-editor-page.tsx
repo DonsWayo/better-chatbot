@@ -94,6 +94,10 @@ export function DocumentEditorPage({
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [panel, setPanel] = useState<SidePanel>("none");
   const [remoteBanner, setRemoteBanner] = useState(false);
+  // True when the banner is up because a newer remote version superseded our
+  // own UNSAVED dirty edits (data-loss case) — drives the explicit "overridden"
+  // wording vs the softer "updated by someone else" message.
+  const [remoteOverridden, setRemoteOverridden] = useState(false);
 
   const editorRef = useRef<Editor | null>(null);
   // Latest editor JSON + the last-confirmed-saved snapshot, for dirty checks.
@@ -201,6 +205,7 @@ export function DocumentEditorPage({
     setTeamId(fresh.teamId);
     editorRef.current?.commands.setContent(fresh.content);
     setRemoteBanner(false);
+    setRemoteOverridden(false);
     setStatus("saved");
   }, [initialDoc.id]);
 
@@ -224,10 +229,19 @@ export function DocumentEditorPage({
         void reloadFromServer();
       } else if (decision.action === "banner") {
         setRemoteBanner(true);
+        // Data-loss case: a newer version overrode our unsaved edits. Warn the
+        // losing writer explicitly (and only once per override) — never clobber
+        // silently. The non-dirty/focused case keeps the softer wording.
+        if (decision.overridden) {
+          setRemoteOverridden((already) => {
+            if (!already) toast.warning(t("remoteOverridden"));
+            return true;
+          });
+        }
       }
       // "ignore" → no-op.
     },
-    [reloadFromServer, selfUserId, title],
+    [reloadFromServer, selfUserId, t, title],
   );
 
   // ── visibility save ──────────────────────────────────────────────────────
@@ -413,10 +427,25 @@ export function DocumentEditorPage({
                 type="button"
                 onClick={reloadFromServer}
                 data-testid="document-remote-banner"
-                className="mb-4 flex w-full items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-primary/10"
+                data-overridden={remoteOverridden ? "true" : "false"}
+                className={cn(
+                  "mb-4 flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-left text-sm transition-colors",
+                  remoteOverridden
+                    ? "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"
+                    : "border-primary/40 bg-primary/5 hover:bg-primary/10",
+                )}
               >
-                <AlertCircle className="size-4 shrink-0 text-primary" />
-                <span className="flex-1">{t("remoteUpdated")}</span>
+                <AlertCircle
+                  className={cn(
+                    "size-4 shrink-0",
+                    remoteOverridden ? "text-destructive" : "text-primary",
+                  )}
+                />
+                <span className="flex-1">
+                  {remoteOverridden
+                    ? t("remoteOverridden")
+                    : t("remoteUpdated")}
+                </span>
                 <span className="text-xs font-medium text-primary">
                   {t("reload")}
                 </span>

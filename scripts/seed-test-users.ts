@@ -358,7 +358,15 @@ async function seedTestUsers() {
       regularUser?.id,
     ].filter(Boolean) as string[];
     if (userIdsForSampleData.length > 0) {
-      await seedSampleUsageData(userIdsForSampleData);
+      // Sample usage data is decorative, not required for any test. Never let a
+      // failure here (e.g. a server-only transitive import under raw tsx) fail
+      // the whole seed — all essential rows (users, accounts, AUP) are already
+      // written by this point.
+      try {
+        await seedSampleUsageData(userIdsForSampleData);
+      } catch (err) {
+        console.warn("⚠️ Skipped optional sample usage data:", err);
+      }
     } else {
       console.warn("⚠️ No valid user IDs found for sample data creation");
     }

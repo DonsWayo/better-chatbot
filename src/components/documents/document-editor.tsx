@@ -77,6 +77,11 @@ function ToolbarButton({
           aria-label={label}
           aria-pressed={active}
           disabled={disabled}
+          // Keep the toolbar out of the natural Tab sequence so Tab moves
+          // title input → editor body (ProseMirror), not title → toolbar
+          // buttons. The buttons remain reachable by mouse and the editor body
+          // keeps its own focus; this restores the expected writing flow.
+          tabIndex={-1}
           onClick={onClick}
           className={cn(
             "size-8 rounded-lg text-muted-foreground hover:text-foreground",
@@ -157,7 +162,12 @@ export function DocumentEditor({
     if (!editor || !editable) return null;
     return (
       <div
-        className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-xl border border-border/60 bg-background/80 px-1.5 py-1 backdrop-blur"
+        // Single row that scrolls horizontally on narrow viewports (≈380px)
+        // instead of wrapping to two rows: flex-nowrap + overflow-x-auto +
+        // scrollbar-hide. Buttons keep their intrinsic size (shrink-0) so they
+        // never squash; desktop is unaffected (the row simply fits without
+        // needing to scroll).
+        className="sticky top-0 z-10 flex flex-nowrap items-center gap-0.5 overflow-x-auto scrollbar-hide rounded-xl border border-border/60 bg-background/80 px-1.5 py-1 backdrop-blur [&>*]:shrink-0"
         data-testid="document-toolbar"
       >
         <ToolbarButton

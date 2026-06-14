@@ -1307,6 +1307,7 @@
     "deleteDescription": "This permanently deletes the document and its history. This cannot be undone.",
     "deleted": "Document deleted",
     "remoteUpdated": "This document was updated by someone else.",
+    "remoteOverridden": "Your unsaved changes were overridden by a newer version — review before continuing.",
     "reload": "Reload",
     "editorPlaceholder": "Start writing…",
     "linkPrompt": "Enter a URL",

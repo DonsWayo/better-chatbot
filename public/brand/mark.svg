@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Conek mark: teal circle, white ring interrupted by a peak, two legs -->
-  <circle cx="50" cy="50" r="50" fill="#3ABFC6"/>
-  <mask id="conek-peak-gap">
-    <rect width="100" height="100" fill="white"/>
-    <polygon points="46,32 54,32 70,70 30,70" fill="black"/>
-  </mask>
-  <path fill="#fff" fill-rule="evenodd" mask="url(#conek-peak-gap)" d="M50 21a24 24 0 1 1 0 48 24 24 0 0 1 0-48Zm0 11a13 13 0 1 0 0 26 13 13 0 0 0 0-26Z"/>
-  <polygon fill="#fff" points="50,33 65,66 35,66"/>
-  <path d="M31 61 22 84M69 61l9 23" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"/>
+<!-- Official Conek brand mark. Source: https://conek.dev/icon.svg -->
+<svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="30" height="30" rx="5" fill="#1A1A1A"/>
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M5 11.9963C5 15.3645 7.0574 18.3002 10.1032 19.8421L6.68084 26H10.5833L13.2311 21.236V26H16.5802V21.0568L19.4149 26H23.3426L19.8304 19.8753C22.9126 18.3427 25 15.3888 25 11.9963C25 7.02776 20.5228 3 14.9999 3C9.47719 3 5 7.02776 5 11.9963ZM13.3447 14.01L11.6251 17.1039C9.69151 16.0677 8.39623 14.1681 8.39623 11.9963C8.39623 8.71515 11.3528 6.05532 14.9999 6.05532C18.6471 6.05532 21.6038 8.71515 21.6038 11.9963C21.6038 14.2064 20.2623 16.1346 18.272 17.1579L16.4566 13.9923C16.1554 13.467 15.5517 13.1384 14.8946 13.1421C14.2376 13.1459 13.6384 13.4812 13.3447 14.01Z" fill="#3BBFC6"/>
 </svg>

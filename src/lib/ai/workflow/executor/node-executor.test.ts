@@ -552,6 +552,162 @@ describe("llmNodeExecutor — model confinement (ADR-0009)", () => {
   });
 });
 
+// ── Generic outputSchema property names (not hard-coded "answer") ───────────
+// A QA-found bug: an LLM node whose outputSchema uses a property name other
+// than "answer" silently produced nothing. The node output must reflect
+// whatever the schema defines, while the historical "answer" shape keeps
+// working byte-for-byte.
+
+// Build an LLM node with a fully custom outputSchema.
+const makeSchemaLLMNode = (
+  schema: { type: "object"; properties: Record<string, any> },
+  text = "hi",
+): LLMNodeData =>
+  ({
+    id: "llm-generic-1",
+    name: "AskGeneric",
+    kind: NodeKind.LLM,
+    model: { provider: "openai", model: "gpt-test" },
+    messages: [{ role: "user", content: tiptapDoc(text) }],
+    outputSchema: schema,
+  }) as unknown as LLMNodeData;
+
+describe("llmNodeExecutor — generic outputSchema property names", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    estimateCostUsdMock.mockReturnValue(0.0123);
+  });
+
+  it("single string property named 'summary' uses the text branch and outputs under that key", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { totalTokens: 4 },
+      text: "a short summary",
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: { summary: { type: "string" } },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, unknown>;
+    // Value lives under "summary" (NOT "answer"), and there is no "answer" key.
+    expect(out.summary).toBe("a short summary");
+    expect(out).not.toHaveProperty("answer");
+    // Text branch was used (generateText, not generateObject).
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(generateObject).not.toHaveBeenCalled();
+  });
+
+  it("single non-string property named 'result' uses the object branch nested under that key", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      usage: { inputTokens: 2, outputTokens: 2, totalTokens: 4 },
+      object: { city: "Paris", lat: 48.8 },
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: {
+          result: {
+            type: "object",
+            properties: { city: { type: "string" }, lat: { type: "number" } },
+          },
+        },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, any>;
+    expect(out.result).toEqual({ city: "Paris", lat: 48.8 });
+    expect(out).not.toHaveProperty("answer");
+    expect(generateObject).toHaveBeenCalledTimes(1);
+  });
+
+  it("multiple top-level properties are spread as top-level output keys", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      usage: { inputTokens: 3, outputTokens: 3, totalTokens: 6 },
+      object: { title: "Hello", score: 9 },
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          score: { type: "number" },
+        },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, unknown>;
+    // Each schema property is reachable as a top-level key, plus totalTokens.
+    expect(out.title).toBe("Hello");
+    expect(out.score).toBe(9);
+    expect(out.totalTokens).toBe(6);
+    expect(out).not.toHaveProperty("answer");
+  });
+
+  it("a non-'answer' key is reachable by downstream nodes via getOutput(nodeId, path)", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { totalTokens: 2 },
+      text: "downstream-visible",
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const node = makeSchemaLLMNode({
+      type: "object",
+      properties: { summary: { type: "string" } },
+    });
+    const result = await llmNodeExecutor({ node, state });
+
+    // Simulate the runtime storing the node output, then a downstream node
+    // reading it by path — exactly how outputNodeExecutor / mentions resolve.
+    const downstreamState = makeState(
+      {},
+      { [node.id]: result.output as Record<string, unknown> },
+    );
+    const value = downstreamState.getOutput<string>({
+      nodeId: node.id,
+      path: ["summary"],
+    });
+    expect(value).toBe("downstream-visible");
+  });
+
+  it("backward-compat: a single string 'answer' property still outputs under 'answer' (text branch)", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { totalTokens: 5 },
+      text: "legacy answer",
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: { answer: { type: "string" } },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, unknown>;
+    expect(out.answer).toBe("legacy answer");
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(generateObject).not.toHaveBeenCalled();
+  });
+});
+
 describe("llmNodeExecutor — object-branch output scrub (W7 parity)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
