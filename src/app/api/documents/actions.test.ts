@@ -67,14 +67,30 @@ describe("document server actions", () => {
     it("forwards title+content to the repository", async () => {
       repo.updateDocument.mockResolvedValue({ id: DOC });
       const { updateDocumentAction } = await import("./actions");
-      const content = { type: "doc", content: [] };
-      const res = await updateDocumentAction(DOC, { title: "T", content });
+      // content crosses the boundary as a JSON STRING (see updateDocumentAction);
+      // the action parses it and forwards the object to the repo. This also
+      // guards the attrs-corruption fix: a heading level must survive.
+      const content = {
+        type: "doc",
+        content: [{ type: "heading", attrs: { level: 2 } }],
+      };
+      const res = await updateDocumentAction(DOC, {
+        title: "T",
+        content: JSON.stringify(content),
+      });
       expect(res.success).toBe(true);
       expect(repo.updateDocument).toHaveBeenCalledWith(
         DOC,
         { title: "T", content },
         USER,
       );
+    });
+
+    it("rejects malformed JSON content", async () => {
+      const { updateDocumentAction } = await import("./actions");
+      const res = await updateDocumentAction(DOC, { content: "{not json" });
+      expect(res).toEqual({ success: false, error: "Invalid document content" });
+      expect(repo.updateDocument).not.toHaveBeenCalled();
     });
 
     it("surfaces a repo Forbidden as a structured ActionResult", async () => {
@@ -86,7 +102,7 @@ describe("document server actions", () => {
 
     it("rejects an absurdly large content payload before writing", async () => {
       const { updateDocumentAction } = await import("./actions");
-      const huge = { type: "doc", blob: "x".repeat(4_000_001) };
+      const huge = JSON.stringify({ type: "doc", blob: "x".repeat(4_000_001) });
       const res = await updateDocumentAction(DOC, { content: huge });
       expect(res).toEqual({
         success: false,

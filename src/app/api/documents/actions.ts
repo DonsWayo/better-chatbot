@@ -103,13 +103,28 @@ export async function listDocumentsAction(): Promise<
 
 export async function updateDocumentAction(
   id: string,
-  patch: { title?: string; content?: Record<string, unknown> },
+  // `content` is a JSON STRING of the ProseMirror doc, not a raw object: the
+  // Server-Action argument encoder corrupts nested `attrs` objects (heading
+  // level, link href) into a "$T" placeholder. A string round-trips intact.
+  patch: { title?: string; content?: string },
 ): Promise<ActionResult<DocumentEntity>> {
   return toActionResult(async () => {
     const userId = await requireUserId();
-    assertSaneContent(patch.content);
+    let content: Record<string, unknown> | undefined;
+    if (patch.content !== undefined) {
+      try {
+        content = JSON.parse(patch.content) as Record<string, unknown>;
+      } catch {
+        throw new Error("Invalid document content");
+      }
+      assertSaneContent(content);
+    }
     // checkAccess(manage/edit) is enforced inside the repository mutation.
-    return documentRepository.updateDocument(id, patch, userId);
+    return documentRepository.updateDocument(
+      id,
+      { title: patch.title, content },
+      userId,
+    );
   });
 }
 

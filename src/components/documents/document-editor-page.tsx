@@ -116,7 +116,12 @@ export function DocumentEditorPage({
     setStatus("saving");
     const result = await updateDocumentAction(initialDoc.id, {
       title: current.title,
-      content: current.content,
+      // Serialize the ProseMirror JSON to a string: the Server-Action argument
+      // encoder mangles nested `attrs` objects (heading level, link href) into a
+      // "$T" placeholder, silently dropping them. A JSON string round-trips
+      // intact; the action JSON.parses it back. (The server→client read path
+      // is fine — only the client→action arg path is affected.)
+      content: JSON.stringify(current.content),
     });
     savingRef.current = false;
     if (!result.success) {
