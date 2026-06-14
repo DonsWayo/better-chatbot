@@ -43,6 +43,7 @@
     "resultsFound": "{count} résultats trouvés",
     "youAreAnExpertIn": "Vous êtes un expert en {role}",
     "sharedBy": "Partagé par {userName}",
+    "retry": "Réessayer",
     "error": "Une erreur est survenue"
   },
   "Error": {},
@@ -415,7 +416,8 @@
     "settings": "Paramètres",
     "adminConsole": "Console d'administration",
     "studio": "Studio",
-    "documents": "Documents"
+    "documents": "Documents",
+    "seeAllDocuments": "Voir tout"
   },
   "Archive": {
     "title": "Archive",

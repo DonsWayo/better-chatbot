@@ -5,6 +5,8 @@ import { SHAPE_PROXY_PATH } from "lib/realtime/shapes";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { ErrorBoundary } from "@/components/error-boundary";
+
 /**
  * Live island for the read-only shared thread view (phase 2 realtime,
  * read-path only — see content/docs/collaboration/realtime.mdx).
@@ -102,7 +104,12 @@ export function LiveThreadMessages({ threadId }: { threadId: string }) {
   }, []);
 
   if (!shapeUrl) return null;
+  // Contain a useShape long-poll crash: this island is a best-effort change
+  // signal (the server already rendered the messages), so failing soft to null
+  // is correct — it must never white-screen the shared thread view.
   return (
-    <LiveThreadMessagesSubscriber threadId={threadId} shapeUrl={shapeUrl} />
+    <ErrorBoundary fallback={null}>
+      <LiveThreadMessagesSubscriber threadId={threadId} shapeUrl={shapeUrl} />
+    </ErrorBoundary>
   );
 }

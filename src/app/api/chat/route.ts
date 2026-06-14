@@ -109,31 +109,50 @@ export async function POST(request: Request) {
     const aupGate = await aupGateResponse(session.user.id);
     if (aupGate) return aupGate;
 
+    // PARALLEL setup group 1 — pure reads keyed only by userId with no data
+    // dependency on each other, so we overlap them instead of awaiting serially
+    // (perf: fewer sequential DB round-trips before streaming):
+    //   - getUserPrimaryTeamId — primary team for ENTITLEMENTS/BILLING (below)
+    //   - resolveEffectiveToolPolicy — per-tool restrictions AND-ed across ALL
+    //     the user's teams (most-restrictive wins; now TTL-cached in teams.ts)
+    //   - resolveStrictestGuardrailPolicy — strictest guardrail posture across
+    //     ALL the user's teams (also TTL-cached)
+    // All side-effect-free; the order they resolve in cannot affect enforcement.
+    // NOTE: checkRateLimit is deliberately NOT in this group — it MUTATES (it
+    // increments the per-user bucket), and the kill switch must be able to
+    // return BEFORE a token is consumed, exactly as in the pre-parallel order.
+    const [userTeamId, effectiveToolPolicy, strictestGuardrail] =
+      await Promise.all([
+        getUserPrimaryTeamId(session.user.id),
+        resolveEffectiveToolPolicy(session.user.id),
+        resolveStrictestGuardrailPolicy(session.user.id),
+      ]);
+
     // ENTITLEMENTS / BILLING stay keyed to the PRIMARY team (model allow-list +
     // budget): an allow-list intersection across many teams would lock out
-    // multi-team users. userTeamId/teamPolicy below are used for those + for
-    // capabilities (vision/image/speech) and team-scoped audit/usage attribution.
-    const userTeamId = await getUserPrimaryTeamId(session.user.id);
-    const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
+    // multi-team users. teamPolicy is used for capabilities (vision/image/
+    // speech) and as the guardrail fallback. It DEPENDS on userTeamId, so it is
+    // resolved after group 1 (and in parallel with the kill-switch read, which
+    // also needs userTeamId). getTeamPolicy is itself TTL-cached.
+    const [teamPolicy, killSwitchResp] = await Promise.all([
+      userTeamId ? getTeamPolicy(userTeamId) : Promise.resolve(null),
+      // W12: kill switch — operator can block all inference instantly.
+      checkKillSwitch(userTeamId),
+    ]);
 
     // RESTRICTIONS are resolved across ALL the user's teams (most-restrictive
-    // wins) — see lib/admin/teams.ts. Per-tool flags are AND-ed (a tool is
-    // bound only if EVERY team allows it) and the guardrail posture is the
-    // strictest among the user's teams. This closes the "escape via a looser
-    // team" hole the primary-team-only resolution left open. It only ever
-    // removes tools / tightens scanning — it never locks a user out of chat.
-    const effectiveToolPolicy = await resolveEffectiveToolPolicy(
-      session.user.id,
-    );
+    // wins) — see lib/admin/teams.ts. The guardrail posture falls back to the
+    // primary team's posture (then org default) when the user has no team.
     const effectiveGuardrailPolicy =
-      (await resolveStrictestGuardrailPolicy(session.user.id)) ??
-      teamPolicy?.guardrailPolicy;
+      strictestGuardrail ?? teamPolicy?.guardrailPolicy;
 
-    // W12: kill switch — operator can block all inference instantly, no deploy required
-    const killSwitchResp = await checkKillSwitch(userTeamId);
+    // W12: kill switch — EARLY RETURN preserved BEFORE the rate-limit bucket is
+    // touched, so a killed request never consumes a token (same guard ordering
+    // as before parallelization).
     if (killSwitchResp) return killSwitchResp;
 
-    // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe)
+    // asafe-ai: per-user rate limiting (Postgres-backed, multi-pod safe). Runs
+    // (and increments the bucket) only after the kill-switch return.
     const rateCheck = await checkRateLimit(session.user.id);
     const rateLimitHeaders = {
       "X-RateLimit-Limit": String(rateCheck.limit),
@@ -488,50 +507,59 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
-        const MCP_TOOLS = await safe()
-          .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
-          .map(() =>
-            loadMcpTools({
-              mentions,
-              allowedMcpServers,
-            }),
-          )
-          .orElse({});
+        // PARALLEL tool loading — the three loaders are independent (each builds
+        // a disjoint tool map and shares no mutable state), but were previously
+        // awaited one after another. Overlap them so the slowest (MCP, which can
+        // hit remote servers) sets the floor instead of the sum. The same
+        // gate/guardrail/team-policy transforms are applied per-loader exactly
+        // as before — only the awaits are overlapped.
+        const [MCP_TOOLS, WORKFLOW_TOOLS, APP_DEFAULT_TOOLS] =
+          await Promise.all([
+            safe()
+              .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
+              .map(() =>
+                loadMcpTools({
+                  mentions,
+                  allowedMcpServers,
+                }),
+              )
+              .orElse({}),
 
-        const WORKFLOW_TOOLS = await safe()
-          .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
-          .map(() =>
-            loadWorkFlowTools({
-              mentions,
-              dataStream,
-              // W7: workflow LLM nodes scan with the invoking user's STRICTEST
-              // team posture (most-restrictive across all their teams).
-              guardrailCtx: {
-                userId: session.user.id,
-                policy: effectiveGuardrailPolicy,
-              },
-            }),
-          )
-          .orElse({});
+            safe()
+              .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
+              .map(() =>
+                loadWorkFlowTools({
+                  mentions,
+                  dataStream,
+                  // W7: workflow LLM nodes scan with the invoking user's
+                  // STRICTEST team posture (most-restrictive across all teams).
+                  guardrailCtx: {
+                    userId: session.user.id,
+                    policy: effectiveGuardrailPolicy,
+                  },
+                }),
+              )
+              .orElse({}),
 
-        const APP_DEFAULT_TOOLS = await safe()
-          .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
-          .map(() =>
-            loadAppDefaultTools({
-              mentions,
-              allowedAppDefaultToolkit,
-              userId: session.user.id,
-            }),
-          )
-          // Per-tool team policy (Feature B): strip web-search / code-exec /
-          // http tools the team has disabled — applied AFTER canUseTools so it
-          // further-restricts WITHIN the allowed set, even for elevated users.
-          // Uses the MOST-RESTRICTIVE policy across ALL the user's teams (AND),
-          // not just the primary team, so a tool disabled on any team is gone.
-          .map((tools) =>
-            filterAppDefaultToolsByTeamPolicy(tools, effectiveToolPolicy),
-          )
-          .orElse({});
+            safe()
+              .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
+              .map(() =>
+                loadAppDefaultTools({
+                  mentions,
+                  allowedAppDefaultToolkit,
+                  userId: session.user.id,
+                }),
+              )
+              // Per-tool team policy (Feature B): strip web-search / code-exec /
+              // http tools the team has disabled — applied AFTER canUseTools so
+              // it further-restricts WITHIN the allowed set, even for elevated
+              // users. Uses the MOST-RESTRICTIVE policy across ALL the user's
+              // teams (AND), so a tool disabled on any team is gone.
+              .map((tools) =>
+                filterAppDefaultToolsByTeamPolicy(tools, effectiveToolPolicy),
+              )
+              .orElse({}),
+          ]);
         const inProgressToolParts = extractInProgressToolPart(message);
         if (inProgressToolParts.length) {
           await Promise.all(
@@ -572,19 +600,28 @@ export async function POST(request: Request) {
           .map((v) => filterMcpServerCustomizations(MCP_TOOLS!, v))
           .orElse({});
 
-        // Wave 6 phase 2 (ADR-0007): hybrid retrieval (pgvector + FTS, RRF)
-        // across every mentioned collection the user can access. The payload
-        // carries a deduped [Source N] list that is attached to the message
-        // metadata so the UI can render citations.
-        let ragContext: string | null = null;
-        if (knowledgeCollectionIds.length > 0) {
-          const lastUserMessage = messages.findLast((m) => m.role === "user");
-          const queryText =
-            lastUserMessage?.parts
-              ?.map((p) => (p.type === "text" ? p.text : ""))
-              ?.filter(Boolean)
-              ?.join(" ") ?? "";
-          if (queryText) {
+        // PARALLEL context build — RAG retrieval and user-memory injection are
+        // two INDEPENDENT external calls (each does its own embedText round-trip
+        // to the embedding service) whose only shared output is the system
+        // prompt assembled below. They read no shared mutable state (RAG only
+        // sets metadata.ragSources; memory only produces a string), so we
+        // overlap them instead of running embedText twice in series. Both keep
+        // their own try/catch so a failure in one never blocks the chat or the
+        // other — identical fail-soft semantics to before.
+        const [ragContext, memoryBlock] = await Promise.all([
+          // Wave 6 phase 2 (ADR-0007): hybrid retrieval (pgvector + FTS, RRF)
+          // across every mentioned collection the user can access. The payload
+          // carries a deduped [Source N] list attached to the message metadata
+          // so the UI can render citations.
+          (async (): Promise<string | null> => {
+            if (knowledgeCollectionIds.length === 0) return null;
+            const lastUserMessage = messages.findLast((m) => m.role === "user");
+            const queryText =
+              lastUserMessage?.parts
+                ?.map((p) => (p.type === "text" ? p.text : ""))
+                ?.filter(Boolean)
+                ?.join(" ") ?? "";
+            if (!queryText) return null;
             const ragPayload = await retrieveForChat(
               queryText,
               knowledgeCollectionIds,
@@ -595,32 +632,31 @@ export async function POST(request: Request) {
               logger.error("RAG retrieval failed", e);
               return null;
             });
-            if (ragPayload) {
-              ragContext = ragPayload.context;
-              metadata.ragSources = ragPayload.sources;
-            }
-          }
-        }
+            if (!ragPayload) return null;
+            metadata.ragSources = ragPayload.sources;
+            return ragPayload.context;
+          })(),
 
-        // asafe-ai user memory (docs/design/user-memory.md): persistent
-        // <user_memory> block injected into the system prompt. Gated by the
-        // layered org→team policy and the user's tri-state mode; temporary
-        // chats are excluded automatically (they use /api/chat/temporary and
-        // never reach this route). Failures must never block the chat.
-        let memoryBlock: string | null = null;
-        try {
-          if ((userPreferences?.memoryMode ?? "on") === "on") {
-            const memoryPolicy = await resolveMemoryPolicy(userTeamId);
-            if (memoryPolicy.enabled) {
-              memoryBlock = await buildMemoryPromptBlock(
+          // asafe-ai user memory (docs/design/user-memory.md): persistent
+          // <user_memory> block injected into the system prompt. Gated by the
+          // layered org→team policy and the user's tri-state mode; temporary
+          // chats are excluded automatically (they use /api/chat/temporary and
+          // never reach this route). Failures must never block the chat.
+          (async (): Promise<string | null> => {
+            try {
+              if ((userPreferences?.memoryMode ?? "on") !== "on") return null;
+              const memoryPolicy = await resolveMemoryPolicy(userTeamId);
+              if (!memoryPolicy.enabled) return null;
+              return await buildMemoryPromptBlock(
                 session.user.id,
                 lastUserText,
               );
+            } catch (e) {
+              logger.error("memory injection failed:", e);
+              return null;
             }
-          }
-        } catch (e) {
-          logger.error("memory injection failed:", e);
-        }
+          })(),
+        ]);
 
         const systemPrompt = mergeSystemPrompt(
           buildUserSystemPrompt(session.user, userPreferences, agent),

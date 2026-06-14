@@ -43,6 +43,7 @@
     "resultsFound": "{count} resultater funnet",
     "youAreAnExpertIn": "Du er en ekspert på {role}",
     "sharedBy": "Delt av {userName}",
+    "retry": "Prøv igjen",
     "error": "Noe gikk galt"
   },
   "Error": {},
@@ -414,7 +415,8 @@
     "settings": "Innstillinger",
     "adminConsole": "Administrasjonskonsoll",
     "studio": "Studio",
-    "documents": "Dokumenter"
+    "documents": "Dokumenter",
+    "seeAllDocuments": "Se alle"
   },
   "Archive": {
     "title": "Arkiv",

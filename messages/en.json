@@ -43,6 +43,7 @@
     "resultsFound": "{count} results found",
     "youAreAnExpertIn": "You are an expert in {role}",
     "sharedBy": "Shared by {userName}",
+    "retry": "Retry",
     "error": "Something went wrong"
   },
   "Error": {},
@@ -414,7 +415,8 @@
     "settings": "Settings",
     "adminConsole": "Admin console",
     "studio": "Studio",
-    "documents": "Documents"
+    "documents": "Documents",
+    "seeAllDocuments": "See all"
   },
   "Archive": {
     "title": "Archive",

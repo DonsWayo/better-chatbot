@@ -36,12 +36,34 @@ function dedupe(models: string[]): string[] {
   return Array.from(new Set(models));
 }
 
+// The org base allow-list is read on EVERY chat request (via getTeamPolicy and
+// resolveTeamModelAllowList) but changes only when an admin edits the org
+// catalog. Cache it in-process for a short TTL — same Map+TTL shape as the
+// caches in teams.ts. Invalidated synchronously on setOrgBaseModelAllowList.
+let _orgBaseAllowListCache:
+  | { value: string[] | null; expiresAt: number }
+  | undefined;
+const ORG_BASE_ALLOW_LIST_TTL_MS = 30_000;
+
+/**
+ * Clear the in-process org-base allow-list cache. Called on write; also
+ * exported so tests can force a fresh DB read between cases.
+ */
+export function clearOrgBaseModelAllowListCache(): void {
+  _orgBaseAllowListCache = undefined;
+}
+
 /**
  * The org-wide BASE model allow-list.
  * `null` = no restriction configured (all approved models allowed).
  * Fails open (null) if the settings table is unreachable.
+ * Cached in-process for 30 s (invalidated on write).
  */
 export async function getOrgBaseModelAllowList(): Promise<string[] | null> {
+  const now = Date.now();
+  if (_orgBaseAllowListCache && _orgBaseAllowListCache.expiresAt > now) {
+    return _orgBaseAllowListCache.value;
+  }
   try {
     const [row] = await db
       .select({ value: AsafeOrgSettingsTable.value })
@@ -50,15 +72,20 @@ export async function getOrgBaseModelAllowList(): Promise<string[] | null> {
       .limit(1);
 
     const value = row?.value;
-    if (Array.isArray(value)) {
-      return dedupe(value.filter((v): v is string => typeof v === "string"));
-    }
-    return null;
+    const resolved: string[] | null = Array.isArray(value)
+      ? dedupe(value.filter((v): v is string => typeof v === "string"))
+      : null;
+    _orgBaseAllowListCache = {
+      value: resolved,
+      expiresAt: now + ORG_BASE_ALLOW_LIST_TTL_MS,
+    };
+    return resolved;
   } catch (e) {
     // Fail open: an unreadable settings store must not lock everyone out, but
-    // a broken entitlement layer must be observable.
+    // a broken entitlement layer must be observable. Serve last-known-good if
+    // we have it (even if expired) rather than flapping to unrestricted.
     logger.error("org base model allow-list resolution failed", e);
-    return null;
+    return _orgBaseAllowListCache?.value ?? null;
   }
 }
 
@@ -80,6 +107,8 @@ export async function setOrgBaseModelAllowList(
       target: AsafeOrgSettingsTable.key,
       set: { value, updatedAt: new Date() },
     });
+  // Invalidate the in-process cache so the new catalog applies immediately.
+  clearOrgBaseModelAllowListCache();
 }
 
 /**

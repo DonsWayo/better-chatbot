@@ -348,6 +348,9 @@ export async function addTeamMember(
       target: [AsafeTeamMemberTable.teamId, AsafeTeamMemberTable.userId],
       set: { role },
     });
+  // Membership changed → the user's resolved cross-team restrictions may differ.
+  clearUserPolicyCaches();
+  _teamIdCache.delete(userId);
 }
 
 /**
@@ -366,6 +369,9 @@ export async function removeTeamMember(memberId: string, teamId?: string) {
           )
         : eq(AsafeTeamMemberTable.id, memberId),
     );
+  // Membership removed → resolved cross-team restrictions may differ. No cheap
+  // memberId→userId reverse lookup here, so clear-all (cheap to re-derive).
+  clearUserPolicyCaches();
 }
 
 /**
@@ -487,6 +493,8 @@ export async function updateTeam(
 
 export async function deleteTeam(teamId: string) {
   await db.delete(AsafeTeamTable).where(eq(AsafeTeamTable.id, teamId));
+  _teamPolicyCache.delete(teamId);
+  clearUserPolicyCaches();
 }
 
 // ---------------------------------------------------------------------------
@@ -671,8 +679,10 @@ export async function updateTeamPolicy(
     .update(AsafeTeamTable)
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(AsafeTeamTable.id, teamId));
-  // Invalidate cache
+  // Invalidate cache. The per-team policy AND the per-user resolved
+  // restrictions (which fan out from getTeamPolicy) both go stale here.
   _teamPolicyCache.delete(teamId);
+  clearUserPolicyCaches();
 }
 
 // ---------------------------------------------------------------------------
@@ -729,6 +739,47 @@ async function getAllUserTeamIds(userId: string): Promise<string[]> {
   return rows.map((r) => r.teamId);
 }
 
+// ---------------------------------------------------------------------------
+// Per-user resolved-restriction caches (hot path).
+//
+// resolveEffectiveToolPolicy / resolveStrictestGuardrailPolicy scan
+// asafe_team_member across ALL the user's teams on EVERY chat message, then
+// fan out a getTeamPolicy per team. That's the multi-team policy resolver the
+// perf audit flagged as adding per-request latency. We cache the FINAL
+// resolved restriction (keyed by userId) for a short TTL — same Map+TTL shape
+// as _teamPolicyCache / _teamIdCache above.
+//
+// Staleness is bounded and safe: membership/policy changes are reflected
+// within the TTL, and every admin mutation that already invalidates
+// _teamPolicyCache also clears these (clearUserPolicyCaches). Per-team
+// membership mutations have no cheap reverse index user→teams, so they
+// clear-all rather than risk serving a stale restriction — the resolved value
+// is tiny and re-derived on the next request, so a full clear is cheap.
+//
+// These are RESTRICTIONS (soft tool flags + guardrail posture). They are NOT
+// budget/spend, which must stay live — those are never cached here.
+// ---------------------------------------------------------------------------
+
+const _effectiveToolPolicyCache = new Map<
+  string,
+  { policy: EffectiveToolPolicy; expiresAt: number }
+>();
+const _strictestGuardrailCache = new Map<
+  string,
+  { policy: string | undefined; expiresAt: number }
+>();
+const USER_POLICY_CACHE_TTL_MS = 30_000;
+
+/**
+ * Invalidate the per-user resolved-restriction caches (all users). Called by
+ * the membership/policy mutations below; also exported so other admin paths
+ * (and tests) can force a fresh resolve.
+ */
+export function clearUserPolicyCaches(): void {
+  _effectiveToolPolicyCache.clear();
+  _strictestGuardrailCache.clear();
+}
+
 /**
  * Resolve the user's effective PER-TOOL restrictions across ALL their teams
  * (logical AND). A tool is available only if every one of the user's teams
@@ -742,19 +793,32 @@ async function getAllUserTeamIds(userId: string): Promise<string[]> {
 export async function resolveEffectiveToolPolicy(
   userId: string,
 ): Promise<EffectiveToolPolicy> {
+  const now = Date.now();
+  const cached = _effectiveToolPolicyCache.get(userId);
+  if (cached && cached.expiresAt > now) return cached.policy;
+
   try {
     const teamIds = await getAllUserTeamIds(userId);
+    let policy: EffectiveToolPolicy;
     if (teamIds.length === 0) {
       // No team → no per-tool restriction (matches getTeamPolicy's no-team path).
-      return { allowWebSearch: true, allowCodeExec: true, allowHttp: true };
+      policy = { allowWebSearch: true, allowCodeExec: true, allowHttp: true };
+    } else {
+      const policies = await Promise.all(
+        teamIds.map((id) => getTeamPolicy(id)),
+      );
+      policy = {
+        // AND across every team: false the moment ANY team disables the tool.
+        allowWebSearch: policies.every((p) => p.allowWebSearch),
+        allowCodeExec: policies.every((p) => p.allowCodeExec),
+        allowHttp: policies.every((p) => p.allowHttp),
+      };
     }
-    const policies = await Promise.all(teamIds.map((id) => getTeamPolicy(id)));
-    return {
-      // AND across every team: false the moment ANY team disables the tool.
-      allowWebSearch: policies.every((p) => p.allowWebSearch),
-      allowCodeExec: policies.every((p) => p.allowCodeExec),
-      allowHttp: policies.every((p) => p.allowHttp),
-    };
+    _effectiveToolPolicyCache.set(userId, {
+      policy,
+      expiresAt: now + USER_POLICY_CACHE_TTL_MS,
+    });
+    return policy;
   } catch (e) {
     logger.error("resolveEffectiveToolPolicy failed", e);
     // Soft controls fail OPEN so a transient DB error never strips a user's
@@ -775,14 +839,26 @@ export async function resolveEffectiveToolPolicy(
 export async function resolveStrictestGuardrailPolicy(
   userId: string,
 ): Promise<string | undefined> {
+  const now = Date.now();
+  const cached = _strictestGuardrailCache.get(userId);
+  if (cached && cached.expiresAt > now) return cached.policy;
+
   try {
     const teamIds = await getAllUserTeamIds(userId);
-    if (teamIds.length === 0) return undefined;
-    const policies = await Promise.all(teamIds.map((id) => getTeamPolicy(id)));
-    return policies.reduce<string>(
-      (acc, p) => stricterGuardrail(acc, p.guardrailPolicy),
-      "permissive",
-    );
+    const policy =
+      teamIds.length === 0
+        ? undefined
+        : (
+            await Promise.all(teamIds.map((id) => getTeamPolicy(id)))
+          ).reduce<string>(
+            (acc, p) => stricterGuardrail(acc, p.guardrailPolicy),
+            "permissive",
+          );
+    _strictestGuardrailCache.set(userId, {
+      policy,
+      expiresAt: now + USER_POLICY_CACHE_TTL_MS,
+    });
+    return policy;
   } catch (e) {
     logger.error("resolveStrictestGuardrailPolicy failed", e);
     // Hard safety control: never silently downgrade — assume strictest.

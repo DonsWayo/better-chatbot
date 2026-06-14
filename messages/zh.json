@@ -43,6 +43,7 @@
     "resultsFound": "找到 {count} 个结果",
     "youAreAnExpertIn": "您是{role}专家",
     "sharedBy": "{userName} 分享",
+    "retry": "重试",
     "error": "出错了"
   },
   "Error": {},
@@ -415,7 +416,8 @@
     "settings": "设置",
     "adminConsole": "管理控制台",
     "studio": "工作室",
-    "documents": "文档"
+    "documents": "文档",
+    "seeAllDocuments": "查看全部"
   },
   "Archive": {
     "title": "归档",

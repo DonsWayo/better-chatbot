@@ -9,8 +9,8 @@ import {
 import type { Editor } from "@tiptap/react";
 import type { DocumentEntity } from "lib/db/pg/repositories/document-repository.pg";
 import { notify } from "lib/notify";
-import type { Visibility } from "lib/visibility";
 import { cn } from "lib/utils";
+import type { Visibility } from "lib/visibility";
 import {
   AlertCircle,
   ArrowLeft,
@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { Button } from "ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
+import { ErrorBoundary } from "../error-boundary";
 import { PresenceAvatars } from "../realtime/presence-avatars";
 import { VisibilityField } from "../visibility/visibility-field";
 import { DocumentComments } from "./document-comments";
@@ -462,21 +463,37 @@ export function DocumentEditorPage({
               className="mb-4 w-full border-none bg-transparent text-3xl font-bold outline-none placeholder:text-muted-foreground/50 disabled:cursor-default"
             />
 
-            <DocumentEditor
-              initialContent={initialDoc.content}
-              editable={canEdit}
-              editorRef={(e) => {
-                editorRef.current = e;
-              }}
-              onUpdate={handleEditorUpdate}
-              onFocus={() => {
-                focusedRef.current = true;
-              }}
-              onBlur={() => {
-                focusedRef.current = false;
-                void flushSave();
-              }}
-            />
+            {/* Contain a TipTap crash to a calm inline fallback: a broken editor
+                must not blank the whole document page (header, history, comments
+                stay usable; reload recovers). */}
+            <ErrorBoundary
+              fallback={({ retry }) => (
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                  <p className="mb-3">
+                    The editor failed to load. Your saved content is safe.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={retry}>
+                    {tRoot("Common.retry")}
+                  </Button>
+                </div>
+              )}
+            >
+              <DocumentEditor
+                initialContent={initialDoc.content}
+                editable={canEdit}
+                editorRef={(e) => {
+                  editorRef.current = e;
+                }}
+                onUpdate={handleEditorUpdate}
+                onFocus={() => {
+                  focusedRef.current = true;
+                }}
+                onBlur={() => {
+                  focusedRef.current = false;
+                  void flushSave();
+                }}
+              />
+            </ErrorBoundary>
           </div>
         </div>
 

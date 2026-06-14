@@ -96,6 +96,7 @@ vi.mock("logger", () => ({
 
 import {
   ORG_BASE_MODEL_ALLOW_LIST_KEY,
+  clearOrgBaseModelAllowListCache,
   getOrgBaseModelAllowList,
   resolveModelAllowList,
   resolveTeamModelAllowList,
@@ -105,6 +106,9 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // getOrgBaseModelAllowList now caches in-process — clear between cases so
+  // each test reads its own mocked org rows.
+  clearOrgBaseModelAllowListCache();
   state.orgRows = [];
   state.teamRows = [];
   state.orgSelectThrows = false;

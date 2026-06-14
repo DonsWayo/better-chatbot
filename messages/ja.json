@@ -43,6 +43,7 @@
     "resultsFound": "{count}件の結果が見つかりました",
     "youAreAnExpertIn": "あなたは{role}の専門家です",
     "sharedBy": "{userName}さんが共有",
+    "retry": "再試行",
     "error": "問題が発生しました"
   },
   "Error": {},
@@ -415,7 +416,8 @@
     "settings": "設定",
     "adminConsole": "管理コンソール",
     "studio": "スタジオ",
-    "documents": "ドキュメント"
+    "documents": "ドキュメント",
+    "seeAllDocuments": "すべて表示"
   },
   "Archive": {
     "title": "アーカイブ",

@@ -43,6 +43,7 @@
     "resultsFound": "{count}개의 결과 찾음",
     "youAreAnExpertIn": "당신은 {role} 전문가입니다",
     "sharedBy": "{userName}님이 공유함",
+    "retry": "다시 시도",
     "error": "문제가 발생했습니다"
   },
   "Error": {},
@@ -415,7 +416,8 @@
     "settings": "설정",
     "adminConsole": "관리 콘솔",
     "studio": "스튜디오",
-    "documents": "문서"
+    "documents": "문서",
+    "seeAllDocuments": "모두 보기"
   },
   "Archive": {
     "title": "아카이브",

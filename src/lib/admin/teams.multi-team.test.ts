@@ -157,12 +157,18 @@ function members(policies: Array<Partial<TeamRow>>): Array<{ teamId: string }> {
   return rows;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   h.state.memberRows = [];
   h.state.teamPolicyRows = {};
   h.state.lastTeamId = undefined;
   h.state.membershipThrows = false;
+  // The resolvers now keep a per-user (userId-keyed) TTL cache. Tests reuse the
+  // same userId ("u1") across cases, so clear it between tests to force a fresh
+  // cross-team resolve (the same reason the suite uses unique teamIds to dodge
+  // getTeamPolicy's per-team cache).
+  const { clearUserPolicyCaches } = await import("./teams");
+  clearUserPolicyCaches();
 });
 
 afterEach(() => {

@@ -62,6 +62,7 @@ import {
   DEFAULT_MEMORY_POLICY,
   ORG_MEMORY_ENABLED_KEY,
   ORG_MEMORY_IMPLICIT_EXTRACTION_KEY,
+  clearMemoryPolicyCache,
   isMemoryMode,
   listTeamMemoryOverrides,
   resolveMemoryLayers,
@@ -78,6 +79,8 @@ beforeEach(() => {
   h.state.likeRows = [];
   h.state.selectThrows = false;
   vi.clearAllMocks();
+  // resolveMemoryPolicy now caches per-team (and per-org) — clear between cases.
+  clearMemoryPolicyCache();
 });
 
 describe("defaults", () => {
