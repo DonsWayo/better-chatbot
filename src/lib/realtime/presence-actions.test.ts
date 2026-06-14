@@ -18,6 +18,7 @@ const h = vi.hoisted(() => {
     getSessionMock: vi.fn(),
     canReadThreadMock: vi.fn(),
     canAccessFolderMock: vi.fn(),
+    checkDocAccessMock: vi.fn(),
   };
 });
 
@@ -25,6 +26,9 @@ vi.mock("auth/server", () => ({ getSession: h.getSessionMock }));
 vi.mock("lib/teamspaces/folders", () => ({
   canReadThread: h.canReadThreadMock,
   canAccessFolder: h.canAccessFolderMock,
+}));
+vi.mock("lib/db/repository", () => ({
+  documentRepository: { checkAccess: h.checkDocAccessMock },
 }));
 vi.mock("lib/db/pg/db.pg", () => ({
   pgDb: { insert: h.insertMock },
@@ -35,6 +39,7 @@ import { heartbeatPresenceAction } from "./presence-actions";
 const USER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 const THREAD_ID = "11111111-2222-4333-8444-555555555555";
 const FOLDER_ID = "99999999-8888-4777-8666-555555555555";
+const DOCUMENT_ID = "77777777-6666-4555-8444-333333333333";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -43,6 +48,7 @@ beforeEach(() => {
   h.getSessionMock.mockResolvedValue({ user: { id: USER_ID } });
   h.canReadThreadMock.mockResolvedValue(true);
   h.canAccessFolderMock.mockResolvedValue(true);
+  h.checkDocAccessMock.mockResolvedValue(true);
 });
 
 describe("heartbeatPresenceAction — session", () => {
@@ -92,6 +98,36 @@ describe("heartbeatPresenceAction — access gates", () => {
     expect(h.canAccessFolderMock).toHaveBeenCalledWith(FOLDER_ID, USER_ID);
     expect(h.canReadThreadMock).not.toHaveBeenCalled();
     expect(h.insertMock).not.toHaveBeenCalled();
+  });
+
+  it("document context: denies when checkAccess is false", async () => {
+    h.checkDocAccessMock.mockResolvedValue(false);
+    await expect(
+      heartbeatPresenceAction("document", DOCUMENT_ID),
+    ).rejects.toThrow("Forbidden");
+    expect(h.checkDocAccessMock).toHaveBeenCalledWith(
+      DOCUMENT_ID,
+      USER_ID,
+      true,
+    );
+    expect(h.insertMock).not.toHaveBeenCalled();
+  });
+
+  it("document context: upserts a row when checkAccess passes", async () => {
+    await heartbeatPresenceAction("document", DOCUMENT_ID);
+    expect(h.checkDocAccessMock).toHaveBeenCalledWith(
+      DOCUMENT_ID,
+      USER_ID,
+      true,
+    );
+    expect(h.valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: USER_ID,
+        contextType: "document",
+        contextId: DOCUMENT_ID,
+      }),
+    );
+    expect(h.onConflictMock).toHaveBeenCalledTimes(1);
   });
 });
 

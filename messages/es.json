@@ -413,7 +413,8 @@
     "inbox": "Bandeja de entrada",
     "settings": "Configuración",
     "adminConsole": "Consola de administración",
-    "studio": "Estudio"
+    "studio": "Estudio",
+    "documents": "Documentos"
   },
   "Archive": {
     "title": "Archivo",
@@ -1284,6 +1285,65 @@
       "mcpContent": "Conecta y delimita los servidores de herramientas de la empresa, con pruebas de conexión en vivo.",
       "flagsTitle": "Feature flags",
       "flagsContent": "Activa o desactiva capacidades de la plataforma sin desplegar."
+    }
+  },
+  "Documents": {
+    "title": "Documentos",
+    "subtitle": "Documentos colaborativos con texto enriquecido",
+    "newDocument": "Nuevo documento",
+    "untitled": "Sin título",
+    "emptyTitle": "Aún no hay documentos",
+    "emptyDescription": "Crea tu primer documento para empezar a escribir.",
+    "editedRelative": "Editado {when}",
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveError": "No se pudo guardar",
+    "backToList": "Volver a documentos",
+    "delete": "Eliminar documento",
+    "deleteTitle": "Eliminar documento",
+    "deleteDescription": "Esto elimina permanentemente el documento y su historial. No se puede deshacer.",
+    "deleted": "Documento eliminado",
+    "remoteUpdated": "Otra persona actualizó este documento.",
+    "reload": "Recargar",
+    "editorPlaceholder": "Empieza a escribir…",
+    "linkPrompt": "Introduce una URL",
+    "toolbar": {
+      "h1": "Título 1",
+      "h2": "Título 2",
+      "h3": "Título 3",
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "strike": "Tachado",
+      "code": "Código en línea",
+      "link": "Enlace",
+      "bulletList": "Lista con viñetas",
+      "orderedList": "Lista numerada",
+      "blockquote": "Cita",
+      "codeBlock": "Bloque de código",
+      "horizontalRule": "Separador"
+    },
+    "history": {
+      "title": "Historial de versiones",
+      "close": "Cerrar historial",
+      "saveVersion": "Guardar versión",
+      "saved": "Versión guardada",
+      "restore": "Restaurar",
+      "restored": "Versión restaurada",
+      "restoreTitle": "¿Restaurar esta versión?",
+      "restoreDescription": "Primero se guarda una instantánea del documento actual, así puedes deshacerlo.",
+      "empty": "Aún no hay versiones guardadas."
+    },
+    "comments": {
+      "title": "Comentarios",
+      "close": "Cerrar comentarios",
+      "empty": "Sé el primero en comentar.",
+      "placeholder": "Escribe un comentario…",
+      "reply": "Responder",
+      "delete": "Eliminar",
+      "send": "Enviar",
+      "replyingTo": "Respondiendo a {name}",
+      "deleteTitle": "Eliminar comentario",
+      "deleteDescription": "¿Seguro que quieres eliminar este comentario?"
     }
   }
 }

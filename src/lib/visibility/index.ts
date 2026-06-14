@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import {
   AgentTable,
+  AsafeDocumentTable,
   AsafeKnowledgeCollectionTable,
   EntityGrantTable,
   UserTable,
@@ -48,7 +49,8 @@ export type GrantableEntityType =
   | "thread"
   | "folder"
   | "knowledge_collection"
-  | "mcp_server";
+  | "mcp_server"
+  | "document";
 
 const CAPABILITY_RANK: Record<Capability, number> = {
   view: 0,
@@ -226,6 +228,23 @@ async function loadEntity(
         .limit(1);
       if (!row) return null;
       return knowledgeCollectionEntity(row);
+    }
+    case "document": {
+      const [row] = await db
+        .select({
+          ownerId: AsafeDocumentTable.userId,
+          visibility: AsafeDocumentTable.visibility,
+          teamId: AsafeDocumentTable.teamId,
+        })
+        .from(AsafeDocumentTable)
+        .where(eq(AsafeDocumentTable.id, entityId))
+        .limit(1);
+      if (!row) return null;
+      return {
+        ownerId: row.ownerId,
+        visibility: row.visibility,
+        teamIds: row.teamId ? [row.teamId] : null,
+      };
     }
     default:
       // TODO(visibility): wire thread, folder and mcp_server loaders in

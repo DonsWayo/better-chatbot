@@ -1517,4 +1517,89 @@
   .transition-colors-300 {
     @apply transition-colors duration-300;
   }
+
+  /* Collaborative document editor (TipTap) prose styling. The project doesn't
+     ship @tailwindcss/typography, so document headings/lists/quotes/code are
+     styled here using the app's CSS tokens so they track the active theme. */
+  .document-prose {
+    color: var(--foreground);
+    font-size: 1rem;
+    line-height: 1.7;
+    word-break: break-word;
+  }
+  .document-prose > * + * {
+    margin-top: 0.75em;
+  }
+  .document-prose h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-top: 1.4em;
+  }
+  .document-prose h2 {
+    font-size: 1.5rem;
+    font-weight: 650;
+    line-height: 1.25;
+    margin-top: 1.2em;
+  }
+  .document-prose h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1em;
+  }
+  .document-prose ul,
+  .document-prose ol {
+    padding-left: 1.5rem;
+  }
+  .document-prose ul {
+    list-style: disc;
+  }
+  .document-prose ol {
+    list-style: decimal;
+  }
+  .document-prose li > p {
+    margin: 0;
+  }
+  .document-prose blockquote {
+    border-left: 3px solid var(--primary);
+    padding-left: 1rem;
+    color: var(--muted-foreground);
+    font-style: italic;
+  }
+  .document-prose code {
+    background: var(--muted);
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.875em;
+    font-family: var(--font-mono), monospace;
+  }
+  .document-prose pre {
+    background: var(--muted);
+    border-radius: 0.6rem;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+  }
+  .document-prose pre code {
+    background: transparent;
+    padding: 0;
+  }
+  .document-prose hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5em 0;
+  }
+  .document-prose a,
+  .document-link {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .document-prose .is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--muted-foreground);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
 }

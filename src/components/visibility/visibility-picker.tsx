@@ -50,7 +50,7 @@ import { handleErrorWithToast } from "ui/shared-toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 
 /** The entity types this picker can manage grants for (subset of the model). */
-export type VisibilityPickerEntityType = "workflow" | "agent";
+export type VisibilityPickerEntityType = "workflow" | "agent" | "document";
 
 export interface TeamOption {
   id: string;

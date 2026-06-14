@@ -1,0 +1,96 @@
+---
+title: Documents
+description: Confluence/Notion-style collaborative rich-text documents — near-live sync, sharing, threaded comments, and version history.
+---
+
+Documents are collaborative rich-text pages, available to **every authenticated
+user** (personal/collaborative content like chat threads — not builder-gated).
+Open **Documents** in the sidebar to see the docs you own plus any
+shared/team/company docs you can read, then create a new one or open an existing
+page.
+
+## The editor
+
+The editor is built on [TipTap](https://tiptap.dev) (ProseMirror) and stores its
+content as ProseMirror JSON in `asafe_document.content`. The toolbar covers the
+StarterKit block + mark set:
+
+- Headings (H1–H3), **bold**, _italic_, ~~strikethrough~~, `inline code`
+- Bullet and numbered lists, block quotes, code blocks, horizontal rules
+- Links (paste a URL onto a selection, or use the link button)
+
+Everything is themed with the app's tokens (teal primary), so headings, lists,
+quotes and code track light/dark mode.
+
+## Autosave
+
+Edits to the title and body are **debounced (~1s)** and persisted via
+`updateDocumentAction`. A status pill shows **Saving… / Saved / Couldn't save**.
+The pending write is **flushed on blur, on tab-hide, and on navigation away**, so
+you never lose edits by leaving the page. A failed save raises a toast — edits
+are never silently dropped.
+
+## Near-live sync
+
+Realtime here is **near-live**, not character-by-character co-editing: a soft
+single-author model with **last-write-wins**, scoped to the open page.
+
+While you have a document open, the page subscribes to an
+[Electric](/docs/collaboration/realtime) **change-signal** shape for that one doc
+— `id, updated_at, last_edited_by, last_edited_at` only, **never** the heavy
+content. When the signal shows that **someone else** saved:
+
+- if your editor is **clean and idle**, the new version is fetched and applied
+  silently (last-write-wins);
+- if your editor is **dirty or focused** (you have unsaved, in-progress edits),
+  nothing is overwritten — instead a non-destructive banner appears:
+  _"This document was updated by someone else — Reload"_. You decide when to pull
+  their version in.
+
+Your own saves echo back through the same shape; they're recognised
+(`last_edited_by` is you, plus a short post-save grace window) and ignored.
+
+### Network-idle safety
+
+The change-signal subscriber and the presence heartbeat mount **only** on
+`/documents/[id]`, and they tear down on unmount. The **/documents list page and
+the sidebar hold no open connection**, and the comments panel polls only while
+it is open. So normal app pages open **zero** new realtime connections and
+end-to-end `networkidle` waits are unaffected.
+
+## Presence
+
+A calm avatar stack shows who else is currently viewing/editing the page,
+reusing the shared presence island over `asafe_presence`
+(`context_type = 'document'`). Heartbeats fire only while the page is open and
+the tab is visible; a viewer simply ages out of the active window when they
+leave.
+
+## Sharing
+
+The visibility picker is the same unified control used for agents and workflows
+([visibility model](/docs/collaboration/visibility)):
+
+- **Private** — only you (reverting to private revokes any lingering grants);
+- **Shared** — specific people, by email, at view/edit/manage capability;
+- **Team** — members of a chosen team;
+- **Company** — everyone in the org (admins only).
+
+Anyone who can **read** a doc can comment on it; **edit** access (owner/admin or
+an edit/manage grant) is required to change the body, rename, re-share or delete.
+
+## Comments
+
+Open the comments panel to leave threaded comments (one level of replies).
+Comments are stored in `asafe_document_comment` (cascades with the document) and
+are realtime **via polling**: while the panel is open and the tab is visible it
+re-fetches every few seconds, so other people's comments and deletions appear
+live without holding a connection. Anyone who can read the doc can comment; you
+can delete your own comments, and org admins can moderate any.
+
+## Version history
+
+The history panel lists saved versions (newest first). **Save version**
+snapshots the current state into `asafe_document_revision`; **Restore** brings a
+past version back — and because restore snapshots the current state first, it's
+itself undoable.

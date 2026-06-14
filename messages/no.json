@@ -413,7 +413,8 @@
     "inbox": "Innboks",
     "settings": "Innstillinger",
     "adminConsole": "Administrasjonskonsoll",
-    "studio": "Studio"
+    "studio": "Studio",
+    "documents": "Dokumenter"
   },
   "Archive": {
     "title": "Arkiv",
@@ -1284,6 +1285,65 @@
       "mcpContent": "Koble til og avgrens bedriftens verktøyservere, med live tilkoblingstester.",
       "flagsTitle": "Funksjonsflagg",
       "flagsContent": "Slå plattformfunksjoner av og på uten utrulling."
+    }
+  },
+  "Documents": {
+    "title": "Dokumenter",
+    "subtitle": "Samarbeidsdokumenter med rik tekst",
+    "newDocument": "Nytt dokument",
+    "untitled": "Uten tittel",
+    "emptyTitle": "Ingen dokumenter ennå",
+    "emptyDescription": "Opprett ditt første dokument for å begynne å skrive.",
+    "editedRelative": "Redigert {when}",
+    "saving": "Lagrer…",
+    "saved": "Lagret",
+    "saveError": "Kunne ikke lagre",
+    "backToList": "Tilbake til dokumenter",
+    "delete": "Slett dokument",
+    "deleteTitle": "Slett dokument",
+    "deleteDescription": "Dette sletter dokumentet og historikken permanent. Kan ikke angres.",
+    "deleted": "Dokument slettet",
+    "remoteUpdated": "Dette dokumentet ble oppdatert av noen andre.",
+    "reload": "Last inn på nytt",
+    "editorPlaceholder": "Begynn å skrive…",
+    "linkPrompt": "Skriv inn en URL",
+    "toolbar": {
+      "h1": "Overskrift 1",
+      "h2": "Overskrift 2",
+      "h3": "Overskrift 3",
+      "bold": "Fet",
+      "italic": "Kursiv",
+      "strike": "Gjennomstreking",
+      "code": "Innebygd kode",
+      "link": "Lenke",
+      "bulletList": "Punktliste",
+      "orderedList": "Nummerert liste",
+      "blockquote": "Sitat",
+      "codeBlock": "Kodeblokk",
+      "horizontalRule": "Skillelinje"
+    },
+    "history": {
+      "title": "Versjonshistorikk",
+      "close": "Lukk historikk",
+      "saveVersion": "Lagre versjon",
+      "saved": "Versjon lagret",
+      "restore": "Gjenopprett",
+      "restored": "Versjon gjenopprettet",
+      "restoreTitle": "Gjenopprette denne versjonen?",
+      "restoreDescription": "Det nåværende dokumentet tas et øyeblikksbilde av først, så du kan angre.",
+      "empty": "Ingen lagrede versjoner ennå."
+    },
+    "comments": {
+      "title": "Kommentarer",
+      "close": "Lukk kommentarer",
+      "empty": "Vær den første til å kommentere.",
+      "placeholder": "Skriv en kommentar…",
+      "reply": "Svar",
+      "delete": "Slett",
+      "send": "Send",
+      "replyingTo": "Svarer {name}",
+      "deleteTitle": "Slett kommentar",
+      "deleteDescription": "Er du sikker på at du vil slette denne kommentaren?"
     }
   }
 }

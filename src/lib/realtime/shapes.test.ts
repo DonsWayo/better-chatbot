@@ -9,11 +9,12 @@ import {
 } from "./shapes";
 
 describe("shape whitelist", () => {
-  it("serves exactly the three known shapes", () => {
+  it("serves exactly the four known shapes", () => {
     expect(WHITELISTED_SHAPE_TABLES).toEqual([
       "chat_message",
       "agent_session",
       "asafe_presence",
+      "document",
     ]);
   });
 
@@ -27,9 +28,10 @@ describe("shape whitelist", () => {
 });
 
 describe("presence context types", () => {
-  it("accepts thread and folder only", () => {
+  it("accepts thread, folder and document only", () => {
     expect(isPresenceContextType("thread")).toBe(true);
     expect(isPresenceContextType("folder")).toBe(true);
+    expect(isPresenceContextType("document")).toBe(true);
     expect(isPresenceContextType("workspace")).toBe(false);
     expect(isPresenceContextType("")).toBe(false);
     expect(isPresenceContextType(null)).toBe(false);

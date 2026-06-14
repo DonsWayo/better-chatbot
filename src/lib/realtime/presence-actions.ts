@@ -3,6 +3,7 @@
 import { getSession } from "auth/server";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import { AsafePresenceTable } from "lib/db/pg/schema.pg";
+import { documentRepository } from "lib/db/repository";
 import {
   type PresenceContextType,
   isPresenceContextType,
@@ -48,7 +49,10 @@ export async function heartbeatPresenceAction(
   const allowed =
     contextType === "thread"
       ? await canReadThread(contextId, userId)
-      : await canAccessFolder(contextId, userId);
+      : contextType === "folder"
+        ? await canAccessFolder(contextId, userId)
+        : // document: read access on the doc (unified visibility).
+          await documentRepository.checkAccess(contextId, userId, true);
   if (!allowed) {
     throw new Error("Forbidden");
   }

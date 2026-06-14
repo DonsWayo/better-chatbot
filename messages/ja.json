@@ -414,7 +414,8 @@
     "inbox": "受信トレイ",
     "settings": "設定",
     "adminConsole": "管理コンソール",
-    "studio": "スタジオ"
+    "studio": "スタジオ",
+    "documents": "ドキュメント"
   },
   "Archive": {
     "title": "アーカイブ",
@@ -1285,6 +1286,65 @@
       "mcpContent": "社内ツールサーバーを接続してスコープを設定します。接続テストもその場で行えます。",
       "flagsTitle": "フィーチャーフラグ",
       "flagsContent": "デプロイなしでプラットフォーム機能のオン・オフを切り替えます。"
+    }
+  },
+  "Documents": {
+    "title": "ドキュメント",
+    "subtitle": "共同編集できるリッチテキスト ドキュメント",
+    "newDocument": "新規ドキュメント",
+    "untitled": "無題",
+    "emptyTitle": "まだドキュメントがありません",
+    "emptyDescription": "最初のドキュメントを作成して書き始めましょう。",
+    "editedRelative": "{when} に編集",
+    "saving": "保存中…",
+    "saved": "保存しました",
+    "saveError": "保存できませんでした",
+    "backToList": "ドキュメント一覧に戻る",
+    "delete": "ドキュメントを削除",
+    "deleteTitle": "ドキュメントを削除",
+    "deleteDescription": "ドキュメントと履歴が完全に削除されます。元に戻せません。",
+    "deleted": "ドキュメントを削除しました",
+    "remoteUpdated": "このドキュメントは他のユーザーによって更新されました。",
+    "reload": "再読み込み",
+    "editorPlaceholder": "入力を始めましょう…",
+    "linkPrompt": "URL を入力",
+    "toolbar": {
+      "h1": "見出し1",
+      "h2": "見出し2",
+      "h3": "見出し3",
+      "bold": "太字",
+      "italic": "斜体",
+      "strike": "取り消し線",
+      "code": "インラインコード",
+      "link": "リンク",
+      "bulletList": "箇条書き",
+      "orderedList": "番号付きリスト",
+      "blockquote": "引用",
+      "codeBlock": "コードブロック",
+      "horizontalRule": "区切り線"
+    },
+    "history": {
+      "title": "バージョン履歴",
+      "close": "履歴を閉じる",
+      "saveVersion": "バージョンを保存",
+      "saved": "バージョンを保存しました",
+      "restore": "復元",
+      "restored": "バージョンを復元しました",
+      "restoreTitle": "このバージョンを復元しますか？",
+      "restoreDescription": "現在のドキュメントを先にスナップショットするので、取り消すことができます。",
+      "empty": "保存されたバージョンはまだありません。"
+    },
+    "comments": {
+      "title": "コメント",
+      "close": "コメントを閉じる",
+      "empty": "最初のコメントを書きましょう。",
+      "placeholder": "コメントを入力…",
+      "reply": "返信",
+      "delete": "削除",
+      "send": "送信",
+      "replyingTo": "{name} への返信",
+      "deleteTitle": "コメントを削除",
+      "deleteDescription": "このコメントを削除してもよろしいですか？"
     }
   }
 }

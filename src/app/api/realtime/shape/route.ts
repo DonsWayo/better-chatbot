@@ -1,4 +1,5 @@
 import { getSession } from "auth/server";
+import { documentRepository } from "lib/db/repository";
 import {
   ELECTRIC_PROTOCOL_QUERY_PARAMS,
   electricBaseUrl,
@@ -35,6 +36,11 @@ export const dynamic = "force-dynamic";
  *     the presence avatar stack + typing indicators; columns are pinned to
  *     id,user_id,context_type,context_id,last_seen_at,typing (no PII beyond
  *     ids — names/avatars resolve via /api/realtime/presence-users).
+ *   - table=document&documentId=<uuid>    → WHERE id = $1, gated by
+ *     documentRepository.checkAccess(documentId, userId, readOnly=true).
+ *     Columns pinned to the CHANGE SIGNAL only (id, updated_at, last_edited_by,
+ *     last_edited_at) — never the heavy content jsonb. A viewer subscribes to
+ *     learn the doc changed, then refetches the body via getDocumentAction.
  */
 export async function GET(request: Request) {
   const session = await getSession();
@@ -89,7 +95,11 @@ export async function GET(request: Request) {
     const allowed =
       contextType === "thread"
         ? await canReadThread(contextId, userId)
-        : await canAccessFolder(contextId, userId);
+        : contextType === "folder"
+          ? await canAccessFolder(contextId, userId)
+          : // document: read access on the doc (unified visibility), the same
+            // gate as the document change-signal shape below.
+            await documentRepository.checkAccess(contextId, userId, true);
     if (!allowed) {
       return new Response("Forbidden", { status: 403 });
     }
@@ -105,6 +115,24 @@ export async function GET(request: Request) {
     originUrl.searchParams.set(
       "columns",
       "id,user_id,context_type,context_id,last_seen_at,typing",
+    );
+  } else if (table === "document") {
+    // Collaborative documents: viewers subscribe with a documentId to get a
+    // near-live "doc changed" signal, then refetch the body via an action. The
+    // shape NEVER carries the heavy `content` jsonb — only the change signal.
+    const documentId = url.searchParams.get("documentId");
+    if (!documentId || !isUuid(documentId)) {
+      return new Response("documentId (uuid) is required", { status: 400 });
+    }
+    if (!(await documentRepository.checkAccess(documentId, userId, true))) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    originUrl.searchParams.set("table", "asafe_document");
+    originUrl.searchParams.set("where", `"id" = $1`);
+    originUrl.searchParams.set("params[1]", documentId);
+    originUrl.searchParams.set(
+      "columns",
+      "id,updated_at,last_edited_by,last_edited_at",
     );
   } else {
     return new Response("Shape not allowed", { status: 403 });

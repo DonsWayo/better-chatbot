@@ -12,7 +12,7 @@ import {
 } from "lib/auth/client-permissions";
 import { Shortcuts, getShortcutKeyList } from "lib/keyboard-shortcuts";
 import { fetcher } from "lib/utils";
-import { Blocks, Inbox, SearchIcon } from "lucide-react";
+import { Blocks, FileText, Inbox, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -128,6 +128,22 @@ export function AppSidebarMenus({
                       {pendingApprovals}
                     </span>
                   )}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </Tooltip>
+        </SidebarMenu>
+        {/* Documents — collaborative rich-text docs. Personal/collaborative
+            content like chat threads, so shown to ALL authenticated users (not
+            builder-gated). No realtime connection opens from here: the near-live
+            subscriber + presence heartbeat live only on /documents/[id]. */}
+        <SidebarMenu>
+          <Tooltip>
+            <SidebarMenuItem>
+              <Link href="/documents" data-testid="sidebar-documents-link">
+                <SidebarMenuButton className="font-semibold">
+                  <FileText className="size-4" />
+                  {t("Layout.documents")}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>

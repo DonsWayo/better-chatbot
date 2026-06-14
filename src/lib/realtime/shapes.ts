@@ -31,6 +31,10 @@ export const WHITELISTED_SHAPE_TABLES = [
   "chat_message",
   "agent_session",
   "asafe_presence",
+  // Collaborative documents: the client subscribes with table=document and a
+  // documentId; the proxy pins WHERE id = $1 and exposes only the CHANGE SIGNAL
+  // (id, updated_at, last_edited_by, last_edited_at) — never the heavy content.
+  "document",
 ] as const;
 
 export type WhitelistedShapeTable = (typeof WHITELISTED_SHAPE_TABLES)[number];
@@ -49,7 +53,15 @@ export function isWhitelistedShapeTable(
  * `context_type` enum on asafe_presence. Shared by the Server Action, the
  * shape proxy, and the client island so all three agree on the vocabulary.
  */
-export const PRESENCE_CONTEXT_TYPES = ["thread", "folder"] as const;
+export const PRESENCE_CONTEXT_TYPES = [
+  "thread",
+  "folder",
+  // Collaborative documents: a viewer/editor on /documents/[id] heartbeats with
+  // context_type='document', context_id=<documentId uuid>. Gated by
+  // documentRepository.checkAccess (read) in the heartbeat action + shape proxy
+  // — the same ACL as the document shape itself.
+  "document",
+] as const;
 
 export type PresenceContextType = (typeof PRESENCE_CONTEXT_TYPES)[number];
 

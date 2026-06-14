@@ -414,7 +414,8 @@
     "inbox": "Boîte de réception",
     "settings": "Paramètres",
     "adminConsole": "Console d'administration",
-    "studio": "Studio"
+    "studio": "Studio",
+    "documents": "Documents"
   },
   "Archive": {
     "title": "Archive",
@@ -1285,6 +1286,65 @@
       "mcpContent": "Connectez et délimitez les serveurs d'outils de l'entreprise, avec tests de connexion en direct.",
       "flagsTitle": "Feature flags",
       "flagsContent": "Activez ou désactivez des capacités de la plateforme sans déploiement."
+    }
+  },
+  "Documents": {
+    "title": "Documents",
+    "subtitle": "Documents collaboratifs en texte enrichi",
+    "newDocument": "Nouveau document",
+    "untitled": "Sans titre",
+    "emptyTitle": "Aucun document pour l'instant",
+    "emptyDescription": "Créez votre premier document pour commencer à écrire.",
+    "editedRelative": "Modifié {when}",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "saveError": "Échec de l'enregistrement",
+    "backToList": "Retour aux documents",
+    "delete": "Supprimer le document",
+    "deleteTitle": "Supprimer le document",
+    "deleteDescription": "Cela supprime définitivement le document et son historique. Action irréversible.",
+    "deleted": "Document supprimé",
+    "remoteUpdated": "Ce document a été mis à jour par quelqu'un d'autre.",
+    "reload": "Recharger",
+    "editorPlaceholder": "Commencez à écrire…",
+    "linkPrompt": "Saisissez une URL",
+    "toolbar": {
+      "h1": "Titre 1",
+      "h2": "Titre 2",
+      "h3": "Titre 3",
+      "bold": "Gras",
+      "italic": "Italique",
+      "strike": "Barré",
+      "code": "Code en ligne",
+      "link": "Lien",
+      "bulletList": "Liste à puces",
+      "orderedList": "Liste numérotée",
+      "blockquote": "Citation",
+      "codeBlock": "Bloc de code",
+      "horizontalRule": "Séparateur"
+    },
+    "history": {
+      "title": "Historique des versions",
+      "close": "Fermer l'historique",
+      "saveVersion": "Enregistrer la version",
+      "saved": "Version enregistrée",
+      "restore": "Restaurer",
+      "restored": "Version restaurée",
+      "restoreTitle": "Restaurer cette version ?",
+      "restoreDescription": "Le document actuel est d'abord sauvegardé, vous pouvez donc annuler.",
+      "empty": "Aucune version enregistrée pour l'instant."
+    },
+    "comments": {
+      "title": "Commentaires",
+      "close": "Fermer les commentaires",
+      "empty": "Soyez le premier à commenter.",
+      "placeholder": "Écrire un commentaire…",
+      "reply": "Répondre",
+      "delete": "Supprimer",
+      "send": "Envoyer",
+      "replyingTo": "En réponse à {name}",
+      "deleteTitle": "Supprimer le commentaire",
+      "deleteDescription": "Voulez-vous vraiment supprimer ce commentaire ?"
     }
   }
 }

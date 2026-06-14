@@ -1361,6 +1361,7 @@ export const EntityGrantTable = pgTable(
         "folder",
         "knowledge_collection",
         "mcp_server",
+        "document",
       ],
     }).notNull(),
     // Polymorphic pointer into the entity's table — no FK on purpose.
@@ -1432,3 +1433,171 @@ export const AsafeApiKeyTable = pgTable(
 );
 
 export type AsafeApiKeyEntity = typeof AsafeApiKeyTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Collaborative documents (migration 0047) — Confluence/Notion-style rich-text
+// docs. Governed by the unified visibility model (docs/design/visibility-model.md)
+// exactly like agents/workflows: owner + admins always manage; "company"/"team"/
+// "shared" widen read/edit. Realtime is near-live over Electric (last-write-wins,
+// single-author soft lock): the Electric shape exposes only a CHANGE SIGNAL
+// (id, updated_at, last_edited_by, last_edited_at) — never the heavy `content`
+// jsonb — so viewers learn a doc changed and refetch the body via an action.
+// ---------------------------------------------------------------------------
+
+/** Empty ProseMirror/TipTap document — the default body for a fresh doc. */
+const EMPTY_DOC = { type: "doc", content: [] } as const;
+
+export const AsafeDocumentTable = pgTable(
+  "asafe_document",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    title: text("title").notNull().default("Untitled"),
+    // TipTap/ProseMirror document JSON.
+    content: jsonb("content")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(EMPTY_DOC),
+    // Owner. FK to user like every other core table (uuid).
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    // Team this doc is scoped to when shared at "team" level. null = none.
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    // Unified four-level visibility (matches agent/workflow literal set).
+    visibility: varchar("visibility", {
+      enum: ["private", "shared", "team", "company"],
+    })
+      .notNull()
+      .default("private"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    // Last collaborator who wrote (drives the Electric change signal).
+    lastEditedBy: uuid("last_edited_by").references(() => UserTable.id, {
+      onDelete: "set null",
+    }),
+    lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
+    archived: boolean("archived").notNull().default(false),
+  },
+  (t) => [
+    index("asafe_document_user_id_idx").on(t.userId),
+    index("asafe_document_team_id_idx").on(t.teamId),
+    index("asafe_document_updated_at_idx").on(t.updatedAt),
+  ],
+);
+
+/** Append-only version history snapshots for a document. */
+export const AsafeDocumentRevisionTable = pgTable(
+  "asafe_document_revision",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => AsafeDocumentTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: jsonb("content")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(EMPTY_DOC),
+    editedBy: uuid("edited_by").references(() => UserTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_document_revision_document_idx").on(
+      t.documentId,
+      t.createdAt.desc(),
+    ),
+  ],
+);
+
+export const asafeDocumentRelations = relations(
+  AsafeDocumentTable,
+  ({ one, many }) => ({
+    owner: one(UserTable, {
+      fields: [AsafeDocumentTable.userId],
+      references: [UserTable.id],
+    }),
+    team: one(AsafeTeamTable, {
+      fields: [AsafeDocumentTable.teamId],
+      references: [AsafeTeamTable.id],
+    }),
+    revisions: many(AsafeDocumentRevisionTable),
+  }),
+);
+
+export const asafeDocumentRevisionRelations = relations(
+  AsafeDocumentRevisionTable,
+  ({ one }) => ({
+    document: one(AsafeDocumentTable, {
+      fields: [AsafeDocumentRevisionTable.documentId],
+      references: [AsafeDocumentTable.id],
+    }),
+  }),
+);
+
+export type AsafeDocumentEntity = typeof AsafeDocumentTable.$inferSelect;
+export type AsafeDocumentRevisionEntity =
+  typeof AsafeDocumentRevisionTable.$inferSelect;
+
+/**
+ * Threaded comments on a collaborative document. One level of replies (a
+ * comment may reference a top-level parent via parentId). Content is TipTap /
+ * ProseMirror JSON (same shape as chat-export comments). FK cascades when the
+ * document is deleted so comments never outlive their doc. Realtime is POLLING
+ * (the comments panel re-fetches every few seconds while open) — never an
+ * Electric shape — so a closed panel holds no connection.
+ */
+export const AsafeDocumentCommentTable = pgTable(
+  "asafe_document_comment",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => AsafeDocumentTable.id, { onDelete: "cascade" }),
+    // Top-level comments have a null parentId; a reply points at its parent.
+    parentId: uuid("parent_id"),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    content: jsonb("content")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(EMPTY_DOC),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_document_comment_document_idx").on(t.documentId, t.createdAt),
+    index("asafe_document_comment_parent_idx").on(t.parentId),
+  ],
+);
+
+export const asafeDocumentCommentRelations = relations(
+  AsafeDocumentCommentTable,
+  ({ one }) => ({
+    document: one(AsafeDocumentTable, {
+      fields: [AsafeDocumentCommentTable.documentId],
+      references: [AsafeDocumentTable.id],
+    }),
+    author: one(UserTable, {
+      fields: [AsafeDocumentCommentTable.authorId],
+      references: [UserTable.id],
+    }),
+  }),
+);
+
+export type AsafeDocumentCommentEntity =
+  typeof AsafeDocumentCommentTable.$inferSelect;

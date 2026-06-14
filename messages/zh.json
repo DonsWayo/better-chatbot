@@ -414,7 +414,8 @@
     "inbox": "收件箱",
     "settings": "设置",
     "adminConsole": "管理控制台",
-    "studio": "工作室"
+    "studio": "工作室",
+    "documents": "文档"
   },
   "Archive": {
     "title": "归档",
@@ -1285,6 +1286,65 @@
       "mcpContent": "连接并限定企业工具服务器范围，支持实时连接测试。",
       "flagsTitle": "功能开关",
       "flagsContent": "无需部署即可开启或关闭平台功能。"
+    }
+  },
+  "Documents": {
+    "title": "文档",
+    "subtitle": "协作式富文本文档",
+    "newDocument": "新建文档",
+    "untitled": "无标题",
+    "emptyTitle": "还没有文档",
+    "emptyDescription": "创建你的第一个文档开始写作。",
+    "editedRelative": "{when}编辑",
+    "saving": "保存中…",
+    "saved": "已保存",
+    "saveError": "保存失败",
+    "backToList": "返回文档列表",
+    "delete": "删除文档",
+    "deleteTitle": "删除文档",
+    "deleteDescription": "这将永久删除该文档及其历史记录，且无法撤销。",
+    "deleted": "文档已删除",
+    "remoteUpdated": "此文档已被他人更新。",
+    "reload": "重新加载",
+    "editorPlaceholder": "开始写作…",
+    "linkPrompt": "输入网址",
+    "toolbar": {
+      "h1": "标题 1",
+      "h2": "标题 2",
+      "h3": "标题 3",
+      "bold": "加粗",
+      "italic": "斜体",
+      "strike": "删除线",
+      "code": "行内代码",
+      "link": "链接",
+      "bulletList": "项目符号列表",
+      "orderedList": "编号列表",
+      "blockquote": "引用",
+      "codeBlock": "代码块",
+      "horizontalRule": "分隔线"
+    },
+    "history": {
+      "title": "版本历史",
+      "close": "关闭历史",
+      "saveVersion": "保存版本",
+      "saved": "版本已保存",
+      "restore": "恢复",
+      "restored": "版本已恢复",
+      "restoreTitle": "恢复此版本？",
+      "restoreDescription": "会先为当前文档创建快照，因此可以撤销。",
+      "empty": "还没有保存的版本。"
+    },
+    "comments": {
+      "title": "评论",
+      "close": "关闭评论",
+      "empty": "成为第一个评论的人。",
+      "placeholder": "写下评论…",
+      "reply": "回复",
+      "delete": "删除",
+      "send": "发送",
+      "replyingTo": "回复 {name}",
+      "deleteTitle": "删除评论",
+      "deleteDescription": "确定要删除这条评论吗？"
     }
   }
 }
