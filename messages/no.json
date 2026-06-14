@@ -1336,7 +1336,9 @@
       "orderedList": "Nummerert liste",
       "blockquote": "Sitat",
       "codeBlock": "Kodeblokk",
-      "horizontalRule": "Skillelinje"
+      "horizontalRule": "Skillelinje",
+      "linkApply": "Bruk",
+      "linkRemove": "Fjern"
     },
     "history": {
       "title": "Versjonshistorikk",

@@ -21,8 +21,10 @@ import {
   Strikethrough,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "ui/button";
+import { Input } from "ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 import { Separator } from "ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 
@@ -96,6 +98,112 @@ function ToolbarButton({
   );
 }
 
+/**
+ * Link control: a small popover with a URL input + Apply/Remove, replacing the
+ * raw window.prompt (unstyled, untranslatable, blocking). Manages its own open
+ * state so the memoized toolbar doesn't need to re-create on every keystroke.
+ */
+function LinkButton({
+  editor,
+  label,
+  placeholder,
+  applyLabel,
+  removeLabel,
+}: {
+  editor: Editor;
+  label: string;
+  placeholder: string;
+  applyLabel: string;
+  removeLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const active = editor.isActive("link");
+
+  const apply = () => {
+    const url = value.trim();
+    const chain = editor.chain().focus().extendMarkRange("link");
+    if (url === "") chain.unsetLink().run();
+    else chain.setLink({ href: url }).run();
+    setOpen(false);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next)
+          setValue((editor.getAttributes("link").href as string) ?? "");
+        setOpen(next);
+      }}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={label}
+              aria-pressed={active}
+              tabIndex={-1}
+              className={cn(
+                "size-8 min-h-9 min-w-9 rounded-lg text-muted-foreground hover:text-foreground md:min-h-0 md:min-w-0",
+                active && "bg-primary/10 text-primary hover:text-primary",
+              )}
+            >
+              <Link2 className="size-4" />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        align="start"
+        className="w-[min(20rem,calc(100vw-2rem))] p-3"
+      >
+        <div className="flex flex-col gap-2">
+          <Input
+            autoFocus
+            value={value}
+            placeholder={placeholder}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                apply();
+              }
+            }}
+            className="h-9 text-sm"
+          />
+          <div className="flex items-center justify-between gap-2">
+            {active ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => {
+                  setValue("");
+                  editor.chain().focus().extendMarkRange("link").unsetLink().run();
+                  setOpen(false);
+                }}
+              >
+                {removeLabel}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button type="button" size="sm" onClick={apply}>
+              {applyLabel}
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function DocumentEditor({
   initialContent,
   onUpdate,
@@ -145,18 +253,6 @@ export function DocumentEditor({
   useEffect(() => {
     editor?.setEditable(editable);
   }, [editable, editor]);
-
-  const setLink = useCallback(() => {
-    if (!editor) return;
-    const previous = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt(t("linkPrompt"), previous ?? "https://");
-    if (url === null) return; // cancelled
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-  }, [editor, t]);
 
   const toolbar = useMemo(() => {
     if (!editor || !editable) return null;
@@ -228,13 +324,13 @@ export function DocumentEditor({
         >
           <Code className="size-4" />
         </ToolbarButton>
-        <ToolbarButton
+        <LinkButton
+          editor={editor}
           label={t("toolbar.link")}
-          active={editor.isActive("link")}
-          onClick={setLink}
-        >
-          <Link2 className="size-4" />
-        </ToolbarButton>
+          placeholder={t("linkPrompt")}
+          applyLabel={t("toolbar.linkApply")}
+          removeLabel={t("toolbar.linkRemove")}
+        />
 
         <Separator orientation="vertical" className="mx-1 h-5" />
 
@@ -274,7 +370,7 @@ export function DocumentEditor({
         </ToolbarButton>
       </div>
     );
-  }, [editor, editable, setLink, t]);
+  }, [editor, editable, t]);
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>

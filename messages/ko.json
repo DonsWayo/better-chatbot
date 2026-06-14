@@ -1337,7 +1337,9 @@
       "orderedList": "번호 매기기 목록",
       "blockquote": "인용",
       "codeBlock": "코드 블록",
-      "horizontalRule": "구분선"
+      "horizontalRule": "구분선",
+      "linkApply": "적용",
+      "linkRemove": "제거"
     },
     "history": {
       "title": "버전 기록",

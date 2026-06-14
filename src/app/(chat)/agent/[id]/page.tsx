@@ -35,7 +35,14 @@ export default async function AgentPage({
   }
 
   const isOwner = agent.userId === session.user.id;
-  const hasEditAccess = isOwner || agent.visibility === "public";
+  // Mirror the server (agent-repository.updateAgent): org-wide agents
+  // ("company", legacy "public") are editable by anyone in the org, not just
+  // the owner. The old check only matched legacy "public", so it wrongly hid
+  // the edit controls on modern "company" agents the server actually accepts.
+  const hasEditAccess =
+    isOwner ||
+    agent.visibility === "company" ||
+    agent.visibility === "public";
 
   return (
     <EditAgent

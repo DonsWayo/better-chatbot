@@ -1337,7 +1337,9 @@
       "orderedList": "番号付きリスト",
       "blockquote": "引用",
       "codeBlock": "コードブロック",
-      "horizontalRule": "区切り線"
+      "horizontalRule": "区切り線",
+      "linkApply": "適用",
+      "linkRemove": "削除"
     },
     "history": {
       "title": "バージョン履歴",

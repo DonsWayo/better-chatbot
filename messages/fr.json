@@ -1337,7 +1337,9 @@
       "orderedList": "Liste numérotée",
       "blockquote": "Citation",
       "codeBlock": "Bloc de code",
-      "horizontalRule": "Séparateur"
+      "horizontalRule": "Séparateur",
+      "linkApply": "Appliquer",
+      "linkRemove": "Retirer"
     },
     "history": {
       "title": "Historique des versions",
