@@ -162,6 +162,12 @@ export const pgAgentRepository: AgentRepository = {
       await revokeAllGrants("agent", id);
     }
 
+    // No row matched the owner/org-wide WHERE clause — the caller may pass the
+    // looser checkAccess() gate (read-only grant / team membership) yet not be
+    // permitted to update. Return null so the route answers 403 instead of
+    // throwing on `result.description` (NPE → opaque 500).
+    if (!result) return null;
+
     return {
       ...result,
       description: result.description ?? undefined,
