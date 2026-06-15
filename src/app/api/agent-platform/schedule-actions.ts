@@ -128,29 +128,33 @@ export interface RoutineCostEstimate {
   budgetLabel: string | null;
 }
 
-/** Nominal per-run estimate for the cost preview: a ~2k-token run. */
+/** Nominal per-run estimate for the cost preview: a ~2k-token run on the default fast-tier model. */
 const NOMINAL_PROMPT_TOKENS = 1500;
 const NOMINAL_COMPLETION_TOKENS = 500;
+// Use the actual default routing model so the estimate reflects real per-run cost.
+const DEFAULT_ROUTINE_MODEL = "deepseek-v4-flash";
 
 /**
  * Static cost preview for the schedule dialog: prices a nominal 2k-token run
  * with the default model pricing and resolves which budget pays for it.
  * budgetLabel is null when the user has no primary team (the pill then shows
  * the localized "personal" label).
+ *
+ * Never throws — any team lookup failure falls back to null budgetLabel so the
+ * cost amount is always shown (team name is best-effort).
  */
 export async function estimateRoutineCostAction(): Promise<RoutineCostEstimate> {
   const userId = await requireUserId();
 
   const estimatedUsd = estimateCostUsd(
-    "default",
+    DEFAULT_ROUTINE_MODEL,
     NOMINAL_PROMPT_TOKENS,
     NOMINAL_COMPLETION_TOKENS,
   );
 
-  const teamId = await getUserPrimaryTeamId(userId);
-  if (!teamId) return { estimatedUsd, budgetLabel: null };
-
   try {
+    const teamId = await getUserPrimaryTeamId(userId);
+    if (!teamId) return { estimatedUsd, budgetLabel: null };
     const team = await getTeamWithMembers(teamId);
     return { estimatedUsd, budgetLabel: team?.name ?? null };
   } catch {
