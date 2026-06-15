@@ -35,6 +35,7 @@ const {
   isKillSwitchActiveMock,
   checkBudgetMock,
   resolveAllowListMock,
+  getRevisionMock,
 } = vi.hoisted(() => ({
   claimDueSchedulesMock: vi.fn(),
   createSessionMock: vi.fn(),
@@ -50,6 +51,7 @@ const {
   isKillSwitchActiveMock: vi.fn(),
   checkBudgetMock: vi.fn(),
   resolveAllowListMock: vi.fn(),
+  getRevisionMock: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -68,6 +70,9 @@ vi.mock("drizzle-orm", () => ({
 }));
 vi.mock("./scheduler", () => ({
   claimDueSchedules: claimDueSchedulesMock,
+}));
+vi.mock("./revisions", () => ({
+  getRevision: getRevisionMock,
 }));
 vi.mock("./sessions", () => ({
   createSession: createSessionMock,
@@ -191,6 +196,9 @@ beforeEach(() => {
     .mockResolvedValue(undefined);
   attachMock.mockReturnValue(detachMock);
   selectStructureByIdMock.mockResolvedValue(WORKFLOW_STRUCTURE);
+  // Default: no pinned revision resolved (the common "latest" path). Tests
+  // that pin a revision override this per-case.
+  getRevisionMock.mockResolvedValue(null);
   checkAccessMock.mockResolvedValue(true);
   checkBudgetMock.mockResolvedValue({ allowed: true });
   resolveAllowListMock.mockResolvedValue(null);
@@ -351,6 +359,77 @@ describe("runClaimedSession", () => {
       expect.stringContaining("wf-1"),
     );
     expect(createExecutorMock).not.toHaveBeenCalled();
+  });
+
+  // ── #19/#22: pinned-revision execution parity with the synchronous route ──
+
+  it("pinned session executes the revision snapshot graph, NOT the live structure", async () => {
+    // The live structure is the empty WORKFLOW_STRUCTURE; the pinned revision
+    // carries a distinct, non-empty graph. The executor must receive the
+    // snapshot's nodes/edges so a pinned routine runs the frozen version.
+    const snapshotNodes = [{ id: "snap-node" }];
+    const snapshotEdges = [{ id: "snap-edge" }];
+    getRevisionMock.mockResolvedValue({
+      id: "rev-9",
+      configSnapshot: {
+        workflow: { name: "wf" },
+        nodes: snapshotNodes,
+        edges: snapshotEdges,
+      },
+    });
+    const pinnedSession = {
+      ...SESSION,
+      revisionId: "rev-9",
+    } as unknown as AgentSessionEntity;
+
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(pinnedSession);
+
+    expect(outcome).toBe("completed");
+    expect(getRevisionMock).toHaveBeenCalledWith("rev-9");
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ nodes: snapshotNodes, edges: snapshotEdges }),
+    );
+  });
+
+  it("latest session (revisionId null) executes the live structure", async () => {
+    getRevisionMock.mockClear();
+    const { runClaimedSession } = await import("./worker");
+    // SESSION has no revisionId set.
+    await runClaimedSession(SESSION);
+
+    expect(getRevisionMock).not.toHaveBeenCalled();
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodes: WORKFLOW_STRUCTURE.nodes,
+        edges: WORKFLOW_STRUCTURE.edges,
+      }),
+    );
+  });
+
+  it("pinned session with a missing/malformed snapshot falls back to the live structure", async () => {
+    // Revision row exists but its snapshot has no node/edge arrays — the run
+    // must NOT hard-fail; it executes the live structure (logged, not silent).
+    getRevisionMock.mockResolvedValue({
+      id: "rev-9",
+      configSnapshot: { workflow: { name: "wf" } },
+    });
+    const pinnedSession = {
+      ...SESSION,
+      revisionId: "rev-9",
+    } as unknown as AgentSessionEntity;
+
+    const { runClaimedSession } = await import("./worker");
+    const outcome = await runClaimedSession(pinnedSession);
+
+    expect(outcome).toBe("completed");
+    expect(failSessionMock).not.toHaveBeenCalled();
+    expect(createExecutorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodes: WORKFLOW_STRUCTURE.nodes,
+        edges: WORKFLOW_STRUCTURE.edges,
+      }),
+    );
   });
 
   // ── W3/ADR-0009: budget gate + access re-verification (defense in depth) ──
