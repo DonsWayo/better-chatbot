@@ -72,7 +72,7 @@ migrateJob:
 # traffic). Disabled by default; alternatively drive ticks via POST /api/hooks/agent-tick
 # (x-asafe-cron-secret header, ASAFE_CRON_SECRET env) from an external CronJob.
 worker:
-  enabled: false
+  enabled: true
   replicaCount: 1
   # The production runner image is the Next standalone output (no pnpm/tsx) — docker/Dockerfile
   # esbuild-bundles scripts/agent-worker.ts into /app/scripts/agent-worker.mjs (same mechanism as
