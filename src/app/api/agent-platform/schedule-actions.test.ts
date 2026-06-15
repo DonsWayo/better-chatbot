@@ -255,7 +255,11 @@ describe("estimateRoutineCostAction", () => {
     getTeamWithMembersMock.mockResolvedValueOnce({ name: "Design" });
     const { estimateRoutineCostAction } = await import("./schedule-actions");
     const result = await estimateRoutineCostAction();
-    expect(estimateCostUsdMock).toHaveBeenCalledWith("default", 1500, 500);
+    expect(estimateCostUsdMock).toHaveBeenCalledWith(
+      "deepseek-v4-flash",
+      1500,
+      500,
+    );
     expect(result).toEqual({ estimatedUsd: 0.0035, budgetLabel: "Design" });
   });
 
