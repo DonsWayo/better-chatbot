@@ -73,6 +73,27 @@ export async function PATCH(
     teamId: string;
   }>;
 
+  // Reject unknown visibility values rather than writing them verbatim.
+  if (
+    body.visibility !== undefined &&
+    !["private", "team", "org"].includes(body.visibility)
+  ) {
+    return NextResponse.json({ error: "invalid visibility" }, { status: 400 });
+  }
+  // Re-assigning to a team requires membership of the target team.
+  if (body.teamId) {
+    const teams = await listUserTeams(userId);
+    if (!teams.some((t) => t.id === body.teamId)) {
+      return NextResponse.json(
+        { error: "You are not a member of that team" },
+        { status: 403 },
+      );
+    }
+  }
+  // Featuring a prompt is an org-promotion action — admins only. Silently
+  // dropping a non-admin's isFeatured keeps the rest of the edit working.
+  const canFeature = isAdmin;
+
   const [updated] = await db
     .update(AsafePromptTemplateTable)
     .set({
@@ -81,7 +102,8 @@ export async function PATCH(
       ...(body.content !== undefined && { content: body.content }),
       ...(body.category !== undefined && { category: body.category }),
       ...(body.visibility !== undefined && { visibility: body.visibility }),
-      ...(body.isFeatured !== undefined && { isFeatured: body.isFeatured }),
+      ...(body.isFeatured !== undefined &&
+        canFeature && { isFeatured: body.isFeatured }),
       ...(body.teamId !== undefined && { teamId: body.teamId }),
       updatedAt: new Date(),
     })

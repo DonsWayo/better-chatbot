@@ -1,8 +1,11 @@
 import { getSession } from "lib/auth/server";
 import { pgDb as db } from "@/lib/db/pg/db.pg";
 import { AsafePromptTemplateTable } from "@/lib/db/pg/schema.pg";
+import { listUserTeams } from "lib/teamspaces/folders";
 import { eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+const PROMPT_VISIBILITIES = new Set(["private", "team", "org"]);
 
 export async function GET() {
   const session = await getSession();
@@ -44,6 +47,21 @@ export async function POST(req: Request) {
   }
   if (!body.content?.trim()) {
     return NextResponse.json({ error: "content is required" }, { status: 400 });
+  }
+  // Reject unknown visibility values rather than writing them verbatim.
+  if (body.visibility !== undefined && !PROMPT_VISIBILITIES.has(body.visibility)) {
+    return NextResponse.json({ error: "invalid visibility" }, { status: 400 });
+  }
+  // A caller may only attach a prompt to a team they belong to (else they could
+  // inject a prompt into an arbitrary team's library).
+  if (body.teamId) {
+    const teams = await listUserTeams(session.user.id);
+    if (!teams.some((t) => t.id === body.teamId)) {
+      return NextResponse.json(
+        { error: "You are not a member of that team" },
+        { status: 403 },
+      );
+    }
   }
 
   const [created] = await db

@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSessionMock, dbSelectMock, dbInsertMock } = vi.hoisted(() => ({
-  getSessionMock: vi.fn(),
-  dbSelectMock: vi.fn(),
-  dbInsertMock: vi.fn(),
-}));
+const { getSessionMock, dbSelectMock, dbInsertMock, listUserTeamsMock } =
+  vi.hoisted(() => ({
+    getSessionMock: vi.fn(),
+    dbSelectMock: vi.fn(),
+    dbInsertMock: vi.fn(),
+    listUserTeamsMock: vi.fn().mockResolvedValue([]),
+  }));
 
 vi.mock("lib/auth/server", () => ({ getSession: getSessionMock }));
+vi.mock("lib/teamspaces/folders", () => ({
+  listUserTeams: listUserTeamsMock,
+}));
 
 const dbSelectOrderByMock = vi.fn().mockResolvedValue([]);
 const dbSelectFromMock = vi.fn().mockReturnValue({
@@ -130,6 +135,49 @@ describe("POST /api/prompts", () => {
     const res = await POST(makeRequest({ title: "T", content: "C" }));
     const body = await res.json();
     expect(body.id).toBe("p-xyz");
+  });
+
+  it("rejects an invalid visibility value with 400", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ title: "T", content: "C", visibility: "everyone" }),
+    );
+    expect(res.status).toBe(400);
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects attaching a prompt to a team the caller is not a member of (403)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    listUserTeamsMock.mockResolvedValueOnce([{ id: "team-mine" }]);
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({
+        title: "T",
+        content: "C",
+        visibility: "team",
+        teamId: "team-foreign",
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(dbInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("allows attaching a prompt to a team the caller belongs to", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } });
+    listUserTeamsMock.mockResolvedValueOnce([{ id: "team-mine" }]);
+    dbInsertReturningMock.mockResolvedValueOnce([{ id: "p-team", title: "T" }]);
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({
+        title: "T",
+        content: "C",
+        visibility: "team",
+        teamId: "team-mine",
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(dbInsertMock).toHaveBeenCalled();
   });
 });
 
