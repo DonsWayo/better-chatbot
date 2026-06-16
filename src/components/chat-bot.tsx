@@ -472,8 +472,32 @@ export default function ChatBot({
     }
   }, [input]);
 
+  // Extract the last assistant message text for the ARIA live region.
+  // The container is always mounted (empty container first in the DOM is
+  // required so screen readers register the live region before streaming starts).
+  const ariaLiveText = useMemo(() => {
+    if (!isLoading) return "";
+    const last = messages.findLast((m) => m.role === "assistant");
+    if (!last) return "";
+    return last.parts
+      .filter((p: any) => p?.type === "text")
+      .map((p: any) => p.text ?? "")
+      .join(" ")
+      .slice(-500); // last 500 chars is enough for screen readers
+  }, [isLoading, messages]);
+
   return (
     <>
+      {/* ARIA live region for streaming output — always mounted, content injected after.
+          aria-atomic="false" means screen readers announce incremental chunks, not the whole message. */}
+      <div
+        aria-live="polite"
+        aria-atomic="false"
+        aria-label="AI response"
+        className="sr-only"
+      >
+        {ariaLiveText}
+      </div>
       {particle}
       <div
         className={cn(

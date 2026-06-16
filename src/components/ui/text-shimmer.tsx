@@ -1,6 +1,6 @@
 "use client";
 import React, { memo, useMemo, type JSX } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface TextShimmerProps {
@@ -18,6 +18,7 @@ export const TextShimmer = memo(function TextShimmer({
   duration = 2,
   spread = 2,
 }: TextShimmerProps) {
+  const shouldReduceMotion = useReducedMotion();
   const MotionComponent = motion.create(
     Component as keyof JSX.IntrinsicElements,
   );
@@ -25,6 +26,17 @@ export const TextShimmer = memo(function TextShimmer({
   const dynamicSpread = useMemo(() => {
     return children.length * spread;
   }, [children, spread]);
+
+  // When reduced motion is preferred, show static muted text instead of a
+  // sweeping gradient — preserves readability without vestibular-triggering motion.
+  if (shouldReduceMotion) {
+    const StaticComponent = Component as React.ElementType;
+    return (
+      <StaticComponent className={cn("text-muted-foreground", className)}>
+        {children}
+      </StaticComponent>
+    );
+  }
 
   return (
     <MotionComponent
