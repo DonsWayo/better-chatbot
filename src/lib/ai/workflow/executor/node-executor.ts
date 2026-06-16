@@ -189,17 +189,27 @@ function resolveAllowedModel(
     totalChars: 0,
     allowedModels: allow,
   });
+
+  // Backstop: routeModel's own fallback returns the top-tier model UNFILTERED
+  // when the allow-list excludes every routable tier (route-model.ts) — that
+  // could be a premium model the user isn't entitled to. The chat route catches
+  // this with a 403; here we must not run it. If the routed model isn't in the
+  // allow-list, pin deterministically to the first allow-listed model instead.
+  const chosen: ChatModel = allow.includes(routed.model.model)
+    ? routed.model
+    : { provider: "openRouter", model: allow[0] };
+
   // Lazy import keeps the logger/metrics out of this module's static graph.
   import("logger")
     .then((m) =>
       m.default
         .withDefaults({ message: "workflow-model-guard: " })
         .warn(
-          `node model "${requested?.model ?? "(none)"}" not in allow-list; substituting "${routed.model.model}"`,
+          `node model "${requested?.model ?? "(none)"}" not in allow-list; substituting "${chosen.model}"`,
         ),
     )
     .catch(() => {});
-  return routed.model;
+  return chosen;
 }
 
 /** Token usage shape returned by generateText/generateObject. */
@@ -830,6 +840,29 @@ export const knowledgeNodeExecutor: NodeExecutor<KnowledgeNodeData> = async ({
 
   // No collection or empty query → nothing to retrieve.
   if (!node.collectionId || !query) {
+    return {
+      input: { query, collectionId: node.collectionId, topK },
+      output: { chunks: [], text: "" },
+    };
+  }
+
+  // ADR-0009 IDOR: retrieval must be gated by the RUN user's access to the
+  // collection, exactly like the chat seam (retrieveForChat →
+  // filterAccessibleCollections → canAccess("use")). Without this, a workflow
+  // editor could point a Knowledge node at any collection id (e.g. another
+  // team's private collection) and exfiltrate its chunks via the node output —
+  // reachable through shared workflows, scheduled runs, and the /v1 REST path.
+  // Fail closed: no run user, or no "use" access → retrieve nothing.
+  const { canAccess } = await import("lib/visibility");
+  const hasAccess =
+    !!state.userId &&
+    (await canAccess(
+      "knowledge_collection",
+      node.collectionId,
+      state.userId,
+      "use",
+    ).catch(() => false));
+  if (!hasAccess) {
     return {
       input: { query, collectionId: node.collectionId, topK },
       output: { chunks: [], text: "" },

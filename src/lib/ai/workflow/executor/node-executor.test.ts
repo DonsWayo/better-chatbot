@@ -37,11 +37,17 @@ vi.mock("ai", async () => ({
   convertToModelMessages: vi.fn(() => []),
 }));
 // Knowledge node lazily imports the server-only RAG retriever.
-const { retrieveChunksMock } = vi.hoisted(() => ({
+const { retrieveChunksMock, canAccessMock } = vi.hoisted(() => ({
   retrieveChunksMock: vi.fn(),
+  // Default: the run user CAN access the collection. Knowledge-gate tests
+  // override this to false to exercise the fail-closed path.
+  canAccessMock: vi.fn().mockResolvedValue(true),
 }));
 vi.mock("lib/ai/embeddings/ingest", () => ({
   retrieveChunks: retrieveChunksMock,
+}));
+vi.mock("lib/visibility", () => ({
+  canAccess: canAccessMock,
 }));
 import { NodeKind } from "../workflow.interface";
 import type {
@@ -70,6 +76,9 @@ const makeState = (
   outputs: {},
   costByNode: {},
   nodes: [],
+  // Knowledge-node retrieval is access-gated on the run user; provide one by
+  // default so existing retrieval tests exercise the happy path.
+  userId: "user-1",
   getInput: vi.fn(),
   setOutput: vi.fn(),
   setInput: vi.fn(),
@@ -303,6 +312,33 @@ describe("knowledgeNodeExecutor", () => {
     const state = makeState({});
     const result = (await knowledgeNodeExecutor({
       node: makeKnowledgeNode({ query: { type: "doc", content: [] } as any }),
+      state,
+    })) as ExecResult;
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
+  });
+
+  it("ADR-0009: returns empty WITHOUT retrieving when the run user lacks collection access", async () => {
+    canAccessMock.mockResolvedValueOnce(false);
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode(),
+      state,
+    })) as ExecResult;
+    expect(canAccessMock).toHaveBeenCalledWith(
+      "knowledge_collection",
+      "col-1",
+      "user-1",
+      "use",
+    );
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
+  });
+
+  it("fails closed: returns empty WITHOUT retrieving when there is no run user", async () => {
+    const state = { ...makeState({}), userId: undefined };
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode(),
       state,
     })) as ExecResult;
     expect(retrieveChunksMock).not.toHaveBeenCalled();

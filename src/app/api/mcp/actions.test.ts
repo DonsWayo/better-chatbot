@@ -113,6 +113,51 @@ describe("saveMcpClientAction", () => {
     });
   });
 
+  it("IDOR: rejects updating an existing server the caller cannot manage", async () => {
+    // An editor (passes canCreateMCP) tries to overwrite a server owned by
+    // someone else / org-scoped. The ownership check must block it.
+    getCurrentUserMock.mockResolvedValue({ id: "attacker", role: "editor" });
+    canCreateMCPMock.mockResolvedValue(true);
+    selectByIdMock.mockResolvedValueOnce({
+      id: "srv-victim",
+      userId: "owner",
+      visibility: "public",
+    });
+    canManageMCPServerMock.mockResolvedValueOnce(false);
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      id: "srv-victim",
+      name: "Hijacked",
+      config: { url: "http://attacker" },
+    } as any);
+    expect(result).toMatchObject({
+      success: false,
+      error: expect.stringMatching(/permission/i),
+    });
+    expect(canManageMCPServerMock).toHaveBeenCalledWith("owner", "public");
+    expect(persistClientMock).not.toHaveBeenCalled();
+  });
+
+  it("allows updating an existing server the caller CAN manage", async () => {
+    getCurrentUserMock.mockResolvedValue({ id: "owner", role: "editor" });
+    canCreateMCPMock.mockResolvedValue(true);
+    selectByIdMock.mockResolvedValueOnce({
+      id: "srv-1",
+      userId: "owner",
+      visibility: "private",
+    });
+    canManageMCPServerMock.mockResolvedValueOnce(true);
+    persistClientMock.mockResolvedValueOnce("srv-1");
+    const { saveMcpClientAction } = await import("./actions");
+    const result = await saveMcpClientAction({
+      id: "srv-1",
+      name: "Updated",
+      config: { url: "http://mcp" },
+    } as any);
+    expect(result).toMatchObject({ success: true, id: "srv-1" });
+    expect(persistClientMock).toHaveBeenCalled();
+  });
+
   it("returns structured permission-denial error when user cannot create MCP", async () => {
     getCurrentUserMock.mockResolvedValue({ id: "u1", role: "user" });
     canCreateMCPMock.mockResolvedValueOnce(false);

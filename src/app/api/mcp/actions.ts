@@ -141,6 +141,27 @@ async function saveMcpClientOrThrow(
     throw new Error("You don't have permission to create MCP connections");
   }
 
+  // IDOR: when updating an EXISTING server (id supplied), canCreateMCP() alone
+  // is not enough — it's a role check, not an ownership check. Without this an
+  // editor could pass any server's id and overwrite its config (incl.
+  // admin-registered org/team connectors used by everyone), repointing the URL
+  // or injecting auth headers — a credential/data interception vector. Require
+  // manage rights on the existing row, exactly like removeMcpClientAction.
+  if (server.id) {
+    const existing = await mcpRepository.selectById(server.id);
+    if (existing) {
+      const canManage = await canManageMCPServer(
+        existing.userId,
+        existing.visibility,
+      );
+      if (!canManage) {
+        throw new Error(
+          "You don't have permission to edit this MCP connection",
+        );
+      }
+    }
+  }
+
   // Cloud deployments are remote-only (like claude.ai web): local stdio
   // servers would spawn arbitrary processes inside the shared server. Local
   // servers are only available in the desktop app / local dev.

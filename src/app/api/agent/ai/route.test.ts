@@ -1,15 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSessionMock, streamObjectMock } = vi.hoisted(() => ({
+const {
+  getSessionMock,
+  streamObjectMock,
+  getModelMock,
+  getUserPrimaryTeamIdMock,
+  resolveAllowListMock,
+  checkBudgetMock,
+  estimateCostUsdMock,
+  recordUsageMock,
+} = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   streamObjectMock: vi.fn((_opts?: unknown) => ({
     toTextStreamResponse: vi.fn(() => new Response("{}")),
   })),
+  getModelMock: vi.fn(() => ({})),
+  getUserPrimaryTeamIdMock: vi.fn().mockResolvedValue("team-1"),
+  resolveAllowListMock: vi.fn().mockResolvedValue(null),
+  checkBudgetMock: vi.fn().mockResolvedValue({ allowed: true }),
+  estimateCostUsdMock: vi.fn(() => 0),
+  recordUsageMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/ai/models", () => ({
-  customModelProvider: { getModel: vi.fn(() => ({})) },
+  customModelProvider: { getModel: getModelMock },
+}));
+vi.mock("lib/admin/teams", () => ({
+  getUserPrimaryTeamId: getUserPrimaryTeamIdMock,
+}));
+vi.mock("lib/admin/effective-models", () => ({
+  resolveEffectiveModelAllowList: resolveAllowListMock,
+}));
+vi.mock("lib/ai/budget", () => ({
+  checkBudget: checkBudgetMock,
+  estimateCostUsd: estimateCostUsdMock,
+  recordUsage: recordUsageMock,
 }));
 vi.mock("lib/ai/prompts", () => ({
   buildAgentGenerationPrompt: vi.fn(() => ""),
@@ -97,6 +123,63 @@ describe("POST /api/agent/ai", () => {
       makeRequest({ message: "create a coding agent" }),
     ))!;
     expect(res).toBeInstanceOf(Response);
+  });
+
+  // ── ADR-0003/0009 governance gates ──
+
+  it("ADR-0003: returns 402 and never streams when the team budget is exhausted", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    checkBudgetMock.mockResolvedValueOnce({
+      allowed: false,
+      reason: "Team budget exhausted",
+    });
+    const { POST } = await import("./route");
+    const res = (await POST(makeRequest({ message: "build an agent" })))!;
+    expect(res.status).toBe(402);
+    expect(streamObjectMock).not.toHaveBeenCalled();
+  });
+
+  it("ADR-0009: a non-entitled premium model pick is substituted with the cheap default", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    // Allow-list excludes the premium pick → must fall back to the default.
+    resolveAllowListMock.mockResolvedValueOnce(["deepseek-v4-flash"]);
+    const { POST } = await import("./route");
+    await POST(
+      makeRequest({
+        message: "build an agent",
+        chatModel: { provider: "openRouter", model: "claude-opus-4.8" },
+      }),
+    );
+    expect(getModelMock).toHaveBeenCalledWith({
+      provider: "openRouter",
+      model: "deepseek-v4-flash",
+    });
+  });
+
+  it("ADR-0009: an entitled model pick is honored", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    resolveAllowListMock.mockResolvedValueOnce(["claude-opus-4.8"]);
+    const { POST } = await import("./route");
+    await POST(
+      makeRequest({
+        message: "build an agent",
+        chatModel: { provider: "openRouter", model: "claude-opus-4.8" },
+      }),
+    );
+    expect(getModelMock).toHaveBeenCalledWith({
+      provider: "openRouter",
+      model: "claude-opus-4.8",
+    });
+  });
+
+  it("returns 500 (not undefined) when generation throws", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    streamObjectMock.mockImplementationOnce(() => {
+      throw new Error("model exploded");
+    });
+    const { POST } = await import("./route");
+    const res = (await POST(makeRequest({ message: "build an agent" })))!;
+    expect(res.status).toBe(500);
   });
 
   it("returns 401 when session is an empty object (falsy user)", async () => {
