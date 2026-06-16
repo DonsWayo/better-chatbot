@@ -83,7 +83,6 @@ export function AgentsList({
       })
       .ifFail((e) => {
         handleErrorWithToast(e);
-        toast.error(t("Common.error"));
       })
       .watch(() => setVisibilityChangeLoading(null));
   };
@@ -105,7 +104,6 @@ export function AgentsList({
       })
       .ifFail((e) => {
         handleErrorWithToast(e);
-        toast.error(t("Common.error"));
       })
       .watch(() => setDeletingAgentLoading(null));
   };

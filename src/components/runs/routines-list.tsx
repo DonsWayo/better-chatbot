@@ -14,6 +14,7 @@ import {
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
 import { EmptyState } from "ui/empty-state";
+import { notify } from "lib/notify";
 import { handleErrorWithToast } from "ui/shared-toast";
 import { Switch } from "ui/switch";
 
@@ -71,7 +72,11 @@ export function RoutinesList({ routines }: { routines: RoutineItem[] }) {
     });
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
+    const ok = await notify.confirm({
+      description: t("confirmDeleteRoutine"),
+    });
+    if (!ok) return;
     setDeleted((prev) => ({ ...prev, [id]: true }));
     startTransition(async () => {
       try {

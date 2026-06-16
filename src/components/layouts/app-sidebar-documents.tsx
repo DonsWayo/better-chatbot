@@ -8,6 +8,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import type { DocumentSummary } from "lib/db/pg/repositories/document-repository.pg";
 import { FileText, MoreHorizontal, Plus, Trash } from "lucide-react";
+import { notify } from "lib/notify";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -88,6 +89,10 @@ export function AppSidebarDocuments() {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await notify.confirm({
+      description: t("deleteDocumentConfirm"),
+    });
+    if (!ok) return;
     const result = await deleteDocumentAction(id);
     if (!result.success) {
       toast.error(result.error);

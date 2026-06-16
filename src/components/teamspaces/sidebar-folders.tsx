@@ -16,6 +16,7 @@ import {
   Trash,
   Users,
 } from "lucide-react";
+import { notify } from "lib/notify";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -168,6 +169,10 @@ function FolderRow({
   };
 
   const handleDelete = async () => {
+    const ok = await notify.confirm({
+      description: t("confirmDeleteFolder"),
+    });
+    if (!ok) return;
     const result = await deleteFolderAction(folder.id);
     if (!result.success) {
       handleErrorWithToast(new Error(result.error));

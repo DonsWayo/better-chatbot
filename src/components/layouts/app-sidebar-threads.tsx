@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "ui/dropdown-menu";
 import { handleErrorWithToast } from "ui/shared-toast";
+import { notify } from "lib/notify";
 import { SidebarGroupLabel, SidebarMenuSub } from "ui/sidebar";
 import {
   SidebarMenuAction,
@@ -148,6 +149,11 @@ export function AppSidebarThreads() {
   }, [displayThreadList]);
 
   const handleDeleteAllThreads = async () => {
+    const ok = await notify.confirm({
+      title: t("deleteAllChats"),
+      description: t("confirmDeleteAllChats"),
+    });
+    if (!ok) return;
     await toast.promise(deleteThreadsAction(), {
       loading: t("deletingAllChats"),
       success: () => {
@@ -160,6 +166,11 @@ export function AppSidebarThreads() {
   };
 
   const handleDeleteUnarchivedThreads = async () => {
+    const ok = await notify.confirm({
+      title: t("deleteUnarchivedChats"),
+      description: t("confirmDeleteUnarchivedChats"),
+    });
+    if (!ok) return;
     await toast.promise(deleteUnarchivedThreadsAction(), {
       loading: t("deletingUnarchivedChats"),
       success: () => {

@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { notify } from "lib/notify";
 import { toast } from "sonner";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
@@ -137,7 +138,11 @@ export function KnowledgeCollectionDetail({
   };
 
   const handleDelete = async (doc: DocumentEntry) => {
-    if (!confirm(`Remove "${doc.sourceRef}" and all its chunks?`)) return;
+    const ok = await notify.confirm({
+      title: "Remove document",
+      description: `Remove "${doc.sourceRef}" and all its chunks? This cannot be undone.`,
+    });
+    if (!ok) return;
     try {
       const res = await fetch(
         `/api/knowledge/collections/${collection.id}/documents/${doc.id}`,
