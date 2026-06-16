@@ -2,6 +2,7 @@
 
 import { isToolUIPart, type UIMessage } from "ai";
 import { memo, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import equal from "lib/equal";
 
 import { cn, truncateString } from "lib/utils";
@@ -64,7 +65,17 @@ const PurePreviewMessage = ({
   if (!partsForDisplay.length) return null;
 
   return (
-    <div className="w-full mx-auto max-w-3xl px-6 group/message">
+    <motion.div
+      className="w-full mx-auto max-w-3xl px-6 group/message"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        type: "spring",
+        stiffness: 400,
+        damping: 30,
+        delay: Math.min((messageIndex ?? 0) * 0.04, 0.2),
+      }}
+    >
       <div
         className={cn(
           "flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl",
@@ -171,7 +182,7 @@ const PurePreviewMessage = ({
           })}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

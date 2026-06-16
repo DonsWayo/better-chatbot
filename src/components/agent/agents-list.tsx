@@ -4,7 +4,8 @@ import { useTranslations } from "next-intl";
 import { AgentSummary, AgentUpdateSchema } from "app-types/agent";
 import { Card, CardDescription, CardHeader, CardTitle } from "ui/card";
 import { Button } from "ui/button";
-import { Plus, ArrowUpRight } from "lucide-react";
+import { Bot, Plus, ArrowUpRight } from "lucide-react";
+import { EmptyState } from "ui/empty-state";
 import Link from "next/link";
 import { BackgroundPaths } from "ui/background-paths";
 import { useBookmark } from "@/hooks/queries/use-bookmark";
@@ -203,20 +204,21 @@ export function AgentsList({
             />
           ))}
           {sharedAgents.length === 0 && (
-            <Card className="col-span-full bg-transparent border-none">
-              <CardHeader className="text-center py-12">
-                <CardTitle>
-                  {canCreate
+            <div className="col-span-full">
+              <EmptyState
+                icon={Bot}
+                title={
+                  canCreate
                     ? t("Agent.noSharedAgents")
-                    : t("Agent.noAvailableAgents")}
-                </CardTitle>
-                <CardDescription>
-                  {canCreate
+                    : t("Agent.noAvailableAgents")
+                }
+                description={
+                  canCreate
                     ? t("Agent.noSharedAgentsDescription")
-                    : t("Agent.noAvailableAgentsDescription")}
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                    : t("Agent.noAvailableAgentsDescription")
+                }
+              />
+            </div>
           )}
         </div>
       </div>

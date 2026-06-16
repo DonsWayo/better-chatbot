@@ -2,6 +2,7 @@
 
 import type { AsafeGuardrailEventEntity } from "lib/db/pg/schema.pg";
 import { ShieldAlert } from "lucide-react";
+import { EmptyState } from "ui/empty-state";
 import { Badge } from "ui/badge";
 import {
   Card,
@@ -74,11 +75,11 @@ export function GuardrailEventsTable({ events }: GuardrailEventsTableProps) {
       </div>
 
       {events.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No guardrail events recorded yet.
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={ShieldAlert}
+          title="No guardrail events"
+          description="No guardrail events have been recorded yet. Events appear here when policies fire during generation."
+        />
       ) : (
         <Card>
           <CardHeader>

@@ -15,7 +15,8 @@ import { useMcpList } from "@/hooks/queries/use-mcp-list";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Network } from "lucide-react";
+import { EmptyState } from "ui/empty-state";
 import { cn } from "lib/utils";
 import {
   DropdownMenu,
@@ -249,14 +250,12 @@ export default function MCPDashboard({ message, user }: MCPDashboardProps) {
           canCreate ? (
             <MCPOverview />
           ) : (
-            <div className="flex flex-col items-center justify-center space-y-4 my-20 text-center">
-              <h3 className="text-2xl md:text-4xl font-semibold">
-                {t("noMcpServersAvailable")}
-              </h3>
-              <p className="text-muted-foreground max-w-md">
-                {t("noMcpServersAvailableDescription")}
-              </p>
-            </div>
+            <EmptyState
+              icon={Network}
+              title={t("noMcpServersAvailable")}
+              description={t("noMcpServersAvailableDescription")}
+              className="my-8"
+            />
           )}
         </div>
       </ScrollArea>

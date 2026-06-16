@@ -1,6 +1,7 @@
 "use client";
 
 import { format, formatDistanceToNow } from "date-fns";
+import { EmptyState } from "ui/empty-state";
 import {
   CheckCircle2,
   ChevronRight,
@@ -234,8 +235,12 @@ export function InboxView({
       <ScrollArea className="flex-1">
         <ul className="flex flex-col gap-1 p-2" data-testid="inbox-list">
           {filtered.length === 0 ? (
-            <li className="px-3 py-16 text-center text-sm text-muted-foreground">
-              {tab === "approvals" ? t("emptyApprovals") : t("emptyRuns")}
+            <li className="px-3 py-4">
+              <EmptyState
+                compact
+                icon={tab === "approvals" ? ShieldQuestion : Clock}
+                title={tab === "approvals" ? t("emptyApprovals") : t("emptyRuns")}
+              />
             </li>
           ) : (
             filtered.map((item) => (
