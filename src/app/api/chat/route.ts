@@ -44,6 +44,7 @@ import { ImageToolName } from "lib/ai/tools";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { aupGateResponse } from "lib/compliance/aup";
 import { serverFileStorage } from "lib/file-storage";
+import { storageObjectRepository } from "lib/db/repository";
 import { runPostTurnMemoryExtraction } from "lib/memory/extract";
 import { buildMemoryPromptBlock } from "lib/memory/inject";
 import { resolveMemoryPolicy } from "lib/memory/policy";
@@ -235,9 +236,21 @@ export async function POST(request: Request) {
     if (messages.at(-1)?.id == message.id) {
       messages.pop();
     }
+    // P1 IDOR fix: verify the caller owns (or admin-has-access to) each storage
+    // key before feeding its content into the LLM — identical ownership gate to
+    // the one in /api/storage/ingest. This prevents user B from injecting user
+    // A's private upload into a chat by guessing the S3/Blob key.
+    const ownedDownload = async (key: string): Promise<Buffer> => {
+      const canAccess = await storageObjectRepository.canAccessStorageKey(
+        key,
+        session.user.id,
+      ).catch(() => false);
+      if (!canAccess) throw new Error(`Access denied to storage key: ${key}`);
+      return serverFileStorage.download(key);
+    };
     const ingestionPreviewParts = await buildCsvIngestionPreviewParts(
       attachments,
-      (key) => serverFileStorage.download(key),
+      ownedDownload,
     );
     if (ingestionPreviewParts.length) {
       const baseParts = [...message.parts];
