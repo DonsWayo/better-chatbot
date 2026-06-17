@@ -1,0 +1,177 @@
+---
+title: Node reference
+description: Every workflow node type — its purpose, configuration fields, output schema, and wiring rules.
+---
+
+Each node in a workflow has a **kind** that determines what it does, what you can configure,
+and what schema it outputs to downstream nodes. All nodes share a `name` and `description`
+field in the Config panel header; the sections below document the kind-specific fields.
+
+---
+
+## Input
+
+The entry point of every workflow. Receives the caller-supplied data and makes it available
+as `{{Input.userMessage}}` downstream.
+
+| Field | Description |
+|---|---|
+| **Input schema** | JSON Schema properties describing what callers must supply. The runner validates the input against this schema before execution starts. |
+
+**Output schema** — `{ userMessage: string }` plus any extra properties declared in the
+input schema.
+
+Every workflow must have exactly one Input node.
+
+---
+
+## Output
+
+The exit node. Collects the final result and surfaces it to the caller (chat UI, API, or
+the agent platform).
+
+| Field | Description |
+|---|---|
+| **Output fields** | Pick which upstream node outputs to include in the final result. |
+
+Every workflow must have exactly one Output node.
+
+---
+
+## LLM
+
+Calls an AI model with a system prompt and a user message constructed from upstream
+outputs.
+
+| Field | Description |
+|---|---|
+| **Model** | The model to use (inherits the caller's entitlement if left on *Auto*). |
+| **System prompt** | Freeform text; supports `/` mention tokens for upstream data. |
+| **User message** | The prompt sent as the `user` turn; supports `/` mention tokens. |
+| **Tools** | Toggle available MCP tools for this node. |
+
+**Output schema** — `{ text: string }` — the raw text completion.
+
+---
+
+## Condition
+
+Routes execution to different downstream branches based on a boolean expression.
+
+| Field | Description |
+|---|---|
+| **Condition expression** | A JS-style expression (e.g. `{{LLM.text}} === "yes"`) evaluated at run-time. Supports mention tokens. |
+
+**Edges** — draws two outbound handles: `true` and `false`. Connect each to the branch
+that should run for that outcome.
+
+---
+
+## Tool
+
+Calls a specific MCP tool or built-in app tool directly — no LLM in the loop. Useful for
+deterministic side-effects (write a calendar event, fetch a Jira ticket, send a Slack
+message).
+
+| Field | Description |
+|---|---|
+| **Tool** | Select from the org's MCP catalog or built-in tools. |
+| **Parameters** | Key-value pairs; each value supports `/` mention tokens. |
+
+**Output schema** — varies by tool; shown in the panel after a tool is selected.
+
+---
+
+## HTTP
+
+Makes an outbound HTTP request to any URL.
+
+| Field | Description |
+|---|---|
+| **Method** | GET, POST, PUT, PATCH, DELETE |
+| **URL** | Target URL; supports `/` mention tokens. |
+| **Headers** | Key-value pairs. |
+| **Body** | Request body (JSON or plain text); supports `/` mention tokens. |
+
+**Output schema** — `{ status: number, body: any }`.
+
+---
+
+## Template
+
+Renders a text template by substituting mention tokens. No model call — pure string
+interpolation.
+
+| Field | Description |
+|---|---|
+| **Template** | Freeform text with `/` mention tokens. |
+
+**Output schema** — `{ text: string }`.
+
+Useful for composing complex prompts from multiple upstream results before feeding them
+into an LLM node.
+
+---
+
+## Knowledge
+
+Queries one or more [company knowledge collections](/docs/knowledge) using hybrid retrieval
+(pgvector + full-text, fused with RRF). Returns ranked chunks ready to cite.
+
+| Field | Description |
+|---|---|
+| **Query** | The retrieval query; supports `/` mention tokens so you can route an LLM's output or the user's message as the query. |
+| **Collections** | One or more knowledge collections to search (visibility-enforced — only collections the workflow owner can access). |
+| **Max results** | Number of chunks to return (1–50). |
+
+**Output schema** — `{ results: Array<{ title, text, score, sourceRef, collectionName }>, text: string }`.
+`text` is a Markdown-formatted concatenation of all results, ready to drop into an LLM
+system prompt.
+
+---
+
+## Web Search
+
+Performs a live web search via the configured search backend (Exa / Brave). Returns ranked
+results with title, URL, and extracted text — no LLM summarisation at this node; pipe the
+output into an LLM node to synthesise an answer.
+
+| Field | Description |
+|---|---|
+| **Search query** | What to search for; supports `/` mention tokens so you can forward the user's message or an upstream result as the query. |
+| **Number of results** | How many results to return (1–20, default 5). |
+| **Search type** | `Auto` (provider decides), `Keyword` (traditional BM25-style), or `Neural` (semantic/embedding-based). |
+
+**Output schema** — `{ results: Array<{ title, url, text }>, text: string }`.
+`text` is Markdown formatted as `## Title\nURL\n\nExtracted body`, one block per result
+separated by `---`. Drop `{{WebSearch.text}}` into an LLM node's system prompt to have
+the model summarise or answer from the results.
+
+**Wiring example** — a minimal "Search → Summarise" pattern:
+
+```
+Input → WebSearch → LLM (system: "Answer using these results:\n{{WebSearch.text}}") → Output
+```
+
+**Environment requirement** — web search requires `EXA_API_KEY` or `BRAVE_SEARCH_API_KEY`
+in the environment (see
+[environment variables](/docs/operations/environment-variables)). If neither key is set,
+the node errors at run-time.
+
+---
+
+## Note
+
+A non-executable annotation node. Use it to leave explanatory text on the canvas — it is
+never run and carries no output schema. The full description field is shown on the canvas
+card; supports Markdown.
+
+---
+
+## Wiring rules
+
+- Every non-Output node must have at least one outbound edge (except Note).
+- Condition nodes must have both `true` and `false` edges connected before a workflow can
+  be published.
+- Cycles are not allowed — the graph must be a DAG.
+- A node with no inbound edges other than Input is valid; it runs immediately after Input.

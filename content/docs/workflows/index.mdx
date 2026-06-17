@@ -1,0 +1,62 @@
+---
+title: Workflows
+description: Visual node-graph pipelines — chain LLMs, tools, web search, company knowledge, HTTP calls, and conditional logic into governed automations.
+---
+
+Workflows are **visual node-graph automations** built in the Studio canvas. Each workflow
+is a directed acyclic graph of typed nodes connected by edges; the executor walks the
+graph from `Input` to `Output`, running each node in dependency order. Workflows share the
+same [revision and session model](/docs/agent-platform/revisions-and-publishing) as agents
+— every run is a governed session in `agent_session` with a step per node, an audit trail,
+and budget metering.
+
+## Building a workflow
+
+1. **Studio → Workflows tab** — open an existing workflow or click **New Workflow**.
+2. The canvas opens. Right-click anywhere (or click the `+` chip between nodes) to add a
+   node from the picker.
+3. Drag the handle on the right edge of a node to the left handle of another to draw an
+   edge. Edges carry the upstream node's **output schema** into the downstream node's
+   mention picker.
+4. Click a node to open the **Config panel** on the right — name, description, and
+   node-specific settings.
+5. Click **Run** (top-right) to execute. The canvas turns read-only, each node animates
+   its state (waiting → running → done / error), and results appear in the output area.
+6. **Publish** to freeze a revision so routines and the agent platform can execute it
+   deterministically.
+
+## Referencing upstream outputs
+
+In any node that accepts text — LLM system prompts, HTTP bodies, template content, web
+search queries, knowledge queries — you can type `/` to open the **output mention picker**.
+It shows every upstream node and its schema properties. Selecting one inserts a
+structured `{{NodeName.property}}` token that the executor resolves at run-time.
+
+## Visibility
+
+Workflows follow the [unified visibility model](/docs/architecture):
+
+| Visibility | Who can view / run it |
+|---|---|
+| `private` | Creator only (+ org admins) |
+| `shared` | Users with an explicit grant |
+| `team` | Members of any team in `teamIds[]` |
+| `company` | Everyone in the org |
+
+## Where the code lives
+
+```text
+src/lib/ai/workflow/
+  workflow.interface.ts          # NodeKind enum + per-node data types
+  executor/
+    workflow-executor.ts         # graph walk, getExecutorByKind switch
+    node-executor.ts             # one executor function per node kind
+  node-validate.ts               # validation rules run before execution
+  create-ui-node.ts              # default data when a new node is dropped
+src/components/workflow/
+  node-config/                   # one config panel component per node kind
+  selected-node-config-tab.tsx   # routes to the right config panel
+  node-icon.tsx                  # icon + accent colour per node kind
+```
+
+See the [Node reference](/docs/workflows/nodes) for every node type and its settings.
