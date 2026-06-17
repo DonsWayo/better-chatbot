@@ -23,6 +23,7 @@ import {
   outputNodeExecutor,
   templateNodeExecutor,
   toolNodeExecutor,
+  webSearchNodeExecutor,
 } from "./node-executor";
 
 /**
@@ -47,6 +48,8 @@ function getExecutorByKind(kind: NodeKind): NodeExecutor {
       return templateNodeExecutor;
     case NodeKind.Knowledge:
       return knowledgeNodeExecutor;
+    case NodeKind.WebSearch:
+      return webSearchNodeExecutor;
     case NodeKind.Approval:
       return approvalNodeExecutor;
     case "NOOP" as any:

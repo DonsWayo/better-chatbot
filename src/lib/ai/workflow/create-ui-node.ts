@@ -126,6 +126,21 @@ export function createUINode(
         type: "string",
       },
     };
+  } else if (node.data.kind === NodeKind.WebSearch) {
+    node.data.numResults = 5;
+    node.data.type = "auto";
+    node.data.query = {
+      type: "doc",
+      content: [],
+    };
+    node.data.outputSchema.properties = {
+      results: {
+        type: "array",
+      },
+      text: {
+        type: "string",
+      },
+    };
   }
 
   return node;

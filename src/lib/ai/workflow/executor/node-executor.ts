@@ -18,6 +18,7 @@ import { customModelProvider } from "lib/ai/models";
 import { routeModel } from "lib/ai/routing/route-model";
 import { DefaultToolName } from "lib/ai/tools";
 import {
+  ExaSearchResponse,
   exaContentsToolForWorkflow,
   exaSearchToolForWorkflow,
 } from "lib/ai/tools/web/web-search";
@@ -40,6 +41,7 @@ import {
   OutputSchemaSourceKey,
   TemplateNodeData,
   ToolNodeData,
+  WebSearchNodeData,
   WorkflowNodeData,
 } from "../workflow.interface";
 import { WorkflowRuntimeState } from "./graph-store";
@@ -876,5 +878,48 @@ export const knowledgeNodeExecutor: NodeExecutor<KnowledgeNodeData> = async ({
   return {
     input: { query, collectionId: node.collectionId, topK },
     output: { chunks, text },
+  };
+};
+
+/**
+ * WebSearch Node Executor
+ * Searches the web via Exa (or Brave when BRAVE_API_KEY is set).
+ * Renders the TipTap query (with upstream-output mentions) to text,
+ * runs the search, and returns results + a concatenated text string so
+ * downstream LLM nodes can ground on live web content.
+ */
+export const webSearchNodeExecutor: NodeExecutor<WebSearchNodeData> = async ({
+  node,
+  state,
+}) => {
+  const query = convertTiptapJsonToText({
+    json: node.query,
+    getOutput: state.getOutput,
+  }).trim();
+
+  if (!query) {
+    return {
+      input: { query, numResults: node.numResults, type: node.type },
+      output: { results: [], text: "" },
+    };
+  }
+
+  const searchResult = (await exaSearchToolForWorkflow.execute!(
+    {
+      query,
+      numResults: node.numResults ?? 5,
+      type: node.type ?? "auto",
+    },
+    { messages: [], toolCallId: "" },
+  )) as ExaSearchResponse;
+
+  const results = searchResult.results ?? [];
+  const text = results
+    .map((r) => `## ${r.title}\n${r.url}\n\n${r.text}`)
+    .join("\n\n---\n\n");
+
+  return {
+    input: { query, numResults: node.numResults ?? 5, type: node.type ?? "auto" },
+    output: { results, text },
   };
 };

@@ -22,6 +22,7 @@ import { ToolNodeDataConfig } from "./node-config/tool-node-config";
 import { HttpNodeConfig } from "./node-config/http-node-config";
 import { TemplateNodeConfig } from "./node-config/template-node-config";
 import { KnowledgeNodeConfig } from "./node-config/knowledge-node-config";
+import { WebSearchNodeConfig } from "./node-config/web-search-node-config";
 import { useTranslations } from "next-intl";
 
 export function SelectedNodeConfigTab({ node }: { node: UINode }) {
@@ -102,6 +103,8 @@ export function SelectedNodeConfigTab({ node }: { node: UINode }) {
           <TemplateNodeConfig data={node.data} />
         ) : node.data.kind === NodeKind.Knowledge ? (
           <KnowledgeNodeConfig data={node.data} />
+        ) : node.data.kind === NodeKind.WebSearch ? (
+          <WebSearchNodeConfig data={node.data} />
         ) : node.data.kind === NodeKind.Note ? (
           <div className="h-full flex flex-col gap-2 px-4">
             <Label

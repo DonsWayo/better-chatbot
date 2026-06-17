@@ -10,6 +10,7 @@ import {
   HouseIcon,
   InfoIcon,
   LandPlotIcon,
+  SearchIcon,
   ShieldCheckIcon,
   SplitIcon,
   TerminalIcon,
@@ -43,6 +44,8 @@ export function NodeIcon({
         return TextIcon;
       case NodeKind.Knowledge:
         return DatabaseIcon;
+      case NodeKind.WebSearch:
+        return SearchIcon;
       case NodeKind.Code:
         return TerminalIcon;
       case NodeKind.Approval:
@@ -71,11 +74,13 @@ export function NodeIcon({
                       ? "bg-purple-500"
                       : type === NodeKind.Knowledge
                         ? "bg-cyan-500"
-                        : type === NodeKind.Condition
-                        ? "bg-amber-500"
-                        : type === NodeKind.Approval
-                          ? "bg-emerald-500"
-                          : "bg-card",
+                        : type === NodeKind.WebSearch
+                          ? "bg-sky-500"
+                          : type === NodeKind.Condition
+                            ? "bg-amber-500"
+                            : type === NodeKind.Approval
+                              ? "bg-emerald-500"
+                              : "bg-card",
         "p-1 rounded",
         className,
       )}
