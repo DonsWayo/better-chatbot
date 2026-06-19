@@ -259,13 +259,15 @@ export function InboxView({
         <ScrollArea className="flex-1">
           <div className="mx-auto w-full max-w-2xl px-5 py-5">
             {mentions.length === 0 ? (
-              <EmptyState
-                icon={AtSign}
-                title={t("emptyMentions")}
-                description={t("emptyMentionsDescription")}
-              />
+              <div data-testid="inbox-mentions-empty">
+                <EmptyState
+                  icon={AtSign}
+                  title={t("emptyMentions")}
+                  description={t("emptyMentionsDescription")}
+                />
+              </div>
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-2" data-testid="inbox-mentions-list">
                 {mentions.map((m) => (
                   <li key={m.id}>
                     <Link

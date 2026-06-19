@@ -6,13 +6,29 @@ import { TEST_USERS } from "../constants/test-users";
 test.describe("Inbox — two-pane triage surface", () => {
   test.use({ storageState: TEST_USERS.admin.authFile });
 
-  test("renders the inbox shell with the three tabs", async ({ page }) => {
+  test("renders the inbox shell with four tabs", async ({ page }) => {
     await page.goto("/inbox");
     await expect(
       page.getByRole("heading", { name: /inbox/i, level: 1 }),
     ).toBeVisible();
-    // Tabs (labels come from Triage.inboxTab / runsTab / routinesTab).
-    await expect(page.getByRole("tab")).toHaveCount(3);
+    // Tabs: Approvals, Runs, Routines, Mentions.
+    await expect(page.getByRole("tab")).toHaveCount(4);
+  });
+
+  test("Mentions tab renders without crashing", async ({ page }) => {
+    await page.goto("/inbox");
+    // Fourth tab is Mentions.
+    await page.getByRole("tab").nth(3).click();
+    await expect(page.getByRole("tab").nth(3)).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    // Either a mention list or the empty state is shown; the page must not error.
+    await expect(
+      page
+        .getByTestId("inbox-mentions-list")
+        .or(page.getByTestId("inbox-mentions-empty")),
+    ).toBeVisible();
   });
 
   test("Runs tab: select an item → detail pane → open the full run", async ({
