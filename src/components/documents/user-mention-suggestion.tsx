@@ -47,7 +47,7 @@ export const UserMentionSuggestion: FC<Props> = ({
       <PopoverTrigger asChild>
         <span className="fixed z-50" style={style} />
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start" side="top">
+      <PopoverContent data-testid="mention-suggestion" className="w-64 p-0" align="start" side="top">
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <SearchIcon className="size-3.5 shrink-0 opacity-50" />
           <input

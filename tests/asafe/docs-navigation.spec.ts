@@ -15,17 +15,17 @@ test.describe("/docs — in-app documentation", () => {
   }) => {
     await page.goto("/docs");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    // The overview should reference Conek AI / multi-tenant direction.
+    // Scope to the article element to avoid hidden mobile-nav duplicates.
     await expect(
-      page.getByText(/conek ai|multi.tenant|external client/i).first(),
+      page.locator("article").getByText(/conek ai|multi.tenant|external client/i).first(),
     ).toBeVisible();
   });
 
   test("sidebar shows a Workflows section", async ({ page }) => {
     await page.goto("/docs");
-    // Left nav should include a "Workflows" link.
+    // Fumadocs renders section headers as collapsible <button>s, not <a>s.
     await expect(
-      page.locator("nav a, aside a").filter({ hasText: /workflows/i }).first(),
+      page.locator("nav a, aside a, nav button, aside button").filter({ hasText: /workflows/i }).first(),
     ).toBeVisible({ timeout: 8000 });
   });
 

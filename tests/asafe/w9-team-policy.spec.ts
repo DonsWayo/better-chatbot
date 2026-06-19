@@ -61,6 +61,14 @@ test.describe("W9: team policy API", () => {
     if (res.status() === 201 || res.status() === 200) {
       const body = await res.json();
       teamId = body.team?.id ?? body.id;
+      // Add the admin as a team member — the prompts API enforces membership,
+      // so the creator must be added explicitly (teams don't auto-enroll them).
+      if (teamId) {
+        await apiRequest(page, "POST", `/api/admin/teams/${teamId}/members`, {
+          email: TEST_USERS.admin.email,
+          role: "admin",
+        });
+      }
     }
     await context.close();
   });

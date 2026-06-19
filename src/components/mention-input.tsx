@@ -105,6 +105,7 @@ export default function MentionInput({
           renderHTML: (props) => {
             const el = document.createElement("div");
             el.className = "inline-flex";
+            el.setAttribute("data-type", "mention");
             const root = createRoot(el);
             if (MentionItem)
               root.render(

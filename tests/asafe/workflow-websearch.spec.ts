@@ -7,28 +7,17 @@ import { TEST_USERS } from "../constants/test-users";
 // TAVILY_API_KEY in the CI env).
 
 async function openNewWorkflow(page: Page): Promise<void> {
-  await page.goto("/studio");
-  // The studio page lists workflows/agents; create a new workflow.
-  // Try the "+ New Workflow" button first; fall back to a direct nav.
-  const newBtn = page
-    .getByRole("button", { name: /new workflow/i })
-    .or(page.getByTestId("workflow-new"))
-    .first();
-  const btnVisible = await newBtn.isVisible().catch(() => false);
-  if (btnVisible) {
-    await newBtn.click();
-    await expect(page).toHaveURL(/\/studio\/[0-9a-f-]{36}/);
-  } else {
-    // Create via API and navigate directly.
-    const res = await page.request.post("/api/workflows", {
-      headers: { "Content-Type": "application/json" },
-      data: { name: `e2e-websearch-${Date.now()}`, description: "" },
-    });
-    if (res.ok()) {
-      const body = (await res.json()) as { id?: string; workflow?: { id: string } };
-      const id = body.id ?? body.workflow?.id;
-      if (id) await page.goto(`/studio/${id}`);
-    }
+  // Navigate directly to the Workflows tab — the studio defaults to Agents.
+  await page.goto("/studio?tab=workflows");
+  // Create a workflow via API and navigate to the builder.
+  // The endpoint is /api/workflow (singular); POST returns the saved workflow.
+  const res = await page.request.post("/api/workflow", {
+    headers: { "Content-Type": "application/json" },
+    data: { name: `e2e-websearch-${Date.now()}`, description: "" },
+  });
+  if (res.ok()) {
+    const body = (await res.json()) as { id?: string };
+    if (body.id) await page.goto(`/workflow/${body.id}`);
   }
 }
 
