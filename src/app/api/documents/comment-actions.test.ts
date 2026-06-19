@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
   getCommentOwnerMock: vi.fn(),
   deleteCommentMock: vi.fn(),
   getIsUserAdminMock: vi.fn(),
+  insertMentionsMock: vi.fn(),
 }));
 
 vi.mock("auth/server", () => ({ getSession: h.getSessionMock }));
@@ -29,6 +30,7 @@ vi.mock("lib/db/repository", () => ({
     getCommentOwner: h.getCommentOwnerMock,
     deleteComment: h.deleteCommentMock,
   },
+  mentionNotificationRepository: { insertMentions: h.insertMentionsMock },
 }));
 vi.mock("lib/user/utils", () => ({ getIsUserAdmin: h.getIsUserAdminMock }));
 
@@ -132,6 +134,40 @@ describe("createDocumentCommentAction", () => {
     expect(h.insertCommentMock).toHaveBeenCalledWith(
       expect.objectContaining({ parentId: "p-1" }),
     );
+  });
+
+  it("fires mention notifications for each mentioned user", async () => {
+    h.insertCommentMock.mockResolvedValue({ id: "c-mention" });
+    h.insertMentionsMock.mockResolvedValue(undefined);
+    const result = await createDocumentCommentAction({
+      documentId: DOC,
+      content: CONTENT,
+      mentionedUserIds: [OTHER, "user-3"],
+    });
+    expect(result).toEqual({ success: true, data: { id: "c-mention" } });
+    expect(h.insertMentionsMock).toHaveBeenCalledTimes(1);
+    const [mentions] = h.insertMentionsMock.mock.calls[0] as [Array<{ recipientId: string }>];
+    expect(mentions.map((m) => m.recipientId)).toEqual([OTHER, "user-3"]);
+  });
+
+  it("does not send a mention notification for a self-tag", async () => {
+    h.insertCommentMock.mockResolvedValue({ id: "c-self" });
+    h.insertMentionsMock.mockResolvedValue(undefined);
+    await createDocumentCommentAction({
+      documentId: DOC,
+      content: CONTENT,
+      mentionedUserIds: [USER],
+    });
+    expect(h.insertMentionsMock).not.toHaveBeenCalled();
+  });
+
+  it("skips notification call when no users are mentioned", async () => {
+    h.insertCommentMock.mockResolvedValue({ id: "c-none" });
+    await createDocumentCommentAction({
+      documentId: DOC,
+      content: CONTENT,
+    });
+    expect(h.insertMentionsMock).not.toHaveBeenCalled();
   });
 });
 

@@ -142,7 +142,8 @@ describe("POST /api/storage/upload", () => {
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
     checkStorageActionMock.mockResolvedValueOnce({ isValid: true });
     uploadMock.mockResolvedValueOnce({ key: "k", sourceUrl: "http://cdn/k" });
-    const file = new File(["data"], "data.bin", { type: "application/octet-stream" });
+    recordStorageObjectMock.mockResolvedValueOnce(undefined);
+    const file = new File(["data"], "data.txt", { type: "text/plain" });
     const { POST } = await import("./route");
     await POST(makeRequest(file));
     expect(uploadMock).toHaveBeenCalledTimes(1);
