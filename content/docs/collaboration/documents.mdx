@@ -79,7 +79,7 @@ The visibility picker is the same unified control used for agents and workflows
 Anyone who can **read** a doc can comment on it; **edit** access (owner/admin or
 an edit/manage grant) is required to change the body, rename, re-share or delete.
 
-## Comments
+## Comments and @mentions
 
 Open the comments panel to leave threaded comments (one level of replies).
 Comments are stored in `asafe_document_comment` (cascades with the document) and
@@ -87,6 +87,12 @@ are realtime **via polling**: while the panel is open and the tab is visible it
 re-fetches every few seconds, so other people's comments and deletions appear
 live without holding a connection. Anyone who can read the doc can comment; you
 can delete your own comments, and org admins can moderate any.
+
+**@mentions** — type `@` inside the comment composer to search for and mention a
+colleague by name. They receive a notification in the **Inbox → Mentions** tab
+(backed by `asafe_mention_notification`, one row per mention per recipient). The
+mention renders as a `@Name` chip in the thread. Mentions are not sent for
+self-tags.
 
 ## Version history
 

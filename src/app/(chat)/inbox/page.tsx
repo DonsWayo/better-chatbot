@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import {
   type InboxApprovalItem,
+  type InboxMentionItem,
   type InboxRunItem,
   InboxView,
 } from "@/components/inbox/inbox-view";
@@ -13,7 +14,7 @@ import {
 } from "lib/agent-platform/approvals";
 import { listSchedulesForUser } from "lib/agent-platform/scheduler";
 import { listSessionsForUser } from "lib/agent-platform/sessions";
-import { workflowRepository } from "lib/db/repository";
+import { mentionNotificationRepository, workflowRepository } from "lib/db/repository";
 import { getIsUserAdmin } from "lib/user/utils";
 
 // Inbox (formerly /triage — server redirect kept): a real two-pane mail-style
@@ -45,12 +46,14 @@ export default async function InboxPage() {
   const userId = authSession.user.id;
   const isAdmin = getIsUserAdmin(authSession.user);
 
-  const [approvalsRaw, sessions, schedules, workflows] = await Promise.all([
-    listPendingApprovalsForUser(userId, isAdmin),
-    listSessionsForUser(userId, { limit: ROUTINE_RUN_SCAN_LIMIT }),
-    listSchedulesForUser(userId),
-    workflowRepository.selectAll(userId),
-  ]);
+  const [approvalsRaw, sessions, schedules, workflows, mentionsRaw] =
+    await Promise.all([
+      listPendingApprovalsForUser(userId, isAdmin),
+      listSessionsForUser(userId, { limit: ROUTINE_RUN_SCAN_LIMIT }),
+      listSchedulesForUser(userId),
+      workflowRepository.selectAll(userId),
+      mentionNotificationRepository.getUnreadForUser(userId),
+    ]);
 
   const approvals: InboxApprovalItem[] = approvalsRaw.map(
     ({ request, session }) => {
@@ -100,9 +103,25 @@ export default async function InboxPage() {
     lastRunAt: schedule.lastRunAt?.toISOString() ?? null,
   }));
 
+  const mentions: InboxMentionItem[] = mentionsRaw.map((m) => ({
+    id: m.id,
+    kind: "mention",
+    authorName: m.authorName,
+    authorImage: m.authorImage,
+    documentId: m.documentId,
+    documentTitle: m.documentTitle,
+    commentId: m.commentId,
+    createdAt: m.createdAt.toISOString(),
+  }));
+
   return (
     <div className="h-full">
-      <InboxView approvals={approvals} runs={runs} routines={routines} />
+      <InboxView
+        approvals={approvals}
+        runs={runs}
+        routines={routines}
+        mentions={mentions}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import type {
 import {
   documentCommentRepository,
   documentRepository,
+  mentionNotificationRepository,
 } from "lib/db/repository";
 import { getIsUserAdmin } from "lib/user/utils";
 
@@ -215,10 +216,10 @@ export async function createDocumentCommentAction(input: {
   documentId: string;
   content: Record<string, unknown>;
   parentId?: string | null;
+  mentionedUserIds?: string[];
 }): Promise<ActionResult<DocumentCommentWithUser>> {
   return toActionResult(async () => {
     const userId = await requireUserId();
-    // Anyone who can READ the doc may comment.
     if (
       !(await documentRepository.checkAccess(input.documentId, userId, true))
     ) {
@@ -228,7 +229,6 @@ export async function createDocumentCommentAction(input: {
     if (!input.content || typeof input.content !== "object") {
       throw new Error("Comment content is required");
     }
-    // A reply must point at a comment that actually belongs to this doc.
     if (input.parentId) {
       const parent = await documentCommentRepository.getCommentOwner(
         input.parentId,
@@ -237,12 +237,29 @@ export async function createDocumentCommentAction(input: {
         throw new Error("Parent comment not found");
       }
     }
-    return documentCommentRepository.insertComment({
+    const comment = await documentCommentRepository.insertComment({
       documentId: input.documentId,
       authorId: userId,
       parentId: input.parentId ?? null,
       content: input.content,
     });
+
+    // Fire mention notifications for @tagged colleagues (skip self-mentions).
+    const mentioned = (input.mentionedUserIds ?? []).filter(
+      (id) => id !== userId,
+    );
+    if (mentioned.length > 0) {
+      await mentionNotificationRepository.insertMentions(
+        mentioned.map((recipientId) => ({
+          recipientId,
+          authorId: userId,
+          documentId: input.documentId,
+          commentId: comment.id,
+        })),
+      );
+    }
+
+    return comment;
   });
 }
 

@@ -5,16 +5,21 @@ description: What asafe-ai is, the north star it is built around, and the surfac
 
 ## What asafe-ai is
 
-**asafe-ai** is A-SAFE's governed internal AI platform: a self-hosted web **and** desktop
-chat platform for ~800 employees with intelligent model routing, per-team budgets,
-self-serve usage visibility, company MCP servers and tools, and company-knowledge RAG.
-Single sign-on (Microsoft Entra ID), centrally administered, running on A-SAFE's own AWS
-infrastructure.
+**asafe-ai** (branded **Conek AI**) started as A-SAFE's governed internal AI platform and
+is evolving toward a **multi-tenant SaaS** that can be offered to external clients. The
+core is a self-hosted web **and** desktop chat platform with intelligent model routing,
+per-team budgets, self-serve usage visibility, company MCP servers and tools, and
+company-knowledge RAG. Centrally administered, running on AWS EKS.
 
 It is a **fork of [`cgoinglove/better-chatbot`](https://github.com/cgoinglove/better-chatbot)**
 (MIT) — the platform builds *on top of* the upstream chat/MCP/workflow/agent foundation and
 adds the enterprise layers upstream lacks: routing, budgets, RAG, SSO posture, guardrails,
 compliance, compression, a desktop client, and the agent platform.
+
+**Multi-tenant direction.** The tenancy model (ADR-0002) is being revised to support
+separate orgs with isolated data, per-client SSO (Entra ID for A-SAFE; custom SSO or
+magic-link for external clients), and per-org billing. Data residency stays shared on
+EU infrastructure — no per-client region isolation is planned.
 
 ## North star
 

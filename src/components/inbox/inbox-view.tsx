@@ -3,6 +3,7 @@
 import { format, formatDistanceToNow } from "date-fns";
 import { EmptyState } from "ui/empty-state";
 import {
+  AtSign,
   CheckCircle2,
   ChevronRight,
   CircleSlash,
@@ -64,6 +65,17 @@ export type InboxRunItem = {
   isRoutine: boolean;
 };
 
+export type InboxMentionItem = {
+  id: string;
+  kind: "mention";
+  authorName: string;
+  authorImage?: string;
+  documentId: string;
+  documentTitle: string;
+  commentId: string;
+  createdAt: string;
+};
+
 type InboxItem = InboxApprovalItem | InboxRunItem;
 
 /* ── status visuals ──────────────────────────────────────────────────────── */
@@ -101,16 +113,18 @@ function StatusIcon({ status }: { status: AgentSessionStatus }) {
   return <CircleSlash className={cn(cls, "text-muted-foreground")} />;
 }
 
-type TabKey = "approvals" | "runs" | "routines";
+type TabKey = "approvals" | "runs" | "routines" | "mentions";
 
 export function InboxView({
   approvals,
   runs,
   routines,
+  mentions,
 }: {
   approvals: InboxApprovalItem[];
   runs: InboxRunItem[];
   routines: RoutineItem[];
+  mentions: InboxMentionItem[];
 }) {
   const t = useTranslations("Triage");
   const tRuns = useTranslations("Runs");
@@ -182,7 +196,7 @@ export function InboxView({
   const tabsBar = (
     <div className="flex flex-col gap-3 border-b px-4 py-3">
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <TabsList className="grid w-full grid-cols-3 rounded-full">
+        <TabsList className="grid w-full grid-cols-4 rounded-full">
           <TabsTrigger value="approvals" className="rounded-full text-xs">
             {t("inboxTab")}
             {approvals.length > 0 && (
@@ -196,6 +210,14 @@ export function InboxView({
           </TabsTrigger>
           <TabsTrigger value="routines" className="rounded-full text-xs">
             {t("routinesTab")}
+          </TabsTrigger>
+          <TabsTrigger value="mentions" className="rounded-full text-xs">
+            {t("mentionsTab")}
+            {mentions.length > 0 && (
+              <Badge className="ml-1.5 h-4 min-w-4 justify-center rounded-full border-transparent bg-primary px-1 text-[10px] text-primary-foreground tabular-nums">
+                {mentions.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -214,8 +236,7 @@ export function InboxView({
     </div>
   );
 
-  // Routines tab is a management surface, not a triage stream — render it
-  // full-width (mail apps do the same for settings-like views).
+  // Routines and Mentions tabs are full-width (no list/detail split).
   if (tab === "routines") {
     return (
       <div className="flex h-full flex-col">
@@ -224,6 +245,51 @@ export function InboxView({
         <ScrollArea className="flex-1">
           <div className="mx-auto w-full max-w-2xl px-5 py-5">
             <RoutinesList routines={routines} />
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
+  if (tab === "mentions") {
+    return (
+      <div className="flex h-full flex-col">
+        {header}
+        {tabsBar}
+        <ScrollArea className="flex-1">
+          <div className="mx-auto w-full max-w-2xl px-5 py-5">
+            {mentions.length === 0 ? (
+              <EmptyState
+                icon={AtSign}
+                title={t("emptyMentions")}
+                description={t("emptyMentionsDescription")}
+              />
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {mentions.map((m) => (
+                  <li key={m.id}>
+                    <Link
+                      href={`/documents/${m.documentId}`}
+                      className="flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-muted/60"
+                    >
+                      <AtSign className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">
+                          {m.authorName} mentioned you in{" "}
+                          <span className="font-semibold">{m.documentTitle}</span>
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(m.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </div>
+                      <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </ScrollArea>
       </div>

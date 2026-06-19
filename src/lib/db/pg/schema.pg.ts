@@ -1601,3 +1601,37 @@ export const asafeDocumentCommentRelations = relations(
 
 export type AsafeDocumentCommentEntity =
   typeof AsafeDocumentCommentTable.$inferSelect;
+
+/** @mention notifications fired when a user is tagged in a document comment. */
+export const AsafeMentionNotificationTable = pgTable(
+  "asafe_mention_notification",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    recipientId: uuid("recipient_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => AsafeDocumentTable.id, { onDelete: "cascade" }),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => AsafeDocumentCommentTable.id, { onDelete: "cascade" }),
+    isRead: boolean("is_read").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_mention_notification_recipient_idx").on(
+      t.recipientId,
+      t.isRead,
+      t.createdAt,
+    ),
+  ],
+);
+
+export type AsafeMentionNotificationEntity =
+  typeof AsafeMentionNotificationTable.$inferSelect;
