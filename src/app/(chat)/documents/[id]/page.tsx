@@ -1,5 +1,5 @@
 import { getSession } from "auth/server";
-import { documentRepository } from "lib/db/repository";
+import { documentRepository, mentionNotificationRepository } from "lib/db/repository";
 import { notFound, redirect } from "next/navigation";
 
 import { DocumentEditorPage } from "@/components/documents/document-editor-page";
@@ -33,6 +33,10 @@ export default async function DocumentDetailPage({
   // Read access first — 404 rather than leak the doc's existence.
   const canRead = await documentRepository.checkAccess(id, userId, true);
   if (!canRead) notFound();
+
+  // Fire-and-forget: clear any @mention notifications for this user+doc now
+  // that they're reading it. Non-blocking — page renders before this settles.
+  void mentionNotificationRepository.markReadForDocument(userId, id);
 
   const doc = await documentRepository.getDocumentById(id);
   if (!doc) notFound();
