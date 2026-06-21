@@ -743,6 +743,8 @@ export default function PromptInput({
                   </Tooltip>
                 ) : (
                   <div
+                    role="button"
+                    aria-label={isLoading ? "Stop" : "Send"}
                     onClick={() => {
                       if (isLoading) {
                         onStop();

@@ -7,7 +7,7 @@ import { useReactFlow } from "@xyflow/react";
 import { useObjectState } from "@/hooks/use-object-state";
 import { UINode } from "lib/ai/workflow/workflow.interface";
 import { cn, createDebounce, errorToString } from "lib/utils";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GraphEndEvent } from "ts-edge";
 import { allNodeValidate } from "lib/ai/workflow/node-validate";
 import { toast } from "sonner";
@@ -79,7 +79,18 @@ export function ExecuteTab({
   const [isRunning, setIsRunning] = useState(false);
   const [histories, setHistories] = useState<NodeRuntimeHistory[]>([]);
   const [result, setResult] = useState<GraphEndEvent | undefined>();
+  const [now, setNow] = useState<number>(Date.now());
+  const [startTime, setStartTime] = useState<number | undefined>();
+  const [totalSteps, setTotalSteps] = useState<number>(0);
+  const [stepCount, setStepCount] = useState<number>(0);
   const { copied, copy } = useCopy();
+
+  // Live elapsed timer — ticks every second while a run is in progress.
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
 
   const isProcessing = useMemo(
     () => Boolean(processIds.length),
@@ -204,6 +215,15 @@ ${workflow!.description ? `tool-description: ${workflow!.description}` : ""}`,
       const stop = addProcess();
       const abortController = new AbortController();
       setHistories([]);
+      setResult(undefined);
+      setStepCount(0);
+      const runningNodes = getNodes().filter(
+        (n) => n.data.kind !== NodeKind.Input,
+      );
+      setTotalSteps(runningNodes.length);
+      const t0 = Date.now();
+      setStartTime(t0);
+      setNow(t0);
       setIsRunning(true);
       setNodes((nds) => {
         return nds.map((node) => {
@@ -268,6 +288,7 @@ ${workflow!.description ? `tool-description: ${workflow!.description}` : ""}`,
                   updateNodeData(event.node.name, {
                     runtime: { status: "running" },
                   });
+                  setStepCount((prev) => prev + 1);
                   setHistories((prev) => {
                     const uiNode = getNode(event.node.name);
                     if (!uiNode) return prev;
@@ -501,6 +522,48 @@ ${workflow!.description ? `tool-description: ${workflow!.description}` : ""}`,
         </div>
       ) : tab == tabs[1].value ? (
         <div>
+          {isRunning && (
+            <div className="px-4 pb-3 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Loader2 className="size-3 animate-spin text-primary" />
+                  <span>
+                    {(() => {
+                      const running = histories.find(
+                        (h) => h.status === "running",
+                      );
+                      return running
+                        ? `Running: ${running.name}`
+                        : "Starting…";
+                    })()}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {startTime !== undefined
+                    ? `${((now - startTime) / 1000).toFixed(0)}s`
+                    : ""}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    style={{
+                      width:
+                        totalSteps > 0
+                          ? `${Math.min(100, ((stepCount - 1) / totalSteps) * 100)}%`
+                          : "0%",
+                    }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                  {stepCount > 0 && totalSteps > 0
+                    ? `Step ${stepCount} of ${totalSteps}`
+                    : ""}
+                </span>
+              </div>
+            </div>
+          )}
           <div
             className="flex flex-col px-4 h-[30vh] overflow-y-auto"
             ref={historyRef}
@@ -535,15 +598,15 @@ ${workflow!.description ? `tool-description: ${workflow!.description}` : ""}`,
                     )}
                     <span
                       className={cn(
-                        "ml-auto text-xs",
+                        "ml-auto text-xs tabular-nums",
                         history.status != "fail" && "text-muted-foreground",
                       )}
                     >
-                      {history.status != "running" &&
-                        (
-                          (history.endedAt! - history.startedAt!) /
-                          1000
-                        ).toFixed(2)}
+                      {history.status === "running"
+                        ? `${((now - history.startedAt) / 1000).toFixed(1)}s`
+                        : history.endedAt !== undefined
+                          ? `${((history.endedAt - history.startedAt) / 1000).toFixed(2)}s`
+                          : null}
                     </span>
                     {history.status == "success" ? (
                       <Check className="size-3" />

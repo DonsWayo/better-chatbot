@@ -69,8 +69,15 @@ export async function requirePrincipal(
   if (scope?.endsWith(":write")) {
     const rl = await checkRateLimit(principal.userId).catch(() => null);
     if (rl && !rl.allowed) {
+      const retryAfter = Math.ceil((rl.resetAt - Date.now()) / 1000);
       return new Response(
-        JSON.stringify({ error: { code: "rate_limited", message: "Too many requests. Retry after the reset window." } }),
+        JSON.stringify({
+          error: {
+            code: "rate_limited",
+            message: `Too many requests. Retry after ${retryAfter} seconds.`,
+            retryAfter,
+          },
+        }),
         {
           status: 429,
           headers: {
@@ -78,7 +85,7 @@ export async function requirePrincipal(
             "X-RateLimit-Limit": String(rl.limit),
             "X-RateLimit-Remaining": String(rl.remaining),
             "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
-            "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+            "Retry-After": String(retryAfter),
           },
         },
       );

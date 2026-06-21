@@ -260,6 +260,11 @@ function recordNodeUsage(
   }).catch(() => {});
 }
 
+// Hard ceiling per LLM call so one slow node can't exhaust the workflow's
+// 5-min global timeout alone. Chosen conservatively; can be overridden per
+// node in the future by passing node.timeout.
+const LLM_NODE_TIMEOUT_MS = 90_000;
+
 /**
  * LLM Node Executor
  * Executes Large Language Model interactions with support for:
@@ -322,6 +327,7 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     const response = await generateText({
       model,
       messages: convertToModelMessages(messages),
+      abortSignal: AbortSignal.timeout(LLM_NODE_TIMEOUT_MS),
     });
     // W3: attribute this provider call to the executing user + team budget.
     recordNodeUsage(state, chatModel, response.usage, node.id);
@@ -347,6 +353,7 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     messages: convertToModelMessages(messages),
     schema: jsonSchemaToZod(generateAgainst),
     maxRetries: 3,
+    abortSignal: AbortSignal.timeout(LLM_NODE_TIMEOUT_MS),
   });
 
   // W7: object-branch output scrub (parity with the text branch) — the object
@@ -483,6 +490,7 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
           inputSchema: jsonSchemaToZod(node.tool.parameterSchema),
         },
       },
+      abortSignal: AbortSignal.timeout(LLM_NODE_TIMEOUT_MS),
     });
     recordNodeUsage(state, chatModel, response.usage, node.id);
 
@@ -628,110 +636,101 @@ export const httpNodeExecutor: NodeExecutor<HttpNodeData> = async ({
     }
   }
 
-  const startTime = Date.now();
+  // Transient network error codes that are safe to retry.
+  const RETRYABLE_CODES = new Set(["ENOTFOUND", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"]);
+  // 3 total attempts (initial + 2 retries). HTTP errors and timeouts are never retried.
+  const MAX_NETWORK_RETRIES = 2;
 
-  try {
-    // Create AbortController for timeout
+  for (let attempt = 0; attempt <= MAX_NETWORK_RETRIES; attempt++) {
+    if (attempt > 0) {
+      // Exponential backoff: 1 s, 2 s.
+      await new Promise((r) => setTimeout(r, 1_000 * attempt));
+    }
+
+    const startTime = Date.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    const response = await fetch(finalUrl, {
-      method: node.method,
-      headers,
-      body,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    // Parse response body as string
-    let responseBody: string;
     try {
-      responseBody = await response.text();
-    } catch {
-      // If parsing fails, return empty string
-      responseBody = "";
-    }
-
-    // Convert response headers to object
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-
-    const duration = Date.now() - startTime;
-
-    const request = {
-      url: finalUrl,
-      method: node.method,
-      headers,
-      body,
-      timeout,
-    };
-    const responseData = {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      headers: responseHeaders,
-      body: responseBody,
-      duration,
-      size: response.headers.get("content-length")
-        ? parseInt(response.headers.get("content-length")!)
-        : undefined,
-    };
-    if (!response.ok) {
-      state.setInput(node.id, {
-        request,
-        response: responseData,
+      const response = await fetch(finalUrl, {
+        method: node.method,
+        headers,
+        body,
+        signal: controller.signal,
       });
-      throw new AppError(response.status.toString(), response.statusText);
-    }
 
-    return {
-      input: {
-        request,
-      },
-      output: {
-        response: responseData,
-      },
-    };
-  } catch (error: any) {
-    if (error instanceof AppError) {
+      clearTimeout(timeoutId);
+
+      let responseBody: string;
+      try {
+        responseBody = await response.text();
+      } catch {
+        responseBody = "";
+      }
+
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      const duration = Date.now() - startTime;
+      const request = { url: finalUrl, method: node.method, headers, body, timeout };
+      const responseData = {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: responseHeaders,
+        body: responseBody,
+        duration,
+        size: response.headers.get("content-length")
+          ? parseInt(response.headers.get("content-length")!)
+          : undefined,
+      };
+
+      if (!response.ok) {
+        state.setInput(node.id, { request, response: responseData });
+        throw new AppError(response.status.toString(), response.statusText);
+      }
+
+      return { input: { request }, output: { response: responseData } };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+
+      // HTTP errors are authoritative — never retry.
+      if (error instanceof AppError) throw error;
+
+      const duration = Date.now() - startTime;
+
+      // Client-side timeout — no retry (retrying would just time out again).
+      if (error.name === "AbortError") {
+        const errMsg = `Request timeout after ${timeout}ms`;
+        state.setInput(node.id, {
+          request: { url: finalUrl, method: node.method, headers, body, timeout },
+          response: { status: 0, statusText: errMsg, ok: false, headers: {}, body: "", duration, error: { type: "timeout", message: errMsg } },
+        });
+        throw error;
+      }
+
+      // Transient network error: retry if we have attempts left.
+      if (RETRYABLE_CODES.has(error.code) && attempt < MAX_NETWORK_RETRIES) continue;
+
+      // Final attempt or non-retryable: enrich state and re-throw.
+      let errorMessage = error.message;
+      let errorType = "unknown";
+      if (error.code === "ENOTFOUND") { errorMessage = `DNS resolution failed for ${finalUrl}`; errorType = "dns"; }
+      else if (error.code === "ECONNREFUSED") { errorMessage = `Connection refused to ${finalUrl}`; errorType = "connection"; }
+      else if (error.code === "ECONNRESET") { errorType = "connection"; }
+
+      state.setInput(node.id, {
+        request: { url: finalUrl, method: node.method, headers, body, timeout },
+        response: { status: 0, statusText: errorMessage, ok: false, headers: {}, body: "", duration, error: { type: errorType, message: errorMessage } },
+      });
       throw error;
     }
-    const duration = Date.now() - startTime;
-
-    // Handle different types of errors
-    let errorMessage = error.message;
-    let errorType = "unknown";
-
-    if (error.name === "AbortError") {
-      errorMessage = `Request timeout after ${timeout}ms`;
-      errorType = "timeout";
-    } else if (error.code === "ENOTFOUND") {
-      errorMessage = `DNS resolution failed for ${finalUrl}`;
-      errorType = "dns";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMessage = `Connection refused to ${finalUrl}`;
-      errorType = "connection";
-    }
-    state.setInput(node.id, {
-      request: { url: finalUrl, method: node.method, headers, body, timeout },
-      response: {
-        status: 0,
-        statusText: errorMessage,
-        ok: false,
-        headers: {},
-        body: "",
-        duration,
-        error: {
-          type: errorType,
-          message: errorMessage,
-        },
-      },
-    });
-    throw error;
   }
+
+  // Unreachable — the loop always returns or throws.
+  throw new Error("HTTP node: exceeded retry limit");
 };
 
 /**

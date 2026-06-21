@@ -17,6 +17,7 @@ import {
   Loader,
   Pencil,
   RefreshCw,
+  Terminal,
   Trash2,
   TriangleAlert,
   X,
@@ -67,6 +68,7 @@ import { ModelProviderIcon } from "ui/model-provider-icon";
 import { WorkflowInvocation } from "./tool-invocation/workflow-invocation";
 import { CitationBar } from "./citation-bar";
 import { RagSourcesRow } from "./message-rag-sources";
+import { CodeBlock } from "ui/CodeBlock";
 
 type MessagePart = UIMessage["parts"][number];
 type TextMessagePart = Extract<MessagePart, { type: "text" }>;
@@ -892,12 +894,60 @@ export const ToolMessagePart = memo(
       return null;
     }, [isCompleted, output, state, errorText]);
 
+    // Detect whether the result can be rendered as readable text.
+    // Handles: plain strings, and MCP array-of-text-nodes (object with numeric
+    // keys where every value is { type: 'text', text: string }).
+    const resultAsText = useMemo<string | null>(() => {
+      if (typeof result === "string") return result;
+      if (result && typeof result === "object") {
+        const keys = Object.keys(result);
+        const values = Object.values(result) as any[];
+        if (
+          keys.length > 0 &&
+          keys.every((k) => !isNaN(Number(k))) &&
+          values.every(
+            (n) => n?.type === "text" && typeof n?.text === "string",
+          )
+        ) {
+          return values.map((n) => n.text).join("\n");
+        }
+      }
+      return null;
+    }, [result]);
+
+    // Detect whether the result is a plain object/array suitable for JSON
+    // syntax highlighting (only when no readable-text form is available).
+    const resultIsObject = useMemo<boolean>(() => {
+      if (resultAsText !== null) return false;
+      return (
+        result !== null &&
+        result !== undefined &&
+        typeof result === "object"
+      );
+    }, [result, resultAsText]);
+
+    const [resultShowMore, setResultShowMore] = useState(false);
+
     const isWorkflowTool = useMemo(
       () => VercelAIWorkflowToolStreamingResultTag.isMaybe(result),
       [result],
     );
 
     const CustomToolComponent = useMemo(() => {
+      // opencode coding agent tools ─────────────────────────────────────────
+      if (toolName === "opencode__permission") {
+        return (
+          <OpencodePermissionPart
+            part={part}
+            isLast={!!isLast}
+          />
+        );
+      }
+      if (toolName === "opencode__file-edit") {
+        return <OpencodeFileEditPart part={part} />;
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       if (
         toolName === DefaultToolName.WebSearch ||
         toolName === DefaultToolName.WebContent
@@ -977,7 +1027,7 @@ export const ToolMessagePart = memo(
     }, [isWorkflowTool, isCompleted, result, isLast]);
 
     return (
-      <div className="group w-full">
+      <div className="group w-full" data-testid="tool-message-part">
         {CustomToolComponent ? (
           CustomToolComponent
         ) : (
@@ -1003,6 +1053,8 @@ export const ToolMessagePart = memo(
                       {toolName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
+                ) : toolName.startsWith("opencode__") ? (
+                  <Terminal className="size-3.5" />
                 ) : (
                   <HammerIcon className="size-3.5" />
                 )}
@@ -1099,15 +1151,73 @@ export const ToolMessagePart = memo(
                           variant="ghost"
                           size="icon"
                           className="size-3 text-muted-foreground"
-                          onClick={() => copyOutput(JSON.stringify(result))}
+                          onClick={() =>
+                            copyOutput(
+                              resultAsText ?? JSON.stringify(result, null, 2),
+                            )
+                          }
                         >
                           <Copy className="size-3" />
                         </Button>
                       )}
                     </div>
                     {isExpanded && (
-                      <div className="p-2 max-h-[300px] overflow-y-auto">
-                        <JsonView data={result} />
+                      <div className="p-2">
+                        {resultAsText !== null ? (
+                          (() => {
+                            const PREVIEW_LEN = 200;
+                            const COLLAPSE_AT = 500;
+                            const isLong = resultAsText.length > COLLAPSE_AT;
+                            const displayText =
+                              isLong && !resultShowMore
+                                ? resultAsText.slice(0, PREVIEW_LEN)
+                                : resultAsText;
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                  <Markdown>{displayText}</Markdown>
+                                </div>
+                                {isLong && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto p-1 text-xs self-start text-muted-foreground hover:text-foreground"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setResultShowMore((v) => !v);
+                                    }}
+                                  >
+                                    <span className="flex items-center gap-1">
+                                      {resultShowMore ? (
+                                        <>
+                                          Show less{" "}
+                                          <ChevronUp className="size-3" />
+                                        </>
+                                      ) : (
+                                        <>
+                                          Show more{" "}
+                                          <ChevronDownIcon className="size-3" />
+                                        </>
+                                      )}
+                                    </span>
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : resultIsObject ? (
+                          <div className="max-h-[300px] overflow-y-auto rounded text-[11px] leading-relaxed">
+                            <CodeBlock
+                              code={JSON.stringify(result, null, 2)}
+                              lang="json"
+                              showLineNumbers={false}
+                            />
+                          </div>
+                        ) : (
+                          <div className="max-h-[300px] overflow-y-auto">
+                            <JsonView data={result} />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1458,6 +1568,157 @@ export function SourceUrlMessagePart({
           </TooltipTrigger>
           <TooltipContent>Open attachment</TooltipContent>
         </Tooltip>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// opencode coding-agent part renderers
+// ---------------------------------------------------------------------------
+
+/** Renders a file diff produced by opencode after it edits a file. */
+function OpencodeFileEditPart({ part }: { part: any }) {
+  const output = part.output ?? {};
+  const filePath: string = output.path ?? part.input?.path ?? "";
+  const diff: string = output.diff ?? "";
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div className="rounded-lg border bg-muted/20 overflow-hidden text-sm">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-mono text-muted-foreground hover:bg-muted/40 transition-colors border-b"
+      >
+        <FileIcon className="size-3 shrink-0" />
+        <span className="truncate flex-1 text-left">{filePath}</span>
+        {expanded ? (
+          <ChevronUp className="size-3 shrink-0" />
+        ) : (
+          <ChevronRight className="size-3 shrink-0" />
+        )}
+      </button>
+      {expanded && diff && (
+        <pre className="overflow-x-auto p-3 text-xs leading-relaxed">
+          {diff.split("\n").map((line, i) => (
+            <div
+              key={i}
+              className={cn(
+                "px-1",
+                line.startsWith("+") && !line.startsWith("+++")
+                  ? "bg-green-500/10 text-green-400"
+                  : line.startsWith("-") && !line.startsWith("---")
+                    ? "bg-red-500/10 text-red-400"
+                    : line.startsWith("@@")
+                      ? "text-blue-400"
+                      : "text-muted-foreground",
+              )}
+            >
+              {line || " "}
+            </div>
+          ))}
+        </pre>
+      )}
+      {expanded && !diff && (
+        <p className="px-3 py-2 text-xs text-muted-foreground italic">
+          File saved — no diff available
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Renders an opencode permission request with Allow Once / Allow Always / Deny buttons. */
+function OpencodePermissionPart({
+  part,
+  isLast,
+}: {
+  part: any;
+  isLast: boolean;
+}) {
+  const input = part.input ?? {};
+  const permissionId: string = input.permissionId ?? part.toolCallId ?? "";
+  const sessionId: string = input.sessionId ?? "";
+  const tool: string = input.title ?? input.tool ?? "unknown";
+  const pattern = input.pattern;
+  const isReplied = part.state === "output-available";
+  const response: string | undefined = part.output?.response;
+
+  const reply = useCallback(
+    async (r: "once" | "always" | "reject") => {
+      const oc = window.asafeDesktop?.opencode;
+      if (!oc?.replyPermission || !sessionId || !permissionId) return;
+      try {
+        await oc.replyPermission(sessionId, permissionId, r);
+      } catch {
+        // best-effort; the event stream reflects the actual decision
+      }
+    },
+    [sessionId, permissionId],
+  );
+
+  const responseLabel =
+    response === "reject"
+      ? "Denied"
+      : response === "always"
+        ? "Always allowed"
+        : response === "once"
+          ? "Allowed once"
+          : undefined;
+
+  return (
+    <div
+      className="rounded-lg border bg-muted/20 overflow-hidden text-sm"
+      data-testid="opencode-permission-part"
+    >
+      <div className="flex items-center gap-2 px-3 py-2 border-b text-xs text-muted-foreground">
+        <Terminal className="size-3 shrink-0 text-amber-500" />
+        <span className="font-medium text-foreground">{tool}</span>
+        {pattern && (
+          <code className="text-muted-foreground font-mono">
+            {Array.isArray(pattern) ? pattern.join(", ") : pattern}
+          </code>
+        )}
+      </div>
+      <div className="flex gap-2 px-3 py-2">
+        {isReplied ? (
+          <span
+            className={cn(
+              "text-xs font-medium",
+              response === "reject" ? "text-destructive" : "text-green-500",
+            )}
+          >
+            {responseLabel}
+          </span>
+        ) : isLast ? (
+          <>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 px-3 text-xs"
+              onClick={() => reply("once")}
+            >
+              Allow once
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-3 text-xs"
+              onClick={() => reply("always")}
+            >
+              Always allow
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-3 text-xs text-destructive hover:text-destructive"
+              onClick={() => reply("reject")}
+            >
+              Deny
+            </Button>
+          </>
+        ) : null}
       </div>
     </div>
   );

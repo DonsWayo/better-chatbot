@@ -61,6 +61,7 @@
  * be smoke-tested in isolation: `node -e "import('./dist/opencode-manager.js')"`.
  */
 
+import { createOpencodeClient } from "@opencode-ai/sdk";
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -217,10 +218,19 @@ function buildGovernedConfig(appUrl: string): string {
           // user's asafe session and resolves entitlements server-side.
           apiKey: "{env:ASAFE_SESSION_TOKEN}",
         },
-        // Models are resolved through entitlements at the gateway. Once the
-        // gateway exposes its entitled-model listing, this map is populated
-        // dynamically; until then opencode sees the provider but no models.
-        models: {},
+        // Known gateway model IDs — mirrored from GATEWAY_MODELS in
+        // src/app/api/gateway/openrouter/shared.ts. Opencode also calls
+        // GET <baseURL>/models on init for live discovery, so this map
+        // acts as a fallback / initial offering.
+        models: {
+          "gpt-5.5": "gpt-5.5",
+          "claude-opus-4.8": "claude-opus-4.8",
+          "gemini-3.5-flash": "gemini-3.5-flash",
+          "gemini-3.1-flash-lite": "gemini-3.1-flash-lite",
+          "kimi-k2.6": "kimi-k2.6",
+          "deepseek-v4-flash": "deepseek-v4-flash",
+          "deepseek-v4-pro": "deepseek-v4-pro",
+        },
       },
     },
   });
@@ -267,6 +277,17 @@ export class OpencodeManager {
     return this.status === "running" && this.port !== null
       ? `http://127.0.0.1:${this.port}`
       : null;
+  }
+
+  /**
+   * Return a typed opencode SDK client pointing at the running server, or null
+   * when the server is not yet up. Callers must guard on null — getClient()
+   * never throws.
+   */
+  getClient(): ReturnType<typeof createOpencodeClient> | null {
+    const endpoint = this.getEndpoint();
+    if (!endpoint) return null;
+    return createOpencodeClient({ baseUrl: endpoint });
   }
 
   /**

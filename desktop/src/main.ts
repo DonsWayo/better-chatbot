@@ -439,9 +439,124 @@ ipcMain.handle(
 
 const opencodeManager = new OpencodeManager();
 
+// ---------------------------------------------------------------------------
+// opencode event forwarding — subscribe once after the server starts and pipe
+// all events to the renderer via webContents.send so the web app can build
+// UI state from the real-time event stream without direct HTTP to the server.
+// ---------------------------------------------------------------------------
+
+let opencodeEventAbort: AbortController | null = null;
+
+async function startOpencodeEventForwarding(): Promise<void> {
+  opencodeEventAbort?.abort();
+  opencodeEventAbort = new AbortController();
+  const { signal } = opencodeEventAbort;
+
+  const client = opencodeManager.getClient();
+  if (!client) return;
+
+  try {
+    const sub = await client.event.subscribe();
+    (async () => {
+      for await (const evt of sub.stream) {
+        if (signal.aborted) break;
+        mainWindow?.webContents.send("opencode:event", evt);
+      }
+    })().catch(() => {});
+  } catch {
+    // event subscribe failed — renderer will operate without live events
+  }
+}
+
 ipcMain.handle("opencode:status", () => opencodeManager.getStatus());
-ipcMain.handle("opencode:start", () => opencodeManager.start());
-ipcMain.handle("opencode:stop", () => opencodeManager.stop());
+
+ipcMain.handle("opencode:start", async () => {
+  const snapshot = await opencodeManager.start();
+  if (snapshot.status === "running") {
+    void startOpencodeEventForwarding();
+  }
+  return snapshot;
+});
+
+ipcMain.handle("opencode:stop", async () => {
+  opencodeEventAbort?.abort();
+  opencodeEventAbort = null;
+  return opencodeManager.stop();
+});
+
+// Extended session + file + search API exposed to the renderer via preload.
+ipcMain.handle("opencode:session-create", async () => {
+  const client = opencodeManager.getClient();
+  if (!client) throw new Error("opencode not running");
+  return client.session.create({ body: {} });
+});
+
+ipcMain.handle("opencode:session-list", async () => {
+  const client = opencodeManager.getClient();
+  if (!client) throw new Error("opencode not running");
+  return client.session.list();
+});
+
+ipcMain.handle(
+  "opencode:prompt",
+  async (_evt, { id, text }: { id: string; text: string }) => {
+    const client = opencodeManager.getClient();
+    if (!client) throw new Error("opencode not running");
+    return client.session.prompt({
+      path: { id },
+      body: { parts: [{ type: "text", text }] },
+    });
+  },
+);
+
+ipcMain.handle("opencode:abort", async (_evt, { id }: { id: string }) => {
+  const client = opencodeManager.getClient();
+  if (!client) return false;
+  try {
+    await client.session.abort({ path: { id } });
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle("opencode:file-status", async () => {
+  const client = opencodeManager.getClient();
+  if (!client) throw new Error("opencode not running");
+  return client.file.status();
+});
+
+ipcMain.handle(
+  "opencode:permission-reply",
+  async (
+    _evt,
+    {
+      sessionId,
+      permissionId,
+      response,
+    }: { sessionId: string; permissionId: string; response: "once" | "always" | "reject" },
+  ) => {
+    const client = opencodeManager.getClient();
+    if (!client) return false;
+    try {
+      return await client.postSessionIdPermissionsPermissionId({
+        path: { id: sessionId, permissionID: permissionId },
+        body: { response },
+      });
+    } catch {
+      return false;
+    }
+  },
+);
+
+ipcMain.handle(
+  "opencode:find-text",
+  async (_evt, { query }: { query: string }) => {
+    const client = opencodeManager.getClient();
+    if (!client) throw new Error("opencode not running");
+    return client.find.text({ query: { pattern: query } });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Auto-update

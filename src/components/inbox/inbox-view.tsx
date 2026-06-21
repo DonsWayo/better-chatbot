@@ -21,6 +21,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ApprovalDecisionButtons } from "@/components/runs/approval-decision-buttons";
 import {
+  InboxRunsPoller,
+  LiveBadge,
+} from "@/components/runs/inbox-runs-poller";
+import {
   type RoutineItem,
   RoutinesList,
 } from "@/components/runs/routines-list";
@@ -159,6 +163,10 @@ export function InboxView({
     cancelled: tRuns("cancelled"),
   };
 
+  const hasActiveSessions = runs.some(
+    (r) => r.status === "queued" || r.status === "running",
+  );
+
   const list: InboxItem[] = tab === "approvals" ? approvals : runs;
 
   const filtered = useMemo(() => {
@@ -207,6 +215,7 @@ export function InboxView({
           </TabsTrigger>
           <TabsTrigger value="runs" className="rounded-full text-xs">
             {t("runsTab")}
+            {hasActiveSessions && <LiveBadge />}
           </TabsTrigger>
           <TabsTrigger value="routines" className="rounded-full text-xs">
             {t("routinesTab")}
@@ -402,6 +411,7 @@ export function InboxView({
 
   return (
     <div className="flex h-full flex-col">
+      <InboxRunsPoller hasActiveSessions={hasActiveSessions} />
       {header}
       {tabsBar}
 

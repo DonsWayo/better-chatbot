@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@opencode-ai/sdk": "^1.17.9",
     "electron-updater": "^6.3.9",
     "electron-window-state": "^5.0.3"
   },

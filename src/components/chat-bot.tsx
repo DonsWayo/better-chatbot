@@ -1,11 +1,13 @@
 "use client";
 
 import { appStore } from "@/app/store";
+import { useOpencodeSession } from "@/hooks/use-opencode-session";
 import { useChat } from "@ai-sdk/react";
 import clsx from "clsx";
 import { cn, createDebounce, generateUUID, truncateString } from "lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { OpencodeModeIndicator } from "./chat/opencode-mode-indicator";
 import { ChatGreeting } from "./chat-greeting";
 import { MemoryUpdatedPill } from "./memory/memory-updated-pill";
 import { ErrorMessage, PreviewMessage } from "./message";
@@ -241,6 +243,32 @@ export default function ChatBot({
   });
   const [isDeleteThreadPopupOpen, setIsDeleteThreadPopupOpen] = useState(false);
 
+  // ── opencode coding agent ────────────────────────────────────────────────
+  const opencodeSession = useOpencodeSession();
+  const [opencodeMode, setOpencodeMode] = useState(false);
+
+  const activeMessages = opencodeMode ? opencodeSession.messages : messages;
+  const activeIsLoading = opencodeMode
+    ? opencodeSession.status === "running"
+    : status === "streaming" || status === "submitted";
+
+  const opencodeSendMessage = useCallback<typeof sendMessage>(
+    async (message) => {
+      const parts: any[] = (message as any).parts ?? [];
+      const text = parts
+        .filter((p: any) => p?.type === "text")
+        .map((p: any) => p.text ?? "")
+        .join("\n")
+        .trim();
+      if (text) await opencodeSession.sendMessage(text);
+    },
+    [opencodeSession.sendMessage],
+  );
+
+  const activeStop = opencodeMode ? opencodeSession.stop : stop;
+  const activeSendMessage = opencodeMode ? opencodeSendMessage : sendMessage;
+  // ────────────────────────────────────────────────────────────────────────
+
   const addToolResult = useCallback(
     async (result: Parameters<typeof _addToolResult>[0]) => {
       await _addToolResult(result);
@@ -264,10 +292,7 @@ export default function ChatBot({
     ragCollectionId,
   });
 
-  const isLoading = useMemo(
-    () => status === "streaming" || status === "submitted",
-    [status],
-  );
+  const isLoading = useMemo(() => activeIsLoading, [activeIsLoading]);
 
   // Typing indicator beacon (shared threads only): the composer reports
   // keystrokes via onTyping; sending a message clears the flag right away.
@@ -284,26 +309,50 @@ export default function ChatBot({
   // machine-readable {error:"aup_required"} code when the user never accepted
   // the Acceptable Use Policy. Surface the AUP modal so they can accept and
   // retry (the modal mounted in the chat layout listens for this event).
+  // Other known error codes are surfaced as actionable toasts so users know
+  // what to do instead of seeing a generic "something went wrong" message.
   useEffect(() => {
     if (!error) return;
-    if (/aup_required/i.test(error.message)) {
+    const msg = error.message ?? "";
+    if (/aup_required/i.test(msg)) {
       window.dispatchEvent(new CustomEvent("asafe:aup-required"));
+      return;
+    }
+    if (/rate.?limit|429/i.test(msg)) {
+      toast.warning("Rate limited — please wait a moment before trying again.");
+      return;
+    }
+    if (/budget_exhausted|usage_limit|over_budget|402/i.test(msg)) {
+      toast.error(
+        "Usage limit reached. Ask your admin to increase your team budget.",
+      );
+      return;
+    }
+    if (/model_not_permitted|not_entitled|not.*allow/i.test(msg)) {
+      toast.error("This model is not available for your account.");
+      return;
+    }
+    if (/kill.?switch|service.*unavailable/i.test(msg)) {
+      toast.error("Service temporarily unavailable. Please try again shortly.");
+      return;
     }
   }, [error]);
 
   const emptyMessage = useMemo(
-    () => messages.length === 0 && !error,
-    [messages.length, error],
+    () => activeMessages.length === 0 && !error,
+    [activeMessages.length, error],
   );
 
   const isInitialThreadEntry = useMemo(
     () =>
+      !opencodeMode &&
       initialMessages.length > 0 &&
       initialMessages.at(-1)?.id === messages.at(-1)?.id,
-    [messages],
+    [messages, opencodeMode],
   );
 
   const isPendingToolCall = useMemo(() => {
+    if (opencodeMode) return false;
     if (status != "ready") return false;
     const lastMessage = messages.at(-1);
     if (lastMessage?.role != "assistant") return false;
@@ -312,11 +361,11 @@ export default function ChatBot({
     if (!isToolUIPart(lastPart)) return false;
     if (lastPart.state.startsWith("output")) return false;
     return true;
-  }, [status, messages]);
+  }, [status, messages, opencodeMode]);
 
   const space = useMemo(() => {
     if (!isLoading || error) return false;
-    const lastMessage = messages.at(-1);
+    const lastMessage = activeMessages.at(-1);
     if (lastMessage?.role == "user") return "think";
     const lastPart = lastMessage?.parts.at(-1);
     if (!lastPart) return "think";
@@ -327,7 +376,7 @@ export default function ChatBot({
       return lastMessage?.parts.length == 1 ? "think" : "space";
     }
     return false;
-  }, [isLoading, messages.at(-1)]);
+  }, [isLoading, activeMessages]);
 
   const particle = useMemo(() => {
     return (
@@ -477,14 +526,14 @@ export default function ChatBot({
   // required so screen readers register the live region before streaming starts).
   const ariaLiveText = useMemo(() => {
     if (!isLoading) return "";
-    const last = messages.findLast((m) => m.role === "assistant");
+    const last = activeMessages.findLast((m) => m.role === "assistant");
     if (!last) return "";
     return last.parts
       .filter((p: any) => p?.type === "text")
       .map((p: any) => p.text ?? "")
       .join(" ")
       .slice(-500); // last 500 chars is enough for screen readers
-  }, [isLoading, messages]);
+  }, [isLoading, activeMessages]);
 
   return (
     <>
@@ -528,21 +577,21 @@ export default function ChatBot({
               ref={containerRef}
               onScroll={handleScroll}
             >
-              {messages.map((message, index) => {
-                const isLastMessage = messages.length - 1 === index;
+              {activeMessages.map((message, index) => {
+                const isLastMessage = activeMessages.length - 1 === index;
                 return (
                   <PreviewMessage
                     threadId={threadId}
                     messageIndex={index}
-                    prevMessage={messages[index - 1]}
+                    prevMessage={activeMessages[index - 1]}
                     key={message.id}
                     message={message}
-                    status={status}
-                    addToolResult={addToolResult}
+                    status={opencodeMode ? "ready" : status}
+                    addToolResult={opencodeMode ? undefined : addToolResult}
                     isLoading={isLoading || isPendingToolCall}
                     isLastMessage={isLastMessage}
-                    setMessages={setMessages}
-                    sendMessage={sendMessage}
+                    setMessages={opencodeMode ? undefined : setMessages}
+                    sendMessage={opencodeMode ? undefined : sendMessage}
                     className={
                       isLastMessage &&
                       message.role != "user" &&
@@ -585,18 +634,28 @@ export default function ChatBot({
           </div>
 
           <MemoryUpdatedPill threadId={threadId} status={status} />
-          <PromptInput
-            input={input}
-            threadId={threadId}
-            sendMessage={sendMessage}
-            setInput={setInput}
-            isLoading={isLoading || isPendingToolCall}
-            onStop={stop}
-            onFocus={isFirstTime ? undefined : handleFocus}
-            onTyping={threadShared ? onTyping : undefined}
-            ragCollectionId={ragCollectionId}
-            onRagCollectionChange={setRagCollectionId}
-          />
+          <div className="relative">
+            {opencodeSession.isAvailable && (
+              <div className="absolute right-3 -top-6 z-10">
+                <OpencodeModeIndicator
+                  enabled={opencodeMode}
+                  onToggle={() => setOpencodeMode((v) => !v)}
+                />
+              </div>
+            )}
+            <PromptInput
+              input={input}
+              threadId={threadId}
+              sendMessage={activeSendMessage}
+              setInput={setInput}
+              isLoading={isLoading || isPendingToolCall}
+              onStop={activeStop}
+              onFocus={isFirstTime ? undefined : handleFocus}
+              onTyping={threadShared && !opencodeMode ? onTyping : undefined}
+              ragCollectionId={opencodeMode ? undefined : ragCollectionId}
+              onRagCollectionChange={opencodeMode ? undefined : setRagCollectionId}
+            />
+          </div>
         </div>
         <DeleteThreadPopup
           threadId={threadId}

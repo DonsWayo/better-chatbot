@@ -193,6 +193,9 @@ export default function MentionInput({
       },
       editorProps: {
         attributes: {
+          role: "textbox",
+          "aria-multiline": "true",
+          "data-testid": "composer-textbox",
           class:
             "w-full max-h-80 min-h-[2rem] break-words overflow-y-auto resize-none focus:outline-none px-2 py-1 prose prose-sm dark:prose-invert ",
         },

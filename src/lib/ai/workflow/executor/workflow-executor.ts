@@ -185,11 +185,23 @@ export const createWorkflowExecutor = (workflow: {
         // Get the appropriate executor for this node type
         const executor = getExecutorByKind(node.kind as NodeKind);
 
-        // Execute the node with current state
-        const result = await executor({
-          node: convertDBNodeToUINode(node).data,
-          state,
-        });
+        // Execute the node with current state, enriching any error with the
+        // node name + kind so session.error is debuggable without reading raw DB.
+        let result: Awaited<ReturnType<typeof executor>>;
+        try {
+          result = await executor({
+            node: convertDBNodeToUINode(node).data,
+            state,
+          });
+        } catch (err: any) {
+          const prefix = `[${node.name ?? node.id} (${node.kind})]`;
+          if (err instanceof Error) {
+            if (!err.message.startsWith("[")) err.message = `${prefix} ${err.message}`;
+          } else {
+            throw new Error(`${prefix} ${String(err)}`);
+          }
+          throw err;
+        }
 
         // Store the execution results in the workflow state
         if (result?.output) {

@@ -21,7 +21,12 @@ import {
 import { extractRows, toDate } from "./pg-rows";
 import type { WorkflowConfigSnapshot } from "./revisions";
 import { claimDueSchedules } from "./scheduler";
-import { createSession, failSession, getSessionWithSteps } from "./sessions";
+import {
+  createSession,
+  failSession,
+  failStaleSessions,
+  getSessionWithSteps,
+} from "./sessions";
 
 // Agent Platform #22 — the detached run executor
 // (docs/design/agent-platform.md). Claims due workflow_schedule rows into
@@ -424,6 +429,14 @@ export interface TickOptions {
  */
 export async function tickOnce(opts?: TickOptions): Promise<TickResult> {
   const counts: TickResult = { scheduled: 0, executed: 0, failed: 0 };
+
+  // Garbage-collect sessions whose worker died more than 15 min ago. The
+  // normal SKIP LOCKED reclaim handles the 90-second window; this is the
+  // backstop for sessions that slipped through (e.g. no heartbeat column
+  // race, approval sessions stuck beyond reclaim eligibility).
+  failStaleSessions().then((n) => {
+    if (n > 0) logger.warn(`failStaleSessions: marked ${n} zombie session(s) as failed`);
+  }).catch(() => {});
 
   let due: Awaited<ReturnType<typeof claimDueSchedules>> = [];
   try {

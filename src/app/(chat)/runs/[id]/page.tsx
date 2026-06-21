@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { ApprovalDecisionButtons } from "@/components/runs/approval-decision-buttons";
+import { ApprovalPayloadCard } from "@/components/runs/approval-payload-card";
 import { RunCopyButton } from "@/components/runs/run-copy-button";
 import { RunSessionLive } from "@/components/realtime/use-run-sessions";
 import { RunRefreshPoller } from "@/components/runs/run-refresh-poller";
@@ -129,6 +130,10 @@ export default async function RunPage({
   // component as the Triage inbox).
   let pendingApprovalId: string | null = null;
   let pendingApprovalMessage: string | null = null;
+  let pendingApprovalNodeName: string | null = null;
+  let pendingApprovalStepIndex: number | null = null;
+  let pendingApprovalRole: string | null = null;
+  let pendingApprovalRequestedAt: Date | null = null;
   if (session.status === "awaiting_approval") {
     const request = await getApprovalForSession(session.id);
     if (request?.status === "pending") {
@@ -143,9 +148,24 @@ export default async function RunPage({
       );
       if (allowed) {
         pendingApprovalId = request.id;
-        const payload = request.payload as { message?: unknown } | null;
+        const payload = request.payload as {
+          message?: unknown;
+          nodeName?: unknown;
+          nodeId?: unknown;
+          kind?: unknown;
+        } | null;
         pendingApprovalMessage =
           typeof payload?.message === "string" ? payload.message : null;
+        // Surface the workflow gate node name; fall back to nodeId if no label.
+        pendingApprovalNodeName =
+          typeof payload?.nodeName === "string"
+            ? payload.nodeName
+            : typeof payload?.nodeId === "string"
+              ? payload.nodeId
+              : null;
+        pendingApprovalStepIndex = request.stepIndex ?? null;
+        pendingApprovalRole = request.requestedRole ?? null;
+        pendingApprovalRequestedAt = request.requestedAt ?? null;
       }
     }
   }
@@ -167,21 +187,19 @@ export default async function RunPage({
       {/* Pending approval — decidable by the current user */}
       {pendingApprovalId && (
         <div
-          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 sm:p-4"
+          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5"
           data-testid="run-approval-panel"
         >
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-            {t("needsApproval")}
-          </p>
-          {pendingApprovalMessage && (
-            <p className="mt-2 rounded-xl bg-background/60 p-3 text-sm">
-              {pendingApprovalMessage}
-            </p>
-          )}
-          <ApprovalDecisionButtons
-            requestId={pendingApprovalId}
-            className="mt-3"
+          <ApprovalPayloadCard
+            nodeName={pendingApprovalNodeName}
+            stepIndex={pendingApprovalStepIndex}
+            message={pendingApprovalMessage}
+            requestedRole={pendingApprovalRole}
+            requestedAt={pendingApprovalRequestedAt}
           />
+          <div className="mt-4 border-t border-amber-500/20 pt-4">
+            <ApprovalDecisionButtons requestId={pendingApprovalId} />
+          </div>
         </div>
       )}
 
