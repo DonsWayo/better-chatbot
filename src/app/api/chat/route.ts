@@ -10,6 +10,7 @@ import {
 } from "ai";
 
 import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
+import { generateFollowUps } from "lib/ai/follow-ups";
 
 import { agentRepository, chatRepository } from "lib/db/repository";
 import globalLogger from "logger";
@@ -337,6 +338,23 @@ export async function POST(request: Request) {
             },
           }),
         );
+
+        // After the main stream completes, generate follow-up questions and
+        // write them as a data part so the client renders clickable chips.
+        const responseText = await result.text.catch(() => "");
+        if (responseText && !request.signal.aborted) {
+          const questions = await generateFollowUps(
+            responseText,
+            request.signal,
+          ).catch(() => [] as string[]);
+          if (questions.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            dataStream.write({
+              type: "data-follow-ups",
+              data: { questions },
+            } as any);
+          }
+        }
       },
 
       generateId: generateUUID,
