@@ -316,10 +316,27 @@ export async function POST(request: Request) {
         }
         logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
 
+        // Prompt caching: system prompts repeat unchanged on every turn and
+        // are the highest-value cache candidates. Anthropic direct and
+        // OpenRouter both honour cache_control on the system message; other
+        // providers silently ignore the providerOptions field.
+        const cacheableProvider =
+          chatModel?.provider === "anthropic" ||
+          chatModel?.provider === "openRouter";
+        const systemMessage = {
+          role: "system" as const,
+          content: systemPrompt,
+          ...(cacheableProvider && {
+            providerOptions: {
+              anthropic: { cacheControl: { type: "ephemeral" } },
+              openrouter: { cacheControl: { type: "ephemeral" } },
+            },
+          }),
+        };
+
         const result = streamText({
           model,
-          system: systemPrompt,
-          messages: convertToModelMessages(messages),
+          messages: [systemMessage, ...convertToModelMessages(messages)],
           experimental_transform: smoothStream({ chunking: "word" }),
           maxRetries: 2,
           tools: vercelAITooles,
