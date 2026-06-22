@@ -164,10 +164,43 @@ const PurePreviewMessage = ({
                   isUserMessage={isUserMessage}
                 />
               );
+            } else if ((part as any).type === "data-follow-ups") {
+              // Rendered below as chips after all other parts
+              return null;
             } else {
               return <div key={key}> unknown part {part.type}</div>;
             }
           })}
+          {isLastMessage &&
+            !isLoading &&
+            !isUserMessage &&
+            !readonly &&
+            (() => {
+              const followUpPart = partsForDisplay.find(
+                (p) => (p as any).type === "data-follow-ups",
+              ) as
+                | { type: string; data?: { questions?: string[] } }
+                | undefined;
+              const questions = followUpPart?.data?.questions;
+              if (!questions?.length || !sendMessage) return null;
+              return (
+                <div
+                  className="flex flex-wrap gap-2 pt-2"
+                  data-testid="follow-up-chips"
+                >
+                  {questions.map((q, i) => (
+                    <button
+                      key={`${i}-${q}`}
+                      type="button"
+                      onClick={() => sendMessage({ text: q })}
+                      className="rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
         </div>
       </div>
     </div>

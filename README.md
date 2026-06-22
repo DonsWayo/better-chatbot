@@ -1,5 +1,7 @@
-> [!WARNING] 
-> The author of this project has paused development until the forseeable future, however, I (@brrock) will try and address vulnerabilities and issues. If you are contributing, you might have to wait until development continues.
+**Keinsaas Navigator** - A better open-source AI chatbot for individuals and teams.
+
+> Originally created by [Choi Sung Keun](https://github.com/cgoinglove).
+
 <img width="1184" height="576" alt="thumbnail" loading="lazy" src="https://github.com/user-attachments/assets/d6ba80ff-a62a-4920-b266-85c4a89d6076" />
 
 [![MCP Supported](https://img.shields.io/badge/MCP-Supported-00c853)](https://modelcontextprotocol.io/introduction)
@@ -8,7 +10,7 @@
 
 [![Deploy with Vercel](https://vercel.com/button)](<https://vercel.com/new/clone?repository-url=https://github.com/cgoinglove/better-chatbot&env=BETTER_AUTH_SECRET&env=OPENAI_API_KEY&env=GOOGLE_GENERATIVE_AI_API_KEY&env=ANTHROPIC_API_KEY&envDescription=BETTER_AUTH_SECRET+is+required+(enter+any+secret+value).+At+least+one+LLM+provider+API+key+(OpenAI,+Claude,+or+Google)+is+required,+but+you+can+add+all+of+them.+See+the+link+below+for+details.&envLink=https://github.com/cgoinglove/better-chatbot/blob/main/.env.example&demo-title=better-chatbot&demo-description=An+Open-Source+Chatbot+Template+Built+With+Next.js+and+the+AI+SDK+by+Vercel.&products=[{"type":"integration","protocol":"storage","productSlug":"neon","integrationSlug":"neon"},{"type":"integration","protocol":"storage","productSlug":"upstash-kv","integrationSlug":"upstash"},{"type":"blob"}]>)
 
-🚀 **[Live Demo](https://better-chatbot-demo.vercel.app/)** | See the experience in action in the [preview](#preview) below!
+🚀 **[Live Demo](https://app.keinsaas.com/)** | See the experience in action in the [preview](#preview) below!
 
 #### Demo Chats
 
@@ -25,7 +27,7 @@ You only need **one AI Provider API Key** (OpenAI, Claude, Gemini, etc.). Everyt
 
 ---
 
-**Better Chatbot** - A better open-source AI chatbot for individuals and teams, inspired by ChatGPT, Claude, Grok, and Gemini.
+**Keinsaas Navigator** - A better open-source AI chatbot for individuals and teams, inspired by ChatGPT, Claude, Grok, and Gemini.
 
 • **Multi-AI Support** - Integrates all major LLMs: OpenAI, Anthropic, Google, xAI, Ollama, and more  
 • **Powerful Tools** - MCP protocol, web search, JS/Python code execution, data visualization  
