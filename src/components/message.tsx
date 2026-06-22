@@ -174,6 +174,7 @@ const PurePreviewMessage = ({
           {isLastMessage &&
             !isLoading &&
             !isUserMessage &&
+            !readonly &&
             (() => {
               const followUpPart = partsForDisplay.find(
                 (p) => (p as any).type === "data-follow-ups",
@@ -187,9 +188,9 @@ const PurePreviewMessage = ({
                   className="flex flex-wrap gap-2 pt-2"
                   data-testid="follow-up-chips"
                 >
-                  {questions.map((q) => (
+                  {questions.map((q, i) => (
                     <button
-                      key={q}
+                      key={`${i}-${q}`}
                       type="button"
                       onClick={() => sendMessage({ text: q })}
                       className="rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"

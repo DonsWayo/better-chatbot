@@ -339,10 +339,20 @@ export async function POST(request: Request) {
           }),
         );
 
-        // After the main stream completes, generate follow-up questions and
-        // write them as a data part so the client renders clickable chips.
+        // After the main stream completes, generate follow-up questions.
+        // Ordering guarantee: `await result.text` resolves only after the AI
+        // finishes, so the merged UI stream has fully forwarded before we
+        // write here. dataStream.write() lands before execute() returns,
+        // which is before onFinish fires — so the part is always present in
+        // responseMessage.parts when the DB upsert runs.
+        //
+        // Guard: skip when OPENROUTER_API_KEY is absent — must never fall
+        // back to a paid model for a background UX hint.
+        const hasOpenRouterKey =
+          !!process.env.OPENROUTER_API_KEY &&
+          process.env.OPENROUTER_API_KEY !== "****";
         const responseText = await result.text.catch(() => "");
-        if (responseText && !request.signal.aborted) {
+        if (hasOpenRouterKey && responseText && !request.signal.aborted) {
           const questions = await generateFollowUps(
             responseText,
             request.signal,
