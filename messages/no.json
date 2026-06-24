@@ -427,7 +427,9 @@
     "documents": "Dokumenter",
     "seeAllDocuments": "Se alle",
     "confirmDeleteAllChats": "Dette vil permanent slette alle samtalene dine. Dette kan ikke angres.",
-    "confirmDeleteUnarchivedChats": "Dette vil permanent slette alle ikke-arkiverte samtaler. Dette kan ikke angres."
+    "confirmDeleteUnarchivedChats": "Dette vil permanent slette alle ikke-arkiverte samtaler. Dette kan ikke angres.",
+    "tasks": "Oppgaver",
+    "seeAllTasks": "Se alle"
   },
   "Archive": {
     "title": "Arkiv",
@@ -1391,5 +1393,42 @@
       "errorBudget": "Budsjett er uttømt. Kontakt administratoren din.",
       "errorGeneric": "AI-forslag mislyktes. Originalteksten din er gjenopprettet."
     }
+  },
+  "Tasks": {
+    "title": "Tittel",
+    "epics": "Epos",
+    "newEpic": "Nytt epos",
+    "noEpics": "Ingen epos ennå",
+    "noEpicsDescription": "Opprett ditt første epos for å begynne å spore arbeid.",
+    "backlog": "Restanser",
+    "inProgress": "Pågår",
+    "done": "Ferdig",
+    "todo": "Å gjøre",
+    "status": "Status",
+    "newTask": "Legg til oppgave",
+    "noTasks": "Ingen oppgaver ennå",
+    "story": "Brukerhistorie",
+    "task": "Oppgave",
+    "bug": "Feil",
+    "priority": "Prioritet",
+    "low": "Lav",
+    "medium": "Middels",
+    "high": "Høy",
+    "critical": "Kritisk",
+    "assignee": "Ansvarlig",
+    "labels": "Etiketter",
+    "description": "Beskrivelse",
+    "deleteEpic": "Slett epos",
+    "deleteTask": "Slett oppgave",
+    "deleteEpicConfirm": "Slette dette eposet og alle oppgavene? Dette kan ikke angres.",
+    "deleteTaskConfirm": "Slette denne oppgaven? Dette kan ikke angres.",
+    "epicCreated": "Epos opprettet",
+    "taskCreated": "Oppgave opprettet",
+    "saved": "Lagret",
+    "progress": "{done} av {total} oppgaver fullført",
+    "aiImprove": "Forbedre med KI",
+    "visibility": "Synlighet",
+    "epicTitlePlaceholder": "Episodtittel…",
+    "epicDescPlaceholder": "Hva handler dette eposet om?"
   }
 }

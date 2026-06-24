@@ -427,7 +427,9 @@
     "adminConsole": "Admin console",
     "studio": "Studio",
     "documents": "Documents",
-    "seeAllDocuments": "See all"
+    "seeAllDocuments": "See all",
+    "tasks": "Tasks",
+    "seeAllTasks": "See all"
   },
   "Archive": {
     "title": "Archive",
@@ -1391,5 +1393,42 @@
       "errorBudget": "Budget exhausted. Contact your administrator.",
       "errorGeneric": "AI suggestion failed. Your original text has been restored."
     }
+  },
+  "Tasks": {
+    "title": "Title",
+    "epics": "Epics",
+    "newEpic": "New epic",
+    "noEpics": "No epics yet",
+    "noEpicsDescription": "Create your first epic to start tracking work.",
+    "backlog": "Backlog",
+    "inProgress": "In Progress",
+    "done": "Done",
+    "todo": "To Do",
+    "status": "Status",
+    "newTask": "Add task",
+    "noTasks": "No tasks yet",
+    "story": "Story",
+    "task": "Task",
+    "bug": "Bug",
+    "priority": "Priority",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical",
+    "assignee": "Assignee",
+    "labels": "Labels",
+    "description": "Description",
+    "deleteEpic": "Delete epic",
+    "deleteTask": "Delete task",
+    "deleteEpicConfirm": "Delete this epic and all its tasks? This cannot be undone.",
+    "deleteTaskConfirm": "Delete this task? This cannot be undone.",
+    "epicCreated": "Epic created",
+    "taskCreated": "Task created",
+    "saved": "Saved",
+    "progress": "{done} of {total} tasks done",
+    "aiImprove": "Improve with AI",
+    "visibility": "Visibility",
+    "epicTitlePlaceholder": "Epic title…",
+    "epicDescPlaceholder": "What is this epic about?"
   }
 }

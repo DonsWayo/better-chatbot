@@ -427,7 +427,9 @@
     "documents": "Documentos",
     "seeAllDocuments": "Ver todos",
     "confirmDeleteAllChats": "Esto eliminará permanentemente todas tus conversaciones. Esta acción no se puede deshacer.",
-    "confirmDeleteUnarchivedChats": "Esto eliminará permanentemente todas las conversaciones no archivadas. Esta acción no se puede deshacer."
+    "confirmDeleteUnarchivedChats": "Esto eliminará permanentemente todas las conversaciones no archivadas. Esta acción no se puede deshacer.",
+    "tasks": "Tareas",
+    "seeAllTasks": "Ver todas"
   },
   "Archive": {
     "title": "Archivo",
@@ -1391,5 +1393,42 @@
       "errorBudget": "Presupuesto agotado. Contacta con tu administrador.",
       "errorGeneric": "La sugerencia de IA falló. Tu texto original ha sido restaurado."
     }
+  },
+  "Tasks": {
+    "title": "Título",
+    "epics": "Épicas",
+    "newEpic": "Nueva épica",
+    "noEpics": "Aún no hay épicas",
+    "noEpicsDescription": "Crea tu primera épica para empezar a organizar el trabajo.",
+    "backlog": "Pendiente",
+    "inProgress": "En progreso",
+    "done": "Completado",
+    "todo": "Por hacer",
+    "status": "Estado",
+    "newTask": "Añadir tarea",
+    "noTasks": "Aún no hay tareas",
+    "story": "Historia",
+    "task": "Tarea",
+    "bug": "Error",
+    "priority": "Prioridad",
+    "low": "Baja",
+    "medium": "Media",
+    "high": "Alta",
+    "critical": "Crítica",
+    "assignee": "Asignado",
+    "labels": "Etiquetas",
+    "description": "Descripción",
+    "deleteEpic": "Eliminar épica",
+    "deleteTask": "Eliminar tarea",
+    "deleteEpicConfirm": "¿Eliminar esta épica y todas sus tareas? Esta acción no se puede deshacer.",
+    "deleteTaskConfirm": "¿Eliminar esta tarea? Esta acción no se puede deshacer.",
+    "epicCreated": "Épica creada",
+    "taskCreated": "Tarea creada",
+    "saved": "Guardado",
+    "progress": "{done} de {total} tareas completadas",
+    "aiImprove": "Mejorar con IA",
+    "visibility": "Visibilidad",
+    "epicTitlePlaceholder": "Título de la épica…",
+    "epicDescPlaceholder": "¿De qué trata esta épica?"
   }
 }

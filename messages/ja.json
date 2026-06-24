@@ -427,7 +427,9 @@
     "documents": "ドキュメント",
     "seeAllDocuments": "すべて表示",
     "confirmDeleteAllChats": "すべての会話が完全に削除されます。この操作は元に戻せません。",
-    "confirmDeleteUnarchivedChats": "アーカイブされていないすべての会話が完全に削除されます。この操作は元に戻せません。"
+    "confirmDeleteUnarchivedChats": "アーカイブされていないすべての会話が完全に削除されます。この操作は元に戻せません。",
+    "tasks": "タスク",
+    "seeAllTasks": "すべて見る"
   },
   "Archive": {
     "title": "アーカイブ",
@@ -1391,5 +1393,42 @@
       "errorBudget": "予算が尽きました。管理者に連絡してください。",
       "errorGeneric": "AI提案が失敗しました。元のテキストが復元されました。"
     }
+  },
+  "Tasks": {
+    "title": "タイトル",
+    "epics": "エピック",
+    "newEpic": "新規エピック",
+    "noEpics": "まだエピックがありません",
+    "noEpicsDescription": "最初のエピックを作成して作業を管理しましょう。",
+    "backlog": "バックログ",
+    "inProgress": "進行中",
+    "done": "完了",
+    "todo": "未着手",
+    "status": "ステータス",
+    "newTask": "タスクを追加",
+    "noTasks": "まだタスクがありません",
+    "story": "ストーリー",
+    "task": "タスク",
+    "bug": "バグ",
+    "priority": "優先度",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "critical": "緊急",
+    "assignee": "担当者",
+    "labels": "ラベル",
+    "description": "説明",
+    "deleteEpic": "エピックを削除",
+    "deleteTask": "タスクを削除",
+    "deleteEpicConfirm": "このエピックとすべてのタスクを削除しますか？元に戻せません。",
+    "deleteTaskConfirm": "このタスクを削除しますか？元に戻せません。",
+    "epicCreated": "エピックを作成しました",
+    "taskCreated": "タスクを作成しました",
+    "saved": "保存しました",
+    "progress": "{total}件中{done}件完了",
+    "aiImprove": "AIで改善",
+    "visibility": "公開範囲",
+    "epicTitlePlaceholder": "エピックのタイトル…",
+    "epicDescPlaceholder": "このエピックについて説明してください"
   }
 }

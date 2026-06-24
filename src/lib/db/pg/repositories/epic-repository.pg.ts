@@ -1,0 +1,323 @@
+import { and, asc, desc, eq, or } from "drizzle-orm";
+import { pgDb as db } from "../db.pg";
+import {
+  AsafeEpicTable,
+  AsafeTaskTable,
+  AsafeTeamMemberTable,
+  UserTable,
+} from "../schema.pg";
+
+export type EpicEntity = typeof AsafeEpicTable.$inferSelect;
+export type TaskEntity = typeof AsafeTaskTable.$inferSelect;
+
+export interface EpicWithTasks extends EpicEntity {
+  tasks: TaskEntity[];
+}
+
+export interface EpicSummary {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  labels: string[];
+  teamId: string | null;
+  ownerId: string;
+  visibility: string;
+  createdAt: Date;
+  updatedAt: Date;
+  taskTotal: number;
+  taskDone: number;
+  ownerName?: string;
+  ownerImage?: string;
+}
+
+/** Team-membership predicate for visibility filtering. */
+const inSharedTeam = (userId: string) =>
+  or(
+    eq(AsafeEpicTable.visibility, "company"),
+    and(
+      eq(AsafeEpicTable.visibility, "team"),
+      eq(AsafeTeamMemberTable.userId, userId),
+    ),
+  );
+
+export const pgEpicRepository = {
+  // -------------------------------------------------------------------------
+  // Epics
+  // -------------------------------------------------------------------------
+
+  async createEpic(input: {
+    ownerId: string;
+    title: string;
+    description?: string | null;
+    status?: "backlog" | "in_progress" | "done";
+    priority?: "low" | "medium" | "high" | "critical";
+    labels?: string[];
+    teamId?: string | null;
+    visibility?: "private" | "shared" | "team" | "company";
+  }): Promise<EpicEntity> {
+    const [epic] = await db
+      .insert(AsafeEpicTable)
+      .values({
+        ownerId: input.ownerId,
+        title: input.title.trim(),
+        description: input.description ?? null,
+        status: input.status ?? "backlog",
+        priority: input.priority ?? "medium",
+        labels: input.labels ?? [],
+        teamId: input.teamId ?? null,
+        visibility: input.visibility ?? "team",
+      })
+      .returning();
+    return epic;
+  },
+
+  async getEpicById(id: string): Promise<EpicEntity | null> {
+    const [epic] = await db
+      .select()
+      .from(AsafeEpicTable)
+      .where(eq(AsafeEpicTable.id, id))
+      .limit(1);
+    return epic ?? null;
+  },
+
+  async getEpicWithTasks(id: string): Promise<EpicWithTasks | null> {
+    const [epic] = await db
+      .select()
+      .from(AsafeEpicTable)
+      .where(eq(AsafeEpicTable.id, id))
+      .limit(1);
+    if (!epic) return null;
+
+    const tasks = await db
+      .select()
+      .from(AsafeTaskTable)
+      .where(eq(AsafeTaskTable.epicId, id))
+      .orderBy(asc(AsafeTaskTable.sortOrder), asc(AsafeTaskTable.createdAt));
+
+    return { ...epic, tasks };
+  },
+
+  /**
+   * List epics visible to `userId`. Visibility rules match the document model:
+   *   - owner always sees their own epics;
+   *   - "company" → everyone;
+   *   - "team"    → team members when teamId set;
+   *   - "private" → owner only.
+   *
+   * When `teamId` is supplied the list is additionally filtered to that team.
+   */
+  async listEpicsForUser(
+    userId: string,
+    teamId?: string | null,
+  ): Promise<EpicSummary[]> {
+    // Fetch all epics the user owns or can see via visibility.
+    // We LEFT JOIN team member so the visibility predicate can reference it.
+    const rows = await db
+      .select({
+        id: AsafeEpicTable.id,
+        title: AsafeEpicTable.title,
+        status: AsafeEpicTable.status,
+        priority: AsafeEpicTable.priority,
+        labels: AsafeEpicTable.labels,
+        teamId: AsafeEpicTable.teamId,
+        ownerId: AsafeEpicTable.ownerId,
+        visibility: AsafeEpicTable.visibility,
+        createdAt: AsafeEpicTable.createdAt,
+        updatedAt: AsafeEpicTable.updatedAt,
+        ownerName: UserTable.name,
+        ownerImage: UserTable.image,
+      })
+      .from(AsafeEpicTable)
+      .leftJoin(
+        AsafeTeamMemberTable,
+        and(
+          eq(AsafeTeamMemberTable.teamId, AsafeEpicTable.teamId),
+          eq(AsafeTeamMemberTable.userId, userId),
+        ),
+      )
+      .leftJoin(UserTable, eq(UserTable.id, AsafeEpicTable.ownerId))
+      .where(
+        and(
+          or(
+            eq(AsafeEpicTable.ownerId, userId),
+            inSharedTeam(userId),
+          ),
+          teamId ? eq(AsafeEpicTable.teamId, teamId) : undefined,
+        ),
+      )
+      .orderBy(desc(AsafeEpicTable.updatedAt));
+
+    if (rows.length === 0) return [];
+
+    // Fetch task counts per epic in a single query.
+    const epicIds = rows.map((r) => r.id);
+    const allTasks = await db
+      .select({
+        epicId: AsafeTaskTable.epicId,
+        status: AsafeTaskTable.status,
+      })
+      .from(AsafeTaskTable)
+      .where(
+        or(
+          ...epicIds.map((id) => eq(AsafeTaskTable.epicId, id)),
+        ),
+      );
+
+    const taskCountMap = new Map<string, { total: number; done: number }>();
+    for (const task of allTasks) {
+      const current = taskCountMap.get(task.epicId) ?? { total: 0, done: 0 };
+      current.total += 1;
+      if (task.status === "done") current.done += 1;
+      taskCountMap.set(task.epicId, current);
+    }
+
+    return rows.map((row) => {
+      const counts = taskCountMap.get(row.id) ?? { total: 0, done: 0 };
+      return {
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        priority: row.priority,
+        labels: (row.labels as string[]) ?? [],
+        teamId: row.teamId,
+        ownerId: row.ownerId,
+        visibility: row.visibility,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        taskTotal: counts.total,
+        taskDone: counts.done,
+        ownerName: row.ownerName ?? undefined,
+        ownerImage: row.ownerImage ?? undefined,
+      };
+    });
+  },
+
+  async updateEpic(
+    id: string,
+    input: Partial<{
+      title: string;
+      description: string | null;
+      status: "backlog" | "in_progress" | "done";
+      priority: "low" | "medium" | "high" | "critical";
+      labels: string[];
+      teamId: string | null;
+      visibility: "private" | "shared" | "team" | "company";
+    }>,
+  ): Promise<EpicEntity | null> {
+    const [updated] = await db
+      .update(AsafeEpicTable)
+      .set({
+        ...input,
+        updatedAt: new Date(),
+      })
+      .where(eq(AsafeEpicTable.id, id))
+      .returning();
+    return updated ?? null;
+  },
+
+  async deleteEpic(id: string): Promise<void> {
+    await db.delete(AsafeEpicTable).where(eq(AsafeEpicTable.id, id));
+  },
+
+  // -------------------------------------------------------------------------
+  // Tasks
+  // -------------------------------------------------------------------------
+
+  async createTask(input: {
+    epicId: string;
+    title: string;
+    description?: string | null;
+    type?: "story" | "task" | "bug";
+    status?: "todo" | "in_progress" | "done";
+    priority?: "low" | "medium" | "high" | "critical";
+    assigneeId?: string | null;
+    labels?: string[];
+    teamId?: string | null;
+    createdBy?: string | null;
+    sortOrder?: number;
+  }): Promise<TaskEntity> {
+    const [task] = await db
+      .insert(AsafeTaskTable)
+      .values({
+        epicId: input.epicId,
+        title: input.title.trim(),
+        description: input.description ?? null,
+        type: input.type ?? "task",
+        status: input.status ?? "todo",
+        priority: input.priority ?? "medium",
+        assigneeId: input.assigneeId ?? null,
+        labels: input.labels ?? [],
+        teamId: input.teamId ?? null,
+        createdBy: input.createdBy ?? null,
+        sortOrder: input.sortOrder ?? 0,
+      })
+      .returning();
+    return task;
+  },
+
+  async getTaskById(id: string): Promise<TaskEntity | null> {
+    const [task] = await db
+      .select()
+      .from(AsafeTaskTable)
+      .where(eq(AsafeTaskTable.id, id))
+      .limit(1);
+    return task ?? null;
+  },
+
+  async listTasksForEpic(epicId: string): Promise<TaskEntity[]> {
+    return db
+      .select()
+      .from(AsafeTaskTable)
+      .where(eq(AsafeTaskTable.epicId, epicId))
+      .orderBy(asc(AsafeTaskTable.sortOrder), asc(AsafeTaskTable.createdAt));
+  },
+
+  async updateTask(
+    id: string,
+    input: Partial<{
+      title: string;
+      description: string | null;
+      type: "story" | "task" | "bug";
+      status: "todo" | "in_progress" | "done";
+      priority: "low" | "medium" | "high" | "critical";
+      assigneeId: string | null;
+      labels: string[];
+      sortOrder: number;
+    }>,
+  ): Promise<TaskEntity | null> {
+    const [updated] = await db
+      .update(AsafeTaskTable)
+      .set({
+        ...input,
+        updatedAt: new Date(),
+      })
+      .where(eq(AsafeTaskTable.id, id))
+      .returning();
+    return updated ?? null;
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(AsafeTaskTable).where(eq(AsafeTaskTable.id, id));
+  },
+
+  /**
+   * Bulk-update `sortOrder` on a set of tasks — used for drag-and-drop
+   * reordering. `orderedIds` is the desired order (index = new sortOrder).
+   */
+  async reorderTasks(epicId: string, orderedIds: string[]): Promise<void> {
+    await Promise.all(
+      orderedIds.map((taskId, idx) =>
+        db
+          .update(AsafeTaskTable)
+          .set({ sortOrder: idx, updatedAt: new Date() })
+          .where(
+            and(
+              eq(AsafeTaskTable.id, taskId),
+              eq(AsafeTaskTable.epicId, epicId),
+            ),
+          ),
+      ),
+    );
+  },
+};

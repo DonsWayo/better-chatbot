@@ -427,7 +427,9 @@
     "documents": "문서",
     "seeAllDocuments": "모두 보기",
     "confirmDeleteAllChats": "모든 대화가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
-    "confirmDeleteUnarchivedChats": "보관되지 않은 모든 대화가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다."
+    "confirmDeleteUnarchivedChats": "보관되지 않은 모든 대화가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+    "tasks": "작업",
+    "seeAllTasks": "전체 보기"
   },
   "Archive": {
     "title": "아카이브",
@@ -1391,5 +1393,42 @@
       "errorBudget": "예산이 소진되었습니다. 관리자에게 문의하세요.",
       "errorGeneric": "AI 제안이 실패했습니다. 원본 텍스트가 복원되었습니다."
     }
+  },
+  "Tasks": {
+    "title": "제목",
+    "epics": "에픽",
+    "newEpic": "새 에픽",
+    "noEpics": "아직 에픽이 없습니다",
+    "noEpicsDescription": "첫 번째 에픽을 만들어 작업을 관리하세요.",
+    "backlog": "백로그",
+    "inProgress": "진행 중",
+    "done": "완료",
+    "todo": "할 일",
+    "status": "상태",
+    "newTask": "작업 추가",
+    "noTasks": "아직 작업이 없습니다",
+    "story": "스토리",
+    "task": "작업",
+    "bug": "버그",
+    "priority": "우선순위",
+    "low": "낮음",
+    "medium": "보통",
+    "high": "높음",
+    "critical": "긴급",
+    "assignee": "담당자",
+    "labels": "레이블",
+    "description": "설명",
+    "deleteEpic": "에픽 삭제",
+    "deleteTask": "작업 삭제",
+    "deleteEpicConfirm": "이 에픽과 모든 작업을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "deleteTaskConfirm": "이 작업을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "epicCreated": "에픽이 생성되었습니다",
+    "taskCreated": "작업이 생성되었습니다",
+    "saved": "저장됨",
+    "progress": "전체 {total}개 중 {done}개 완료",
+    "aiImprove": "AI로 개선",
+    "visibility": "공개 범위",
+    "epicTitlePlaceholder": "에픽 제목…",
+    "epicDescPlaceholder": "이 에픽에 대해 설명해 주세요"
   }
 }
