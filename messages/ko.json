@@ -153,7 +153,8 @@
       "http": "HTTP 요청을 통해 외부 API 및 웹 서비스에서 데이터를 가져옵니다.\n\nREST API, 웹훅 및 타사 서비스와 통합합니다.",
       "template": "이전 노드의 데이터와 텍스트를 결합하여 동적 문서를 생성합니다.\n\n변수 치환을 사용하여 이메일, 보고서 또는 형식화된 콘텐츠를 생성합니다.",
       "knowledge": "지식 컬렉션에서 관련 청크를 검색합니다 (RAG)",
-      "condition": "데이터 평가를 기반으로 워크플로우를 분기하는 조건부 로직을 추가합니다.\n\n다양한 시나리오와 데이터 조건을 처리하기 위한 if-else 로직을 생성합니다."
+      "condition": "데이터 평가를 기반으로 워크플로우를 분기하는 조건부 로직을 추가합니다.\n\n다양한 시나리오와 데이터 조건을 처리하기 위한 if-else 로직을 생성합니다.",
+      "web-search": "Exa(또는 Brave)를 통해 웹을 검색하고 결과를 다운스트림 노드로 반환합니다.\n\n쿼리에서 \"/\" 멘션으로 업스트림 노드 출력을 참조합니다.\n\n출력: results({title, url, text}의 배열)와 text(연결된 마크다운)."
     },
     "structuredOutputSwitchConfirm": "현재 구조화된 출력이 활성화되어 있습니다.\n 어떻게 하시겠습니까?",
     "structuredOutputSwitchConfirmOk": "구조화된 출력 편집",
@@ -163,7 +164,10 @@
     "nodesArranged": "레이아웃이 성공적으로 적용되었습니다",
     "visibilityUpdated": "가시성이 성공적으로 업데이트되었습니다",
     "deleteConfirm": "이 워크플로를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-    "deleted": "워크플로가 삭제되었습니다"
+    "deleted": "워크플로가 삭제되었습니다",
+    "webSearchQuery": "검색 쿼리",
+    "webSearchNumResults": "결과 수",
+    "webSearchType": "검색 유형"
   },
   "Auth": {
     "SignIn": {
@@ -281,8 +285,7 @@
       "none": "없음",
       "mentionOnly": "@멘션만",
       "noToolsAvailable": "사용 가능한 도구가 없습니다",
-      "webSearchError": "웹 검색에 실패했습니다. 다시 시도해 주세요.",
-      "toolModeDescription": "도구 사용 방식을 선택하세요:\n• 자동: AI가 도구 사용 여부를 자동으로 결정\n• 수동: 도구 사용 전 권한 요청\n• 사용 안함: 모든 도구 비활성화"
+      "webSearchError": "웹 검색에 실패했습니다. 다시 시도해 주세요."
     },
     "VoiceChat": {
       "title": "음성 채팅 모드",
@@ -422,7 +425,9 @@
     "adminConsole": "관리 콘솔",
     "studio": "스튜디오",
     "documents": "문서",
-    "seeAllDocuments": "모두 보기"
+    "seeAllDocuments": "모두 보기",
+    "confirmDeleteAllChats": "모든 대화가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+    "confirmDeleteUnarchivedChats": "보관되지 않은 모든 대화가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다."
   },
   "Archive": {
     "title": "아카이브",
@@ -1087,7 +1092,11 @@
     "noSelectionBody": "목록에서 항목을 선택하면 세부 정보가 표시됩니다.",
     "openRun": "실행 열기",
     "approved": "승인됨",
-    "rejected": "거부됨"
+    "rejected": "거부됨",
+    "mentionsTab": "멘션",
+    "emptyMentions": "아직 멘션이 없습니다",
+    "emptyMentionsDescription": "누군가 문서 댓글에서 당신을 @멘션하면 여기에 표시됩니다.",
+    "confirmDeleteRoutine": "이 루틴을 삭제하시겠습니까? 스케줄에 따른 실행이 중단됩니다. 이 작업은 취소할 수 없습니다."
   },
   "Teamspaces": {
     "folders": "폴더",
@@ -1107,7 +1116,8 @@
     "noFolders": "아직 폴더가 없습니다",
     "team": "팀",
     "generating": "생성 중…",
-    "sharedWithTeamReadOnly": "{team}과(와) 공유됨 · 읽기 전용"
+    "sharedWithTeamReadOnly": "{team}과(와) 공유됨 · 읽기 전용",
+    "confirmDeleteFolder": "이 폴더를 삭제하시겠습니까? 폴더 내의 대화가 이동됩니다. 이 작업은 취소할 수 없습니다."
   },
   "Memory": {
     "title": "메모리",
@@ -1315,6 +1325,7 @@
     "saving": "저장 중…",
     "saved": "저장됨",
     "saveError": "저장하지 못했습니다",
+    "createError": "문서 생성에 실패했습니다",
     "backToList": "문서 목록으로",
     "delete": "문서 삭제",
     "deleteTitle": "문서 삭제",
@@ -1363,6 +1374,22 @@
       "replyingTo": "{name}에게 답글",
       "deleteTitle": "댓글 삭제",
       "deleteDescription": "이 댓글을 삭제하시겠습니까?"
+    },
+    "remoteOverridden": "저장되지 않은 변경 사항이 최신 버전으로 덮어쓰기되었습니다 — 계속하기 전에 검토하세요.",
+    "ai": {
+      "improve": "개선",
+      "shorten": "단축",
+      "expand": "확장",
+      "tone": "톤",
+      "toneFormal": "격식체",
+      "toneCasual": "비격식체",
+      "translate": "번역",
+      "translateEs": "스페인어",
+      "translateFr": "프랑스어",
+      "translateDe": "독일어",
+      "generating": "생성 중…",
+      "errorBudget": "예산이 소진되었습니다. 관리자에게 문의하세요.",
+      "errorGeneric": "AI 제안이 실패했습니다. 원본 텍스트가 복원되었습니다."
     }
   }
 }

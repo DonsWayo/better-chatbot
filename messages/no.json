@@ -153,7 +153,8 @@
       "http": "Hent data fra eksterne APIer og webtjenester via HTTP-forespørsler.\n\nIntegrer med REST-APIer, webhooks og tredjepartstjenester.",
       "template": "Opprett dynamiske dokumenter ved å kombinere tekst med data fra tidligere noder.\n\nGenerer e-poster, rapporter eller formatert innhold ved hjelp av variabelsubstitusjon.",
       "knowledge": "Hent relevante biter fra en kunnskapssamling (RAG)",
-      "condition": "Legg til betinget logikk for å forgrene arbeidsflyten din basert på dataevaluering.\n\nOpprett hvis-ellers-logikk for å håndtere ulike scenarier og databetingelser."
+      "condition": "Legg til betinget logikk for å forgrene arbeidsflyten din basert på dataevaluering.\n\nOpprett hvis-ellers-logikk for å håndtere ulike scenarier og databetingelser.",
+      "web-search": "Søk på nettet via Exa (eller Brave) og returner resultater til nedstrøms noder.\n\nBruk utdata fra oppstrøms noder i spørringen via '/'-omtaler.\n\nUtdata: results (array av {title, url, text}) og text (sammenkoblet markdown)."
     },
     "structuredOutputSwitchConfirm": "Du har for øyeblikket strukturert utdata aktivert.\nHva vil du gjøre?",
     "structuredOutputSwitchConfirmOk": "Rediger strukturert utdata",
@@ -163,7 +164,10 @@
     "nodesArranged": "Layout anvendt",
     "visibilityUpdated": "Synlighet oppdatert",
     "deleteConfirm": "Vil du slette denne arbeidsflyten? Dette kan ikke angres.",
-    "deleted": "Arbeidsflyt slettet"
+    "deleted": "Arbeidsflyt slettet",
+    "webSearchQuery": "Søkespørring",
+    "webSearchNumResults": "Antall resultater",
+    "webSearchType": "Søketype"
   },
   "Auth": {
     "SignIn": {
@@ -421,7 +425,9 @@
     "adminConsole": "Administrasjonskonsoll",
     "studio": "Studio",
     "documents": "Dokumenter",
-    "seeAllDocuments": "Se alle"
+    "seeAllDocuments": "Se alle",
+    "confirmDeleteAllChats": "Dette vil permanent slette alle samtalene dine. Dette kan ikke angres.",
+    "confirmDeleteUnarchivedChats": "Dette vil permanent slette alle ikke-arkiverte samtaler. Dette kan ikke angres."
   },
   "Archive": {
     "title": "Arkiv",
@@ -456,7 +462,7 @@
     "agentDescriptionPlaceholder": "Dette er bare en beskrivelse av agenten. Den er ikke påkrevd.",
     "agentSettingsDescription": "Herfra er dette innstillinger som kan påvirke agenten.",
     "thisAgentIs": "Denne agenten er en ekspert på",
-    "expertIn": "",
+    "expertIn": ".",
     "agentRolePlaceholder": "aksjeanalyse",
     "agentInstructionsLabel": "Skriv gjerne agentens rolle, personlighet, retningslinjer, kunnskap osv.",
     "agentInstructionsPlaceholder": "Denne agenten hjelper med aksjeanalyse. Den bruker nettsøkverktøy for å hente aksjeinformasjon...",
@@ -1086,7 +1092,11 @@
     "noSelectionBody": "Velg et element fra listen for å se detaljene.",
     "openRun": "Åpne kjøring",
     "approved": "Godkjent",
-    "rejected": "Avvist"
+    "rejected": "Avvist",
+    "mentionsTab": "Omtaler",
+    "emptyMentions": "Ingen omtaler ennå",
+    "emptyMentionsDescription": "Når noen @omtaler deg i en dokumentkommentar, vil det vises her.",
+    "confirmDeleteRoutine": "Slette denne rutinen? Den vil slutte å kjøre etter planen. Dette kan ikke angres."
   },
   "Teamspaces": {
     "folders": "Mapper",
@@ -1106,7 +1116,8 @@
     "noFolders": "Ingen mapper ennå",
     "team": "team",
     "generating": "Genererer…",
-    "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet"
+    "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet",
+    "confirmDeleteFolder": "Slette denne mappen? Samtaler inni vil bli flyttet ut. Dette kan ikke angres."
   },
   "Memory": {
     "title": "Minne",
@@ -1314,6 +1325,7 @@
     "saving": "Lagrer…",
     "saved": "Lagret",
     "saveError": "Kunne ikke lagre",
+    "createError": "Kunne ikke opprette dokument",
     "backToList": "Tilbake til dokumenter",
     "delete": "Slett dokument",
     "deleteTitle": "Slett dokument",
@@ -1362,6 +1374,22 @@
       "replyingTo": "Svarer {name}",
       "deleteTitle": "Slett kommentar",
       "deleteDescription": "Er du sikker på at du vil slette denne kommentaren?"
+    },
+    "remoteOverridden": "Dine ulagrede endringer ble overskrevet av en nyere versjon — gjennomgå før du fortsetter.",
+    "ai": {
+      "improve": "Forbedre",
+      "shorten": "Forkorte",
+      "expand": "Utvide",
+      "tone": "Tone",
+      "toneFormal": "Formell",
+      "toneCasual": "Uformell",
+      "translate": "Oversette",
+      "translateEs": "Spansk",
+      "translateFr": "Fransk",
+      "translateDe": "Tysk",
+      "generating": "Genererer…",
+      "errorBudget": "Budsjett er uttømt. Kontakt administratoren din.",
+      "errorGeneric": "AI-forslag mislyktes. Originalteksten din er gjenopprettet."
     }
   }
 }

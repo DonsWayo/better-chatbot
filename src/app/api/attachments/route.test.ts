@@ -76,9 +76,7 @@ function uploadSuccess(key = "uploads/file.bin", url = "http://cdn/file.bin") {
 
 // Alias to the real route under test — imported lazily so vi.mock hoisting runs first.
 async function importRoute() {
-  return import(
-    "/Users/donswayo/Documents/GitHub/asafechat/src/app/api/storage/upload/route"
-  );
+  return import("../storage/upload/route");
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

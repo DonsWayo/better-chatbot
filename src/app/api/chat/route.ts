@@ -188,7 +188,8 @@ export async function POST(request: Request) {
       message,
       chatModel,
       toolChoice,
-      allowedAppDefaultToolkit,
+      allowedAppDefaultToolkit: rawToolkit,
+      researchMode,
       allowedMcpServers,
       imageTool,
       mentions = [],
@@ -330,6 +331,16 @@ export async function POST(request: Request) {
       session.user.role === "admin" || session.user.role === "editor";
     const canSelectModel = isElevated;
     const canUseTools = isElevated;
+
+    // Security: enforce researchMode server-side — a basic user could POST
+    // researchMode:true directly even though the UI hides the toggle.
+    // Only elevated users (admin/editor) may activate Deep Research.
+    const effectiveResearchMode = isElevated && !!researchMode;
+
+    // Deep Research mode: force WebSearch toolkit on (elevated users only).
+    const allowedAppDefaultToolkit = effectiveResearchMode
+      ? [...new Set([...(rawToolkit ?? []), "webSearch"])]
+      : rawToolkit;
 
     // asafe-ai entitlements (ADR-0009, layered): resolve the effective model allow-list ONCE —
     // org base → team policy (inherit/replace) → additive per-user grants. `null` = unrestricted

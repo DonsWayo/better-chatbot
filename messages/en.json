@@ -462,7 +462,7 @@
     "agentDescriptionPlaceholder": "This is just a description of the agent, it's not critical.",
     "agentSettingsDescription": "From here, these are settings that can affect the agent.",
     "thisAgentIs": "This agent is an expert in",
-    "expertIn": "",
+    "expertIn": ".",
     "agentRolePlaceholder": "stock analysis",
     "agentInstructionsLabel": "Feel free to write the agent's role, personality, guidelines, knowledge, etc.",
     "agentInstructionsPlaceholder": "This agent helps with stock analysis. It uses web search tools to obtain stock information...",
@@ -1325,6 +1325,7 @@
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn't save",
+    "createError": "Failed to create document",
     "backToList": "Back to documents",
     "delete": "Delete document",
     "deleteTitle": "Delete document",
@@ -1374,6 +1375,21 @@
       "replyingTo": "Replying to {name}",
       "deleteTitle": "Delete comment",
       "deleteDescription": "Are you sure you want to delete this comment?"
+    },
+    "ai": {
+      "improve": "Improve",
+      "shorten": "Shorten",
+      "expand": "Expand",
+      "tone": "Tone",
+      "toneFormal": "Formal",
+      "toneCasual": "Casual",
+      "translate": "Translate",
+      "translateEs": "Spanish",
+      "translateFr": "French",
+      "translateDe": "German",
+      "generating": "Generating…",
+      "errorBudget": "Budget exhausted. Contact your administrator.",
+      "errorGeneric": "AI suggestion failed. Your original text has been restored."
     }
   }
 }

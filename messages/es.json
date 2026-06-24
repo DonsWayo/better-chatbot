@@ -153,7 +153,8 @@
       "http": "Obtén datos de APIs externas y servicios web mediante peticiones HTTP.\n\nIntégrate con APIs REST, webhooks y servicios de terceros.",
       "template": "Crea documentos dinámicos combinando texto con datos de nodos anteriores.\n\nGenera correos, informes o contenido formateado usando sustitución de variables.",
       "knowledge": "Recupera fragmentos relevantes de una colección de conocimiento (RAG)",
-      "condition": "Añade lógica condicional para ramificar tu flujo de trabajo en función de la evaluación de datos.\n\nCrea lógica if-else para gestionar distintos escenarios y condiciones de datos."
+      "condition": "Añade lógica condicional para ramificar tu flujo de trabajo en función de la evaluación de datos.\n\nCrea lógica if-else para gestionar distintos escenarios y condiciones de datos.",
+      "web-search": "Busca en la web a través de Exa (o Brave) y devuelve resultados a los nodos siguientes.\n\nUsa salidas de nodos anteriores en la consulta mediante menciones '/'.\n\nSalidas: resultados (array de {title, url, text}) y texto (markdown concatenado)."
     },
     "structuredOutputSwitchConfirm": "Actualmente tienes la salida estructurada habilitada.\n¿Qué deseas hacer?",
     "structuredOutputSwitchConfirmOk": "Editar Salida Estructurada",
@@ -163,7 +164,10 @@
     "nodesArranged": "Layout aplicado correctamente",
     "visibilityUpdated": "Visibilidad actualizada correctamente",
     "deleteConfirm": "¿Eliminar este flujo de trabajo? Esta acción no se puede deshacer.",
-    "deleted": "Flujo de trabajo eliminado"
+    "deleted": "Flujo de trabajo eliminado",
+    "webSearchQuery": "Consulta de búsqueda",
+    "webSearchNumResults": "Número de resultados",
+    "webSearchType": "Tipo de búsqueda"
   },
   "Auth": {
     "SignIn": {
@@ -421,7 +425,9 @@
     "adminConsole": "Consola de administración",
     "studio": "Estudio",
     "documents": "Documentos",
-    "seeAllDocuments": "Ver todos"
+    "seeAllDocuments": "Ver todos",
+    "confirmDeleteAllChats": "Esto eliminará permanentemente todas tus conversaciones. Esta acción no se puede deshacer.",
+    "confirmDeleteUnarchivedChats": "Esto eliminará permanentemente todas las conversaciones no archivadas. Esta acción no se puede deshacer."
   },
   "Archive": {
     "title": "Archivo",
@@ -456,7 +462,7 @@
     "agentDescriptionPlaceholder": "Esto es solo una descripción del agente; no es crítico.",
     "agentSettingsDescription": "A partir de aquí, estas son configuraciones que pueden afectar al agente.",
     "thisAgentIs": "Este agente es un experto en",
-    "expertIn": "",
+    "expertIn": ".",
     "agentRolePlaceholder": "análisis bursátil",
     "agentInstructionsLabel": "Escribe libremente el rol, personalidad, pautas, conocimientos, etc. del agente.",
     "agentInstructionsPlaceholder": "Este agente ayuda con el análisis bursátil. Usa herramientas de búsqueda web para obtener información de acciones...",
@@ -1086,7 +1092,11 @@
     "noSelectionBody": "Selecciona un elemento de la lista para ver sus detalles.",
     "openRun": "Abrir ejecución",
     "approved": "Aprobado",
-    "rejected": "Rechazado"
+    "rejected": "Rechazado",
+    "mentionsTab": "Menciones",
+    "emptyMentions": "Sin menciones todavía",
+    "emptyMentionsDescription": "Cuando alguien te @mencione en un comentario de documento, aparecerá aquí.",
+    "confirmDeleteRoutine": "¿Eliminar esta rutina? Dejará de ejecutarse según su programación. Esta acción no se puede deshacer."
   },
   "Teamspaces": {
     "folders": "Carpetas",
@@ -1106,7 +1116,8 @@
     "noFolders": "Aún no hay carpetas",
     "team": "equipo",
     "generating": "Generando…",
-    "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura"
+    "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura",
+    "confirmDeleteFolder": "¿Eliminar esta carpeta? Las conversaciones en su interior se moverán fuera. Esta acción no se puede deshacer."
   },
   "Memory": {
     "title": "Memoria",
@@ -1314,6 +1325,7 @@
     "saving": "Guardando…",
     "saved": "Guardado",
     "saveError": "No se pudo guardar",
+    "createError": "Error al crear el documento",
     "backToList": "Volver a documentos",
     "delete": "Eliminar documento",
     "deleteTitle": "Eliminar documento",
@@ -1362,6 +1374,22 @@
       "replyingTo": "Respondiendo a {name}",
       "deleteTitle": "Eliminar comentario",
       "deleteDescription": "¿Seguro que quieres eliminar este comentario?"
+    },
+    "remoteOverridden": "Tus cambios no guardados fueron sobreescritos por una versión más reciente — revisa antes de continuar.",
+    "ai": {
+      "improve": "Mejorar",
+      "shorten": "Acortar",
+      "expand": "Expandir",
+      "tone": "Tono",
+      "toneFormal": "Formal",
+      "toneCasual": "Informal",
+      "translate": "Traducir",
+      "translateEs": "Español",
+      "translateFr": "Francés",
+      "translateDe": "Alemán",
+      "generating": "Generando…",
+      "errorBudget": "Presupuesto agotado. Contacta con tu administrador.",
+      "errorGeneric": "La sugerencia de IA falló. Tu texto original ha sido restaurado."
     }
   }
 }
