@@ -6,6 +6,7 @@ const { getSessionMock, repo } = vi.hoisted(() => ({
     createEpic: vi.fn(),
     getEpicById: vi.fn(),
     getEpicWithTasks: vi.fn(),
+    canUserReadEpic: vi.fn(),
     listEpicsForUser: vi.fn(),
     updateEpic: vi.fn(),
     deleteEpic: vi.fn(),
@@ -102,24 +103,48 @@ describe("tasks server actions", () => {
 
   describe("getEpicWithTasksAction", () => {
     it("returns epic with tasks for owner", async () => {
-      const fakeData = {
+      const fakeEpic = {
         id: EPIC,
         ownerId: USER,
         visibility: "private",
         title: "Ship v2",
-        tasks: [{ id: TASK, title: "Write tests", status: "todo" }],
       };
-      repo.getEpicWithTasks.mockResolvedValue(fakeData);
+      const fakeTasks = [{ id: TASK, title: "Write tests", status: "todo" }];
+      repo.getEpicById.mockResolvedValue(fakeEpic);
+      repo.canUserReadEpic.mockResolvedValue(true);
+      repo.listTasksForEpic.mockResolvedValue(fakeTasks);
 
       const { getEpicWithTasksAction } = await import("./actions");
       const res = await getEpicWithTasksAction(EPIC);
 
-      expect(res).toEqual({ success: true, data: fakeData });
-      expect(repo.getEpicWithTasks).toHaveBeenCalledWith(EPIC);
+      expect(res).toEqual({
+        success: true,
+        data: { ...fakeEpic, tasks: fakeTasks },
+      });
+      expect(repo.getEpicById).toHaveBeenCalledWith(EPIC);
+      expect(repo.canUserReadEpic).toHaveBeenCalledWith(fakeEpic, USER);
+      expect(repo.listTasksForEpic).toHaveBeenCalledWith(EPIC);
+    });
+
+    it("returns Forbidden when visibility check fails", async () => {
+      repo.getEpicById.mockResolvedValue({
+        id: EPIC,
+        ownerId: "other-user",
+        visibility: "private",
+      });
+      repo.canUserReadEpic.mockResolvedValue(false);
+
+      const { getEpicWithTasksAction } = await import("./actions");
+      const res = await getEpicWithTasksAction(EPIC);
+
+      expect(res.success).toBe(false);
+      expect((res as { success: false; error: string }).error).toMatch(
+        /forbidden/i,
+      );
     });
 
     it("returns error when epic not found", async () => {
-      repo.getEpicWithTasks.mockResolvedValue(null);
+      repo.getEpicById.mockResolvedValue(null);
 
       const { getEpicWithTasksAction } = await import("./actions");
       const res = await getEpicWithTasksAction(EPIC);
@@ -137,26 +162,40 @@ describe("tasks server actions", () => {
 
   describe("updateTaskAction", () => {
     it("updates task status and returns updated row", async () => {
-      const fakeTask = {
-        id: TASK,
-        epicId: EPIC,
-        title: "Write tests",
-        status: "done",
-      };
-      repo.updateTask.mockResolvedValue(fakeTask);
+      const existingTask = { id: TASK, epicId: EPIC, title: "Write tests", status: "todo" };
+      const updatedTask = { ...existingTask, status: "done" };
+      repo.getTaskById.mockResolvedValue(existingTask);
+      repo.getEpicById.mockResolvedValue({ id: EPIC, ownerId: USER });
+      repo.updateTask.mockResolvedValue(updatedTask);
 
       const { updateTaskAction } = await import("./actions");
       const res = await updateTaskAction(TASK, { status: "done" });
 
-      expect(res).toEqual({ success: true, data: fakeTask });
+      expect(res).toEqual({ success: true, data: updatedTask });
+      expect(repo.getTaskById).toHaveBeenCalledWith(TASK);
+      expect(repo.getEpicById).toHaveBeenCalledWith(EPIC);
       expect(repo.updateTask).toHaveBeenCalledWith(
         TASK,
         expect.objectContaining({ status: "done" }),
       );
     });
 
+    it("returns Forbidden when caller does not own the epic", async () => {
+      repo.getTaskById.mockResolvedValue({ id: TASK, epicId: EPIC });
+      repo.getEpicById.mockResolvedValue({ id: EPIC, ownerId: "other-user" });
+
+      const { updateTaskAction } = await import("./actions");
+      const res = await updateTaskAction(TASK, { status: "done" });
+
+      expect(res.success).toBe(false);
+      expect((res as { success: false; error: string }).error).toMatch(
+        /forbidden/i,
+      );
+      expect(repo.updateTask).not.toHaveBeenCalled();
+    });
+
     it("returns error when task not found", async () => {
-      repo.updateTask.mockResolvedValue(null);
+      repo.getTaskById.mockResolvedValue(null);
 
       const { updateTaskAction } = await import("./actions");
       const res = await updateTaskAction(TASK, { status: "done" });

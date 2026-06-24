@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { pgDb as db } from "../db.pg";
 import {
   AsafeEpicTable,
@@ -46,6 +46,31 @@ export const pgEpicRepository = {
   // Epics
   // -------------------------------------------------------------------------
 
+  /**
+   * Returns true if `userId` is allowed to read `epic`.
+   * Visibility rules: owner always, "company"/"shared" = any auth user,
+   * "team" = owner or team member, "private" = owner only.
+   */
+  async canUserReadEpic(epic: EpicEntity, userId: string): Promise<boolean> {
+    if (epic.ownerId === userId) return true;
+    if (epic.visibility === "company" || epic.visibility === "shared")
+      return true;
+    if (epic.visibility === "team" && epic.teamId) {
+      const [row] = await db
+        .select({ userId: AsafeTeamMemberTable.userId })
+        .from(AsafeTeamMemberTable)
+        .where(
+          and(
+            eq(AsafeTeamMemberTable.teamId, epic.teamId),
+            eq(AsafeTeamMemberTable.userId, userId),
+          ),
+        )
+        .limit(1);
+      return !!row;
+    }
+    return false;
+  },
+
   async createEpic(input: {
     ownerId: string;
     title: string;
@@ -69,6 +94,7 @@ export const pgEpicRepository = {
         visibility: input.visibility ?? "team",
       })
       .returning();
+    if (!epic) throw new Error("Epic insert returned no rows");
     return epic;
   },
 
@@ -158,11 +184,7 @@ export const pgEpicRepository = {
         status: AsafeTaskTable.status,
       })
       .from(AsafeTaskTable)
-      .where(
-        or(
-          ...epicIds.map((id) => eq(AsafeTaskTable.epicId, id)),
-        ),
-      );
+      .where(inArray(AsafeTaskTable.epicId, epicIds));
 
     const taskCountMap = new Map<string, { total: number; done: number }>();
     for (const task of allTasks) {
@@ -253,6 +275,7 @@ export const pgEpicRepository = {
         sortOrder: input.sortOrder ?? 0,
       })
       .returning();
+    if (!task) throw new Error("Task insert returned no rows");
     return task;
   },
 
@@ -304,20 +327,31 @@ export const pgEpicRepository = {
   /**
    * Bulk-update `sortOrder` on a set of tasks — used for drag-and-drop
    * reordering. `orderedIds` is the desired order (index = new sortOrder).
+   * Wrapped in a transaction so a partial failure rolls back entirely.
    */
   async reorderTasks(epicId: string, orderedIds: string[]): Promise<void> {
-    await Promise.all(
-      orderedIds.map((taskId, idx) =>
-        db
-          .update(AsafeTaskTable)
-          .set({ sortOrder: idx, updatedAt: new Date() })
-          .where(
-            and(
-              eq(AsafeTaskTable.id, taskId),
-              eq(AsafeTaskTable.epicId, epicId),
-            ),
-          ),
-      ),
-    );
+    if (orderedIds.length === 0) return;
+    await db.transaction(async (tx) => {
+      const results = await Promise.all(
+        orderedIds.map((taskId, idx) =>
+          tx
+            .update(AsafeTaskTable)
+            .set({ sortOrder: idx, updatedAt: new Date() })
+            .where(
+              and(
+                eq(AsafeTaskTable.id, taskId),
+                eq(AsafeTaskTable.epicId, epicId),
+              ),
+            )
+            .returning({ id: AsafeTaskTable.id }),
+        ),
+      );
+      const matched = results.flat().length;
+      if (matched !== orderedIds.length) {
+        throw new Error(
+          `reorderTasks: expected ${orderedIds.length} updates, got ${matched} — stale IDs or epic mismatch`,
+        );
+      }
+    });
   },
 };

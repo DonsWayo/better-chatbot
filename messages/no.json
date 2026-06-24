@@ -1425,6 +1425,8 @@
     "epicCreated": "Epos opprettet",
     "taskCreated": "Oppgave opprettet",
     "saved": "Lagret",
+    "save": "Lagre",
+    "saving": "Lagrer…",
     "progress": "{done} av {total} oppgaver fullført",
     "aiImprove": "Forbedre med KI",
     "visibility": "Synlighet",

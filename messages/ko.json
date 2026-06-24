@@ -1425,6 +1425,8 @@
     "epicCreated": "에픽이 생성되었습니다",
     "taskCreated": "작업이 생성되었습니다",
     "saved": "저장됨",
+    "save": "저장",
+    "saving": "저장 중…",
     "progress": "전체 {total}개 중 {done}개 완료",
     "aiImprove": "AI로 개선",
     "visibility": "공개 범위",

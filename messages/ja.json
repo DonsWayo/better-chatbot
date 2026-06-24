@@ -1425,6 +1425,8 @@
     "epicCreated": "エピックを作成しました",
     "taskCreated": "タスクを作成しました",
     "saved": "保存しました",
+    "save": "保存",
+    "saving": "保存中…",
     "progress": "{total}件中{done}件完了",
     "aiImprove": "AIで改善",
     "visibility": "公開範囲",

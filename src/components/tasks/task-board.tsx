@@ -160,6 +160,8 @@ function TaskSheet({
       if (res.ok) {
         const data = (await res.json()) as { result?: string };
         if (data.result) setDescription(data.result);
+      } else {
+        toast.error("AI improvement failed");
       }
     } catch {
       toast.error("AI improvement failed");
@@ -282,7 +284,7 @@ function TaskSheet({
             {saving ? (
               <Loader2 className="size-3.5 animate-spin mr-1" />
             ) : null}
-            {t("saved")}
+            {saving ? t("saving") : t("save")}
           </Button>
         </div>
       </SheetContent>

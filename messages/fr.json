@@ -1425,6 +1425,8 @@
     "epicCreated": "Épique créée",
     "taskCreated": "Tâche créée",
     "saved": "Enregistré",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
     "progress": "{done} sur {total} tâches terminées",
     "aiImprove": "Améliorer avec l'IA",
     "visibility": "Visibilité",

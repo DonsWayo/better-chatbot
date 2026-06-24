@@ -98,16 +98,12 @@ export async function getEpicWithTasksAction(
 ): Promise<ActionResult<EpicWithTasks>> {
   return toActionResult(async () => {
     const userId = await requireUserId();
-    const result = await epicRepository.getEpicWithTasks(epicId);
-    if (!result) throw new Error("Epic not found");
-    // Basic access check: owner, or visibility allows this user.
-    const canRead =
-      result.ownerId === userId ||
-      result.visibility === "company" ||
-      result.visibility === "team" || // team check enforced at DB level
-      result.visibility === "shared";
-    if (!canRead) throw new Error("Forbidden");
-    return result;
+    const epic = await epicRepository.getEpicById(epicId);
+    if (!epic) throw new Error("Epic not found");
+    if (!(await epicRepository.canUserReadEpic(epic, userId)))
+      throw new Error("Forbidden");
+    const tasks = await epicRepository.listTasksForEpic(epicId);
+    return { ...epic, tasks };
   });
 }
 
@@ -133,6 +129,7 @@ export async function createTaskAction(
     if (!input.title?.trim()) throw new Error("Title is required");
     const epic = await epicRepository.getEpicById(epicId);
     if (!epic) throw new Error("Epic not found");
+    if (epic.ownerId !== userId) throw new Error("Forbidden");
     return epicRepository.createTask({
       ...input,
       epicId,
@@ -156,9 +153,13 @@ export async function updateTaskAction(
   }>,
 ): Promise<ActionResult<TaskEntity>> {
   return toActionResult(async () => {
-    await requireUserId();
+    const userId = await requireUserId();
+    const task = await epicRepository.getTaskById(taskId);
+    if (!task) throw new Error("Task not found");
+    const epic = await epicRepository.getEpicById(task.epicId);
+    if (!epic || epic.ownerId !== userId) throw new Error("Forbidden");
     const updated = await epicRepository.updateTask(taskId, input);
-    if (!updated) throw new Error("Task not found");
+    if (!updated) throw new Error("Update failed");
     return updated;
   });
 }
@@ -167,9 +168,11 @@ export async function deleteTaskAction(
   taskId: string,
 ): Promise<ActionResult<void>> {
   return toActionResult(async () => {
-    await requireUserId();
+    const userId = await requireUserId();
     const task = await epicRepository.getTaskById(taskId);
     if (!task) throw new Error("Task not found");
+    const epic = await epicRepository.getEpicById(task.epicId);
+    if (!epic || epic.ownerId !== userId) throw new Error("Forbidden");
     await epicRepository.deleteTask(taskId);
   });
 }
@@ -179,7 +182,10 @@ export async function reorderTasksAction(
   orderedIds: string[],
 ): Promise<ActionResult<void>> {
   return toActionResult(async () => {
-    await requireUserId();
+    const userId = await requireUserId();
+    const epic = await epicRepository.getEpicById(epicId);
+    if (!epic) throw new Error("Epic not found");
+    if (epic.ownerId !== userId) throw new Error("Forbidden");
     await epicRepository.reorderTasks(epicId, orderedIds);
   });
 }

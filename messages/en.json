@@ -1425,6 +1425,8 @@
     "epicCreated": "Epic created",
     "taskCreated": "Task created",
     "saved": "Saved",
+    "save": "Save",
+    "saving": "Saving…",
     "progress": "{done} of {total} tasks done",
     "aiImprove": "Improve with AI",
     "visibility": "Visibility",

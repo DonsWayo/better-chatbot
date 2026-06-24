@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ taskId: string }> };
 
-/** PATCH /api/tasks/[taskId] — update a task. */
+/** PATCH /api/tasks/[taskId] — update a task (epic owner only). */
 export async function PATCH(request: Request, { params }: Params) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -14,19 +14,27 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const { taskId } = await params;
-
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: "Request body must be valid JSON" },
-      { status: 400 },
-    );
-  }
+    const task = await epicRepository.getTaskById(taskId);
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    const parentEpic = await epicRepository.getEpicById(task.epicId);
+    if (!parentEpic || parentEpic.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-  const input = body as Record<string, unknown>;
-  try {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Request body must be valid JSON" },
+        { status: 400 },
+      );
+    }
+
+    const input = body as Record<string, unknown>;
     const updated = await epicRepository.updateTask(taskId, {
       title: typeof input.title === "string" ? input.title : undefined,
       description:
@@ -56,7 +64,7 @@ export async function PATCH(request: Request, { params }: Params) {
     }
     return NextResponse.json({ task: updated });
   } catch (err) {
-    console.error("[PATCH /api/tasks/[taskId]]", err);
+    console.error("[PATCH /api/tasks/[taskId]]", { taskId, err });
     return NextResponse.json(
       { error: "Failed to update task" },
       { status: 500 },
@@ -64,7 +72,7 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 }
 
-/** DELETE /api/tasks/[taskId] — delete a task. */
+/** DELETE /api/tasks/[taskId] — delete a task (epic owner only). */
 export async function DELETE(_req: Request, { params }: Params) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -72,11 +80,22 @@ export async function DELETE(_req: Request, { params }: Params) {
   }
 
   const { taskId } = await params;
-  const task = await epicRepository.getTaskById(taskId);
-  if (!task) {
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  try {
+    const task = await epicRepository.getTaskById(taskId);
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    const parentEpic = await epicRepository.getEpicById(task.epicId);
+    if (!parentEpic || parentEpic.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    await epicRepository.deleteTask(taskId);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[DELETE /api/tasks/[taskId]]", { taskId, err });
+    return NextResponse.json(
+      { error: "Failed to delete task" },
+      { status: 500 },
+    );
   }
-
-  await epicRepository.deleteTask(taskId);
-  return NextResponse.json({ ok: true });
 }
