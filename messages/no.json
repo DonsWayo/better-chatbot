@@ -351,7 +351,8 @@
       "exportDeleted": "Eksport slettet",
       "failedToDeleteExport": "Kunne ikke slette eksport"
     },
-    "addFiles": "Legg til filer"
+    "addFiles": "Legg til filer",
+    "serviceUnavailable": "AI-tjenesten er midlertidig utilgjengelig. Kontakt administratoren din."
   },
   "Layout": {
     "workflow": "Arbeidsflyt",

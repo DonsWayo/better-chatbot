@@ -218,6 +218,14 @@ export const ErrorMessage = ({
     if (/budget exhausted/i.test(message)) {
       return t("Chat.budgetExhausted");
     }
+    // Never expose provider billing details (OpenRouter credits, payment URLs…)
+    if (
+      /insufficient.credits/i.test(message) ||
+      /openrouter\.ai/i.test(message) ||
+      /payment required/i.test(message)
+    ) {
+      return t("Chat.serviceUnavailable");
+    }
     return message;
   }, [error.message, t]);
   return (

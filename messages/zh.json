@@ -352,7 +352,8 @@
       "exportDeleted": "导出记录已成功删除",
       "failedToDeleteExport": "删除导出记录失败"
     },
-    "addFiles": "添加文件"
+    "addFiles": "添加文件",
+    "serviceUnavailable": "AI服务暂时不可用，请联系您的管理员。"
   },
   "Layout": {
     "workflow": "工作流",

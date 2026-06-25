@@ -352,7 +352,8 @@
       "exportDeleted": "エクスポートを削除しました",
       "failedToDeleteExport": "エクスポートの削除に失敗しました"
     },
-    "addFiles": "ファイルを追加"
+    "addFiles": "ファイルを追加",
+    "serviceUnavailable": "AIサービスは一時的に利用できません。管理者にお問い合わせください。"
   },
   "Layout": {
     "workflow": "ワークフロー",

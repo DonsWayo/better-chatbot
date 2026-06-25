@@ -351,7 +351,8 @@
       "exportDeleted": "Exportación eliminada correctamente",
       "failedToDeleteExport": "Error al eliminar la exportación"
     },
-    "addFiles": "Añadir archivos"
+    "addFiles": "Añadir archivos",
+    "serviceUnavailable": "El servicio de IA no está disponible temporalmente. Contacta a tu administrador."
   },
   "Layout": {
     "workflow": "Flujo de Trabajo",

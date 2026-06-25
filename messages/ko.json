@@ -352,7 +352,8 @@
       "exportDeleted": "공유가 성공적으로 삭제되었습니다",
       "failedToDeleteExport": "공유 삭제에 실패했습니다"
     },
-    "addFiles": "파일 추가"
+    "addFiles": "파일 추가",
+    "serviceUnavailable": "AI 서비스를 일시적으로 사용할 수 없습니다. 관리자에게 문의하세요."
   },
   "Layout": {
     "workflow": "워크플로우",

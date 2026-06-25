@@ -45,7 +45,19 @@ export function GenerateAgentDialog({
     schema: AgentGenerateSchema,
     onFinish(event) {
       if (event.error) {
-        handleErrorWithToast(event.error);
+        const msg = event.error?.message ?? "";
+        // Sanitize provider billing errors — never expose OpenRouter URLs or
+        // credit balance details to end users.
+        if (
+          /insufficient.credits/i.test(msg) ||
+          /openrouter\.ai/i.test(msg) ||
+          /payment required/i.test(msg) ||
+          /AI_TypeValidationError/i.test(msg)
+        ) {
+          handleErrorWithToast(new Error(t("Chat.serviceUnavailable")));
+        } else {
+          handleErrorWithToast(event.error);
+        }
       }
       if (event.object) {
         onAgentChange(event.object);

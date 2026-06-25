@@ -351,7 +351,8 @@
       "exportDeleted": "Export deleted successfully",
       "failedToDeleteExport": "Failed to delete export"
     },
-    "addFiles": "Add files"
+    "addFiles": "Add files",
+    "serviceUnavailable": "AI service is temporarily unavailable. Please contact your administrator."
   },
   "Layout": {
     "workflow": "Workflow",

@@ -352,7 +352,8 @@
       "exportDeleted": "Export supprimé avec succès",
       "failedToDeleteExport": "Échec de la suppression de l'export"
     },
-    "addFiles": "Ajouter des fichiers"
+    "addFiles": "Ajouter des fichiers",
+    "serviceUnavailable": "Le service IA est temporairement indisponible. Contactez votre administrateur."
   },
   "Layout": {
     "workflow": "Flux de Travail",

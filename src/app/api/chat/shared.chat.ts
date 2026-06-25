@@ -262,6 +262,19 @@ export function handleError(error: any) {
   if (LoadAPIKeyError.isInstance(error)) {
     return error.message;
   }
+  const status = error?.statusCode ?? error?.status ?? 0;
+  const msg: string = error?.message ?? "";
+  // Never expose provider billing details to end users. Log them server-side
+  // so admins can act, but return a generic message to the client.
+  if (
+    status === 402 ||
+    /insufficient.credits/i.test(msg) ||
+    /openrouter\.ai/i.test(msg) ||
+    /payment required/i.test(msg)
+  ) {
+    logger.error("[billing] Provider billing error:", msg);
+    return "AI service is temporarily unavailable. Please contact your administrator.";
+  }
   logger.error(error);
   logger.error(`Route Error: ${error.name}`);
   return errorToString(error.message);
