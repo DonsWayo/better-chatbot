@@ -91,6 +91,61 @@ contextBridge.exposeInMainWorld("asafeDesktop", {
     /** Stop the server (graceful SIGTERM). */
     stop: (): Promise<OpencodeStatusSnapshot> =>
       ipcRenderer.invoke("opencode:stop"),
+
+    /** Create a new opencode coding session. Returns { id } and other session metadata. */
+    sessionCreate: (): Promise<{ id: string }> =>
+      ipcRenderer.invoke("opencode:session-create"),
+
+    /** List all active opencode sessions for the current workspace. */
+    sessionList: (): Promise<unknown[]> =>
+      ipcRenderer.invoke("opencode:session-list"),
+
+    /** Send a user message to an active opencode session. */
+    prompt: (id: string, text: string): Promise<unknown> =>
+      ipcRenderer.invoke("opencode:prompt", { id, text }),
+
+    /** Abort an in-progress opencode session response. */
+    abort: (id: string): Promise<boolean> =>
+      ipcRenderer.invoke("opencode:abort", { id }),
+
+    /** Get the current file modification status from opencode. */
+    fileStatus: (): Promise<unknown[]> =>
+      ipcRenderer.invoke("opencode:file-status"),
+
+    /** Full-text search across the workspace via opencode. */
+    findText: (query: string): Promise<unknown[]> =>
+      ipcRenderer.invoke("opencode:find-text", { query }),
+
+    /**
+     * Reply to a pending opencode permission request.
+     * response: "once" → allow this call only, "always" → approve the pattern,
+     *           "reject" → deny and abort the tool call.
+     */
+    replyPermission: (
+      sessionId: string,
+      permissionId: string,
+      response: "once" | "always" | "reject",
+    ): Promise<boolean> =>
+      ipcRenderer.invoke("opencode:permission-reply", {
+        sessionId,
+        permissionId,
+        response,
+      }),
+  },
+
+  /**
+   * Subscribe to the opencode real-time event stream forwarded from the main
+   * process. Returns an unsubscribe function — call it to stop listening.
+   */
+  onOpencodeEvent: (
+    callback: (event: { type: string; properties: Record<string, unknown> }) => void,
+  ): (() => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      evt: { type: string; properties: Record<string, unknown> },
+    ) => callback(evt);
+    ipcRenderer.on("opencode:event", listener);
+    return () => ipcRenderer.removeListener("opencode:event", listener);
   },
 
   // --------------------------------------------------------------------------
@@ -139,7 +194,24 @@ export interface AsafeDesktopApi {
     status: () => Promise<OpencodeStatusSnapshot>;
     start: () => Promise<OpencodeStatusSnapshot>;
     stop: () => Promise<OpencodeStatusSnapshot>;
+    sessionCreate: () => Promise<{ id: string }>;
+    sessionList: () => Promise<unknown[]>;
+    prompt: (id: string, text: string) => Promise<unknown>;
+    abort: (id: string) => Promise<boolean>;
+    fileStatus: () => Promise<unknown[]>;
+    findText: (query: string) => Promise<unknown[]>;
+    replyPermission: (
+      sessionId: string,
+      permissionId: string,
+      response: "once" | "always" | "reject",
+    ) => Promise<boolean>;
   };
+  onOpencodeEvent: (
+    callback: (event: {
+      type: string;
+      properties: Record<string, unknown>;
+    }) => void,
+  ) => () => void;
   // Wave 10 v2 (pending Security sign-off):
   // listLocalTools?: () => Promise<LocalMcpTool[]>;
   // invokeLocalTool?: (toolName: string, args: Record<string, unknown>) => Promise<unknown>;

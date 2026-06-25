@@ -344,6 +344,20 @@
       "when": 1771595124815,
       "tag": "0048_asafe_document_comment",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1771595125815,
+      "tag": "0049_asafe_mention_notification",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1782310008482,
+      "tag": "0050_asafe_epic_task",
+      "breakpoints": true
     }
   ]
 }

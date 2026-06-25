@@ -151,7 +151,7 @@ export function AdminSidebar() {
           href={item.url}
           data-testid={`admin-sidebar-link-${item.id}`}
           className={cn(
-            "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors",
+            "flex items-center gap-2.5 rounded-xl px-2 sm:px-3 py-2 text-sm transition-colors",
             item.isActive
               ? "bg-input/50 font-medium text-foreground"
               : "text-muted-foreground hover:bg-input/30 hover:text-foreground",

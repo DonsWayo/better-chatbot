@@ -416,7 +416,9 @@
     "settings": "Paramètres",
     "adminConsole": "Console d'administration",
     "studio": "Studio",
-    "documents": "Documents"
+    "documents": "Documents",
+    "tasks": "Tâches",
+    "seeAllTasks": "Tout voir"
   },
   "Archive": {
     "title": "Archive",
@@ -1347,5 +1349,44 @@
       "deleteTitle": "Supprimer le commentaire",
       "deleteDescription": "Voulez-vous vraiment supprimer ce commentaire ?"
     }
+  },
+  "Tasks": {
+    "title": "Titre",
+    "epics": "Épiques",
+    "newEpic": "Nouvelle épique",
+    "noEpics": "Aucune épique pour l'instant",
+    "noEpicsDescription": "Créez votre première épique pour commencer à organiser le travail.",
+    "backlog": "À faire",
+    "inProgress": "En cours",
+    "done": "Terminé",
+    "todo": "À faire",
+    "status": "Statut",
+    "newTask": "Ajouter une tâche",
+    "noTasks": "Aucune tâche pour l'instant",
+    "story": "Histoire",
+    "task": "Tâche",
+    "bug": "Bogue",
+    "priority": "Priorité",
+    "low": "Faible",
+    "medium": "Moyenne",
+    "high": "Haute",
+    "critical": "Critique",
+    "assignee": "Responsable",
+    "labels": "Étiquettes",
+    "description": "Description",
+    "deleteEpic": "Supprimer l'épique",
+    "deleteTask": "Supprimer la tâche",
+    "deleteEpicConfirm": "Supprimer cette épique et toutes ses tâches ? Action irréversible.",
+    "deleteTaskConfirm": "Supprimer cette tâche ? Action irréversible.",
+    "epicCreated": "Épique créée",
+    "taskCreated": "Tâche créée",
+    "saved": "Enregistré",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "progress": "{done} sur {total} tâches terminées",
+    "aiImprove": "Améliorer avec l'IA",
+    "visibility": "Visibilité",
+    "epicTitlePlaceholder": "Titre de l'épique…",
+    "epicDescPlaceholder": "De quoi s'agit-il dans cette épique ?"
   }
 }

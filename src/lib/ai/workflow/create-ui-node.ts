@@ -111,6 +111,36 @@ export function createUINode(
         content: [],
       },
     };
+  } else if (node.data.kind === NodeKind.Knowledge) {
+    // Set default values for Knowledge node
+    node.data.topK = 6;
+    node.data.query = {
+      type: "doc",
+      content: [],
+    };
+    node.data.outputSchema.properties = {
+      chunks: {
+        type: "array",
+      },
+      text: {
+        type: "string",
+      },
+    };
+  } else if (node.data.kind === NodeKind.WebSearch) {
+    node.data.numResults = 5;
+    node.data.type = "auto";
+    node.data.query = {
+      type: "doc",
+      content: [],
+    };
+    node.data.outputSchema.properties = {
+      results: {
+        type: "array",
+      },
+      text: {
+        type: "string",
+      },
+    };
   }
 
   return node;

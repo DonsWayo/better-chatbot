@@ -9,8 +9,8 @@ import {
 import type { Editor } from "@tiptap/react";
 import type { DocumentEntity } from "lib/db/pg/repositories/document-repository.pg";
 import { notify } from "lib/notify";
-import type { Visibility } from "lib/visibility";
 import { cn } from "lib/utils";
+import type { Visibility } from "lib/visibility";
 import {
   AlertCircle,
   ArrowLeft,
@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { Button } from "ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
+import { ErrorBoundary } from "../error-boundary";
 import { PresenceAvatars } from "../realtime/presence-avatars";
 import { VisibilityField } from "../visibility/visibility-field";
 import { DocumentComments } from "./document-comments";
@@ -70,10 +71,17 @@ export function DocumentEditorPage({
   document: initialDoc,
   selfUserId,
   canEdit,
+  canManage,
 }: {
   document: DocumentEntity;
   selfUserId: string;
+  /** Owner / admin / edit-or-manage grant: may edit content + title. */
   canEdit: boolean;
+  /**
+   * Owner / admin / MANAGE grant only (never a plain editor): may delete the
+   * doc and change its visibility / re-share it. Strictly stronger than canEdit.
+   */
+  canManage: boolean;
 }) {
   const t = useTranslations("Documents");
   const tRoot = useTranslations();
@@ -87,6 +95,10 @@ export function DocumentEditorPage({
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [panel, setPanel] = useState<SidePanel>("none");
   const [remoteBanner, setRemoteBanner] = useState(false);
+  // True when the banner is up because a newer remote version superseded our
+  // own UNSAVED dirty edits (data-loss case) — drives the explicit "overridden"
+  // wording vs the softer "updated by someone else" message.
+  const [remoteOverridden, setRemoteOverridden] = useState(false);
 
   const editorRef = useRef<Editor | null>(null);
   // Latest editor JSON + the last-confirmed-saved snapshot, for dirty checks.
@@ -194,6 +206,7 @@ export function DocumentEditorPage({
     setTeamId(fresh.teamId);
     editorRef.current?.commands.setContent(fresh.content);
     setRemoteBanner(false);
+    setRemoteOverridden(false);
     setStatus("saved");
   }, [initialDoc.id]);
 
@@ -217,10 +230,19 @@ export function DocumentEditorPage({
         void reloadFromServer();
       } else if (decision.action === "banner") {
         setRemoteBanner(true);
+        // Data-loss case: a newer version overrode our unsaved edits. Warn the
+        // losing writer explicitly (and only once per override) — never clobber
+        // silently. The non-dirty/focused case keeps the softer wording.
+        if (decision.overridden) {
+          setRemoteOverridden((already) => {
+            if (!already) toast.warning(t("remoteOverridden"));
+            return true;
+          });
+        }
       }
       // "ignore" → no-op.
     },
-    [reloadFromServer, selfUserId, title],
+    [reloadFromServer, selfUserId, t, title],
   );
 
   // ── visibility save ──────────────────────────────────────────────────────
@@ -283,7 +305,7 @@ export function DocumentEditorPage({
       <DocumentLive documentId={initialDoc.id} onSignal={handleSignal} />
 
       {/* Header */}
-      <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+      <header className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-border px-4 py-2.5">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button asChild variant="ghost" size="icon" className="size-8">
@@ -322,14 +344,17 @@ export function DocumentEditorPage({
               variant="outline"
               size="sm"
               className="gap-1.5 rounded-full"
-              disabled={!canEdit}
+              disabled={!canManage}
               data-testid="document-visibility-trigger"
             >
               <VisibilityIcon className="size-3.5" />
               {tRoot(VISIBILITY_META[visibility].key)}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
+          <PopoverContent
+            className="w-[calc(100vw-2rem)] md:w-80"
+            align="end"
+          >
             <VisibilityField
               value={{
                 visibility,
@@ -337,7 +362,7 @@ export function DocumentEditorPage({
               }}
               onChange={handleVisibilityChange}
               entity={{ type: "document", id: initialDoc.id }}
-              disabled={!canEdit}
+              disabled={!canManage}
             />
           </PopoverContent>
         </Popover>
@@ -378,7 +403,7 @@ export function DocumentEditorPage({
           <TooltipContent>{t("comments.title")}</TooltipContent>
         </Tooltip>
 
-        {canEdit && (
+        {canManage && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -398,18 +423,33 @@ export function DocumentEditorPage({
       </header>
 
       {/* Body: editor + optional side panel */}
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl px-6 py-8">
+          <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6">
             {remoteBanner && (
               <button
                 type="button"
                 onClick={reloadFromServer}
                 data-testid="document-remote-banner"
-                className="mb-4 flex w-full items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-primary/10"
+                data-overridden={remoteOverridden ? "true" : "false"}
+                className={cn(
+                  "mb-4 flex w-full items-center gap-2 rounded-xl border px-4 py-2.5 text-left text-sm transition-colors",
+                  remoteOverridden
+                    ? "border-destructive/40 bg-destructive/5 hover:bg-destructive/10"
+                    : "border-primary/40 bg-primary/5 hover:bg-primary/10",
+                )}
               >
-                <AlertCircle className="size-4 shrink-0 text-primary" />
-                <span className="flex-1">{t("remoteUpdated")}</span>
+                <AlertCircle
+                  className={cn(
+                    "size-4 shrink-0",
+                    remoteOverridden ? "text-destructive" : "text-primary",
+                  )}
+                />
+                <span className="flex-1">
+                  {remoteOverridden
+                    ? t("remoteOverridden")
+                    : t("remoteUpdated")}
+                </span>
                 <span className="text-xs font-medium text-primary">
                   {t("reload")}
                 </span>
@@ -426,21 +466,37 @@ export function DocumentEditorPage({
               className="mb-4 w-full border-none bg-transparent text-3xl font-bold outline-none placeholder:text-muted-foreground/50 disabled:cursor-default"
             />
 
-            <DocumentEditor
-              initialContent={initialDoc.content}
-              editable={canEdit}
-              editorRef={(e) => {
-                editorRef.current = e;
-              }}
-              onUpdate={handleEditorUpdate}
-              onFocus={() => {
-                focusedRef.current = true;
-              }}
-              onBlur={() => {
-                focusedRef.current = false;
-                void flushSave();
-              }}
-            />
+            {/* Contain a TipTap crash to a calm inline fallback: a broken editor
+                must not blank the whole document page (header, history, comments
+                stay usable; reload recovers). */}
+            <ErrorBoundary
+              fallback={({ retry }) => (
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                  <p className="mb-3">
+                    The editor failed to load. Your saved content is safe.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={retry}>
+                    {tRoot("Common.retry")}
+                  </Button>
+                </div>
+              )}
+            >
+              <DocumentEditor
+                initialContent={initialDoc.content}
+                editable={canEdit}
+                editorRef={(e) => {
+                  editorRef.current = e;
+                }}
+                onUpdate={handleEditorUpdate}
+                onFocus={() => {
+                  focusedRef.current = true;
+                }}
+                onBlur={() => {
+                  focusedRef.current = false;
+                  void flushSave();
+                }}
+              />
+            </ErrorBoundary>
           </div>
         </div>
 

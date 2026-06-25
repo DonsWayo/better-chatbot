@@ -12,6 +12,8 @@ import { pgChatExportRepository } from "./pg/repositories/chat-export-repository
 import { pgStorageObjectRepository } from "./pg/repositories/storage-object-repository.pg";
 import { pgDocumentRepository } from "./pg/repositories/document-repository.pg";
 import { pgDocumentCommentRepository } from "./pg/repositories/document-comment-repository.pg";
+import { pgMentionNotificationRepository } from "./pg/repositories/mention-notification-repository.pg";
+import { pgEpicRepository } from "./pg/repositories/epic-repository.pg";
 
 export const chatRepository = pgChatRepository;
 export const userRepository = pgUserRepository;
@@ -30,3 +32,5 @@ export const chatExportRepository = pgChatExportRepository;
 export const storageObjectRepository = pgStorageObjectRepository;
 export const documentRepository = pgDocumentRepository;
 export const documentCommentRepository = pgDocumentCommentRepository;
+export const mentionNotificationRepository = pgMentionNotificationRepository;
+export const epicRepository = pgEpicRepository;

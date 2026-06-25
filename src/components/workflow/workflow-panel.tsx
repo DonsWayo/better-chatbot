@@ -171,7 +171,7 @@ export const WorkflowPanel = memo(
 
     return (
       <div className="min-h-0 flex flex-col items-end">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <div
@@ -179,6 +179,7 @@ export const WorkflowPanel = memo(
                   backgroundColor: workflow.icon?.style?.backgroundColor,
                 }}
                 onClick={() => setIsEditing(true)}
+                data-testid="workflow-rename-trigger"
                 className="border transition-colors hover:bg-secondary! group items-center justify-center flex w-8 h-8 rounded-md ring ring-background hover:ring-ring"
               >
                 <Avatar className="size-6">
@@ -372,7 +373,7 @@ function WorkflowVisibilityControl({
         </TooltipTrigger>
         <TooltipContent>{t("Visibility.label")}</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className="w-80 rounded-2xl p-3">
+      <PopoverContent align="end" className="w-72 md:w-80 max-w-[90vw] rounded-2xl p-3">
         <p className="mb-2 px-1 text-sm font-medium">{t("Visibility.label")}</p>
         <VisibilityField
           value={value}

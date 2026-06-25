@@ -144,6 +144,30 @@ describe("createUINode — Template node", () => {
   });
 });
 
+describe("createUINode — Knowledge node", () => {
+  it("defaults topK to 6", () => {
+    const node = createUINode(NodeKind.Knowledge);
+    expect((node.data as any).topK).toBe(6);
+  });
+
+  it("initializes query with empty tiptap doc", () => {
+    const node = createUINode(NodeKind.Knowledge);
+    const data = node.data as any;
+    expect(data.query.type).toBe("doc");
+    expect(data.query.content).toEqual([]);
+  });
+
+  it("sets chunks (array) and text (string) in output schema properties", () => {
+    const node = createUINode(NodeKind.Knowledge);
+    expect(node.data.outputSchema.properties?.chunks).toMatchObject({
+      type: "array",
+    });
+    expect(node.data.outputSchema.properties?.text).toMatchObject({
+      type: "string",
+    });
+  });
+});
+
 describe("defaultLLMNodeOutputSchema", () => {
   it("has answer as string type", () => {
     expect(defaultLLMNodeOutputSchema.properties?.answer).toMatchObject({ type: "string" });

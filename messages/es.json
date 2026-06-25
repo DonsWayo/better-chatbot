@@ -415,7 +415,9 @@
     "settings": "Configuración",
     "adminConsole": "Consola de administración",
     "studio": "Estudio",
-    "documents": "Documentos"
+    "documents": "Documentos",
+    "tasks": "Tareas",
+    "seeAllTasks": "Ver todas"
   },
   "Archive": {
     "title": "Archivo",
@@ -1346,5 +1348,44 @@
       "deleteTitle": "Eliminar comentario",
       "deleteDescription": "¿Seguro que quieres eliminar este comentario?"
     }
+  },
+  "Tasks": {
+    "title": "Título",
+    "epics": "Épicas",
+    "newEpic": "Nueva épica",
+    "noEpics": "Aún no hay épicas",
+    "noEpicsDescription": "Crea tu primera épica para empezar a organizar el trabajo.",
+    "backlog": "Pendiente",
+    "inProgress": "En progreso",
+    "done": "Completado",
+    "todo": "Por hacer",
+    "status": "Estado",
+    "newTask": "Añadir tarea",
+    "noTasks": "Aún no hay tareas",
+    "story": "Historia",
+    "task": "Tarea",
+    "bug": "Error",
+    "priority": "Prioridad",
+    "low": "Baja",
+    "medium": "Media",
+    "high": "Alta",
+    "critical": "Crítica",
+    "assignee": "Asignado",
+    "labels": "Etiquetas",
+    "description": "Descripción",
+    "deleteEpic": "Eliminar épica",
+    "deleteTask": "Eliminar tarea",
+    "deleteEpicConfirm": "¿Eliminar esta épica y todas sus tareas? Esta acción no se puede deshacer.",
+    "deleteTaskConfirm": "¿Eliminar esta tarea? Esta acción no se puede deshacer.",
+    "epicCreated": "Épica creada",
+    "taskCreated": "Tarea creada",
+    "saved": "Guardado",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "progress": "{done} de {total} tareas completadas",
+    "aiImprove": "Mejorar con IA",
+    "visibility": "Visibilidad",
+    "epicTitlePlaceholder": "Título de la épica…",
+    "epicDescPlaceholder": "¿De qué trata esta épica?"
   }
 }

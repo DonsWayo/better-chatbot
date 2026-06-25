@@ -4,6 +4,8 @@ import { useShape } from "@electric-sql/react";
 import { SHAPE_PROXY_PATH } from "lib/realtime/shapes";
 import { useEffect, useRef, useState } from "react";
 
+import { ErrorBoundary } from "@/components/error-boundary";
+
 /**
  * Near-live change-signal subscriber for ONE document. Mounted ONLY on
  * /documents/[id] (never in the always-present sidebar or the /documents list),
@@ -93,11 +95,15 @@ export function DocumentLive({
   }, []);
 
   if (!shapeUrl) return null;
+  // Contain a useShape crash to null: near-live is a non-destructive enhancement
+  // (autosave + manual reload still work), so it must never blank the editor.
   return (
-    <DocumentLiveSubscriber
-      documentId={documentId}
-      shapeUrl={shapeUrl}
-      onSignal={onSignal}
-    />
+    <ErrorBoundary fallback={null}>
+      <DocumentLiveSubscriber
+        documentId={documentId}
+        shapeUrl={shapeUrl}
+        onSignal={onSignal}
+      />
+    </ErrorBoundary>
   );
 }

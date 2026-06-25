@@ -415,7 +415,9 @@
     "settings": "Settings",
     "adminConsole": "Admin console",
     "studio": "Studio",
-    "documents": "Documents"
+    "documents": "Documents",
+    "tasks": "Tasks",
+    "seeAllTasks": "See all"
   },
   "Archive": {
     "title": "Archive",
@@ -1349,5 +1351,44 @@
       "deleteTitle": "Delete comment",
       "deleteDescription": "Are you sure you want to delete this comment?"
     }
+  },
+  "Tasks": {
+    "title": "Title",
+    "epics": "Epics",
+    "newEpic": "New epic",
+    "noEpics": "No epics yet",
+    "noEpicsDescription": "Create your first epic to start tracking work.",
+    "backlog": "Backlog",
+    "inProgress": "In Progress",
+    "done": "Done",
+    "todo": "To Do",
+    "status": "Status",
+    "newTask": "Add task",
+    "noTasks": "No tasks yet",
+    "story": "Story",
+    "task": "Task",
+    "bug": "Bug",
+    "priority": "Priority",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical",
+    "assignee": "Assignee",
+    "labels": "Labels",
+    "description": "Description",
+    "deleteEpic": "Delete epic",
+    "deleteTask": "Delete task",
+    "deleteEpicConfirm": "Delete this epic and all its tasks? This cannot be undone.",
+    "deleteTaskConfirm": "Delete this task? This cannot be undone.",
+    "epicCreated": "Epic created",
+    "taskCreated": "Task created",
+    "saved": "Saved",
+    "save": "Save",
+    "saving": "Saving…",
+    "progress": "{done} of {total} tasks done",
+    "aiImprove": "Improve with AI",
+    "visibility": "Visibility",
+    "epicTitlePlaceholder": "Epic title…",
+    "epicDescPlaceholder": "What is this epic about?"
   }
 }

@@ -108,6 +108,22 @@ describe("PUT /api/agent/[id]", () => {
     const body = await res.json();
     expect(body.name).toBe("Renamed");
   });
+
+  it("returns 403 when checkAccess passes but updateAgent matches no row", async () => {
+    // A read-only grantee / team member passes the looser checkAccess() gate
+    // but updateAgent's owner-or-org-wide WHERE matches nothing → null. The
+    // route must answer 403, not 500 (the previous NPE on result.description).
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canEditAgentMock.mockResolvedValueOnce(true);
+    checkAccessMock.mockResolvedValueOnce(true);
+    selectAgentByIdMock.mockResolvedValueOnce(AGENT);
+    updateAgentMock.mockResolvedValueOnce(null);
+    const { PUT } = await import("./route");
+    const res = await PUT(makeRequest({ name: "Renamed" }), {
+      params: Promise.resolve({ id: "ag-1" }),
+    });
+    expect(res.status).toBe(403);
+  });
 });
 
 describe("DELETE /api/agent/[id]", () => {

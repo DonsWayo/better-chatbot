@@ -78,7 +78,7 @@ export function SidebarHeaderShared({
                   role="button"
                   tabIndex={0}
                   aria-label="Close sidebar"
-                  className="ml-auto block cursor-pointer p-1 md:hidden"
+                  className="ml-auto block cursor-pointer rounded-md p-1 outline-hidden ring-sidebar-ring transition-colors hover:bg-sidebar-accent focus-visible:ring-2 md:hidden"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

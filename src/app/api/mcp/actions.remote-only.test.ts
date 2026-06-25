@@ -61,7 +61,7 @@ describe("saveMcpClientAction — remote-only deployment (cloud)", () => {
       name: "local-server",
       config: STDIO_CONFIG,
     } as Parameters<typeof saveMcpClientAction>[0]);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(
         /Local \(stdio\) MCP servers are not supported/,
@@ -74,7 +74,7 @@ describe("saveMcpClientAction — remote-only deployment (cloud)", () => {
       name: "local-server",
       config: STDIO_CONFIG,
     } as Parameters<typeof saveMcpClientAction>[0]);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       success: false,
       error: expect.stringMatching(/desktop app/),
     });

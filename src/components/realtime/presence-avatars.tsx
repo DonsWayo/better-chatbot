@@ -15,6 +15,8 @@ import useSWR from "swr";
 import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 
+import { ErrorBoundary } from "@/components/error-boundary";
+
 /**
  * Presence island (Electric realtime phase 3 — see
  * content/docs/collaboration/realtime.mdx#presence).
@@ -282,13 +284,18 @@ export function PresenceAvatars({
   }, []);
 
   if (!shapeUrl) return null;
+  // Presence is best-effort chrome (docs/design/ui-language.md): a crashing
+  // useShape / presence-users fetch must never white-screen the chat or document
+  // it decorates, so fail soft to null.
   return (
-    <PresenceAvatarsSubscriber
-      contextType={contextType}
-      contextId={contextId}
-      selfUserId={selfUserId}
-      shapeUrl={shapeUrl}
-      className={className}
-    />
+    <ErrorBoundary fallback={null}>
+      <PresenceAvatarsSubscriber
+        contextType={contextType}
+        contextId={contextId}
+        selfUserId={selfUserId}
+        shapeUrl={shapeUrl}
+        className={className}
+      />
+    </ErrorBoundary>
   );
 }

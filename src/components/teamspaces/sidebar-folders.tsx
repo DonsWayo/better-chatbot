@@ -16,6 +16,7 @@ import {
   Trash,
   Users,
 } from "lucide-react";
+import { notify } from "lib/notify";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -142,23 +143,36 @@ function FolderRow({
 }) {
   const t = useTranslations("Teamspaces");
   const [open, setOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState(folder.name);
+  const [renaming, setRenaming] = useState(false);
   const children = childFolders.get(folder.id) ?? [];
 
-  const handleRename = async () => {
-    const name = window.prompt(t("renameFolder"), folder.name);
-    if (!name?.trim() || name.trim() === folder.name) return;
+  const submitRename = async () => {
+    const name = renameValue.trim();
+    if (!name || name === folder.name) {
+      setRenameOpen(false);
+      return;
+    }
+    setRenaming(true);
     // The action returns a structured result instead of throwing so its reason
     // survives prod's masked-500.
-    const result = await renameFolderAction(folder.id, name.trim());
+    const result = await renameFolderAction(folder.id, name);
+    setRenaming(false);
     if (!result.success) {
       handleErrorWithToast(new Error(result.error));
       return;
     }
+    setRenameOpen(false);
     mutate(FOLDERS_KEY);
     toast.success(t("folderRenamed"));
   };
 
   const handleDelete = async () => {
+    const ok = await notify.confirm({
+      description: t("confirmDeleteFolder"),
+    });
+    if (!ok) return;
     const result = await deleteFolderAction(folder.id);
     if (!result.success) {
       handleErrorWithToast(new Error(result.error));
@@ -198,7 +212,12 @@ function FolderRow({
               </SidebarMenuAction>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="start">
-              <DropdownMenuItem onClick={handleRename}>
+              <DropdownMenuItem
+                onClick={() => {
+                  setRenameValue(folder.name);
+                  setRenameOpen(true);
+                }}
+              >
                 <Pencil />
                 {t("rename")}
               </DropdownMenuItem>
@@ -208,6 +227,41 @@ function FolderRow({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{t("renameFolder")}</DialogTitle>
+              </DialogHeader>
+              <Input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void submitRename();
+                  }
+                }}
+                disabled={renaming}
+              />
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setRenameOpen(false)}
+                  disabled={renaming}
+                >
+                  {t("cancel")}
+                </Button>
+                <Button
+                  onClick={() => void submitRename()}
+                  disabled={renaming || !renameValue.trim()}
+                >
+                  {t("rename")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
         {open && (
           <div className="ml-2">

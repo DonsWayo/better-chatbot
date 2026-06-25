@@ -237,17 +237,21 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
     totalCostUsd: string | null;
   } | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
+  const [usageFetchError, setUsageFetchError] = useState(false);
+  const [usageRetryKey, setUsageRetryKey] = useState(0);
 
   useEffect(() => {
+    setUsageFetchError(false);
+    setUsageLoading(true);
     fetch(`/api/admin/teams/${team.id}/usage?days=30`)
       .then((r) => r.json())
       .then((d) => {
         setUsageRows(d.byModel ?? []);
         setUsageTotals(d.totals ?? null);
       })
-      .catch(() => {})
+      .catch(() => setUsageFetchError(true))
       .finally(() => setUsageLoading(false));
-  }, [team.id]);
+  }, [team.id, usageRetryKey]);
 
   // Team policy state (guardrail + feature toggles)
   const [guardrailPolicy, setGuardrailPolicy] = useState(
@@ -506,7 +510,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
         {isRenaming ? (
           <div className="space-y-2">
             <input
-              className="text-2xl font-semibold bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
+              className="text-xl sm:text-2xl font-semibold bg-transparent border-b border-border focus:outline-none focus:border-primary w-full"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
@@ -552,7 +556,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
             )}
           </div>
         ) : (
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="space-y-1">
               <h1 className="font-display text-2xl font-semibold tracking-tight">
                 {team.name}
@@ -627,9 +631,20 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
         <CardContent className="pb-4">
           {usageLoading ? (
             <p className="text-sm text-muted-foreground italic">Loading…</p>
+          ) : usageFetchError ? (
+            <p className="text-sm text-destructive">
+              Failed to load usage data.{" "}
+              <button
+                type="button"
+                className="underline hover:no-underline"
+                onClick={() => setUsageRetryKey((k) => k + 1)}
+              >
+                Retry
+              </button>
+            </p>
           ) : usageTotals && usageTotals.totalRequests > 0 ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Requests</p>
                   <p className="text-lg font-semibold tabular-nums">
@@ -1157,7 +1172,7 @@ export function TeamDetailClient({ team }: TeamDetailClientProps) {
           )}
 
           {/* Budget form */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Budget (USD)

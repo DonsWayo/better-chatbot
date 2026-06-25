@@ -1601,3 +1601,140 @@ export const asafeDocumentCommentRelations = relations(
 
 export type AsafeDocumentCommentEntity =
   typeof AsafeDocumentCommentTable.$inferSelect;
+
+/** @mention notifications fired when a user is tagged in a document comment. */
+export const AsafeMentionNotificationTable = pgTable(
+  "asafe_mention_notification",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    recipientId: uuid("recipient_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => AsafeDocumentTable.id, { onDelete: "cascade" }),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => AsafeDocumentCommentTable.id, { onDelete: "cascade" }),
+    isRead: boolean("is_read").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_mention_notification_recipient_idx").on(
+      t.recipientId,
+      t.isRead,
+      t.createdAt,
+    ),
+  ],
+);
+
+export type AsafeMentionNotificationEntity =
+  typeof AsafeMentionNotificationTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Epics + Tasks — Jira-like work-tracking feature
+// ---------------------------------------------------------------------------
+
+/** Top-level container for a body of work (equivalent to a Jira Epic). */
+export const AsafeEpicTable = pgTable(
+  "asafe_epic",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    title: text("title").notNull(),
+    description: text("description"),
+    status: varchar("status", {
+      enum: ["backlog", "in_progress", "done"],
+    })
+      .notNull()
+      .default("backlog"),
+    priority: varchar("priority", {
+      enum: ["low", "medium", "high", "critical"],
+    })
+      .notNull()
+      .default("medium"),
+    /** Free-form labels stored as a JSON string array. */
+    labels: jsonb("labels").$type<string[]>().notNull().default([]),
+    /** Team this epic belongs to. null = personal epic. */
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    /** Creator / owner of the epic. */
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    /** Unified four-level visibility (matches document / agent model). */
+    visibility: varchar("visibility", {
+      enum: ["private", "shared", "team", "company"],
+    })
+      .notNull()
+      .default("team"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_epic_team_id_status_idx").on(t.teamId, t.status),
+    index("asafe_epic_owner_id_idx").on(t.ownerId),
+  ],
+);
+
+export type AsafeEpicEntity = typeof AsafeEpicTable.$inferSelect;
+
+/** Child work item under an epic (story / task / bug). */
+export const AsafeTaskTable = pgTable(
+  "asafe_task",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    epicId: uuid("epic_id")
+      .notNull()
+      .references(() => AsafeEpicTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    type: varchar("type", { enum: ["story", "task", "bug"] })
+      .notNull()
+      .default("task"),
+    status: varchar("status", { enum: ["todo", "in_progress", "done"] })
+      .notNull()
+      .default("todo"),
+    priority: varchar("priority", {
+      enum: ["low", "medium", "high", "critical"],
+    })
+      .notNull()
+      .default("medium"),
+    /** User assigned to work on this task. */
+    assigneeId: uuid("assignee_id").references(() => UserTable.id, {
+      onDelete: "set null",
+    }),
+    /** Free-form labels stored as a JSON string array. */
+    labels: jsonb("labels").$type<string[]>().notNull().default([]),
+    /** Display order within the epic. Lower = higher up. */
+    sortOrder: integer("sort_order").notNull().default(0),
+    /** Team the task belongs to (denormalised from the epic for filtering). */
+    teamId: uuid("team_id").references(() => AsafeTeamTable.id, {
+      onDelete: "set null",
+    }),
+    createdBy: uuid("created_by").references(() => UserTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("asafe_task_epic_id_sort_order_idx").on(t.epicId, t.sortOrder),
+    index("asafe_task_assignee_id_idx").on(t.assigneeId),
+  ],
+);
+
+export type AsafeTaskEntity = typeof AsafeTaskTable.$inferSelect;

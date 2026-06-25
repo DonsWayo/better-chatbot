@@ -20,6 +20,10 @@ import { Button } from "ui/button";
 import { Skeleton } from "ui/skeleton";
 import MentionInput from "../mention-input";
 import { countComments, mergeComments } from "./comments-merge";
+import {
+  UserMentionItem,
+  UserMentionSuggestion,
+} from "./user-mention-suggestion";
 
 /**
  * Comments panel for a collaborative document. Realtime is POLLING: while the
@@ -91,11 +95,16 @@ export function DocumentComments({
   const total = useMemo(() => countComments(comments), [comments]);
 
   const handleCreate = useCallback(
-    async (content: TipTapMentionJsonContent, parentId?: string) => {
+    async (
+      content: TipTapMentionJsonContent,
+      mentionedUserIds: string[],
+      parentId?: string,
+    ) => {
       const result = await createDocumentCommentAction({
         documentId,
         content: content as Record<string, unknown>,
         parentId: parentId ?? null,
+        mentionedUserIds,
       });
       if (!result.success) {
         toast.error(result.error);
@@ -132,7 +141,7 @@ export function DocumentComments({
 
   return (
     <aside
-      className="flex h-full w-full flex-col border-l border-border bg-background lg:w-80"
+      className="fixed inset-x-0 bottom-0 top-14 z-40 flex w-full flex-col border-l border-border bg-background md:static md:inset-auto md:z-auto md:w-80"
       data-testid="document-comments-panel"
     >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -193,7 +202,9 @@ export function DocumentComments({
         )}
         <DocumentCommentForm
           disabled={!selfId}
-          onSubmit={(content) => handleCreate(content, replyTo?.id)}
+          onSubmit={(content, mentionedUserIds) =>
+            handleCreate(content, mentionedUserIds, replyTo?.id)
+          }
         />
       </div>
     </aside>
@@ -281,12 +292,16 @@ function DocumentCommentForm({
   onSubmit,
 }: {
   disabled?: boolean;
-  onSubmit: (content: TipTapMentionJsonContent) => Promise<void>;
+  onSubmit: (
+    content: TipTapMentionJsonContent,
+    mentionedUserIds: string[],
+  ) => Promise<void>;
 }) {
   const t = useTranslations("Documents");
   const [content, setContent] = useState<
     TipTapMentionJsonContent | string | undefined
   >();
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
@@ -297,8 +312,9 @@ function DocumentCommentForm({
     if (!trimmed || trimmed.length === 0) return;
     setSubmitting(true);
     try {
-      await onSubmit({ ...content, content: trimmed });
+      await onSubmit({ ...content, content: trimmed }, mentionedUserIds);
       setContent("");
+      setMentionedUserIds([]);
     } finally {
       setSubmitting(false);
     }
@@ -315,8 +331,12 @@ function DocumentCommentForm({
           placeholder={t("comments.placeholder")}
           content={content}
           disabled={disabled}
-          disabledMention
-          onChange={({ json }) => setContent(json)}
+          MentionItem={UserMentionItem}
+          Suggestion={UserMentionSuggestion}
+          onChange={({ json, mentions }) => {
+            setContent(json);
+            setMentionedUserIds(mentions.map((m) => m.id));
+          }}
           onEnter={submit}
         />
       </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   httpNodeValidate,
+  knowledgeNodeValidate,
   llmNodeValidate,
   templateNodeValidate,
   toolNodeValidate,
@@ -199,6 +200,48 @@ describe("templateNodeValidate", () => {
     expect(() => templateNodeValidate({ node, nodes: [], edges: [] })).toThrow(
       "Template type must be one of",
     );
+  });
+});
+
+// ── knowledgeNodeValidate ─────────────────────────────────────────────────────
+
+describe("knowledgeNodeValidate", () => {
+  const baseKnowledgeNode: any = {
+    id: "k1",
+    kind: NodeKind.Knowledge,
+    name: "Knowledge",
+    outputSchema: { type: "object", properties: {} },
+    collectionId: "col-1",
+    topK: 6,
+    query: {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "q" }] },
+      ],
+    },
+  };
+
+  it("passes for a node with a collection and a non-empty query", () => {
+    expect(() =>
+      knowledgeNodeValidate({ node: baseKnowledgeNode, nodes: [], edges: [] }),
+    ).not.toThrow();
+  });
+
+  it("throws when collectionId is missing", () => {
+    const node = { ...baseKnowledgeNode, collectionId: undefined };
+    expect(() =>
+      knowledgeNodeValidate({ node, nodes: [], edges: [] }),
+    ).toThrow("Knowledge node must have a collection");
+  });
+
+  it("throws when the query is empty", () => {
+    const node = {
+      ...baseKnowledgeNode,
+      query: { type: "doc", content: [] },
+    };
+    expect(() =>
+      knowledgeNodeValidate({ node, nodes: [], edges: [] }),
+    ).toThrow("Knowledge node must have a query");
   });
 });
 

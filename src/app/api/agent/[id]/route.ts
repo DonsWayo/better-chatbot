@@ -67,6 +67,12 @@ export async function PUT(
     }
 
     const agent = await agentRepository.updateAgent(id, session.user.id, data);
+    if (!agent) {
+      // checkAccess() passed on a read-only grant / team membership, but the
+      // update WHERE clause (owner or org-wide only) matched no row — the
+      // caller isn't permitted to edit this agent.
+      return new Response("Forbidden", { status: 403 });
+    }
     serverCache.delete(CacheKeys.agentInstructions(agent.id));
 
     return Response.json(agent);

@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { cancelStaleRuns } from "../helpers/cancel-stale-runs";
 import { getUserCount } from "../helpers/clear-users";
 import { seedComplianceForTestUsers } from "../helpers/seed-compliance";
 
@@ -30,6 +31,12 @@ async function globalSetup() {
   // AUP acceptance) so sign-in succeeds and the AUP modal does not intercept
   // clicks during authenticated tests.
   await seedComplianceForTestUsers();
+
+  // Keep the authenticated shell network-idle-safe: a stale non-terminal run
+  // activates the Runs sidebar's live Electric long-poll, which prevents
+  // `networkidle` and hangs every interactive spec. The seed path cancels these
+  // too, but global setup skips the seed when users already exist.
+  await cancelStaleRuns();
 }
 
 export default globalSetup;

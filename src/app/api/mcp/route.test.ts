@@ -11,7 +11,9 @@ vi.mock("auth/server", () => ({ getSession: getSessionMock }));
 vi.mock("lib/auth/permissions", () => ({ canCreateMCP: canCreateMCPMock }));
 vi.mock("./actions", () => ({ saveMcpClientAction: saveMcpClientActionMock }));
 vi.mock("lib/db/pg/schema.pg", () => ({ McpServerTable: {} }));
-vi.mock("better-auth", () => ({ logger: { error: vi.fn() } }));
+vi.mock("better-auth", () => ({
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
 
 function makeRequest(body?: unknown): Request {
   return { json: () => Promise.resolve(body) } as unknown as Request;
@@ -102,6 +104,84 @@ describe("POST /api/mcp", () => {
     const res = await POST(makeRequest({ name: "dup" }));
     const body = await res.json();
     expect(body).toHaveProperty("message");
+  });
+
+  it("does NOT leak the raw error on an unexpected 500", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockRejectedValueOnce(
+      new Error("SSE error: TypeError: fetch failed: ECONNREFUSED ::1:19999"),
+    );
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "bad" }));
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.message).not.toMatch(/ECONNREFUSED|fetch failed|SSE error/i);
+  });
+
+  it("returns 422 (not 500) for an unreachable server (kind=connection)", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: false,
+      error:
+        "Could not connect to the MCP server at that URL. Check the URL is reachable.",
+      kind: "connection",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({
+        name: "bogus",
+        config: { url: "http://localhost:19999/bogus" },
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it("connection-error 422 body carries the clean message, no transport leak", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: false,
+      error:
+        "Could not connect to the MCP server at that URL. Check the URL is reachable.",
+      kind: "connection",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "bogus" }));
+    const body = await res.json();
+    expect(body.message).toBe(
+      "Could not connect to the MCP server at that URL. Check the URL is reachable.",
+    );
+    expect(body.message).not.toMatch(
+      /ECONNREFUSED|fetch failed|SSE error|::1/i,
+    );
+  });
+
+  it("maps a structured authorization failure to 403", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: false,
+      error: "Only administrators can register org-wide MCP servers",
+      kind: "other",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "org-mcp" }));
+    expect(res.status).toBe(403);
+  });
+
+  it("maps a structured validation failure to 422", async () => {
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    canCreateMCPMock.mockResolvedValueOnce(true);
+    saveMcpClientActionMock.mockResolvedValueOnce({
+      success: false,
+      error: "A featured MCP server with this name already exists",
+      kind: "other",
+    });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ name: "dup" }));
+    expect(res.status).toBe(422);
   });
 
   it("401 body has error field", async () => {

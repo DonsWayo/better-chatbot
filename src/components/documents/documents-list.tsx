@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
+import { EmptyState } from "ui/empty-state";
 import { Skeleton } from "ui/skeleton";
 
 /**
@@ -93,24 +94,22 @@ export function DocumentsList({
           <Skeleton className="h-16 w-full" />
         </div>
       ) : documents.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center"
-          data-testid="documents-empty"
-        >
-          <FileText className="mb-3 size-10 text-muted-foreground/40" />
-          <p className="font-medium">{t("emptyTitle")}</p>
-          <p className="mb-4 text-sm text-muted-foreground">
-            {t("emptyDescription")}
-          </p>
-          <Button
-            onClick={handleCreate}
-            disabled={creating}
-            variant="secondary"
-            className="gap-1.5 rounded-full"
-          >
-            <Plus className="size-4" />
-            {t("newDocument")}
-          </Button>
+        <div data-testid="documents-empty">
+          <EmptyState
+            icon={FileText}
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+            action={
+              <Button
+                onClick={handleCreate}
+                disabled={creating}
+                className="gap-1.5 rounded-full"
+              >
+                <Plus className="size-4" />
+                {t("newDocument")}
+              </Button>
+            }
+          />
         </div>
       ) : (
         <ul className="flex flex-col gap-1.5" data-testid="documents-list">

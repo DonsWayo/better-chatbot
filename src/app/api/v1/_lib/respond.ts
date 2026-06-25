@@ -3,6 +3,7 @@ import {
   authenticateApiKey,
   hasScope,
 } from "lib/auth/api-key-auth";
+import { checkRateLimit } from "lib/rate-limit";
 
 // Shared helpers for the public /api/v1 surface: clean JSON error envelopes
 // with stable string `code`s, and an auth guard that turns a missing/invalid
@@ -42,11 +43,10 @@ export function apiOk(data: unknown, status = 200): Response {
 
 /**
  * Authenticate the request and (optionally) require a scope. Returns the
- * principal on success, or a ready-to-return Response (401/403) on failure.
- * Usage:
- *   const auth = await requirePrincipal(request, "sessions:write");
- *   if (auth instanceof Response) return auth;
- *   const principal = auth;
+ * principal on success, or a ready-to-return Response (401/403/429) on
+ * failure. For mutating scopes (scope string ending in `:write`), also checks
+ * the per-user rate limiter — the same sliding-window bucket used by the chat
+ * route — to prevent a compromised API key from flooding the session queue.
  */
 export async function requirePrincipal(
   request: Request,
@@ -64,6 +64,32 @@ export async function requirePrincipal(
       "forbidden",
       `API key is missing the required scope: ${scope}`,
     );
+  }
+  // Rate-limit mutating requests so a leaked key can't flood the worker queue.
+  if (scope?.endsWith(":write")) {
+    const rl = await checkRateLimit(principal.userId).catch(() => null);
+    if (rl && !rl.allowed) {
+      const retryAfter = Math.ceil((rl.resetAt - Date.now()) / 1000);
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "rate_limited",
+            message: `Too many requests. Retry after ${retryAfter} seconds.`,
+            retryAfter,
+          },
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": String(rl.limit),
+            "X-RateLimit-Remaining": String(rl.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+            "Retry-After": String(retryAfter),
+          },
+        },
+      );
+    }
   }
   return principal;
 }

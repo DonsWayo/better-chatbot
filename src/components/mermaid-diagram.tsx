@@ -50,11 +50,18 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
       try {
         const mermaid = await loadMermaid();
 
-        // Initialize mermaid with theme
+        // Initialize mermaid with theme.
+        // securityLevel MUST be "strict": this SVG is injected via
+        // dangerouslySetInnerHTML below, and the chart body is
+        // AI-/RAG-/collaborator-authored (assistant messages, workflow node
+        // descriptions). In "loose" mode Mermaid SKIPS its DOMPurify pass and
+        // enables htmlLabels + click-JS directives → stored XSS. "strict"
+        // re-enables sanitization and disables those directives (matches the
+        // docs renderer at src/app/docs/mermaid.tsx).
         mermaid.initialize({
           startOnLoad: false,
           theme: theme == "dark" ? "dark" : "default",
-          securityLevel: "loose",
+          securityLevel: "strict",
         });
 
         // // First try to parse to catch syntax errors early

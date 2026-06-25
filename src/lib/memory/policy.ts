@@ -92,6 +92,26 @@ async function readBool(key: string): Promise<boolean | null> {
   }
 }
 
+// resolveMemoryPolicy runs up to four org-settings PK lookups on every chat
+// request (org enabled/implicit + the team overrides). The result changes only
+// when an admin flips a memory toggle. Cache the resolved policy keyed by
+// teamId ("__org__" for the no-team path) for a short TTL, invalidated
+// synchronously by every setter below. Same Map+TTL shape as teams.ts.
+const _memoryPolicyCache = new Map<
+  string,
+  { policy: MemoryPolicy; expiresAt: number }
+>();
+const MEMORY_POLICY_CACHE_TTL_MS = 30_000;
+const ORG_MEMORY_CACHE_KEY = "__org__";
+
+/**
+ * Clear all resolved memory-policy cache entries (any setter changes layering).
+ * Exported so tests can force a fresh resolve between cases.
+ */
+export function clearMemoryPolicyCache(): void {
+  _memoryPolicyCache.clear();
+}
+
 async function writeBool(key: string, value: boolean | null): Promise<void> {
   const updatedAt = new Date();
   await db
@@ -101,6 +121,10 @@ async function writeBool(key: string, value: boolean | null): Promise<void> {
       target: AsafeOrgSettingsTable.key,
       set: { value, updatedAt },
     });
+  // Any org/team memory toggle invalidates the resolved-policy cache. Every
+  // setter (org + team, enabled + implicit) routes through writeBool, so one
+  // clear here covers them all.
+  clearMemoryPolicyCache();
 }
 
 /** Set (or clear with `null`) the org-wide memory kill switch. */
@@ -198,6 +222,11 @@ export async function listTeamMemoryOverrides(): Promise<TeamMemoryOverride[]> {
 export async function resolveMemoryPolicy(
   teamId?: string | null,
 ): Promise<MemoryPolicy> {
+  const cacheKey = teamId ?? ORG_MEMORY_CACHE_KEY;
+  const now = Date.now();
+  const cached = _memoryPolicyCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.policy;
+
   const [orgEnabled, orgImplicit, teamEnabled, teamImplicit] =
     await Promise.all([
       readBool(ORG_MEMORY_ENABLED_KEY),
@@ -207,9 +236,14 @@ export async function resolveMemoryPolicy(
         ? readBool(teamMemoryImplicitExtractionKey(teamId))
         : Promise.resolve(null),
     ]);
-  return resolveMemoryLayers(
+  const policy = resolveMemoryLayers(
     DEFAULT_MEMORY_POLICY,
     { enabled: orgEnabled, implicitExtraction: orgImplicit },
     { enabled: teamEnabled, implicitExtraction: teamImplicit },
   );
+  _memoryPolicyCache.set(cacheKey, {
+    policy,
+    expiresAt: now + MEMORY_POLICY_CACHE_TTL_MS,
+  });
+  return policy;
 }

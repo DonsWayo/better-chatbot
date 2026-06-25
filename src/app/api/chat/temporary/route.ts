@@ -5,16 +5,20 @@ import {
   streamText,
 } from "ai";
 import { getSession } from "auth/server";
-import { customModelProvider } from "lib/ai/models";
-import { routeModel } from "lib/ai/routing/route-model";
-import { buildUserSystemPrompt } from "lib/ai/prompts";
-import { getUserPreferences } from "lib/user/server";
 import { resolveEffectiveModelAllowList } from "lib/admin/effective-models";
-import { getTeamPolicy, getUserPrimaryTeamId } from "lib/admin/teams";
+import {
+  getTeamPolicy,
+  getUserPrimaryTeamId,
+  resolveStrictestGuardrailPolicy,
+} from "lib/admin/teams";
 import { checkBudget, estimateCostUsd, recordUsage } from "lib/ai/budget";
+import { customModelProvider } from "lib/ai/models";
+import { buildUserSystemPrompt } from "lib/ai/prompts";
+import { routeModel } from "lib/ai/routing/route-model";
 import { aupGateResponse } from "lib/compliance/aup";
 import { checkKillSwitch } from "lib/observability/kill-switch";
 import { checkRateLimit } from "lib/rate-limit";
+import { getUserPreferences } from "lib/user/server";
 import globalLogger from "logger";
 
 import { colorize } from "consola/utils";
@@ -53,14 +57,28 @@ export async function POST(request: Request) {
     // asafe-ai governance: temporary chats are NOT persistence-free of policy.
     // Resolve the same seam as the main route — team, kill switch, rate limit,
     // model entitlement gate, budget, metering — only persistence is skipped.
-    const userTeamId = await getUserPrimaryTeamId(session.user.id);
-    const teamPolicy = userTeamId ? await getTeamPolicy(userTeamId) : null;
+    //
+    // PARALLEL setup group 1 — pure userId-keyed reads with no dependency on
+    // each other (getUserPrimaryTeamId + the strictest cross-team guardrail
+    // posture, now TTL-cached in teams.ts). checkRateLimit is deliberately
+    // EXCLUDED: it mutates (increments the per-user bucket) and the kill switch
+    // must be able to return before a token is consumed (same order as before).
+    const [userTeamId, strictestGuardrail] = await Promise.all([
+      getUserPrimaryTeamId(session.user.id),
+      resolveStrictestGuardrailPolicy(session.user.id),
+    ]);
 
-    // W12: kill switch — operator can block all inference instantly.
-    const killSwitchResp = await checkKillSwitch(userTeamId);
+    // PARALLEL group 2 — both reads need userTeamId and are side-effect-free:
+    // teamPolicy (capabilities + guardrail fallback) and the kill-switch read.
+    const [teamPolicy, killSwitchResp] = await Promise.all([
+      userTeamId ? getTeamPolicy(userTeamId) : Promise.resolve(null),
+      // W12: kill switch — operator can block all inference instantly.
+      checkKillSwitch(userTeamId),
+    ]);
     if (killSwitchResp) return killSwitchResp;
 
-    // Per-user rate limiting (Postgres-backed, multi-pod safe).
+    // Per-user rate limiting (Postgres-backed, multi-pod safe). Runs (and
+    // increments the bucket) only after the kill-switch return.
     const rateCheck = await checkRateLimit(session.user.id);
     if (!rateCheck.allowed) {
       return Response.json(
@@ -140,13 +158,18 @@ export async function POST(request: Request) {
       return Response.json({ message: budgetCheck.reason }, { status: 402 });
     }
 
-    // W7 GA gate (ADR-0008): same guardrail posture as the main chat route.
-    // Temporary chats have no thread, so the team's (or org-default) policy applies.
+    // W7 GA gate (ADR-0008): same guardrail posture as the main chat route —
+    // the STRICTEST guardrail across ALL the user's teams (most-restrictive
+    // wins), not just the primary team. Falls back to the primary team's
+    // posture (then org default) when the user has no team. Resolved once in
+    // setup group 1 above (reused here — no second cross-team scan).
+    const effectiveGuardrailPolicy =
+      strictestGuardrail ?? teamPolicy?.guardrailPolicy;
     const { wrapWithGuardrails } = await import("lib/ai/guardrails");
     const model = wrapWithGuardrails(
       customModelProvider.getModel(effectiveModel),
       session.user.id,
-      teamPolicy?.guardrailPolicy,
+      effectiveGuardrailPolicy,
     );
     const userPreferences =
       (await getUserPreferences(session.user.id)) || undefined;

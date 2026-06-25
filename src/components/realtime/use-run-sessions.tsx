@@ -5,6 +5,8 @@ import { SHAPE_PROXY_PATH } from "lib/realtime/shapes";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { ErrorBoundary } from "@/components/error-boundary";
+
 import {
   type AgentSessionShapeRow,
   fingerprintRunSession,
@@ -105,7 +107,13 @@ function RunSessionsSubscriber({
 export function RunSessionsLive({ onChange }: { onChange: () => void }) {
   const shapeUrl = useShapeUrl();
   if (!shapeUrl) return null;
-  return <RunSessionsSubscriber shapeUrl={shapeUrl} onChange={onChange} />;
+  // Fail soft to null: the rail's SWR poll keeps it fresh on its own, so a
+  // crashing useShape must never take down the always-present sidebar.
+  return (
+    <ErrorBoundary fallback={null}>
+      <RunSessionsSubscriber shapeUrl={shapeUrl} onChange={onChange} />
+    </ErrorBoundary>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -166,5 +174,11 @@ function RunSessionSubscriber({
 export function RunSessionLive({ runId }: { runId: string }) {
   const shapeUrl = useShapeUrl();
   if (!shapeUrl) return null;
-  return <RunSessionSubscriber runId={runId} shapeUrl={shapeUrl} />;
+  // Fail soft to null: the page's SWR poller (RunRefreshPoller) keeps the
+  // transcript fresh, so a crashing useShape must never blank the run page.
+  return (
+    <ErrorBoundary fallback={null}>
+      <RunSessionSubscriber runId={runId} shapeUrl={shapeUrl} />
+    </ErrorBoundary>
+  );
 }

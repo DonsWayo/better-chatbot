@@ -50,12 +50,14 @@ export function MyUsageSection() {
   const t = useTranslations("Settings");
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
+    setError(false);
     fetch("/api/user/usage")
       .then((r) => r.json())
       .then(setData)
-      .catch(() => setData(null))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,6 +66,28 @@ export function MyUsageSection() {
       <div className="animate-pulse space-y-3">
         <div className="h-4 bg-muted rounded w-1/3" />
         <div className="h-20 bg-muted rounded" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive flex items-center gap-3">
+        <span className="flex-1">Couldn't load usage data.</span>
+        <button
+          className="text-xs underline underline-offset-2 hover:no-underline"
+          onClick={() => {
+            setLoading(true);
+            setError(false);
+            fetch("/api/user/usage")
+              .then((r) => r.json())
+              .then(setData)
+              .catch(() => setError(true))
+              .finally(() => setLoading(false));
+          }}
+        >
+          Retry
+        </button>
       </div>
     );
   }

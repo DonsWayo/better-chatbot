@@ -104,48 +104,30 @@ export const pgDocumentRepository = {
   },
 
   /**
-   * Does `userId` hold read (readOnly=true) or manage/edit (readOnly=false)
-   * access on the doc? Mirrors agentRepository.checkAccess:
+   * Does `userId` hold read (readOnly=true) or edit (readOnly=false) access on
+   * the doc? Mirrors agentRepository.checkAccess:
    *   - owner → always true;
    *   - org admin → always true;
    *   - readOnly: company OR (team && member) OR any grant;
-   *   - !readOnly (manage/edit): owner/admin only, or an edit/manage grant.
+   *   - !readOnly (edit): owner/admin only, or an edit/manage grant.
+   *
+   * NOTE: edit access (content/title autosave) is DELIBERATELY weaker than
+   * MANAGE access (delete / change visibility / re-share). An `edit` grantee is
+   * an editor — like a Google Docs editor: they may change the body, but they
+   * must NOT be able to trash the doc or re-share it. Use {@link
+   * checkManageAccess} for those governance-sensitive operations.
    */
   async checkAccess(
     id: string,
     userId: string,
     readOnly = true,
   ): Promise<boolean> {
-    // The grant / team / admin EXISTS subqueries bind `id`/`teamId` as VALUES
-    // (not a correlated column reference): a bare `${AsafeDocumentTable.id}`
-    // inside a raw sql`` template renders unqualified as "id", which Postgres
-    // resolves to entity_grant.id in the subquery's scope — silently matching
-    // nothing. We already have `id` (and select teamId) here, so bind them.
-    const [row] = await db
-      .select({
-        userId: AsafeDocumentTable.userId,
-        visibility: AsafeDocumentTable.visibility,
-        teamId: AsafeDocumentTable.teamId,
-        isAdmin: sql<boolean>`EXISTS (SELECT 1 FROM "user" u
-          WHERE u.id = ${userId} AND u.role = 'admin')`,
-        hasGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
-          WHERE eg.entity_type = ${ENTITY_TYPE}
-            AND eg.entity_id = ${id}
-            AND eg.grantee_user_id = ${userId})`,
-        hasEditGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
-          WHERE eg.entity_type = ${ENTITY_TYPE}
-            AND eg.entity_id = ${id}
-            AND eg.grantee_user_id = ${userId}
-            AND eg.capability IN ('edit', 'manage'))`,
-      })
-      .from(AsafeDocumentTable)
-      .where(eq(AsafeDocumentTable.id, id))
-      .limit(1);
+    const row = await this._accessRow(id, userId);
     if (!row) return false;
     if (row.userId === userId) return true;
     if (row.isAdmin) return true;
     if (!readOnly) {
-      // edit/manage: only owner/admin (handled above) or an edit/manage grant.
+      // edit: only owner/admin (handled above) or an edit/manage grant.
       return row.hasEditGrant;
     }
     // read: company, or team-visible to a member, or any grant.
@@ -164,6 +146,63 @@ export const pgDocumentRepository = {
       if (member?.ok) return true;
     }
     return row.hasGrant;
+  },
+
+  /**
+   * MANAGE gate — strictly stronger than edit. Returns true ONLY for:
+   *   - the owner;
+   *   - an org admin;
+   *   - a grantee holding the `manage` capability (NOT plain `edit`).
+   *
+   * This is the gate for destructive / governance-sensitive operations:
+   * deleteDocument, setVisibility, and (re)sharing. A plain `edit` grantee is an
+   * editor and must be denied here, so they can never trash or re-share a doc
+   * they were merely invited to help write (cf. Google Docs editor vs. owner).
+   */
+  async checkManageAccess(id: string, userId: string): Promise<boolean> {
+    const row = await this._accessRow(id, userId);
+    if (!row) return false;
+    if (row.userId === userId) return true;
+    if (row.isAdmin) return true;
+    return row.hasManageGrant;
+  },
+
+  /**
+   * Shared single-row fetch backing checkAccess / checkManageAccess: owner,
+   * visibility, team, admin flag, and the three grant tiers (any / edit-or-up /
+   * manage-only). The grant / admin EXISTS subqueries bind `id`/`userId` as
+   * VALUES (not a correlated column reference): a bare
+   * `${AsafeDocumentTable.id}` inside a raw sql`` template renders unqualified
+   * as "id", which Postgres resolves to entity_grant.id in the subquery's
+   * scope — silently matching nothing. We already have `id` here, so bind it.
+   */
+  async _accessRow(id: string, userId: string) {
+    const [row] = await db
+      .select({
+        userId: AsafeDocumentTable.userId,
+        visibility: AsafeDocumentTable.visibility,
+        teamId: AsafeDocumentTable.teamId,
+        isAdmin: sql<boolean>`EXISTS (SELECT 1 FROM "user" u
+          WHERE u.id = ${userId} AND u.role = 'admin')`,
+        hasGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = ${ENTITY_TYPE}
+            AND eg.entity_id = ${id}
+            AND eg.grantee_user_id = ${userId})`,
+        hasEditGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = ${ENTITY_TYPE}
+            AND eg.entity_id = ${id}
+            AND eg.grantee_user_id = ${userId}
+            AND eg.capability IN ('edit', 'manage'))`,
+        hasManageGrant: sql<boolean>`EXISTS (SELECT 1 FROM entity_grant eg
+          WHERE eg.entity_type = ${ENTITY_TYPE}
+            AND eg.entity_id = ${id}
+            AND eg.grantee_user_id = ${userId}
+            AND eg.capability = 'manage')`,
+      })
+      .from(AsafeDocumentTable)
+      .where(eq(AsafeDocumentTable.id, id))
+      .limit(1);
+    return row ?? null;
   },
 
   /**
@@ -212,7 +251,9 @@ export const pgDocumentRepository = {
 
   /**
    * Autosave path: update title/content, bump updatedAt + lastEditedBy/At.
-   * Caller MUST hold manage/edit (checkAccess(readOnly=false)) — enforced here.
+   * Caller MUST hold EDIT (checkAccess(readOnly=false)) — enforced here. This is
+   * the editor gate, deliberately weaker than the manage gate used by
+   * delete/setVisibility: editors may change content, not trash or re-share.
    * Throws "Forbidden" when the caller lacks edit access.
    */
   async updateDocument(
@@ -249,9 +290,11 @@ export const pgDocumentRepository = {
   },
 
   /**
-   * Change visibility. Requires manage/edit. Reverting to "private" revokes
-   * every grant on the doc (the known leak class — owner-only means no lingering
-   * entity_grant rows keep listing it for old grantees).
+   * Change visibility / re-share. Requires MANAGE (owner / admin / manage grant)
+   * — governance-sensitive: a mere editor must not re-share or change who can
+   * see the doc. Reverting to "private" revokes every grant on the doc (the
+   * known leak class — owner-only means no lingering entity_grant rows keep
+   * listing it for old grantees).
    */
   async setVisibility(
     id: string,
@@ -259,7 +302,7 @@ export const pgDocumentRepository = {
     userId: string,
     teamId?: string | null,
   ): Promise<DocumentEntity> {
-    if (!(await this.checkAccess(id, userId, false))) {
+    if (!(await this.checkManageAccess(id, userId))) {
       throw new Error("Forbidden");
     }
     const set: Partial<typeof AsafeDocumentTable.$inferInsert> = {
@@ -279,9 +322,13 @@ export const pgDocumentRepository = {
     return updated;
   },
 
-  /** Delete a doc. Requires manage/edit (owner/admin or edit/manage grant). */
+  /**
+   * Delete a doc (cascade-deletes its revisions + comments). Requires MANAGE
+   * (owner / admin / manage grant) — NEVER a plain `edit` grant. An editor can
+   * change the content but must not be able to trash the document.
+   */
   async deleteDocument(id: string, userId: string): Promise<void> {
-    if (!(await this.checkAccess(id, userId, false))) {
+    if (!(await this.checkManageAccess(id, userId))) {
       throw new Error("Forbidden");
     }
     await db.delete(AsafeDocumentTable).where(eq(AsafeDocumentTable.id, id));

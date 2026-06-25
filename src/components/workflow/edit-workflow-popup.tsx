@@ -159,7 +159,7 @@ export function EditWorkflowPopup({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex w-full h-full gap-10">
+        <div className="flex flex-col md:flex-row w-full h-full gap-10">
           {/* Left: Form */}
           <div className="gap-6 flex flex-col justify-center w-full">
             <div className="flex gap-2">

@@ -416,7 +416,9 @@
     "settings": "설정",
     "adminConsole": "관리 콘솔",
     "studio": "스튜디오",
-    "documents": "문서"
+    "documents": "문서",
+    "tasks": "작업",
+    "seeAllTasks": "전체 보기"
   },
   "Archive": {
     "title": "아카이브",
@@ -1347,5 +1349,44 @@
       "deleteTitle": "댓글 삭제",
       "deleteDescription": "이 댓글을 삭제하시겠습니까?"
     }
+  },
+  "Tasks": {
+    "title": "제목",
+    "epics": "에픽",
+    "newEpic": "새 에픽",
+    "noEpics": "아직 에픽이 없습니다",
+    "noEpicsDescription": "첫 번째 에픽을 만들어 작업을 관리하세요.",
+    "backlog": "백로그",
+    "inProgress": "진행 중",
+    "done": "완료",
+    "todo": "할 일",
+    "status": "상태",
+    "newTask": "작업 추가",
+    "noTasks": "아직 작업이 없습니다",
+    "story": "스토리",
+    "task": "작업",
+    "bug": "버그",
+    "priority": "우선순위",
+    "low": "낮음",
+    "medium": "보통",
+    "high": "높음",
+    "critical": "긴급",
+    "assignee": "담당자",
+    "labels": "레이블",
+    "description": "설명",
+    "deleteEpic": "에픽 삭제",
+    "deleteTask": "작업 삭제",
+    "deleteEpicConfirm": "이 에픽과 모든 작업을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "deleteTaskConfirm": "이 작업을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "epicCreated": "에픽이 생성되었습니다",
+    "taskCreated": "작업이 생성되었습니다",
+    "saved": "저장됨",
+    "save": "저장",
+    "saving": "저장 중…",
+    "progress": "전체 {total}개 중 {done}개 완료",
+    "aiImprove": "AI로 개선",
+    "visibility": "공개 범위",
+    "epicTitlePlaceholder": "에픽 제목…",
+    "epicDescPlaceholder": "이 에픽에 대해 설명해 주세요"
   }
 }

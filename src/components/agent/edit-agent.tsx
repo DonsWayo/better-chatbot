@@ -437,7 +437,7 @@ export default function EditAgent({
           </div>
         </div>
 
-        <div className="flex gap-4 mt-4">
+        <div className="flex flex-col md:flex-row gap-4 mt-4">
           <div className="flex flex-col justify-between gap-2 flex-1">
             <Label htmlFor="agent-name">
               {t("Agent.agentNameAndIconLabel")}

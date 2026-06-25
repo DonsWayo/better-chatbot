@@ -58,7 +58,10 @@ test.describe("Resource Permissions - Regular User", () => {
           name: testAgentName,
           description: "Test agent for permissions",
           instructions: {},
-          visibility: "company",
+          // "readonly" is org-wide visible (like "company") but does NOT grant
+          // edit access to non-owners, so the save button stays hidden for the
+          // regular user.  "company" was changed to give everyone edit access.
+          visibility: "readonly",
           userId: "00000000-0000-0000-0000-000000000000",
         },
         timeout: 15000,

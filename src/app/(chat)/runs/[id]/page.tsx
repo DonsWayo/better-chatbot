@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { ApprovalDecisionButtons } from "@/components/runs/approval-decision-buttons";
+import { ApprovalPayloadCard } from "@/components/runs/approval-payload-card";
 import { RunCopyButton } from "@/components/runs/run-copy-button";
 import { RunSessionLive } from "@/components/realtime/use-run-sessions";
 import { RunRefreshPoller } from "@/components/runs/run-refresh-poller";
@@ -52,6 +53,24 @@ const STEP_STATUS_CLASS: Record<AgentStepStatus, string> = {
   completed: "bg-green-500/15 text-green-600 dark:text-green-400",
   failed: "bg-red-500/15 text-red-600 dark:text-red-400",
   skipped: "bg-muted text-muted-foreground",
+};
+
+// Timeline node ring colour per step status (the dot on the rail).
+const STEP_NODE_CLASS: Record<AgentStepStatus, string> = {
+  running: "border-primary bg-primary/20",
+  completed: "border-green-500 bg-green-500/20",
+  failed: "border-red-500 bg-red-500/20",
+  skipped: "border-muted-foreground/40 bg-muted",
+};
+
+const SESSION_DOT_CLASS: Record<AgentSessionStatus, string> = {
+  queued: "bg-muted-foreground/40",
+  running: "bg-primary animate-pulse",
+  awaiting_approval: "bg-amber-500",
+  paused: "bg-muted-foreground/40",
+  completed: "bg-green-500",
+  failed: "bg-red-500",
+  cancelled: "bg-red-500/60",
 };
 
 function formatDuration(start: Date | null, end: Date | null): string | null {
@@ -111,6 +130,10 @@ export default async function RunPage({
   // component as the Triage inbox).
   let pendingApprovalId: string | null = null;
   let pendingApprovalMessage: string | null = null;
+  let pendingApprovalNodeName: string | null = null;
+  let pendingApprovalStepIndex: number | null = null;
+  let pendingApprovalRole: string | null = null;
+  let pendingApprovalRequestedAt: Date | null = null;
   if (session.status === "awaiting_approval") {
     const request = await getApprovalForSession(session.id);
     if (request?.status === "pending") {
@@ -125,14 +148,29 @@ export default async function RunPage({
       );
       if (allowed) {
         pendingApprovalId = request.id;
-        const payload = request.payload as { message?: unknown } | null;
+        const payload = request.payload as {
+          message?: unknown;
+          nodeName?: unknown;
+          nodeId?: unknown;
+          kind?: unknown;
+        } | null;
         pendingApprovalMessage =
           typeof payload?.message === "string" ? payload.message : null;
+        // Surface the workflow gate node name; fall back to nodeId if no label.
+        pendingApprovalNodeName =
+          typeof payload?.nodeName === "string"
+            ? payload.nodeName
+            : typeof payload?.nodeId === "string"
+              ? payload.nodeId
+              : null;
+        pendingApprovalStepIndex = request.stepIndex ?? null;
+        pendingApprovalRole = request.requestedRole ?? null;
+        pendingApprovalRequestedAt = request.requestedAt ?? null;
       }
     }
   }
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8">
+    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-8">
       {/* Page-scoped realtime: Electric push + SWR poll fail-soft baseline,
           both gated on non-terminal so a completed run opens no connection. */}
       {isNonTerminal && <RunSessionLive runId={session.id} />}
@@ -149,30 +187,34 @@ export default async function RunPage({
       {/* Pending approval — decidable by the current user */}
       {pendingApprovalId && (
         <div
-          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+          className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5"
           data-testid="run-approval-panel"
         >
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-            {t("needsApproval")}
-          </p>
-          {pendingApprovalMessage && (
-            <p className="mt-2 rounded-xl bg-background/60 p-3 text-sm">
-              {pendingApprovalMessage}
-            </p>
-          )}
-          <ApprovalDecisionButtons
-            requestId={pendingApprovalId}
-            className="mt-3"
+          <ApprovalPayloadCard
+            nodeName={pendingApprovalNodeName}
+            stepIndex={pendingApprovalStepIndex}
+            message={pendingApprovalMessage}
+            requestedRole={pendingApprovalRole}
+            requestedAt={pendingApprovalRequestedAt}
           />
+          <div className="mt-4 border-t border-amber-500/20 pt-4">
+            <ApprovalDecisionButtons requestId={pendingApprovalId} />
+          </div>
         </div>
       )}
 
       {/* Header */}
       <div className="rounded-2xl border bg-card p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="rounded-full capitalize">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span
+            className={cn(
+              "size-2.5 shrink-0 rounded-full",
+              SESSION_DOT_CLASS[session.status],
+            )}
+          />
+          <h1 className="font-display text-lg font-semibold capitalize tracking-tight">
             {session.kind}
-          </Badge>
+          </h1>
           <Badge
             className={cn(
               "rounded-full border-transparent",
@@ -189,7 +231,7 @@ export default async function RunPage({
           </Badge>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+        <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
           <div>
             <p className="text-xs text-muted-foreground">{t("started")}</p>
             <p>
@@ -234,46 +276,68 @@ export default async function RunPage({
           {t("noStepsYet")}
         </div>
       ) : (
-        <ol className="flex flex-col gap-3">
-          {steps.map((step) => {
+        <ol className="relative flex flex-col">
+          {steps.map((step, idx) => {
             const duration = formatDuration(step.startedAt, step.endedAt);
+            const status = step.status as AgentStepStatus;
+            const isLast = idx === steps.length - 1;
             return (
-              <li
-                key={step.id}
-                className="rounded-2xl border bg-card p-4 shadow-xs"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                    #{step.stepIndex}
-                  </span>
-                  <span className="text-sm font-medium">{step.nodeId}</span>
-                  {step.nodeKind && (
-                    <Badge variant="outline" className="rounded-full">
-                      {step.nodeKind}
-                    </Badge>
-                  )}
-                  <Badge
+              <li key={step.id} className="relative flex gap-4 pb-3">
+                {/* Timeline rail: node + connecting line */}
+                <div className="flex shrink-0 flex-col items-center">
+                  <span
                     className={cn(
-                      "rounded-full border-transparent",
-                      STEP_STATUS_CLASS[step.status as AgentStepStatus],
+                      "z-10 mt-4 size-3 rounded-full border-2",
+                      STEP_NODE_CLASS[status],
                     )}
-                  >
-                    {step.status}
-                  </Badge>
-                  <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                    {duration}
-                  </span>
+                  />
+                  {!isLast && (
+                    <span className="w-px flex-1 bg-border" aria-hidden />
+                  )}
                 </div>
 
-                <div className="mt-3 flex flex-col gap-2">
-                  {step.input !== null && step.input !== undefined && (
-                    <JsonBlock label={t("input")} value={step.input} />
-                  )}
-                  {step.output !== null && step.output !== undefined && (
-                    <JsonBlock label={t("output")} value={step.output} />
-                  )}
-                  {step.error && (
-                    <p className="text-sm text-red-500">{step.error}</p>
+                <div className="min-w-0 flex-1 rounded-2xl border bg-card p-3 shadow-xs sm:p-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                      #{step.stepIndex}
+                    </span>
+                    <span className="truncate text-sm font-medium">
+                      {step.nodeId}
+                    </span>
+                    {step.nodeKind && (
+                      <Badge variant="outline" className="rounded-full">
+                        {step.nodeKind}
+                      </Badge>
+                    )}
+                    <Badge
+                      className={cn(
+                        "rounded-full border-transparent",
+                        STEP_STATUS_CLASS[status],
+                      )}
+                    >
+                      {step.status}
+                    </Badge>
+                    {duration && (
+                      <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                        {duration}
+                      </span>
+                    )}
+                  </div>
+
+                  {(step.input != null ||
+                    step.output != null ||
+                    step.error) && (
+                    <div className="mt-3 flex flex-col gap-2">
+                      {step.input !== null && step.input !== undefined && (
+                        <JsonBlock label={t("input")} value={step.input} />
+                      )}
+                      {step.output !== null && step.output !== undefined && (
+                        <JsonBlock label={t("output")} value={step.output} />
+                      )}
+                      {step.error && (
+                        <p className="text-sm text-red-500">{step.error}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               </li>

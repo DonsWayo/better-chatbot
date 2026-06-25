@@ -15,6 +15,16 @@ const logger = globalLogger.withDefaults({
 // Constants
 const DEFAULT_UPLOAD_EXPIRES_SECONDS = 3600; // 1 hour
 const FALLBACK_UPLOAD_URL = "/api/storage/upload";
+const ALLOWED_CONTENT_TYPES = [
+  "text/csv", "text/plain", "text/markdown",
+  "application/pdf",
+  "application/json",
+  "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/msword",
+];
 
 // Types
 interface GenericUploadRequest {
@@ -59,7 +69,7 @@ async function handleVercelBlobUpload(
     request,
     onBeforeGenerateToken: async () => {
       return {
-        allowedContentTypes: undefined, // Allow all file types
+        allowedContentTypes: ALLOWED_CONTENT_TYPES,
         addRandomSuffix: true, // Prevent filename collisions
         tokenPayload: JSON.stringify({
           userId,

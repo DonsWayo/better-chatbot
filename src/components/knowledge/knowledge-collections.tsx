@@ -11,6 +11,7 @@ import { getIsUserAdmin } from "lib/user/utils";
 import { fetcher } from "lib/utils";
 import { Button } from "ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "ui/card";
+import { EmptyState } from "ui/empty-state";
 import { Skeleton } from "ui/skeleton";
 
 import { KnowledgeCollectionDialog } from "./knowledge-collection-dialog";
@@ -76,13 +77,19 @@ export function KnowledgeCollections() {
           ))}
         </div>
       ) : collections.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
-          <LibraryBig className="size-8 text-muted-foreground" aria-hidden />
-          <p className="font-display text-lg">{t("Knowledge.noCollections")}</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {t("Knowledge.noCollectionsHint")}
-          </p>
-        </div>
+        <EmptyState
+          icon={LibraryBig}
+          title={t("Knowledge.noCollections")}
+          description={t("Knowledge.noCollectionsHint")}
+          action={
+            isAdmin ? (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="size-4" />
+                {t("Knowledge.newCollection")}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {collections.map((collection) => (

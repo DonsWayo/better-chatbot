@@ -166,3 +166,48 @@ describe("heartbeatPresenceAction — upsert", () => {
     expect(h.onConflictMock).toHaveBeenCalledTimes(1);
   });
 });
+
+// The typing indicator rides asafe_presence.typing. Regression guard for the
+// "typing stuck false" bug: prove the `typing` param is actually persisted on
+// BOTH the insert path and the conflict-update path — a beat that only wrote
+// the column on insert would never flip an existing heartbeat row to true.
+describe("heartbeatPresenceAction — typing flag", () => {
+  it("defaults typing=false when the param is omitted (plain heartbeat clears)", async () => {
+    await heartbeatPresenceAction("thread", THREAD_ID);
+
+    expect(h.valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ typing: false }),
+    );
+    const conflict = h.onConflictMock.mock.calls[0][0] as {
+      set: { typing: boolean };
+    };
+    expect(conflict.set.typing).toBe(false);
+  });
+
+  it("persists typing=true on both the insert values and the conflict update", async () => {
+    await heartbeatPresenceAction("thread", THREAD_ID, true);
+
+    // New row (first ever beat for this user/context) carries typing=true.
+    expect(h.valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ typing: true }),
+    );
+    // Existing row (the common case — a heartbeat row already exists) is
+    // updated to typing=true, not left stuck at its previous value.
+    const conflict = h.onConflictMock.mock.calls[0][0] as {
+      set: { typing: boolean };
+    };
+    expect(conflict.set.typing).toBe(true);
+  });
+
+  it("persists typing=false when the beacon sends an explicit clear", async () => {
+    await heartbeatPresenceAction("thread", THREAD_ID, false);
+
+    expect(h.valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ typing: false }),
+    );
+    const conflict = h.onConflictMock.mock.calls[0][0] as {
+      set: { typing: boolean };
+    };
+    expect(conflict.set.typing).toBe(false);
+  });
+});

@@ -19,8 +19,14 @@ import {
   attachSessionPersistence,
 } from "./persistent-executor";
 import { extractRows, toDate } from "./pg-rows";
+import type { WorkflowConfigSnapshot } from "./revisions";
 import { claimDueSchedules } from "./scheduler";
-import { createSession, failSession, getSessionWithSteps } from "./sessions";
+import {
+  createSession,
+  failSession,
+  failStaleSessions,
+  getSessionWithSteps,
+} from "./sessions";
 
 // Agent Platform #22 — the detached run executor
 // (docs/design/agent-platform.md). Claims due workflow_schedule rows into
@@ -208,6 +214,40 @@ export async function runClaimedSession(
     return "failed";
   }
 
+  // Agent Platform #19/#22: when the schedule pinned a specific revision,
+  // execute from that revision's frozen configSnapshot (nodes/edges) instead
+  // of the live structure — mirrors the synchronous execute route
+  // (src/app/api/workflow/[id]/execute/route.ts) so a pinned routine runs the
+  // exact same graph no matter which seam runs it. session.revisionId is null
+  // for "latest" schedules (the common case), where the live structure is the
+  // correct graph. A set-but-unloadable revision logs and falls back to live
+  // rather than hard-failing, but the fallback is never silent.
+  let nodes = workflow.nodes;
+  let edges = workflow.edges;
+  if (session.revisionId) {
+    try {
+      const { getRevision } = await import("./revisions");
+      const revision = await getRevision(session.revisionId);
+      const snapshot = revision?.configSnapshot as
+        | Partial<WorkflowConfigSnapshot>
+        | null
+        | undefined;
+      if (Array.isArray(snapshot?.nodes) && Array.isArray(snapshot?.edges)) {
+        nodes = snapshot.nodes as unknown as typeof workflow.nodes;
+        edges = snapshot.edges as unknown as typeof workflow.edges;
+      } else {
+        logger.error(
+          `session ${session.id} pins revision ${session.revisionId} but its snapshot is missing/malformed — executing live structure`,
+        );
+      }
+    } catch (error) {
+      logger.error(
+        `Failed to load pinned revision ${session.revisionId} for session ${session.id}; executing live structure:`,
+        error,
+      );
+    }
+  }
+
   // W7 guardrails (ADR-0008): detached runs scan LLM-node prompts with the
   // session owner's team posture; failures fall back to the org default.
   // W3/ADR-0009: resolve the owner's team + effective model allow-list so
@@ -217,12 +257,13 @@ export async function runClaimedSession(
   let effectiveModelAllowList: string[] | null = null;
   if (session.userId) {
     try {
-      const { getTeamPolicy, getUserPrimaryTeamId } = await import(
-        "lib/admin/teams"
-      );
+      const { getUserPrimaryTeamId, resolveStrictestGuardrailPolicy } =
+        await import("lib/admin/teams");
+      // ENTITLEMENT/BILLING attribution stays on the PRIMARY team (budget +
+      // model allow-list below). The guardrail RESTRICTION uses the STRICTEST
+      // posture across ALL the owner's teams (most-restrictive wins).
       teamId = teamId ?? (await getUserPrimaryTeamId(session.userId));
-      if (teamId)
-        guardrailPolicy = (await getTeamPolicy(teamId)).guardrailPolicy;
+      guardrailPolicy = await resolveStrictestGuardrailPolicy(session.userId);
     } catch {
       // org default applies
     }
@@ -265,8 +306,8 @@ export async function runClaimedSession(
   }
 
   const executor = createWorkflowExecutor({
-    nodes: workflow.nodes,
-    edges: workflow.edges,
+    nodes,
+    edges,
     logger: globalLogger.withDefaults({
       message: colorize("cyan", `WORKFLOW(detached) '${workflow.name}' `),
     }),
@@ -388,6 +429,14 @@ export interface TickOptions {
  */
 export async function tickOnce(opts?: TickOptions): Promise<TickResult> {
   const counts: TickResult = { scheduled: 0, executed: 0, failed: 0 };
+
+  // Garbage-collect sessions whose worker died more than 15 min ago. The
+  // normal SKIP LOCKED reclaim handles the 90-second window; this is the
+  // backstop for sessions that slipped through (e.g. no heartbeat column
+  // race, approval sessions stuck beyond reclaim eligibility).
+  failStaleSessions().then((n) => {
+    if (n > 0) logger.warn(`failStaleSessions: marked ${n} zombie session(s) as failed`);
+  }).catch(() => {});
 
   let due: Awaited<ReturnType<typeof claimDueSchedules>> = [];
   try {

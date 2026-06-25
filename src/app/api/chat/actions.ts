@@ -44,6 +44,42 @@ export async function getUserId() {
   return userId;
 }
 
+// asafe-ai governance (ADR-0003/0009): builder Server Actions that run
+// inference (generateObject for tool-schema examples / output-schema scaffolds)
+// must be entitlement-confined and budget-checked like the chat seam — they run
+// on the server with session context, so the role/entitlement restriction can't
+// live only in the UI. A client model outside the caller's allow-list (or any
+// pick by a non-entitled user) falls back to the cheap default.
+const BUILDER_DEFAULT_MODEL: ChatModel = {
+  provider: "openRouter",
+  model: "deepseek-v4-flash",
+};
+
+async function resolveGovernedBuilderModel(
+  requested?: ChatModel,
+): Promise<ChatModel> {
+  const userId = await getUserId(); // throws when unauthenticated
+  const { getUserPrimaryTeamId } = await import("lib/admin/teams");
+  const { resolveEffectiveModelAllowList } = await import(
+    "lib/admin/effective-models"
+  );
+  const { checkBudget } = await import("lib/ai/budget");
+
+  const teamId = await getUserPrimaryTeamId(userId);
+  const allowList = await resolveEffectiveModelAllowList(userId, teamId);
+  const pickAllowed =
+    requested?.model &&
+    (!allowList ||
+      allowList.length === 0 ||
+      allowList.includes(requested.model));
+
+  const budget = await checkBudget(userId, teamId);
+  if (!budget.allowed) {
+    throw new Error(budget.reason ?? "Team budget exhausted");
+  }
+  return pickAllowed ? (requested as ChatModel) : BUILDER_DEFAULT_MODEL;
+}
+
 export async function generateTitleFromUserMessageAction({
   message,
   model,
@@ -171,7 +207,9 @@ export async function generateExampleToolSchemaAction(options: {
   toolInfo: MCPToolInfo;
   prompt?: string;
 }) {
-  const model = customModelProvider.getModel(options.model);
+  const model = customModelProvider.getModel(
+    await resolveGovernedBuilderModel(options.model),
+  );
 
   const schema = jsonSchema(
     toAny({
@@ -256,7 +294,9 @@ export async function generateObjectAction({
   schema: JSONSchema7 | ObjectJsonSchema7;
 }) {
   const result = await generateObject({
-    model: customModelProvider.getModel(model),
+    model: customModelProvider.getModel(
+      await resolveGovernedBuilderModel(model),
+    ),
     system: prompt.system,
     prompt: prompt.user || "",
     schema: jsonSchemaToZod(schema),

@@ -81,7 +81,7 @@ export function AppSidebarUserInner(props: {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             side="top"
-            className="bg-background w-[--radix-dropdown-menu-trigger-width] min-w-60 rounded-lg"
+            className="bg-background w-[--radix-dropdown-menu-trigger-width] sm:min-w-60 max-w-[calc(100vw-2rem)] rounded-lg"
             align="center"
           >
             <DropdownMenuLabel className="p-0 font-normal">

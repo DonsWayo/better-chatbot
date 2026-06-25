@@ -103,7 +103,7 @@ export type AgentRepository = {
     id: string,
     userId: string,
     agent: z.infer<typeof AgentUpdateSchema>,
-  ): Promise<Agent>;
+  ): Promise<Agent | null>;
 
   deleteAgent(id: string, userId: string): Promise<void>;
 

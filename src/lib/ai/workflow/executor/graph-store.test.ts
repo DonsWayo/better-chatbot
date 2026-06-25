@@ -265,3 +265,49 @@ describe("createGraphStore — resume seed (#24)", () => {
     expect(store().outputs).toEqual({});
   });
 });
+
+describe("createGraphStore — non-'answer' LLM output keys are reachable", () => {
+  // Regression guard for the generic LLM outputSchema fix: an LLM node whose
+  // schema names its property something other than "answer" must be readable
+  // by downstream nodes via getOutput(nodeId, [propName]).
+  it("reads a stored 'summary' key set by an LLM node", () => {
+    const store = createGraphStore({
+      nodes: [
+        {
+          id: "llm-1",
+          nodeConfig: {
+            outputSchema: {
+              type: "object",
+              properties: { summary: { type: "string" } },
+            },
+          },
+        } as unknown as DBNode,
+      ],
+      edges: [],
+    });
+    const ctx = store();
+    // Executor writes the value under the schema's own key, not "answer".
+    ctx.setOutput({ nodeId: "llm-1", path: ["summary"] }, "the gist");
+    expect(ctx.getOutput({ nodeId: "llm-1", path: ["summary"] })).toBe(
+      "the gist",
+    );
+  });
+
+  it("falls back to the schema default for a non-'answer' property", () => {
+    const store = createGraphStore({
+      nodes: [
+        {
+          id: "llm-1",
+          nodeConfig: {
+            outputSchema: {
+              type: "object",
+              properties: { result: { type: "string", default: "n/a" } },
+            },
+          },
+        } as unknown as DBNode,
+      ],
+      edges: [],
+    });
+    expect(store().getOutput({ nodeId: "llm-1", path: ["result"] })).toBe("n/a");
+  });
+});

@@ -21,6 +21,8 @@ export enum NodeKind {
   Tool = "tool", // MCP tool execution node
   Http = "http", // HTTP request node
   Template = "template", // Template processing node
+  Knowledge = "knowledge", // Retrieve chunks from a knowledge collection (RAG)
+  WebSearch = "web-search", // Search the web via Exa/Brave and return results
   Code = "code", // Code execution node (future implementation)
   Approval = "approval", // Human approval gate - parks the session until decided
   Output = "output", // Exit point of workflow - produces final result
@@ -190,6 +192,34 @@ export type TemplateNodeData = BaseWorkflowNodeDataData<{
 };
 
 /**
+ * Knowledge node: Retrieves top-k relevant chunks from a knowledge collection
+ * (Conek's pgvector RAG). Renders a TipTap query (with upstream-output mentions)
+ * to plain text, retrieves matching chunks, and outputs them so downstream LLM
+ * nodes can ground on org knowledge — like n8n's vector-store node.
+ */
+export type KnowledgeNodeData = BaseWorkflowNodeDataData<{
+  kind: NodeKind.Knowledge;
+}> & {
+  collectionId?: string; // Knowledge collection to retrieve from
+  topK?: number; // Number of chunks to retrieve (default 6)
+  query: TipTapMentionJsonContent; // Retrieval query (can reference other node outputs via mentions)
+};
+
+/**
+ * WebSearch node: Searches the web via Exa (or Brave when BRAVE_API_KEY is set).
+ * Renders the TipTap query (with upstream-output mentions) to plain text,
+ * runs the search, and outputs results so downstream LLM nodes can reason
+ * over live web content.
+ */
+export type WebSearchNodeData = BaseWorkflowNodeDataData<{
+  kind: NodeKind.WebSearch;
+}> & {
+  query: TipTapMentionJsonContent;
+  numResults?: number;
+  type?: "auto" | "keyword" | "neural";
+};
+
+/**
  * Approval node: Human approval gate (Agent Platform #24).
  * Execution parks the run: an approval_request row is written, the agent
  * session flips to awaiting_approval and the graph halts with
@@ -218,6 +248,8 @@ export type WorkflowNodeData =
   | ConditionNodeData
   | HttpNodeData
   | TemplateNodeData
+  | KnowledgeNodeData
+  | WebSearchNodeData
   | ApprovalNodeData;
 
 /**

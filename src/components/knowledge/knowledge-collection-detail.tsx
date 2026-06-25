@@ -33,6 +33,7 @@ import { fetcher } from "lib/utils";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
+import { EmptyState } from "ui/empty-state";
 import { Input } from "ui/input";
 import { Label } from "ui/label";
 import { handleErrorWithToast } from "ui/shared-toast";
@@ -221,9 +222,7 @@ export function KnowledgeCollectionDetail({ id }: { id: string }) {
             ))}
           </div>
         ) : documents.length === 0 ? (
-          <p className="rounded-2xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-            {t("Knowledge.noDocuments")}
-          </p>
+          <EmptyState icon={FileText} title={t("Knowledge.noDocuments")} compact />
         ) : (
           <ul className="flex flex-col gap-2">
             {documents.map((doc) => (

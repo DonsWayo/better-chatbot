@@ -5,6 +5,18 @@ import { storageObjectRepository } from "lib/db/repository";
 import logger from "lib/logger";
 import { checkStorageAction } from "../actions";
 
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_CONTENT_TYPES = new Set([
+  "text/csv", "text/plain", "text/markdown",
+  "application/pdf",
+  "application/json",
+  "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/msword",
+]);
+
 export async function POST(request: Request) {
   const session = await getSession();
 
@@ -36,9 +48,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const contentType = file.type || "application/octet-stream";
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
+      return NextResponse.json(
+        { error: `File type "${contentType}" is not allowed. Permitted types: CSV, PDF, images, Office documents, plain text.` },
+        { status: 415 },
+      );
+    }
+
     // Read file content
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    if (buffer.byteLength > MAX_UPLOAD_BYTES) {
+      return NextResponse.json(
+        { error: `File exceeds the 20 MB upload limit (got ${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB).` },
+        { status: 413 },
+      );
+    }
 
     // Upload to storage (works with any storage backend)
     const result = await serverFileStorage.upload(buffer, {

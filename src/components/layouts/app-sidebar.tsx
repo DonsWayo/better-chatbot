@@ -5,8 +5,10 @@ import Particles from "ui/particles";
 import { Sidebar, SidebarContent, SidebarFooter } from "ui/sidebar";
 
 import { AppSidebarAgents } from "./app-sidebar-agents";
+import { AppSidebarDocuments } from "./app-sidebar-documents";
 import { AppSidebarMenus } from "./app-sidebar-menus";
 import { AppSidebarRuns } from "./app-sidebar-runs";
+import { AppSidebarTasks } from "./app-sidebar-tasks";
 import { AppSidebarThreads } from "./app-sidebar-threads";
 import { ConekLogo } from "./conek-logo";
 import { SidebarHeaderShared } from "./sidebar-header";
@@ -72,6 +74,8 @@ export function AppSidebar({
           <AppSidebarMenus userRole={userRole} />
           <AppSidebarAgents userRole={userRole} />
           <AppSidebarRuns />
+          <AppSidebarDocuments />
+          <AppSidebarTasks />
           <AppSidebarThreads />
         </div>
       </SidebarContent>

@@ -416,7 +416,9 @@
     "settings": "设置",
     "adminConsole": "管理控制台",
     "studio": "工作室",
-    "documents": "文档"
+    "documents": "文档",
+    "tasks": "任务",
+    "seeAllTasks": "查看全部"
   },
   "Archive": {
     "title": "归档",
@@ -1347,5 +1349,44 @@
       "deleteTitle": "删除评论",
       "deleteDescription": "确定要删除这条评论吗？"
     }
+  },
+  "Tasks": {
+    "title": "标题",
+    "epics": "史诗",
+    "newEpic": "新建史诗",
+    "noEpics": "还没有史诗",
+    "noEpicsDescription": "创建第一个史诗来开始跟踪工作。",
+    "backlog": "待办",
+    "inProgress": "进行中",
+    "done": "已完成",
+    "todo": "待处理",
+    "status": "状态",
+    "newTask": "添加任务",
+    "noTasks": "还没有任务",
+    "story": "故事",
+    "task": "任务",
+    "bug": "缺陷",
+    "priority": "优先级",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "critical": "紧急",
+    "assignee": "负责人",
+    "labels": "标签",
+    "description": "描述",
+    "deleteEpic": "删除史诗",
+    "deleteTask": "删除任务",
+    "deleteEpicConfirm": "删除此史诗及其所有任务？此操作无法撤销。",
+    "deleteTaskConfirm": "删除此任务？此操作无法撤销。",
+    "epicCreated": "史诗已创建",
+    "taskCreated": "任务已创建",
+    "saved": "已保存",
+    "save": "保存",
+    "saving": "保存中…",
+    "progress": "已完成 {done} / {total} 个任务",
+    "aiImprove": "用AI改进",
+    "visibility": "可见性",
+    "epicTitlePlaceholder": "史诗标题…",
+    "epicDescPlaceholder": "这个史诗的内容是什么？"
   }
 }

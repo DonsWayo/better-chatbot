@@ -31,6 +31,7 @@ import { BackgroundPaths } from "ui/background-paths";
 import { Button } from "ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "ui/dialog";
+import { EmptyState } from "ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -325,14 +326,11 @@ export default function WorkflowListPage({
 
       {/* Empty state for users without create permission and no available workflows */}
       {!canCreate && displayWorkflows.length === 0 && !isLoading && (
-        <Card className="col-span-full bg-transparent border-none">
-          <CardHeader className="text-center py-12">
-            <CardTitle>{t("Workflow.noAvailableWorkflows")}</CardTitle>
-            <CardDescription>
-              {t("Workflow.noAvailableWorkflowsDescription")}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={WandSparkles}
+          title={t("Workflow.noAvailableWorkflows")}
+          description={t("Workflow.noAvailableWorkflowsDescription")}
+        />
       )}
     </div>
   );

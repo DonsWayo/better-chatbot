@@ -12,7 +12,7 @@ import {
 } from "lib/auth/client-permissions";
 import { Shortcuts, getShortcutKeyList } from "lib/keyboard-shortcuts";
 import { fetcher } from "lib/utils";
-import { Blocks, FileText, Inbox, SearchIcon } from "lucide-react";
+import { Blocks, Inbox, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -133,22 +133,10 @@ export function AppSidebarMenus({
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        {/* Documents — collaborative rich-text docs. Personal/collaborative
-            content like chat threads, so shown to ALL authenticated users (not
-            builder-gated). No realtime connection opens from here: the near-live
-            subscriber + presence heartbeat live only on /documents/[id]. */}
-        <SidebarMenu>
-          <Tooltip>
-            <SidebarMenuItem>
-              <Link href="/documents" data-testid="sidebar-documents-link">
-                <SidebarMenuButton className="font-semibold">
-                  <FileText className="size-4" />
-                  {t("Layout.documents")}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </Tooltip>
-        </SidebarMenu>
+        {/* Documents are NOT a separate nav destination anymore — recent docs
+            surface directly in the sidebar via <AppSidebarDocuments/> (a sibling
+            of recent chats), with an inline "+" to create one. The full list at
+            /documents stays reachable through that section's "See all". */}
         {/* Studio — builders/admins only; sits between Inbox and the pinned
             Agents section (docs/design/information-architecture.md §1). */}
         {canSeeStudio && (

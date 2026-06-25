@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { notify } from "lib/notify";
 import { toast } from "sonner";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
@@ -17,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "ui/dialog";
+import { EmptyState } from "ui/empty-state";
 import { Input } from "ui/input";
 import {
   Table,
@@ -136,7 +138,11 @@ export function KnowledgeCollectionDetail({
   };
 
   const handleDelete = async (doc: DocumentEntry) => {
-    if (!confirm(`Remove "${doc.sourceRef}" and all its chunks?`)) return;
+    const ok = await notify.confirm({
+      title: "Remove document",
+      description: `Remove "${doc.sourceRef}" and all its chunks? This cannot be undone.`,
+    });
+    if (!ok) return;
     try {
       const res = await fetch(
         `/api/knowledge/collections/${collection.id}/documents/${doc.id}`,
@@ -204,13 +210,14 @@ export function KnowledgeCollectionDetail({
           </TableHeader>
           <TableBody>
             {documents.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-center py-8 text-muted-foreground"
-                >
-                  No documents ingested yet. Click &quot;Ingest Document&quot;
-                  to add one.
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="p-4">
+                  <EmptyState
+                    icon={FileText}
+                    title="No documents ingested yet"
+                    description={'Click "Ingest Document" to add one.'}
+                    compact
+                  />
                 </TableCell>
               </TableRow>
             ) : (

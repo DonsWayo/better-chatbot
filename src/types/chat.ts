@@ -146,6 +146,7 @@ export const chatApiSchemaRequestBodySchema = z.object({
   imageTool: z.object({ model: z.string().optional() }).optional(),
   allowedMcpServers: z.record(z.string(), AllowedMCPServerZodSchema).optional(),
   allowedAppDefaultToolkit: z.array(z.string()).optional(),
+  researchMode: z.boolean().optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
   ragCollectionId: z.string().optional(),
 });

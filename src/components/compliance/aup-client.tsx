@@ -37,7 +37,7 @@ export function AupClient({ version }: AupClientProps) {
   };
 
   return (
-    <Card className="w-full max-w-2xl shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <Card className="w-full max-w-sm sm:max-w-2xl shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-500">
       <CardHeader className="space-y-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />

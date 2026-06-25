@@ -5,12 +5,14 @@ import {
   ConditionNodeData,
   HttpNodeData,
   InputNodeData,
+  KnowledgeNodeData,
   LLMNodeData,
   NodeKind,
   OutputNodeData,
   TemplateNodeData,
   ToolNodeData,
   UINode,
+  WebSearchNodeData,
   WorkflowNodeData,
 } from "lib/ai/workflow/workflow.interface";
 import { cleanVariableName } from "lib/utils";
@@ -110,6 +112,10 @@ export const nodeValidate: NodeValidate<WorkflowNodeData> = ({
       return httpNodeValidate({ node, nodes, edges });
     case NodeKind.Template:
       return templateNodeValidate({ node, nodes, edges });
+    case NodeKind.Knowledge:
+      return knowledgeNodeValidate({ node, nodes, edges });
+    case NodeKind.WebSearch:
+      return webSearchNodeValidate({ node, nodes, edges });
     case NodeKind.Approval:
       return approvalNodeValidate({ node, nodes, edges });
   }
@@ -288,4 +294,34 @@ export const templateNodeValidate: NodeValidate<TemplateNodeData> = ({
 
   // Template content can be undefined/empty - that's valid
   // The actual content validation is handled by the TipTap editor
+};
+
+export const knowledgeNodeValidate: NodeValidate<KnowledgeNodeData> = ({
+  node,
+}) => {
+  // A Knowledge node must point at a collection to retrieve from.
+  if (!node.collectionId) {
+    throw new Error("Knowledge node must have a collection");
+  }
+  // The retrieval query must have content (a TipTap doc with at least one node).
+  if (!node.query || (node.query.content?.length ?? 0) === 0) {
+    throw new Error("Knowledge node must have a query");
+  }
+};
+
+export const webSearchNodeValidate: NodeValidate<WebSearchNodeData> = ({
+  node,
+}) => {
+  if (!node.query || (node.query.content?.length ?? 0) === 0) {
+    throw new Error("WebSearch node must have a query");
+  }
+  if (node.numResults !== undefined) {
+    if (!Number.isFinite(node.numResults) || node.numResults < 1 || node.numResults > 20) {
+      throw new Error("WebSearch numResults must be between 1 and 20");
+    }
+  }
+  const validTypes = ["auto", "keyword", "neural"];
+  if (node.type !== undefined && !validTypes.includes(node.type)) {
+    throw new Error(`WebSearch type must be one of: ${validTypes.join(", ")}`);
+  }
 };

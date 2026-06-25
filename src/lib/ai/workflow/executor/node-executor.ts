@@ -18,6 +18,7 @@ import { customModelProvider } from "lib/ai/models";
 import { routeModel } from "lib/ai/routing/route-model";
 import { DefaultToolName } from "lib/ai/tools";
 import {
+  ExaSearchResponse,
   exaContentsToolForWorkflow,
   exaSearchToolForWorkflow,
 } from "lib/ai/tools/web/web-search";
@@ -34,11 +35,13 @@ import {
   ConditionNodeData,
   HttpNodeData,
   InputNodeData,
+  KnowledgeNodeData,
   LLMNodeData,
   OutputNodeData,
   OutputSchemaSourceKey,
   TemplateNodeData,
   ToolNodeData,
+  WebSearchNodeData,
   WorkflowNodeData,
 } from "../workflow.interface";
 import { WorkflowRuntimeState } from "./graph-store";
@@ -188,17 +191,27 @@ function resolveAllowedModel(
     totalChars: 0,
     allowedModels: allow,
   });
+
+  // Backstop: routeModel's own fallback returns the top-tier model UNFILTERED
+  // when the allow-list excludes every routable tier (route-model.ts) — that
+  // could be a premium model the user isn't entitled to. The chat route catches
+  // this with a 403; here we must not run it. If the routed model isn't in the
+  // allow-list, pin deterministically to the first allow-listed model instead.
+  const chosen: ChatModel = allow.includes(routed.model.model)
+    ? routed.model
+    : { provider: "openRouter", model: allow[0] };
+
   // Lazy import keeps the logger/metrics out of this module's static graph.
   import("logger")
     .then((m) =>
       m.default
         .withDefaults({ message: "workflow-model-guard: " })
         .warn(
-          `node model "${requested?.model ?? "(none)"}" not in allow-list; substituting "${routed.model.model}"`,
+          `node model "${requested?.model ?? "(none)"}" not in allow-list; substituting "${chosen.model}"`,
         ),
     )
     .catch(() => {});
-  return routed.model;
+  return chosen;
 }
 
 /** Token usage shape returned by generateText/generateObject. */
@@ -247,6 +260,11 @@ function recordNodeUsage(
   }).catch(() => {});
 }
 
+// Hard ceiling per LLM call so one slow node can't exhaust the workflow's
+// 5-min global timeout alone. Chosen conservatively; can be overridden per
+// node in the future by passing node.timeout.
+const LLM_NODE_TIMEOUT_MS = 90_000;
+
 /**
  * LLM Node Executor
  * Executes Large Language Model interactions with support for:
@@ -276,8 +294,28 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     state,
   );
 
+  // Resolve the node's output shape from its outputSchema GENERICALLY, instead
+  // of assuming a hard-coded "answer" property. The schema's own property names
+  // drive both the provider call and the keys we write into the node output, so
+  // downstream nodes can reference whatever the author named them.
+  //
+  // Behaviour (backward-compatible):
+  //   - exactly ONE property whose type is "string"   → text branch
+  //       (generateText) → output { [prop]: text }.
+  //       A `{ answer: { type: "string" } }` schema (the historical default)
+  //       therefore still produces `{ answer }` exactly as before.
+  //   - exactly ONE non-string property               → object branch
+  //       (generateObject against THAT property's schema) → output
+  //       { [prop]: object }. A `{ answer: { type: "object" } }` schema still
+  //       produces `{ answer: <object> }` as before.
+  //   - ZERO or MULTIPLE properties                    → object branch
+  //       (generateObject against the WHOLE outputSchema) → the generated
+  //       object is spread so every schema property is a top-level output key.
+  const properties = node.outputSchema.properties ?? {};
+  const propertyKeys = Object.keys(properties);
+  const singleKey = propertyKeys.length === 1 ? propertyKeys[0] : undefined;
   const isTextResponse =
-    node.outputSchema.properties?.answer?.type === "string";
+    singleKey !== undefined && properties[singleKey]?.type === "string";
 
   state.setInput(node.id, {
     chatModel,
@@ -289,24 +327,38 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
     const response = await generateText({
       model,
       messages: convertToModelMessages(messages),
+      abortSignal: AbortSignal.timeout(LLM_NODE_TIMEOUT_MS),
     });
     // W3: attribute this provider call to the executing user + team budget.
     recordNodeUsage(state, chatModel, response.usage, node.id);
     return {
       output: {
         totalTokens: response.usage.totalTokens,
-        // W7: output-stage scrub (system-prompt-leak markers) per policy
-        answer: applyOutputGuardrails(response.text, state),
+        // W7: output-stage scrub (system-prompt-leak markers) per policy.
+        // Keyed by the schema's own property name (e.g. "answer", "summary").
+        [singleKey!]: applyOutputGuardrails(response.text, state),
       },
     };
   }
 
+  // Object branch. A single non-string property generates against that
+  // property's sub-schema and is nested under its key (legacy `answer:object`
+  // shape preserved); zero/multiple properties generate against the whole
+  // outputSchema and are spread so each property becomes a top-level key.
+  const generateAgainst =
+    singleKey !== undefined ? properties[singleKey] : node.outputSchema;
+
   const response = await generateObject({
     model,
     messages: convertToModelMessages(messages),
-    schema: jsonSchemaToZod(node.outputSchema.properties.answer),
+    schema: jsonSchemaToZod(generateAgainst),
     maxRetries: 3,
+    abortSignal: AbortSignal.timeout(LLM_NODE_TIMEOUT_MS),
   });
+
+  // W7: object-branch output scrub (parity with the text branch) — the object
+  // is serialized so leak markers in string fields are scrubbed too.
+  const scrubbed = scrubObjectOutput(response.object, state);
 
   // W3: attribute this provider call to the executing user + team budget.
   recordNodeUsage(state, chatModel, response.usage, node.id);
@@ -314,9 +366,9 @@ export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
   return {
     output: {
       totalTokens: response.usage.totalTokens,
-      // W7: object-branch output scrub (parity with the text branch) — the
-      // object is serialized so leak markers in string fields are scrubbed too.
-      answer: scrubObjectOutput(response.object, state),
+      ...(singleKey !== undefined
+        ? { [singleKey]: scrubbed } // nest under the single property's name
+        : (scrubbed as object)), // spread multi/zero-property objects
     },
   };
 };
@@ -438,6 +490,7 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
           inputSchema: jsonSchemaToZod(node.tool.parameterSchema),
         },
       },
+      abortSignal: AbortSignal.timeout(LLM_NODE_TIMEOUT_MS),
     });
     recordNodeUsage(state, chatModel, response.usage, node.id);
 
@@ -583,110 +636,101 @@ export const httpNodeExecutor: NodeExecutor<HttpNodeData> = async ({
     }
   }
 
-  const startTime = Date.now();
+  // Transient network error codes that are safe to retry.
+  const RETRYABLE_CODES = new Set(["ENOTFOUND", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"]);
+  // 3 total attempts (initial + 2 retries). HTTP errors and timeouts are never retried.
+  const MAX_NETWORK_RETRIES = 2;
 
-  try {
-    // Create AbortController for timeout
+  for (let attempt = 0; attempt <= MAX_NETWORK_RETRIES; attempt++) {
+    if (attempt > 0) {
+      // Exponential backoff: 1 s, 2 s.
+      await new Promise((r) => setTimeout(r, 1_000 * attempt));
+    }
+
+    const startTime = Date.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    const response = await fetch(finalUrl, {
-      method: node.method,
-      headers,
-      body,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    // Parse response body as string
-    let responseBody: string;
     try {
-      responseBody = await response.text();
-    } catch {
-      // If parsing fails, return empty string
-      responseBody = "";
-    }
-
-    // Convert response headers to object
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-
-    const duration = Date.now() - startTime;
-
-    const request = {
-      url: finalUrl,
-      method: node.method,
-      headers,
-      body,
-      timeout,
-    };
-    const responseData = {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      headers: responseHeaders,
-      body: responseBody,
-      duration,
-      size: response.headers.get("content-length")
-        ? parseInt(response.headers.get("content-length")!)
-        : undefined,
-    };
-    if (!response.ok) {
-      state.setInput(node.id, {
-        request,
-        response: responseData,
+      const response = await fetch(finalUrl, {
+        method: node.method,
+        headers,
+        body,
+        signal: controller.signal,
       });
-      throw new AppError(response.status.toString(), response.statusText);
-    }
 
-    return {
-      input: {
-        request,
-      },
-      output: {
-        response: responseData,
-      },
-    };
-  } catch (error: any) {
-    if (error instanceof AppError) {
+      clearTimeout(timeoutId);
+
+      let responseBody: string;
+      try {
+        responseBody = await response.text();
+      } catch {
+        responseBody = "";
+      }
+
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      const duration = Date.now() - startTime;
+      const request = { url: finalUrl, method: node.method, headers, body, timeout };
+      const responseData = {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: responseHeaders,
+        body: responseBody,
+        duration,
+        size: response.headers.get("content-length")
+          ? parseInt(response.headers.get("content-length")!)
+          : undefined,
+      };
+
+      if (!response.ok) {
+        state.setInput(node.id, { request, response: responseData });
+        throw new AppError(response.status.toString(), response.statusText);
+      }
+
+      return { input: { request }, output: { response: responseData } };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+
+      // HTTP errors are authoritative — never retry.
+      if (error instanceof AppError) throw error;
+
+      const duration = Date.now() - startTime;
+
+      // Client-side timeout — no retry (retrying would just time out again).
+      if (error.name === "AbortError") {
+        const errMsg = `Request timeout after ${timeout}ms`;
+        state.setInput(node.id, {
+          request: { url: finalUrl, method: node.method, headers, body, timeout },
+          response: { status: 0, statusText: errMsg, ok: false, headers: {}, body: "", duration, error: { type: "timeout", message: errMsg } },
+        });
+        throw error;
+      }
+
+      // Transient network error: retry if we have attempts left.
+      if (RETRYABLE_CODES.has(error.code) && attempt < MAX_NETWORK_RETRIES) continue;
+
+      // Final attempt or non-retryable: enrich state and re-throw.
+      let errorMessage = error.message;
+      let errorType = "unknown";
+      if (error.code === "ENOTFOUND") { errorMessage = `DNS resolution failed for ${finalUrl}`; errorType = "dns"; }
+      else if (error.code === "ECONNREFUSED") { errorMessage = `Connection refused to ${finalUrl}`; errorType = "connection"; }
+      else if (error.code === "ECONNRESET") { errorType = "connection"; }
+
+      state.setInput(node.id, {
+        request: { url: finalUrl, method: node.method, headers, body, timeout },
+        response: { status: 0, statusText: errorMessage, ok: false, headers: {}, body: "", duration, error: { type: errorType, message: errorMessage } },
+      });
       throw error;
     }
-    const duration = Date.now() - startTime;
-
-    // Handle different types of errors
-    let errorMessage = error.message;
-    let errorType = "unknown";
-
-    if (error.name === "AbortError") {
-      errorMessage = `Request timeout after ${timeout}ms`;
-      errorType = "timeout";
-    } else if (error.code === "ENOTFOUND") {
-      errorMessage = `DNS resolution failed for ${finalUrl}`;
-      errorType = "dns";
-    } else if (error.code === "ECONNREFUSED") {
-      errorMessage = `Connection refused to ${finalUrl}`;
-      errorType = "connection";
-    }
-    state.setInput(node.id, {
-      request: { url: finalUrl, method: node.method, headers, body, timeout },
-      response: {
-        status: 0,
-        statusText: errorMessage,
-        ok: false,
-        headers: {},
-        body: "",
-        duration,
-        error: {
-          type: errorType,
-          message: errorMessage,
-        },
-      },
-    });
-    throw error;
   }
+
+  // Unreachable — the loop always returns or throws.
+  throw new Error("HTTP node: exceeded retry limit");
 };
 
 /**
@@ -765,5 +809,116 @@ export const templateNodeExecutor: NodeExecutor<TemplateNodeData> = ({
     output: {
       template: text,
     },
+  };
+};
+
+/**
+ * Knowledge Node Executor
+ * Retrieves top-k relevant chunks from a knowledge collection (Conek's pgvector
+ * RAG) and outputs them so downstream LLM nodes can ground on org knowledge.
+ *
+ * Workflow:
+ * 1. Render the TipTap query (with upstream-output mentions) to plain text.
+ * 2. If no collection is selected or the query is empty → return empty results.
+ * 3. Otherwise retrieve the top-k chunks and join their text for easy
+ *    consumption by downstream nodes.
+ *
+ * `retrieveChunks` is imported dynamically so this module stays importable
+ * without pulling the server-only embeddings/DB layer until a Knowledge node
+ * actually runs.
+ */
+export const knowledgeNodeExecutor: NodeExecutor<KnowledgeNodeData> = async ({
+  node,
+  state,
+}) => {
+  // Render the TipTap query to text, resolving mentions to upstream node data.
+  const query = convertTiptapJsonToText({
+    json: node.query,
+    getOutput: state.getOutput,
+  }).trim();
+
+  const topK = node.topK ?? 6;
+
+  // No collection or empty query → nothing to retrieve.
+  if (!node.collectionId || !query) {
+    return {
+      input: { query, collectionId: node.collectionId, topK },
+      output: { chunks: [], text: "" },
+    };
+  }
+
+  // ADR-0009 IDOR: retrieval must be gated by the RUN user's access to the
+  // collection, exactly like the chat seam (retrieveForChat →
+  // filterAccessibleCollections → canAccess("use")). Without this, a workflow
+  // editor could point a Knowledge node at any collection id (e.g. another
+  // team's private collection) and exfiltrate its chunks via the node output —
+  // reachable through shared workflows, scheduled runs, and the /v1 REST path.
+  // Fail closed: no run user, or no "use" access → retrieve nothing.
+  const { canAccess } = await import("lib/visibility");
+  const hasAccess =
+    !!state.userId &&
+    (await canAccess(
+      "knowledge_collection",
+      node.collectionId,
+      state.userId,
+      "use",
+    ).catch(() => false));
+  if (!hasAccess) {
+    return {
+      input: { query, collectionId: node.collectionId, topK },
+      output: { chunks: [], text: "" },
+    };
+  }
+
+  const { retrieveChunks } = await import("lib/ai/embeddings/ingest");
+  const chunks = await retrieveChunks(query, node.collectionId, topK);
+  const text = chunks.map((c) => c.chunkText).join("\n\n");
+
+  return {
+    input: { query, collectionId: node.collectionId, topK },
+    output: { chunks, text },
+  };
+};
+
+/**
+ * WebSearch Node Executor
+ * Searches the web via Exa (or Brave when BRAVE_API_KEY is set).
+ * Renders the TipTap query (with upstream-output mentions) to text,
+ * runs the search, and returns results + a concatenated text string so
+ * downstream LLM nodes can ground on live web content.
+ */
+export const webSearchNodeExecutor: NodeExecutor<WebSearchNodeData> = async ({
+  node,
+  state,
+}) => {
+  const query = convertTiptapJsonToText({
+    json: node.query,
+    getOutput: state.getOutput,
+  }).trim();
+
+  if (!query) {
+    return {
+      input: { query, numResults: node.numResults, type: node.type },
+      output: { results: [], text: "" },
+    };
+  }
+
+  const searchResult = (await exaSearchToolForWorkflow.execute!(
+    {
+      query,
+      numResults: node.numResults ?? 5,
+      type: node.type ?? "auto",
+    },
+    { messages: [], toolCallId: "" },
+  )) as ExaSearchResponse;
+
+  const results = searchResult.results ?? [];
+  const text = results
+    .map((r) => `## ${r.title}\n${r.url}\n\n${r.text}`)
+    .join("\n\n---\n\n");
+
+  return {
+    input: { query, numResults: node.numResults ?? 5, type: node.type ?? "auto" },
+    output: { results, text },
   };
 };

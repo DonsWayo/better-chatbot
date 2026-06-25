@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   approveRequestAction,
@@ -13,6 +14,8 @@ import { cn } from "lib/utils";
 import { Button } from "ui/button";
 import { handleErrorWithToast } from "ui/shared-toast";
 import { Textarea } from "ui/textarea";
+
+const REJECT_REASON_MAX = 500;
 
 // Agent Platform #26 — Approve/Reject controls for a pending approval
 // request. Shared between the Triage inbox cards and the /runs/[id] header.
@@ -31,30 +34,38 @@ export function ApprovalDecisionButtons({
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [decided, setDecided] = useState(false);
+  // Which decision is in flight, so only the clicked button shows a spinner.
+  const [pending, setPending] = useState<"approve" | "reject" | null>(null);
 
   const approve = () => {
+    setPending("approve");
     startTransition(async () => {
       // The action returns a structured result instead of throwing so its gate
       // reason survives prod's masked-500.
       const result = await approveRequestAction(requestId);
       if (!result.success) {
+        setPending(null);
         handleErrorWithToast(new Error(result.error));
         return;
       }
       setDecided(true);
+      toast.success(t("approved"));
       router.refresh();
     });
   };
 
   const reject = () => {
     if (!reason.trim()) return;
+    setPending("reject");
     startTransition(async () => {
       const result = await rejectRequestAction(requestId, reason.trim());
       if (!result.success) {
+        setPending(null);
         handleErrorWithToast(new Error(result.error));
         return;
       }
       setDecided(true);
+      toast.success(t("rejected"));
       router.refresh();
     });
   };
@@ -69,12 +80,16 @@ export function ApprovalDecisionButtons({
         <>
           <Textarea
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => setReason(e.target.value.slice(0, REJECT_REASON_MAX))}
             placeholder={t("rejectReasonPlaceholder")}
             className="min-h-20 rounded-xl text-sm"
+            maxLength={REJECT_REASON_MAX}
             disabled={isPending}
             data-testid="approval-reject-reason"
           />
+          <p className="text-right text-[11px] text-muted-foreground tabular-nums">
+            {reason.length}/{REJECT_REASON_MAX}
+          </p>
           <div className="flex items-center gap-2">
             <Button
               variant="destructive"
@@ -84,7 +99,11 @@ export function ApprovalDecisionButtons({
               onClick={reject}
               data-testid="approval-confirm-reject"
             >
-              <X className="size-3.5" />
+              {pending === "reject" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <X className="size-3.5" />
+              )}
               {t("confirmReject")}
             </Button>
             <Button
@@ -107,7 +126,11 @@ export function ApprovalDecisionButtons({
             onClick={approve}
             data-testid="approval-approve"
           >
-            <Check className="size-3.5" />
+            {pending === "approve" ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Check className="size-3.5" />
+            )}
             {t("approve")}
           </Button>
           <Button

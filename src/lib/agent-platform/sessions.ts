@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { pgDb as db } from "lib/db/pg/db.pg";
 import {
   type AgentSessionEntity,
@@ -264,6 +264,39 @@ export async function listActiveSessionsForTeam(
       ),
     )
     .orderBy(desc(AgentSessionTable.createdAt));
+}
+
+/**
+ * Transition any "running" session whose heartbeat is older than
+ * `stalePeriodMs` to "failed". This is a safety net for sessions whose
+ * worker process was killed abruptly without flipping the row — the normal
+ * reclaim path (SKIP LOCKED in claimQueuedSession) handles the 90-second
+ * window; this catches anything that slips through (e.g. awaiting_approval
+ * sessions where the approval was never resolved).
+ *
+ * Called from the worker tick so it runs every 5 seconds with minimal overhead.
+ * Returns the number of rows failed.
+ */
+export async function failStaleSessions(
+  stalePeriodMs: number = 15 * 60 * 1000,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - stalePeriodMs);
+  const rows = await db
+    .update(AgentSessionTable)
+    .set({
+      status: "failed",
+      error: "Timed out — no heartbeat received within the stale period",
+      endedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(AgentSessionTable.status, "running"),
+        lt(AgentSessionTable.heartbeatAt, cutoff),
+      ),
+    )
+    .returning({ id: AgentSessionTable.id });
+  return rows.length;
 }
 
 /** Fetch one session row by id (no ownership check), or null. */

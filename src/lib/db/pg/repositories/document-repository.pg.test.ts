@@ -76,6 +76,7 @@ function accessRow(
     isAdmin: boolean;
     hasGrant: boolean;
     hasEditGrant: boolean;
+    hasManageGrant: boolean;
   }>,
 ) {
   return {
@@ -85,6 +86,7 @@ function accessRow(
     isAdmin: false,
     hasGrant: false,
     hasEditGrant: false,
+    hasManageGrant: false,
     ...overrides,
   };
 }
@@ -134,7 +136,7 @@ describe("checkAccess matrix", () => {
     expect(await repo.checkAccess(DOC, OTHER, true)).toBe(false);
   });
 
-  it("shared: a view grant gives read but NOT manage", async () => {
+  it("shared: a view grant gives read but NOT edit", async () => {
     selectQueue.push([
       accessRow({ visibility: "shared", hasGrant: true, hasEditGrant: false }),
     ]);
@@ -145,7 +147,7 @@ describe("checkAccess matrix", () => {
     expect(await repo.checkAccess(DOC, OTHER, false)).toBe(false);
   });
 
-  it("shared: an edit grant gives manage", async () => {
+  it("shared: an edit grant gives edit", async () => {
     selectQueue.push([
       accessRow({ visibility: "shared", hasGrant: true, hasEditGrant: true }),
     ]);
@@ -155,6 +157,98 @@ describe("checkAccess matrix", () => {
   it("missing document → false", async () => {
     selectQueue.push([]);
     expect(await repo.checkAccess(DOC, OTHER, true)).toBe(false);
+  });
+});
+
+describe("checkManageAccess matrix (delete / re-share gate)", () => {
+  it("owner has manage", async () => {
+    selectQueue.push([accessRow({ userId: OWNER })]);
+    expect(await repo.checkManageAccess(DOC, OWNER)).toBe(true);
+  });
+
+  it("org admin has manage", async () => {
+    selectQueue.push([accessRow({ userId: OWNER, isAdmin: true })]);
+    expect(await repo.checkManageAccess(DOC, OTHER)).toBe(true);
+  });
+
+  it("a `manage` grantee has manage", async () => {
+    selectQueue.push([
+      accessRow({
+        visibility: "shared",
+        hasGrant: true,
+        hasEditGrant: true,
+        hasManageGrant: true,
+      }),
+    ]);
+    expect(await repo.checkManageAccess(DOC, OTHER)).toBe(true);
+  });
+
+  it("an `edit` grantee does NOT have manage (the P0 bug)", async () => {
+    // edit grant: hasEditGrant=true but hasManageGrant=false.
+    selectQueue.push([
+      accessRow({
+        visibility: "shared",
+        hasGrant: true,
+        hasEditGrant: true,
+        hasManageGrant: false,
+      }),
+    ]);
+    expect(await repo.checkManageAccess(DOC, OTHER)).toBe(false);
+  });
+
+  it("a view-only grantee does NOT have manage", async () => {
+    selectQueue.push([accessRow({ visibility: "shared", hasGrant: true })]);
+    expect(await repo.checkManageAccess(DOC, OTHER)).toBe(false);
+  });
+
+  it("a company-visibility reader does NOT have manage", async () => {
+    selectQueue.push([accessRow({ visibility: "company" })]);
+    expect(await repo.checkManageAccess(DOC, OTHER)).toBe(false);
+  });
+
+  it("missing document → false", async () => {
+    selectQueue.push([]);
+    expect(await repo.checkManageAccess(DOC, OTHER)).toBe(false);
+  });
+});
+
+describe("deleteDocument requires manage (not plain edit)", () => {
+  it("owner may delete", async () => {
+    selectQueue.push([accessRow({ userId: OWNER })]); // checkManageAccess
+    await repo.deleteDocument(DOC, OWNER);
+    expect(deleteWhereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("admin may delete", async () => {
+    selectQueue.push([accessRow({ userId: OWNER, isAdmin: true })]);
+    await repo.deleteDocument(DOC, OTHER);
+    expect(deleteWhereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a manage-grantee may delete", async () => {
+    selectQueue.push([
+      accessRow({
+        visibility: "shared",
+        hasGrant: true,
+        hasEditGrant: true,
+        hasManageGrant: true,
+      }),
+    ]);
+    await repo.deleteDocument(DOC, OTHER);
+    expect(deleteWhereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("an EDIT-grantee may NOT delete → Forbidden, doc untouched", async () => {
+    selectQueue.push([
+      accessRow({
+        visibility: "shared",
+        hasGrant: true,
+        hasEditGrant: true,
+        hasManageGrant: false,
+      }),
+    ]);
+    await expect(repo.deleteDocument(DOC, OTHER)).rejects.toThrow("Forbidden");
+    expect(deleteWhereMock).not.toHaveBeenCalled();
   });
 });
 
@@ -174,12 +268,41 @@ describe("setVisibility revokes grants when going private", () => {
     expect(revokeAllGrantsMock).not.toHaveBeenCalled();
   });
 
-  it("denies a non-owner without edit grant", async () => {
+  it("denies a non-owner without any grant", async () => {
     selectQueue.push([accessRow({ visibility: "private" })]);
     await expect(repo.setVisibility(DOC, "company", OTHER)).rejects.toThrow(
       "Forbidden",
     );
     expect(updateSetMock).not.toHaveBeenCalled();
+  });
+
+  it("denies an EDIT-grantee (re-share is manage-gated, not edit)", async () => {
+    selectQueue.push([
+      accessRow({
+        visibility: "shared",
+        hasGrant: true,
+        hasEditGrant: true,
+        hasManageGrant: false,
+      }),
+    ]);
+    await expect(repo.setVisibility(DOC, "company", OTHER)).rejects.toThrow(
+      "Forbidden",
+    );
+    expect(updateSetMock).not.toHaveBeenCalled();
+  });
+
+  it("allows a MANAGE-grantee to change visibility", async () => {
+    selectQueue.push([
+      accessRow({
+        visibility: "shared",
+        hasGrant: true,
+        hasEditGrant: true,
+        hasManageGrant: true,
+      }),
+    ]);
+    updateReturningMock.mockReturnValue([{ id: DOC, visibility: "company" }]);
+    await repo.setVisibility(DOC, "company", OTHER);
+    expect(updateSetMock).toHaveBeenCalledTimes(1);
   });
 });
 

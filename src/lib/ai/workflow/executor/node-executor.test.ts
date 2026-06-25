@@ -36,9 +36,23 @@ vi.mock("ai", async () => ({
   generateObject: vi.fn(),
   convertToModelMessages: vi.fn(() => []),
 }));
+// Knowledge node lazily imports the server-only RAG retriever.
+const { retrieveChunksMock, canAccessMock } = vi.hoisted(() => ({
+  retrieveChunksMock: vi.fn(),
+  // Default: the run user CAN access the collection. Knowledge-gate tests
+  // override this to false to exercise the fail-closed path.
+  canAccessMock: vi.fn().mockResolvedValue(true),
+}));
+vi.mock("lib/ai/embeddings/ingest", () => ({
+  retrieveChunks: retrieveChunksMock,
+}));
+vi.mock("lib/visibility", () => ({
+  canAccess: canAccessMock,
+}));
 import { NodeKind } from "../workflow.interface";
 import type {
   InputNodeData,
+  KnowledgeNodeData,
   OutputNodeData,
   OutputSchemaSourceKey,
   TemplateNodeData,
@@ -46,6 +60,7 @@ import type {
 import type { WorkflowRuntimeState } from "./graph-store";
 import {
   inputNodeExecutor,
+  knowledgeNodeExecutor,
   outputNodeExecutor,
   templateNodeExecutor,
 } from "./node-executor";
@@ -61,6 +76,9 @@ const makeState = (
   outputs: {},
   costByNode: {},
   nodes: [],
+  // Knowledge-node retrieval is access-gated on the run user; provide one by
+  // default so existing retrieval tests exercise the happy path.
+  userId: "user-1",
   getInput: vi.fn(),
   setOutput: vi.fn(),
   setInput: vi.fn(),
@@ -213,6 +231,118 @@ describe("templateNodeExecutor", () => {
     const node = makeTemplateNode({ type: "string" });
     const result = templateNodeExecutor({ node, state }) as ExecResult;
     expect(typeof result.output).toBe("object");
+  });
+});
+
+// ── knowledgeNodeExecutor (RAG retrieval) ───────────────────────────────────
+
+const knowledgeQueryDoc = (text: string) => ({
+  type: "doc" as const,
+  content: [
+    { type: "paragraph" as const, content: [{ type: "text" as const, text }] },
+  ],
+});
+
+const makeKnowledgeNode = (over: Partial<KnowledgeNodeData> = {}): KnowledgeNodeData =>
+  ({
+    id: "knw-1",
+    name: "Knowledge",
+    kind: NodeKind.Knowledge,
+    collectionId: "col-1",
+    topK: 3,
+    query: knowledgeQueryDoc("what is the policy?"),
+    outputSchema: {
+      type: "object",
+      properties: { chunks: { type: "array" }, text: { type: "string" } },
+    },
+    ...over,
+  }) as unknown as KnowledgeNodeData;
+
+describe("knowledgeNodeExecutor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("retrieves chunks and joins their text", async () => {
+    retrieveChunksMock.mockResolvedValueOnce([
+      { chunkText: "alpha", sourceRef: "a.md", chunkIndex: 0 },
+      { chunkText: "beta", sourceRef: "b.md", chunkIndex: 1 },
+    ]);
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode(),
+      state,
+    })) as ExecResult;
+
+    expect(retrieveChunksMock).toHaveBeenCalledWith(
+      "what is the policy?",
+      "col-1",
+      3,
+    );
+    const out = result.output as { chunks: unknown[]; text: string };
+    expect(out.chunks).toHaveLength(2);
+    expect(out.text).toBe("alpha\n\nbeta");
+  });
+
+  it("defaults topK to 6 when not set", async () => {
+    retrieveChunksMock.mockResolvedValueOnce([]);
+    const state = makeState({});
+    await knowledgeNodeExecutor({
+      node: makeKnowledgeNode({ topK: undefined }),
+      state,
+    });
+    expect(retrieveChunksMock).toHaveBeenCalledWith(
+      "what is the policy?",
+      "col-1",
+      6,
+    );
+  });
+
+  it("returns empty results without calling retrieve when no collection", async () => {
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode({ collectionId: undefined }),
+      state,
+    })) as ExecResult;
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
+  });
+
+  it("returns empty results without calling retrieve when query is empty", async () => {
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode({ query: { type: "doc", content: [] } as any }),
+      state,
+    })) as ExecResult;
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
+  });
+
+  it("ADR-0009: returns empty WITHOUT retrieving when the run user lacks collection access", async () => {
+    canAccessMock.mockResolvedValueOnce(false);
+    const state = makeState({});
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode(),
+      state,
+    })) as ExecResult;
+    expect(canAccessMock).toHaveBeenCalledWith(
+      "knowledge_collection",
+      "col-1",
+      "user-1",
+      "use",
+    );
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
+  });
+
+  it("fails closed: returns empty WITHOUT retrieving when there is no run user", async () => {
+    const state = { ...makeState({}), userId: undefined };
+    const result = (await knowledgeNodeExecutor({
+      node: makeKnowledgeNode(),
+      state,
+    })) as ExecResult;
+    expect(retrieveChunksMock).not.toHaveBeenCalled();
+    expect(result.output).toEqual({ chunks: [], text: "" });
   });
 });
 
@@ -549,6 +679,162 @@ describe("llmNodeExecutor — model confinement (ADR-0009)", () => {
     expect(recordUsageMock).toHaveBeenCalledWith(
       expect.objectContaining({ model: "claude-opus-4.8" }),
     );
+  });
+});
+
+// ── Generic outputSchema property names (not hard-coded "answer") ───────────
+// A QA-found bug: an LLM node whose outputSchema uses a property name other
+// than "answer" silently produced nothing. The node output must reflect
+// whatever the schema defines, while the historical "answer" shape keeps
+// working byte-for-byte.
+
+// Build an LLM node with a fully custom outputSchema.
+const makeSchemaLLMNode = (
+  schema: { type: "object"; properties: Record<string, any> },
+  text = "hi",
+): LLMNodeData =>
+  ({
+    id: "llm-generic-1",
+    name: "AskGeneric",
+    kind: NodeKind.LLM,
+    model: { provider: "openai", model: "gpt-test" },
+    messages: [{ role: "user", content: tiptapDoc(text) }],
+    outputSchema: schema,
+  }) as unknown as LLMNodeData;
+
+describe("llmNodeExecutor — generic outputSchema property names", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    estimateCostUsdMock.mockReturnValue(0.0123);
+  });
+
+  it("single string property named 'summary' uses the text branch and outputs under that key", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { totalTokens: 4 },
+      text: "a short summary",
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: { summary: { type: "string" } },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, unknown>;
+    // Value lives under "summary" (NOT "answer"), and there is no "answer" key.
+    expect(out.summary).toBe("a short summary");
+    expect(out).not.toHaveProperty("answer");
+    // Text branch was used (generateText, not generateObject).
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(generateObject).not.toHaveBeenCalled();
+  });
+
+  it("single non-string property named 'result' uses the object branch nested under that key", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      usage: { inputTokens: 2, outputTokens: 2, totalTokens: 4 },
+      object: { city: "Paris", lat: 48.8 },
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: {
+          result: {
+            type: "object",
+            properties: { city: { type: "string" }, lat: { type: "number" } },
+          },
+        },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, any>;
+    expect(out.result).toEqual({ city: "Paris", lat: 48.8 });
+    expect(out).not.toHaveProperty("answer");
+    expect(generateObject).toHaveBeenCalledTimes(1);
+  });
+
+  it("multiple top-level properties are spread as top-level output keys", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      usage: { inputTokens: 3, outputTokens: 3, totalTokens: 6 },
+      object: { title: "Hello", score: 9 },
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          score: { type: "number" },
+        },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, unknown>;
+    // Each schema property is reachable as a top-level key, plus totalTokens.
+    expect(out.title).toBe("Hello");
+    expect(out.score).toBe(9);
+    expect(out.totalTokens).toBe(6);
+    expect(out).not.toHaveProperty("answer");
+  });
+
+  it("a non-'answer' key is reachable by downstream nodes via getOutput(nodeId, path)", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { totalTokens: 2 },
+      text: "downstream-visible",
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const node = makeSchemaLLMNode({
+      type: "object",
+      properties: { summary: { type: "string" } },
+    });
+    const result = await llmNodeExecutor({ node, state });
+
+    // Simulate the runtime storing the node output, then a downstream node
+    // reading it by path — exactly how outputNodeExecutor / mentions resolve.
+    const downstreamState = makeState(
+      {},
+      { [node.id]: result.output as Record<string, unknown> },
+    );
+    const value = downstreamState.getOutput<string>({
+      nodeId: node.id,
+      path: ["summary"],
+    });
+    expect(value).toBe("downstream-visible");
+  });
+
+  it("backward-compat: a single string 'answer' property still outputs under 'answer' (text branch)", async () => {
+    vi.mocked(generateText).mockResolvedValueOnce({
+      usage: { totalTokens: 5 },
+      text: "legacy answer",
+    } as never);
+    const state = makeAttributedState({
+      guardrailPolicy: "permissive",
+      effectiveModelAllowList: null,
+    });
+    const result = await llmNodeExecutor({
+      node: makeSchemaLLMNode({
+        type: "object",
+        properties: { answer: { type: "string" } },
+      }),
+      state,
+    });
+    const out = result.output as Record<string, unknown>;
+    expect(out.answer).toBe("legacy answer");
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(generateObject).not.toHaveBeenCalled();
   });
 });
 
