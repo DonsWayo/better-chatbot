@@ -43,7 +43,6 @@
     "resultsFound": "{count}件の結果が見つかりました",
     "youAreAnExpertIn": "あなたは{role}の専門家です",
     "sharedBy": "{userName}さんが共有",
-    "retry": "再試行",
     "error": "問題が発生しました"
   },
   "Error": {},
@@ -121,10 +120,6 @@
     "jsonSchemaEditorDescription": "AI支援による直接的なJSONスキーマ編集。複雑なネストした構造と配列をサポートします。",
     "template": "テンプレート",
     "templateDescription": "テンプレート文書を生成します。\n\n'/'を使用して他のノードの出力値を参照・使用してください。",
-    "knowledgeCollection": "コレクション",
-    "knowledgeCollectionPlaceholder": "コレクションを選択",
-    "knowledgeTopK": "上位K件",
-    "knowledgeQuery": "クエリ",
     "greeting": {
       "buildAutomationTitle": "ノード接続による自動化構築",
       "buildAutomationDescription": "様々なノードを接続して複雑なタスクを自動化します。各ノードは特定の機能を担当し、データが順次流れて処理されます。",
@@ -152,9 +147,7 @@
       "code": "前のノードデータにアクセスできるカスタムコードスクリプトを実行します。\n\nワークフロー内でJavaScript、Python、その他の言語を実行します（近日公開）。",
       "http": "HTTPリクエストを通じて外部APIやWebサービスからデータを取得します。\n\nREST API、Webhook、サードパーティサービスと統合します。",
       "template": "前のノードのデータとテキストを組み合わせて動的文書を作成します。\n\n変数置換を使用してメール、レポート、フォーマットされたコンテンツを生成します。",
-      "knowledge": "ナレッジコレクションから関連するチャンクを取得します（RAG）",
-      "condition": "データ評価に基づいてワークフローを分岐する条件ロジックを追加します。\n\n異なるシナリオやデータ条件を処理するif-elseロジックを作成します。",
-      "web-search": "Exa（またはBrave）経由でウェブを検索し、結果を下流ノードに返します。\n\nクエリで前のノードの出力を「/」メンションで参照します。\n\n出力: results（{title, url, text}の配列）およびtext（連結マークダウン）。"
+      "condition": "データ評価に基づいてワークフローを分岐する条件ロジックを追加します。\n\n異なるシナリオやデータ条件を処理するif-elseロジックを作成します。"
     },
     "structuredOutputSwitchConfirm": "現在、構造化出力が有効になっています。\n どうしますか？",
     "structuredOutputSwitchConfirmOk": "構造化出力を編集する",
@@ -164,10 +157,7 @@
     "nodesArranged": "レイアウトが正常に適用されました",
     "visibilityUpdated": "公開設定が正常に更新されました",
     "deleteConfirm": "このワークフローを削除しますか？この操作は元に戻せません。",
-    "deleted": "ワークフローを削除しました",
-    "webSearchQuery": "検索クエリ",
-    "webSearchNumResults": "結果件数",
-    "webSearchType": "検索タイプ"
+    "deleted": "ワークフローを削除しました"
   },
   "Auth": {
     "SignIn": {
@@ -285,7 +275,8 @@
       "none": "なし",
       "mentionOnly": "@メンションのみ",
       "noToolsAvailable": "利用可能なツールがありません",
-      "webSearchError": "ウェブ検索に失敗しました。もう一度お試しください。"
+      "webSearchError": "ウェブ検索に失敗しました。もう一度お試しください。",
+      "toolModeDescription": "ツールの使用方法を選択:\n• 自動: AIがツールの使用を自動で決定\n• 手動: ツール使用前に許可を求める\n• なし: すべてのツールを無効化"
     },
     "VoiceChat": {
       "title": "音声チャットモード",
@@ -361,7 +352,8 @@
       "exportDeleted": "エクスポートを削除しました",
       "failedToDeleteExport": "エクスポートの削除に失敗しました"
     },
-    "addFiles": "ファイルを追加"
+    "addFiles": "ファイルを追加",
+    "serviceUnavailable": "AIサービスは一時的に利用できません。管理者にお問い合わせください。"
   },
   "Layout": {
     "workflow": "ワークフロー",
@@ -425,9 +417,6 @@
     "adminConsole": "管理コンソール",
     "studio": "スタジオ",
     "documents": "ドキュメント",
-    "seeAllDocuments": "すべて表示",
-    "confirmDeleteAllChats": "すべての会話が完全に削除されます。この操作は元に戻せません。",
-    "confirmDeleteUnarchivedChats": "アーカイブされていないすべての会話が完全に削除されます。この操作は元に戻せません。",
     "tasks": "タスク",
     "seeAllTasks": "すべて見る"
   },
@@ -944,9 +933,6 @@
       "deactivated": "キルスイッチが無効です — 推論は正常に動作しています",
       "flagUpdated": "フラグを更新しました"
     },
-    "ApiKeys": {
-      "title": "APIキー"
-    },
     "Guardrails": {
       "title": "ガードレール",
       "blockedCount": "ブロック済み",
@@ -1088,17 +1074,7 @@
     "routineCreated": "ルーチンをスケジュールしました",
     "routineDeleted": "ルーチンを削除しました",
     "runsTab": "実行",
-    "emptyRuns": "まだ実行はありません。エージェントとワークフローの実行がここに表示されます。",
-    "searchPlaceholder": "検索…",
-    "noSelectionTitle": "未選択",
-    "noSelectionBody": "リストから項目を選択すると詳細が表示されます。",
-    "openRun": "実行を開く",
-    "approved": "承認しました",
-    "rejected": "却下しました",
-    "mentionsTab": "メンション",
-    "emptyMentions": "メンションはまだありません",
-    "emptyMentionsDescription": "誰かがドキュメントコメントであなたを@メンションすると、ここに表示されます。",
-    "confirmDeleteRoutine": "このルーティンを削除しますか？スケジュールに従った実行が停止されます。この操作は元に戻せません。"
+    "emptyRuns": "まだ実行はありません。エージェントとワークフローの実行がここに表示されます。"
   },
   "Teamspaces": {
     "folders": "フォルダ",
@@ -1118,8 +1094,7 @@
     "noFolders": "まだフォルダがありません",
     "team": "チーム",
     "generating": "生成中…",
-    "sharedWithTeamReadOnly": "{team}と共有 · 読み取り専用",
-    "confirmDeleteFolder": "このフォルダを削除しますか？フォルダ内の会話は移動されます。この操作は元に戻せません。"
+    "sharedWithTeamReadOnly": "{team}と共有 · 読み取り専用"
   },
   "Memory": {
     "title": "メモリ",
@@ -1327,7 +1302,6 @@
     "saving": "保存中…",
     "saved": "保存しました",
     "saveError": "保存できませんでした",
-    "createError": "ドキュメントの作成に失敗しました",
     "backToList": "ドキュメント一覧に戻る",
     "delete": "ドキュメントを削除",
     "deleteTitle": "ドキュメントを削除",
@@ -1350,9 +1324,7 @@
       "orderedList": "番号付きリスト",
       "blockquote": "引用",
       "codeBlock": "コードブロック",
-      "horizontalRule": "区切り線",
-      "linkApply": "適用",
-      "linkRemove": "削除"
+      "horizontalRule": "区切り線"
     },
     "history": {
       "title": "バージョン履歴",
@@ -1376,22 +1348,6 @@
       "replyingTo": "{name} への返信",
       "deleteTitle": "コメントを削除",
       "deleteDescription": "このコメントを削除してもよろしいですか？"
-    },
-    "remoteOverridden": "未保存の変更が新しいバージョンで上書きされました — 続行前に確認してください。",
-    "ai": {
-      "improve": "改善",
-      "shorten": "短縮",
-      "expand": "拡張",
-      "tone": "トーン",
-      "toneFormal": "フォーマル",
-      "toneCasual": "カジュアル",
-      "translate": "翻訳",
-      "translateEs": "スペイン語",
-      "translateFr": "フランス語",
-      "translateDe": "ドイツ語",
-      "generating": "生成中…",
-      "errorBudget": "予算が尽きました。管理者に連絡してください。",
-      "errorGeneric": "AI提案が失敗しました。元のテキストが復元されました。"
     }
   },
   "Tasks": {

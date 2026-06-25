@@ -517,7 +517,7 @@ export function TaskBoard({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const { data } = useSWR<EpicWithTasks>(
+  const { data, error } = useSWR<EpicWithTasks>(
     `task-board-${epicId}`,
     async () => {
       const result = await getEpicWithTasksAction(epicId);
@@ -526,6 +526,14 @@ export function TaskBoard({
     },
     { fallbackData: initialData, revalidateOnFocus: false },
   );
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
+        <p className="text-sm">{error.message}</p>
+      </div>
+    );
+  }
 
   const epic = data ?? initialData;
   const tasks = epic.tasks ?? [];

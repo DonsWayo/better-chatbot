@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, or } from "drizzle-orm";
 import { pgDb as db } from "../db.pg";
 import {
   AsafeEpicTable,
@@ -31,13 +31,24 @@ export interface EpicSummary {
   ownerImage?: string;
 }
 
-/** Team-membership predicate for visibility filtering. */
-const inSharedTeam = (userId: string) =>
+/** Visibility predicate used in the list query (no JOIN required). */
+const visibleToUser = (userId: string) =>
   or(
-    eq(AsafeEpicTable.visibility, "company"),
+    eq(AsafeEpicTable.ownerId, userId),
+    inArray(AsafeEpicTable.visibility, ["company", "shared"] as const),
     and(
       eq(AsafeEpicTable.visibility, "team"),
-      eq(AsafeTeamMemberTable.userId, userId),
+      exists(
+        db
+          .select()
+          .from(AsafeTeamMemberTable)
+          .where(
+            and(
+              eq(AsafeTeamMemberTable.teamId, AsafeEpicTable.teamId),
+              eq(AsafeTeamMemberTable.userId, userId),
+            ),
+          ),
+      ),
     ),
   );
 
@@ -137,8 +148,7 @@ export const pgEpicRepository = {
     userId: string,
     teamId?: string | null,
   ): Promise<EpicSummary[]> {
-    // Fetch all epics the user owns or can see via visibility.
-    // We LEFT JOIN team member so the visibility predicate can reference it.
+    // EXISTS-based visibility — no row multiplication risk.
     const rows = await db
       .select({
         id: AsafeEpicTable.id,
@@ -155,20 +165,10 @@ export const pgEpicRepository = {
         ownerImage: UserTable.image,
       })
       .from(AsafeEpicTable)
-      .leftJoin(
-        AsafeTeamMemberTable,
-        and(
-          eq(AsafeTeamMemberTable.teamId, AsafeEpicTable.teamId),
-          eq(AsafeTeamMemberTable.userId, userId),
-        ),
-      )
       .leftJoin(UserTable, eq(UserTable.id, AsafeEpicTable.ownerId))
       .where(
         and(
-          or(
-            eq(AsafeEpicTable.ownerId, userId),
-            inSharedTeam(userId),
-          ),
+          visibleToUser(userId),
           teamId ? eq(AsafeEpicTable.teamId, teamId) : undefined,
         ),
       )

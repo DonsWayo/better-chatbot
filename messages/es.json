@@ -43,7 +43,6 @@
     "resultsFound": "{count} resultados encontrados",
     "youAreAnExpertIn": "Eres un experto en {role}",
     "sharedBy": "Compartido por {userName}",
-    "retry": "Reintentar",
     "error": "Algo salió mal"
   },
   "Error": {},
@@ -121,10 +120,6 @@
     "jsonSchemaEditorDescription": "Edición directa de esquema JSON con asistencia de IA. Compatible con estructuras anidadas complejas y arrays.",
     "template": "Plantilla",
     "templateDescription": "Genera documentos de plantilla.\n\nUsa '/' para referenciar y usar valores de salida de otros nodos.",
-    "knowledgeCollection": "Colección",
-    "knowledgeCollectionPlaceholder": "Selecciona una colección",
-    "knowledgeTopK": "Top K",
-    "knowledgeQuery": "Consulta",
     "greeting": {
       "buildAutomationTitle": "Construir Automatización Conectando Nodos",
       "buildAutomationDescription": "Conecta varios nodos para automatizar tareas complejas. Cada nodo gestiona funciones específicas y los datos fluyen secuencialmente para su procesamiento.",
@@ -152,9 +147,7 @@
       "code": "Ejecuta scripts de código personalizados con acceso a datos de nodos anteriores.\n\nEjecuta JavaScript, Python u otros lenguajes dentro de tu flujo de trabajo (próximamente).",
       "http": "Obtén datos de APIs externas y servicios web mediante peticiones HTTP.\n\nIntégrate con APIs REST, webhooks y servicios de terceros.",
       "template": "Crea documentos dinámicos combinando texto con datos de nodos anteriores.\n\nGenera correos, informes o contenido formateado usando sustitución de variables.",
-      "knowledge": "Recupera fragmentos relevantes de una colección de conocimiento (RAG)",
-      "condition": "Añade lógica condicional para ramificar tu flujo de trabajo en función de la evaluación de datos.\n\nCrea lógica if-else para gestionar distintos escenarios y condiciones de datos.",
-      "web-search": "Busca en la web a través de Exa (o Brave) y devuelve resultados a los nodos siguientes.\n\nUsa salidas de nodos anteriores en la consulta mediante menciones '/'.\n\nSalidas: resultados (array de {title, url, text}) y texto (markdown concatenado)."
+      "condition": "Añade lógica condicional para ramificar tu flujo de trabajo en función de la evaluación de datos.\n\nCrea lógica if-else para gestionar distintos escenarios y condiciones de datos."
     },
     "structuredOutputSwitchConfirm": "Actualmente tienes la salida estructurada habilitada.\n¿Qué deseas hacer?",
     "structuredOutputSwitchConfirmOk": "Editar Salida Estructurada",
@@ -164,10 +157,7 @@
     "nodesArranged": "Layout aplicado correctamente",
     "visibilityUpdated": "Visibilidad actualizada correctamente",
     "deleteConfirm": "¿Eliminar este flujo de trabajo? Esta acción no se puede deshacer.",
-    "deleted": "Flujo de trabajo eliminado",
-    "webSearchQuery": "Consulta de búsqueda",
-    "webSearchNumResults": "Número de resultados",
-    "webSearchType": "Tipo de búsqueda"
+    "deleted": "Flujo de trabajo eliminado"
   },
   "Auth": {
     "SignIn": {
@@ -361,7 +351,8 @@
       "exportDeleted": "Exportación eliminada correctamente",
       "failedToDeleteExport": "Error al eliminar la exportación"
     },
-    "addFiles": "Añadir archivos"
+    "addFiles": "Añadir archivos",
+    "serviceUnavailable": "El servicio de IA no está disponible temporalmente. Contacta a tu administrador."
   },
   "Layout": {
     "workflow": "Flujo de Trabajo",
@@ -425,9 +416,6 @@
     "adminConsole": "Consola de administración",
     "studio": "Estudio",
     "documents": "Documentos",
-    "seeAllDocuments": "Ver todos",
-    "confirmDeleteAllChats": "Esto eliminará permanentemente todas tus conversaciones. Esta acción no se puede deshacer.",
-    "confirmDeleteUnarchivedChats": "Esto eliminará permanentemente todas las conversaciones no archivadas. Esta acción no se puede deshacer.",
     "tasks": "Tareas",
     "seeAllTasks": "Ver todas"
   },
@@ -464,7 +452,7 @@
     "agentDescriptionPlaceholder": "Esto es solo una descripción del agente; no es crítico.",
     "agentSettingsDescription": "A partir de aquí, estas son configuraciones que pueden afectar al agente.",
     "thisAgentIs": "Este agente es un experto en",
-    "expertIn": ".",
+    "expertIn": "",
     "agentRolePlaceholder": "análisis bursátil",
     "agentInstructionsLabel": "Escribe libremente el rol, personalidad, pautas, conocimientos, etc. del agente.",
     "agentInstructionsPlaceholder": "Este agente ayuda con el análisis bursátil. Usa herramientas de búsqueda web para obtener información de acciones...",
@@ -944,9 +932,6 @@
       "deactivated": "Kill switch desactivado — la inferencia funciona con normalidad",
       "flagUpdated": "Indicador actualizado"
     },
-    "ApiKeys": {
-      "title": "Claves de API"
-    },
     "Guardrails": {
       "title": "Guardianes",
       "blockedCount": "Bloqueados",
@@ -1088,17 +1073,7 @@
     "routineCreated": "Rutina programada",
     "routineDeleted": "Rutina eliminada",
     "runsTab": "Ejecuciones",
-    "emptyRuns": "Aún no hay ejecuciones. Las ejecuciones de agentes y flujos aparecerán aquí.",
-    "searchPlaceholder": "Buscar…",
-    "noSelectionTitle": "Nada seleccionado",
-    "noSelectionBody": "Selecciona un elemento de la lista para ver sus detalles.",
-    "openRun": "Abrir ejecución",
-    "approved": "Aprobado",
-    "rejected": "Rechazado",
-    "mentionsTab": "Menciones",
-    "emptyMentions": "Sin menciones todavía",
-    "emptyMentionsDescription": "Cuando alguien te @mencione en un comentario de documento, aparecerá aquí.",
-    "confirmDeleteRoutine": "¿Eliminar esta rutina? Dejará de ejecutarse según su programación. Esta acción no se puede deshacer."
+    "emptyRuns": "Aún no hay ejecuciones. Las ejecuciones de agentes y flujos aparecerán aquí."
   },
   "Teamspaces": {
     "folders": "Carpetas",
@@ -1118,8 +1093,7 @@
     "noFolders": "Aún no hay carpetas",
     "team": "equipo",
     "generating": "Generando…",
-    "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura",
-    "confirmDeleteFolder": "¿Eliminar esta carpeta? Las conversaciones en su interior se moverán fuera. Esta acción no se puede deshacer."
+    "sharedWithTeamReadOnly": "Compartido con {team} · solo lectura"
   },
   "Memory": {
     "title": "Memoria",
@@ -1327,7 +1301,6 @@
     "saving": "Guardando…",
     "saved": "Guardado",
     "saveError": "No se pudo guardar",
-    "createError": "Error al crear el documento",
     "backToList": "Volver a documentos",
     "delete": "Eliminar documento",
     "deleteTitle": "Eliminar documento",
@@ -1350,9 +1323,7 @@
       "orderedList": "Lista numerada",
       "blockquote": "Cita",
       "codeBlock": "Bloque de código",
-      "horizontalRule": "Separador",
-      "linkApply": "Aplicar",
-      "linkRemove": "Quitar"
+      "horizontalRule": "Separador"
     },
     "history": {
       "title": "Historial de versiones",
@@ -1376,22 +1347,6 @@
       "replyingTo": "Respondiendo a {name}",
       "deleteTitle": "Eliminar comentario",
       "deleteDescription": "¿Seguro que quieres eliminar este comentario?"
-    },
-    "remoteOverridden": "Tus cambios no guardados fueron sobreescritos por una versión más reciente — revisa antes de continuar.",
-    "ai": {
-      "improve": "Mejorar",
-      "shorten": "Acortar",
-      "expand": "Expandir",
-      "tone": "Tono",
-      "toneFormal": "Formal",
-      "toneCasual": "Informal",
-      "translate": "Traducir",
-      "translateEs": "Español",
-      "translateFr": "Francés",
-      "translateDe": "Alemán",
-      "generating": "Generando…",
-      "errorBudget": "Presupuesto agotado. Contacta con tu administrador.",
-      "errorGeneric": "La sugerencia de IA falló. Tu texto original ha sido restaurado."
     }
   },
   "Tasks": {

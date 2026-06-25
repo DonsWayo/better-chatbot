@@ -43,7 +43,6 @@
     "resultsFound": "{count} resultater funnet",
     "youAreAnExpertIn": "Du er en ekspert på {role}",
     "sharedBy": "Delt av {userName}",
-    "retry": "Prøv igjen",
     "error": "Noe gikk galt"
   },
   "Error": {},
@@ -121,10 +120,6 @@
     "jsonSchemaEditorDescription": "Direkte JSON-skjemaredigering med AI-assistanse. Støtter komplekse nestede strukturer og arrays.",
     "template": "Mal",
     "templateDescription": "Generer maldokumenter.\n\nBruk '/' for å referere til og bruke utdataverdier fra andre noder.",
-    "knowledgeCollection": "Samling",
-    "knowledgeCollectionPlaceholder": "Velg en samling",
-    "knowledgeTopK": "Topp K",
-    "knowledgeQuery": "Spørring",
     "greeting": {
       "buildAutomationTitle": "Automatiser ved å koble sammen noder",
       "buildAutomationDescription": "Koble sammen ulike noder for å automatisere komplekse oppgaver. Hver node håndterer spesifikke funksjoner, og data flyter sekvensielt for behandling.",
@@ -152,9 +147,7 @@
       "code": "Utfør egendefinerte kodeskript med tilgang til data fra tidligere noder.\n\nKjør JavaScript, Python eller andre språk i arbeidsflyten din (kommer snart).",
       "http": "Hent data fra eksterne APIer og webtjenester via HTTP-forespørsler.\n\nIntegrer med REST-APIer, webhooks og tredjepartstjenester.",
       "template": "Opprett dynamiske dokumenter ved å kombinere tekst med data fra tidligere noder.\n\nGenerer e-poster, rapporter eller formatert innhold ved hjelp av variabelsubstitusjon.",
-      "knowledge": "Hent relevante biter fra en kunnskapssamling (RAG)",
-      "condition": "Legg til betinget logikk for å forgrene arbeidsflyten din basert på dataevaluering.\n\nOpprett hvis-ellers-logikk for å håndtere ulike scenarier og databetingelser.",
-      "web-search": "Søk på nettet via Exa (eller Brave) og returner resultater til nedstrøms noder.\n\nBruk utdata fra oppstrøms noder i spørringen via '/'-omtaler.\n\nUtdata: results (array av {title, url, text}) og text (sammenkoblet markdown)."
+      "condition": "Legg til betinget logikk for å forgrene arbeidsflyten din basert på dataevaluering.\n\nOpprett hvis-ellers-logikk for å håndtere ulike scenarier og databetingelser."
     },
     "structuredOutputSwitchConfirm": "Du har for øyeblikket strukturert utdata aktivert.\nHva vil du gjøre?",
     "structuredOutputSwitchConfirmOk": "Rediger strukturert utdata",
@@ -164,10 +157,7 @@
     "nodesArranged": "Layout anvendt",
     "visibilityUpdated": "Synlighet oppdatert",
     "deleteConfirm": "Vil du slette denne arbeidsflyten? Dette kan ikke angres.",
-    "deleted": "Arbeidsflyt slettet",
-    "webSearchQuery": "Søkespørring",
-    "webSearchNumResults": "Antall resultater",
-    "webSearchType": "Søketype"
+    "deleted": "Arbeidsflyt slettet"
   },
   "Auth": {
     "SignIn": {
@@ -361,7 +351,8 @@
       "exportDeleted": "Eksport slettet",
       "failedToDeleteExport": "Kunne ikke slette eksport"
     },
-    "addFiles": "Legg til filer"
+    "addFiles": "Legg til filer",
+    "serviceUnavailable": "AI-tjenesten er midlertidig utilgjengelig. Kontakt administratoren din."
   },
   "Layout": {
     "workflow": "Arbeidsflyt",
@@ -425,9 +416,6 @@
     "adminConsole": "Administrasjonskonsoll",
     "studio": "Studio",
     "documents": "Dokumenter",
-    "seeAllDocuments": "Se alle",
-    "confirmDeleteAllChats": "Dette vil permanent slette alle samtalene dine. Dette kan ikke angres.",
-    "confirmDeleteUnarchivedChats": "Dette vil permanent slette alle ikke-arkiverte samtaler. Dette kan ikke angres.",
     "tasks": "Oppgaver",
     "seeAllTasks": "Se alle"
   },
@@ -464,7 +452,7 @@
     "agentDescriptionPlaceholder": "Dette er bare en beskrivelse av agenten. Den er ikke påkrevd.",
     "agentSettingsDescription": "Herfra er dette innstillinger som kan påvirke agenten.",
     "thisAgentIs": "Denne agenten er en ekspert på",
-    "expertIn": ".",
+    "expertIn": "",
     "agentRolePlaceholder": "aksjeanalyse",
     "agentInstructionsLabel": "Skriv gjerne agentens rolle, personlighet, retningslinjer, kunnskap osv.",
     "agentInstructionsPlaceholder": "Denne agenten hjelper med aksjeanalyse. Den bruker nettsøkverktøy for å hente aksjeinformasjon...",
@@ -944,9 +932,6 @@
       "deactivated": "Kill switch deaktivert — inferens kjører normalt",
       "flagUpdated": "Flagg oppdatert"
     },
-    "ApiKeys": {
-      "title": "API-nøkler"
-    },
     "Guardrails": {
       "title": "Sikkerhetsbarrierer",
       "blockedCount": "Blokkert",
@@ -1088,17 +1073,7 @@
     "routineCreated": "Rutine planlagt",
     "routineDeleted": "Rutine slettet",
     "runsTab": "Kjøringer",
-    "emptyRuns": "Ingen kjøringer ennå. Agent- og arbeidsflytkjøringer vises her.",
-    "searchPlaceholder": "Søk…",
-    "noSelectionTitle": "Ingenting valgt",
-    "noSelectionBody": "Velg et element fra listen for å se detaljene.",
-    "openRun": "Åpne kjøring",
-    "approved": "Godkjent",
-    "rejected": "Avvist",
-    "mentionsTab": "Omtaler",
-    "emptyMentions": "Ingen omtaler ennå",
-    "emptyMentionsDescription": "Når noen @omtaler deg i en dokumentkommentar, vil det vises her.",
-    "confirmDeleteRoutine": "Slette denne rutinen? Den vil slutte å kjøre etter planen. Dette kan ikke angres."
+    "emptyRuns": "Ingen kjøringer ennå. Agent- og arbeidsflytkjøringer vises her."
   },
   "Teamspaces": {
     "folders": "Mapper",
@@ -1118,8 +1093,7 @@
     "noFolders": "Ingen mapper ennå",
     "team": "team",
     "generating": "Genererer…",
-    "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet",
-    "confirmDeleteFolder": "Slette denne mappen? Samtaler inni vil bli flyttet ut. Dette kan ikke angres."
+    "sharedWithTeamReadOnly": "Delt med {team} · skrivebeskyttet"
   },
   "Memory": {
     "title": "Minne",
@@ -1327,7 +1301,6 @@
     "saving": "Lagrer…",
     "saved": "Lagret",
     "saveError": "Kunne ikke lagre",
-    "createError": "Kunne ikke opprette dokument",
     "backToList": "Tilbake til dokumenter",
     "delete": "Slett dokument",
     "deleteTitle": "Slett dokument",
@@ -1350,9 +1323,7 @@
       "orderedList": "Nummerert liste",
       "blockquote": "Sitat",
       "codeBlock": "Kodeblokk",
-      "horizontalRule": "Skillelinje",
-      "linkApply": "Bruk",
-      "linkRemove": "Fjern"
+      "horizontalRule": "Skillelinje"
     },
     "history": {
       "title": "Versjonshistorikk",
@@ -1376,22 +1347,6 @@
       "replyingTo": "Svarer {name}",
       "deleteTitle": "Slett kommentar",
       "deleteDescription": "Er du sikker på at du vil slette denne kommentaren?"
-    },
-    "remoteOverridden": "Dine ulagrede endringer ble overskrevet av en nyere versjon — gjennomgå før du fortsetter.",
-    "ai": {
-      "improve": "Forbedre",
-      "shorten": "Forkorte",
-      "expand": "Utvide",
-      "tone": "Tone",
-      "toneFormal": "Formell",
-      "toneCasual": "Uformell",
-      "translate": "Oversette",
-      "translateEs": "Spansk",
-      "translateFr": "Fransk",
-      "translateDe": "Tysk",
-      "generating": "Genererer…",
-      "errorBudget": "Budsjett er uttømt. Kontakt administratoren din.",
-      "errorGeneric": "AI-forslag mislyktes. Originalteksten din er gjenopprettet."
     }
   },
   "Tasks": {

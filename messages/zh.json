@@ -43,7 +43,6 @@
     "resultsFound": "找到 {count} 个结果",
     "youAreAnExpertIn": "您是{role}专家",
     "sharedBy": "{userName} 分享",
-    "retry": "重试",
     "error": "出错了"
   },
   "Error": {},
@@ -121,10 +120,6 @@
     "jsonSchemaEditorDescription": "在 AI 辅助下直接编辑 JSON 模式。支持复杂的嵌套结构和数组。",
     "template": "模板",
     "templateDescription": "生成模板文档。\n\n使用 '/' 引用和使用其他节点的输出值。",
-    "knowledgeCollection": "知识库",
-    "knowledgeCollectionPlaceholder": "选择知识库",
-    "knowledgeTopK": "Top K",
-    "knowledgeQuery": "查询",
     "greeting": {
       "buildAutomationTitle": "通过连接节点构建自动化",
       "buildAutomationDescription": "连接各种节点来自动化复杂任务。每个节点处理特定功能，数据按顺序流动处理。",
@@ -152,9 +147,7 @@
       "code": "执行可访问前一个节点数据的自定义代码脚本。\n\n在工作流中运行 JavaScript、Python 或其他语言（即将推出）。",
       "http": "通过 HTTP 请求从外部 API 和 Web 服务获取数据。\n\n与 REST API、webhook 和第三方服务集成。",
       "template": "通过将文本与前一个节点的数据结合来创建动态文档。\n\n使用变量替换生成电子邮件、报告或格式化内容。",
-      "knowledge": "从知识库中检索相关片段（RAG）",
-      "condition": "基于数据评估添加条件逻辑来分支您的工作流。\n\n创建 if-else 逻辑来处理不同的场景和数据条件。",
-      "web-search": "通过Exa（或Brave）搜索网络并将结果返回到下游节点。\n\n在查询中通过\"/\"提及使用上游节点输出。\n\n输出：results（{title, url, text}数组）和text（连接的markdown）。"
+      "condition": "基于数据评估添加条件逻辑来分支您的工作流。\n\n创建 if-else 逻辑来处理不同的场景和数据条件。"
     },
     "structuredOutputSwitchConfirm": "您当前已启用结构化输出。\n您希望如何操作？",
     "structuredOutputSwitchConfirmOk": "编辑结构化输出",
@@ -164,10 +157,7 @@
     "nodesArranged": "布局已成功应用",
     "visibilityUpdated": "可见性已成功更新",
     "deleteConfirm": "确定删除此工作流？此操作无法撤销。",
-    "deleted": "工作流已删除",
-    "webSearchQuery": "搜索查询",
-    "webSearchNumResults": "结果数量",
-    "webSearchType": "搜索类型"
+    "deleted": "工作流已删除"
   },
   "Auth": {
     "SignIn": {
@@ -285,7 +275,8 @@
       "none": "无",
       "mentionOnly": "仅@提及",
       "noToolsAvailable": "无可用工具",
-      "webSearchError": "网络搜索失败，请重试。"
+      "webSearchError": "网络搜索失败，请重试。",
+      "toolModeDescription": "选择工具使用方式:\n• 自动: AI 自动决定何时使用工具\n• 手动: 使用工具前询问许可\n• 无: 禁用所有工具"
     },
     "VoiceChat": {
       "title": "语音聊天模式",
@@ -361,7 +352,8 @@
       "exportDeleted": "导出记录已成功删除",
       "failedToDeleteExport": "删除导出记录失败"
     },
-    "addFiles": "添加文件"
+    "addFiles": "添加文件",
+    "serviceUnavailable": "AI服务暂时不可用，请联系您的管理员。"
   },
   "Layout": {
     "workflow": "工作流",
@@ -425,9 +417,6 @@
     "adminConsole": "管理控制台",
     "studio": "工作室",
     "documents": "文档",
-    "seeAllDocuments": "查看全部",
-    "confirmDeleteAllChats": "这将永久删除您的所有对话。此操作无法撤销。",
-    "confirmDeleteUnarchivedChats": "这将永久删除所有未存档的对话。此操作无法撤销。",
     "tasks": "任务",
     "seeAllTasks": "查看全部"
   },
@@ -944,9 +933,6 @@
       "deactivated": "终止开关已停用 — 推理正常运行",
       "flagUpdated": "标志已更新"
     },
-    "ApiKeys": {
-      "title": "API 密钥"
-    },
     "Guardrails": {
       "title": "护栏",
       "blockedCount": "已阻止",
@@ -1088,17 +1074,7 @@
     "routineCreated": "例行任务已安排",
     "routineDeleted": "例行任务已删除",
     "runsTab": "运行",
-    "emptyRuns": "暂无运行记录。智能体和工作流的运行将显示在这里。",
-    "searchPlaceholder": "搜索…",
-    "noSelectionTitle": "未选择",
-    "noSelectionBody": "从列表中选择一个项目以查看详情。",
-    "openRun": "打开运行",
-    "approved": "已批准",
-    "rejected": "已拒绝",
-    "mentionsTab": "提及",
-    "emptyMentions": "暂无提及",
-    "emptyMentionsDescription": "当有人在文档评论中@提及您时，会在此处显示。",
-    "confirmDeleteRoutine": "删除此例程？它将停止按计划运行。此操作无法撤销。"
+    "emptyRuns": "暂无运行记录。智能体和工作流的运行将显示在这里。"
   },
   "Teamspaces": {
     "folders": "文件夹",
@@ -1118,8 +1094,7 @@
     "noFolders": "还没有文件夹",
     "team": "团队",
     "generating": "生成中…",
-    "sharedWithTeamReadOnly": "与{team}共享 · 只读",
-    "confirmDeleteFolder": "删除此文件夹？其中的对话将被移出。此操作无法撤销。"
+    "sharedWithTeamReadOnly": "与{team}共享 · 只读"
   },
   "Memory": {
     "title": "记忆",
@@ -1327,7 +1302,6 @@
     "saving": "保存中…",
     "saved": "已保存",
     "saveError": "保存失败",
-    "createError": "创建文档失败",
     "backToList": "返回文档列表",
     "delete": "删除文档",
     "deleteTitle": "删除文档",
@@ -1350,9 +1324,7 @@
       "orderedList": "编号列表",
       "blockquote": "引用",
       "codeBlock": "代码块",
-      "horizontalRule": "分隔线",
-      "linkApply": "应用",
-      "linkRemove": "移除"
+      "horizontalRule": "分隔线"
     },
     "history": {
       "title": "版本历史",
@@ -1376,22 +1348,6 @@
       "replyingTo": "回复 {name}",
       "deleteTitle": "删除评论",
       "deleteDescription": "确定要删除这条评论吗？"
-    },
-    "remoteOverridden": "您未保存的更改已被更新版本覆盖 — 继续前请先检查。",
-    "ai": {
-      "improve": "改进",
-      "shorten": "缩短",
-      "expand": "扩展",
-      "tone": "语气",
-      "toneFormal": "正式",
-      "toneCasual": "随意",
-      "translate": "翻译",
-      "translateEs": "西班牙语",
-      "translateFr": "法语",
-      "translateDe": "德语",
-      "generating": "生成中…",
-      "errorBudget": "预算已耗尽。请联系您的管理员。",
-      "errorGeneric": "AI建议失败。您的原始文本已恢复。"
     }
   },
   "Tasks": {

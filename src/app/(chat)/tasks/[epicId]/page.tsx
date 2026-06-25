@@ -4,11 +4,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { TaskBoard } from "@/components/tasks/task-board";
 
-/**
- * /tasks/[epicId] — the task board for a single epic. Shows tasks grouped by
- * status (Todo / In Progress / Done) with inline add, checkboxes, and a
- * slide-out sheet for full task detail.
- */
 export const dynamic = "force-dynamic";
 
 export default async function EpicTasksPage({
@@ -22,8 +17,11 @@ export default async function EpicTasksPage({
   }
 
   const { epicId } = await params;
-  const epic = await epicRepository.getEpicWithTasks(epicId);
+  const epic = await epicRepository.getEpicById(epicId);
   if (!epic) notFound();
+  // Use notFound() (not 403) to avoid confirming a private epic's existence.
+  if (!(await epicRepository.canUserReadEpic(epic, session.user.id))) notFound();
+  const tasks = await epicRepository.listTasksForEpic(epicId);
 
-  return <TaskBoard epicId={epicId} initialData={epic} />;
+  return <TaskBoard epicId={epicId} initialData={{ ...epic, tasks }} />;
 }

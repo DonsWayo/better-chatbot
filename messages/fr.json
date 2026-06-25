@@ -43,7 +43,6 @@
     "resultsFound": "{count} résultats trouvés",
     "youAreAnExpertIn": "Vous êtes un expert en {role}",
     "sharedBy": "Partagé par {userName}",
-    "retry": "Réessayer",
     "error": "Une erreur est survenue"
   },
   "Error": {},
@@ -121,10 +120,6 @@
     "jsonSchemaEditorDescription": "Édition directe de schéma JSON avec assistance IA. Supporte les structures imbriquées complexes et les tableaux.",
     "template": "Modèle",
     "templateDescription": "Générer des documents de modèle.\n\nUtilisez '/' pour référencer et utiliser les valeurs de sortie d'autres nœuds.",
-    "knowledgeCollection": "Collection",
-    "knowledgeCollectionPlaceholder": "Sélectionnez une collection",
-    "knowledgeTopK": "Top K",
-    "knowledgeQuery": "Requête",
     "greeting": {
       "buildAutomationTitle": "Construire l'Automatisation en Connectant les Nœuds",
       "buildAutomationDescription": "Connectez divers nœuds pour automatiser des tâches complexes. Chaque nœud gère des fonctions spécifiques, et les données circulent séquentiellement pour le traitement.",
@@ -152,9 +147,7 @@
       "code": "Exécute des scripts de code personnalisé avec accès aux données de nœuds précédents.\n\nExécute JavaScript, Python ou d'autres langages dans votre flux de travail (bientôt disponible).",
       "http": "Récupère des données d'APIs externes et de services web via des requêtes HTTP.\n\nIntègre avec des APIs REST, webhooks et services tiers.",
       "template": "Crée des documents dynamiques en combinant du texte avec des données de nœuds précédents.\n\nGénère des emails, rapports ou contenu formaté en utilisant la substitution de variables.",
-      "knowledge": "Récupère les fragments pertinents d'une collection de connaissances (RAG)",
-      "condition": "Ajoute une logique conditionnelle pour brancher votre flux de travail basé sur l'évaluation des données.\n\nCrée une logique if-else pour gérer différents scénarios et conditions de données.",
-      "web-search": "Recherche sur le web via Exa (ou Brave) et retourne les résultats aux nœuds en aval.\n\nUtilisez les sorties des nœuds en amont dans la requête via les mentions '/'.\n\nSorties : résultats (tableau de {title, url, text}) et texte (markdown concaténé)."
+      "condition": "Ajoute une logique conditionnelle pour brancher votre flux de travail basé sur l'évaluation des données.\n\nCrée une logique if-else pour gérer différents scénarios et conditions de données."
     },
     "structuredOutputSwitchConfirm": "La sortie structurée est actuellement activée.\n Que souhaitez-vous faire ?",
     "structuredOutputSwitchConfirmOk": "Modifier la sortie structurée",
@@ -164,10 +157,7 @@
     "nodesArranged": "Layout appliqué avec succès",
     "visibilityUpdated": "Visibilité mise à jour avec succès",
     "deleteConfirm": "Supprimer ce workflow ? Cette action est irréversible.",
-    "deleted": "Workflow supprimé",
-    "webSearchQuery": "Requête de recherche",
-    "webSearchNumResults": "Nombre de résultats",
-    "webSearchType": "Type de recherche"
+    "deleted": "Workflow supprimé"
   },
   "Auth": {
     "SignIn": {
@@ -285,7 +275,8 @@
       "none": "Aucun",
       "mentionOnly": "@mention uniquement",
       "noToolsAvailable": "Aucun outil disponible",
-      "webSearchError": "La recherche web a échoué. Veuillez réessayer."
+      "webSearchError": "La recherche web a échoué. Veuillez réessayer.",
+      "toolModeDescription": "Choisissez comment les outils sont utilisés:\n• Auto: L'IA décide quand utiliser les outils\n• Manuel: Demande permission avant d'utiliser les outils\n• Aucun: Désactive tous les outils"
     },
     "VoiceChat": {
       "title": "Mode Chat Vocal",
@@ -361,7 +352,8 @@
       "exportDeleted": "Export supprimé avec succès",
       "failedToDeleteExport": "Échec de la suppression de l'export"
     },
-    "addFiles": "Ajouter des fichiers"
+    "addFiles": "Ajouter des fichiers",
+    "serviceUnavailable": "Le service IA est temporairement indisponible. Contactez votre administrateur."
   },
   "Layout": {
     "workflow": "Flux de Travail",
@@ -425,9 +417,6 @@
     "adminConsole": "Console d'administration",
     "studio": "Studio",
     "documents": "Documents",
-    "seeAllDocuments": "Voir tout",
-    "confirmDeleteAllChats": "Cela supprimera définitivement toutes vos conversations. Cette action est irréversible.",
-    "confirmDeleteUnarchivedChats": "Cela supprimera définitivement toutes les conversations non archivées. Cette action est irréversible.",
     "tasks": "Tâches",
     "seeAllTasks": "Tout voir"
   },
@@ -464,7 +453,7 @@
     "agentDescriptionPlaceholder": "Ceci n'est qu'une description de l'agent, ce n'est pas critique.",
     "agentSettingsDescription": "À partir d'ici, ce sont des paramètres qui peuvent affecter l'agent.",
     "thisAgentIs": "Cet agent est un expert en",
-    "expertIn": ".",
+    "expertIn": "",
     "agentRolePlaceholder": "analyse boursière",
     "agentInstructionsLabel": "N'hésitez pas à écrire le rôle, la personnalité, les directives, les connaissances, etc. de l'agent.",
     "agentInstructionsPlaceholder": "Cet agent aide à l'analyse boursière. Il utilise des outils de recherche web pour obtenir des informations boursières...",
@@ -944,9 +933,6 @@
       "deactivated": "Kill switch désactivé — l'inférence fonctionne normalement",
       "flagUpdated": "Indicateur mis à jour"
     },
-    "ApiKeys": {
-      "title": "Clés API"
-    },
     "Guardrails": {
       "title": "Gardes-fous",
       "blockedCount": "Bloqués",
@@ -1088,17 +1074,7 @@
     "routineCreated": "Routine planifiée",
     "routineDeleted": "Routine supprimée",
     "runsTab": "Exécutions",
-    "emptyRuns": "Aucune exécution pour l'instant. Les exécutions d'agents et de workflows apparaîtront ici.",
-    "searchPlaceholder": "Rechercher…",
-    "noSelectionTitle": "Rien de sélectionné",
-    "noSelectionBody": "Sélectionnez un élément dans la liste pour voir ses détails.",
-    "openRun": "Ouvrir l’exécution",
-    "approved": "Approuvé",
-    "rejected": "Rejeté",
-    "mentionsTab": "Mentions",
-    "emptyMentions": "Aucune mention pour l'instant",
-    "emptyMentionsDescription": "Lorsque quelqu'un vous @mentionne dans un commentaire de document, cela apparaîtra ici.",
-    "confirmDeleteRoutine": "Supprimer cette routine ? Elle cessera de s'exécuter selon son planning. Cette action est irréversible."
+    "emptyRuns": "Aucune exécution pour l'instant. Les exécutions d'agents et de workflows apparaîtront ici."
   },
   "Teamspaces": {
     "folders": "Dossiers",
@@ -1118,8 +1094,7 @@
     "noFolders": "Aucun dossier pour l'instant",
     "team": "équipe",
     "generating": "Génération en cours…",
-    "sharedWithTeamReadOnly": "Partagé avec {team} · lecture seule",
-    "confirmDeleteFolder": "Supprimer ce dossier ? Les conversations qu'il contient seront déplacées. Cette action est irréversible."
+    "sharedWithTeamReadOnly": "Partagé avec {team} · lecture seule"
   },
   "Memory": {
     "title": "Mémoire",
@@ -1327,7 +1302,6 @@
     "saving": "Enregistrement…",
     "saved": "Enregistré",
     "saveError": "Échec de l'enregistrement",
-    "createError": "Échec de la création du document",
     "backToList": "Retour aux documents",
     "delete": "Supprimer le document",
     "deleteTitle": "Supprimer le document",
@@ -1350,9 +1324,7 @@
       "orderedList": "Liste numérotée",
       "blockquote": "Citation",
       "codeBlock": "Bloc de code",
-      "horizontalRule": "Séparateur",
-      "linkApply": "Appliquer",
-      "linkRemove": "Retirer"
+      "horizontalRule": "Séparateur"
     },
     "history": {
       "title": "Historique des versions",
@@ -1376,22 +1348,6 @@
       "replyingTo": "En réponse à {name}",
       "deleteTitle": "Supprimer le commentaire",
       "deleteDescription": "Voulez-vous vraiment supprimer ce commentaire ?"
-    },
-    "remoteOverridden": "Vos modifications non enregistrées ont été écrasées par une version plus récente — vérifiez avant de continuer.",
-    "ai": {
-      "improve": "Améliorer",
-      "shorten": "Raccourcir",
-      "expand": "Développer",
-      "tone": "Ton",
-      "toneFormal": "Formel",
-      "toneCasual": "Décontracté",
-      "translate": "Traduire",
-      "translateEs": "Espagnol",
-      "translateFr": "Français",
-      "translateDe": "Allemand",
-      "generating": "Génération…",
-      "errorBudget": "Budget épuisé. Contactez votre administrateur.",
-      "errorGeneric": "La suggestion IA a échoué. Votre texte original a été restauré."
     }
   },
   "Tasks": {
